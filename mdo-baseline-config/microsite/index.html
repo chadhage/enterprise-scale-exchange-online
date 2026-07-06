@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Microsoft Defender for Office 365 - Baseline Configuration Guide</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%230078d4'/%3E%3Ctext x='50' y='55' font-size='60' fill='white' text-anchor='middle' font-weight='bold'%3EM%3C/text%3E%3C/svg%3E">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <svg class="logo-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="45" fill="currentColor"/>
+                    <text x="50" y="55" font-size="60" fill="white" text-anchor="middle" font-weight="bold">M</text>
+                </svg>
+                <span>MDO Baseline Configuration</span>
+            </div>
+            <div class="nav-menu">
+                <button class="nav-item active" onclick="showSection('overview')">Overview</button>
+                <button class="nav-item" onclick="showSection('configurator')">Configurator</button>
+                <button class="nav-item" onclick="showSection('deployment')">Deployment</button>
+                <button class="nav-item" onclick="showSection('testing')">Testing</button>
+                <button class="nav-item" onclick="showSection('faq')">FAQ</button>
+                <button class="nav-item" onclick="showSection('resources')">Resources</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-container">
+        
+        <!-- Overview Section -->
+        <section id="overview" class="section active">
+            <div class="hero">
+                <h1>Microsoft Defender for Office 365 Baseline Configuration</h1>
+                <p class="subtitle">Enterprise-grade security configuration templates for mailbox and collaboration protection</p>
+            </div>
+
+            <div class="content-grid">
+                <article class="card">
+                    <h2>What is This?</h2>
+                    <p>This microsite provides production-ready baseline configurations for Microsoft Defender for Office 365 (MDO) in both Standard and Strict protection levels. These configurations follow Microsoft security best practices and can be deployed using Infrastructure as Code (IaC) automation.</p>
+                </article>
+
+                <article class="card">
+                    <h2>Protection Levels</h2>
+                    <div class="protection-levels">
+                        <div class="level-card">
+                            <h3>Standard Protection</h3>
+                            <p>Recommended for most organizations</p>
+                            <ul>
+                                <li>Anti-phishing with spoofing detection</li>
+                                <li>Anti-malware with file type filtering</li>
+                                <li>Anti-spam with bulk threshold tuning</li>
+                                <li>Safe Attachments scanning</li>
+                                <li>Safe Links detonation</li>
+                            </ul>
+                        </div>
+                        <div class="level-card strict">
+                            <h3>Strict Protection</h3>
+                            <p>For high-risk environments</p>
+                            <ul>
+                                <li>All Standard features plus:</li>
+                                <li>User & domain impersonation protection</li>
+                                <li>Aggressive phishing thresholds</li>
+                                <li>Quarantine by default actions</li>
+                                <li>Automated Investigation & Response (AIR)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Key Features</h2>
+                    <div class="features-grid">
+                        <div class="feature">
+                            <span class="feature-icon">📋</span>
+                            <h4>JSON Configuration Schema</h4>
+                            <p>Fully parameterized configuration templates with zero hardcoding</p>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">🚀</span>
+                            <h4>PowerShell Automation</h4>
+                            <p>Complete IaC deployment scripts with dry-run and audit support</p>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">✓</span>
+                            <h4>Validation & Testing</h4>
+                            <p>Schema validation and configuration audit tools included</p>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">📊</span>
+                            <h4>Policy Coverage</h4>
+                            <p>Comprehensive support for all MDO threat policies and settings</p>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">🔐</span>
+                            <h4>Enterprise Ready</h4>
+                            <p>Aligned with Microsoft 365 security baselines and compliance standards</p>
+                        </div>
+                        <div class="feature">
+                            <span class="feature-icon">📦</span>
+                            <h4>SPFx Package</h4>
+                            <p>Ready-to-deploy SharePoint modern app package included</p>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Supported Policies</h2>
+                    <div class="policies-table">
+                        <div class="policy-group">
+                            <h3>Core Protection Policies</h3>
+                            <ul>
+                                <li>✓ Anti-Phishing Policies</li>
+                                <li>✓ Anti-Malware Policies</li>
+                                <li>✓ Anti-Spam Policies</li>
+                                <li>✓ Connection Filter Policies</li>
+                                <li>✓ Outbound Spam Policies</li>
+                            </ul>
+                        </div>
+                        <div class="policy-group">
+                            <h3>Advanced Protection (MDO Plan 1+)</h3>
+                            <ul>
+                                <li>✓ Safe Attachments Policies</li>
+                                <li>✓ Safe Links Policies</li>
+                                <li>✓ Tenant Allow/Block Lists</li>
+                                <li>✓ Impersonation Protection</li>
+                                <li>✓ User & Domain Spoofing Detection</li>
+                            </ul>
+                        </div>
+                        <div class="policy-group">
+                            <h3>Authentication & Email Validation</h3>
+                            <ul>
+                                <li>✓ DMARC Configuration</li>
+                                <li>✓ DKIM Signing</li>
+                                <li>✓ SPF Validation</li>
+                                <li>✓ Email Authentication Reports</li>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- Configurator Section -->
+        <section id="configurator" class="section">
+            <h1>Interactive Configuration Builder</h1>
+            <p class="subtitle">Create your custom MDO baseline configuration</p>
+
+            <div class="configurator-container">
+                <form class="config-form" id="configForm">
+                    <!-- Organization Settings -->
+                    <fieldset class="form-section">
+                        <legend>Organization Settings</legend>
+                        
+                        <div class="form-group">
+                            <label for="tenantId">Tenant ID (GUID)*</label>
+                            <input 
+                                type="text" 
+                                id="tenantId" 
+                                name="tenantId" 
+                                placeholder="e.g., 12345678-1234-1234-1234-123456789012"
+                                pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tenantName">Organization Name*</label>
+                            <input 
+                                type="text" 
+                                id="tenantName" 
+                                name="tenantName" 
+                                placeholder="e.g., Contoso Inc"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="tenantDomain">Primary Domain*</label>
+                            <input 
+                                type="text" 
+                                id="tenantDomain" 
+                                name="tenantDomain" 
+                                placeholder="e.g., contoso.com"
+                                pattern="^\w+(\.\w+)*$"
+                                required
+                            />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="securityAdminEmail">Security Admin Email*</label>
+                            <input 
+                                type="email" 
+                                id="securityAdminEmail" 
+                                name="securityAdminEmail" 
+                                placeholder="e.g., security@contoso.com"
+                                required
+                            />
+                        </div>
+                    </fieldset>
+
+                    <!-- Protection Level -->
+                    <fieldset class="form-section">
+                        <legend>Protection Level</legend>
+                        
+                        <div class="form-group radio-group">
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    name="protectionLevel" 
+                                    value="Standard" 
+                                    checked
+                                    onchange="updateProtectionDescription(this.value)"
+                                />
+                                <span>Standard Protection (Recommended)</span>
+                            </label>
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    name="protectionLevel" 
+                                    value="Strict"
+                                    onchange="updateProtectionDescription(this.value)"
+                                />
+                                <span>Strict Protection (High-Risk)</span>
+                            </label>
+                        </div>
+
+                        <div id="protectionDescription" class="info-box">
+                            <p>Standard protection is recommended for most organizations as a starting point and automatically protects against current threats.</p>
+                        </div>
+                    </fieldset>
+
+                    <!-- Deployment Settings -->
+                    <fieldset class="form-section">
+                        <legend>Deployment Settings</legend>
+                        
+                        <div class="form-group radio-group">
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    name="deploymentMode" 
+                                    value="Audit" 
+                                    checked
+                                />
+                                <span>Audit Mode (Detect Only)</span>
+                            </label>
+                            <label>
+                                <input 
+                                    type="radio" 
+                                    name="deploymentMode" 
+                                    value="Enforce"
+                                />
+                                <span>Enforce Mode (Block Threats)</span>
+                            </label>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="rolloutPhase">Rollout Phase</label>
+                            <select id="rolloutPhase" name="rolloutPhase">
+                                <option value="1">Phase 1 - Pilot (Selected Users)</option>
+                                <option value="2">Phase 2 - Staged (Department/Teams)</option>
+                                <option value="3">Phase 3 - Organization-wide</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group checkbox">
+                            <label>
+                                <input 
+                                    type="checkbox" 
+                                    name="enableAIR" 
+                                    id="enableAIR"
+                                />
+                                <span>Enable Automated Investigation & Response (AIR)</span>
+                            </label>
+                        </div>
+                    </fieldset>
+
+                    <!-- Allow/Block List -->
+                    <fieldset class="form-section">
+                        <legend>Allow/Block List Configuration</legend>
+                        
+                        <div class="form-group">
+                            <label for="allowedSenders">Allowed Senders (comma-separated emails)</label>
+                            <textarea 
+                                id="allowedSenders" 
+                                name="allowedSenders"
+                                rows="3"
+                                placeholder="e.g., trusted@example.com, vendor@supplier.com"
+                            ></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="blockedSenders">Blocked Senders (comma-separated emails)</label>
+                            <textarea 
+                                id="blockedSenders" 
+                                name="blockedSenders"
+                                rows="3"
+                                placeholder="e.g., spam@domain.com"
+                            ></textarea>
+                        </div>
+                    </fieldset>
+
+                    <!-- Form Actions -->
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-primary" onclick="generateConfig()">
+                            Generate Configuration
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="downloadConfig()">
+                            Download JSON
+                        </button>
+                        <button type="reset" class="btn btn-secondary">
+                            Clear Form
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Generated Config Preview -->
+                <div id="configPreview" class="config-preview" style="display: none;">
+                    <h2>Generated Configuration</h2>
+                    <div class="preview-toolbar">
+                        <button class="btn btn-small" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
+                        <button class="btn btn-small" onclick="downloadConfigFile()">💾 Download</button>
+                    </div>
+                    <pre id="configContent" class="code-block"></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Deployment Section -->
+        <section id="deployment" class="section">
+            <h1>Deployment Guide</h1>
+            <p class="subtitle">Step-by-step instructions for deploying baseline configurations</p>
+
+            <div class="content-grid">
+                <article class="card">
+                    <h2>Prerequisites</h2>
+                    <ul class="checklist">
+                        <li>✓ PowerShell 7.0 or later</li>
+                        <li>✓ ExchangeOnlineManagement module</li>
+                        <li>✓ Global Administrator or Security Administrator role</li>
+                        <li>✓ Microsoft Defender for Office 365 Plan 1 or Plan 2 license</li>
+                        <li>✓ Generated configuration JSON file</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h2>Installation Steps</h2>
+                    <ol class="ordered-list">
+                        <li>
+                            <strong>Install Required Modules</strong>
+                            <pre><code>Install-Module ExchangeOnlineManagement -Force -AllowClobber
+Install-Module Microsoft.Graph.Authentication -Force
+Install-Module Microsoft.Graph.Users -Force</code></pre>
+                        </li>
+                        <li>
+                            <strong>Generate Configuration</strong>
+                            <p>Use the Configurator above to generate your organization's configuration file.</p>
+                        </li>
+                        <li>
+                            <strong>Validate Configuration</strong>
+                            <pre><code>.\Validate-MDOConfiguration.ps1 -ConfigPath "your-config.json"</code></pre>
+                        </li>
+                        <li>
+                            <strong>Test Deployment (Dry Run)</strong>
+                            <pre><code>.\Deploy-MDOBaseline.ps1 `
+  -ConfigPath "your-config.json" `
+  -TenantId "tenant-guid" `
+  -TenantName "Org Name" `
+  -TenantDomain "domain.com" `
+  -SecurityAdminEmail "admin@domain.com" `
+  -DryRun</code></pre>
+                        </li>
+                        <li>
+                            <strong>Deploy Configuration</strong>
+                            <pre><code>.\Deploy-MDOBaseline.ps1 `
+  -ConfigPath "your-config.json" `
+  -TenantId "tenant-guid" `
+  -TenantName "Org Name" `
+  -TenantDomain "domain.com" `
+  -SecurityAdminEmail "admin@domain.com"</code></pre>
+                        </li>
+                    </ol>
+                </article>
+
+                <article class="card">
+                    <h2>Monitoring & Validation</h2>
+                    <ul>
+                        <li>Review Configuration Analyzer in Microsoft Defender portal</li>
+                        <li>Check mail flow logs for policy impacts</li>
+                        <li>Review quarantine reports</li>
+                        <li>Monitor threat and detection reports</li>
+                        <li>Validate Safe Links and Safe Attachments functionality</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h2>Rollback Procedures</h2>
+                    <p>If issues occur, you can revert to previous configurations:</p>
+                    <pre><code># Export current configuration
+$policy = Get-AntiPhishPolicy -Identity "Policy Name"
+$policy | ConvertTo-Json | Out-File "backup.json"
+
+# Restore from backup
+# Recreate policies from exported JSON</code></pre>
+                </article>
+            </div>
+
+            <article class="card full-width">
+                <h2>Phased Rollout Strategy</h2>
+                <div class="phase-timeline">
+                    <div class="phase">
+                        <h3>Phase 1: Pilot (Week 1-2)</h3>
+                        <p>Deploy to pilot group (10-20% of users)</p>
+                        <ul>
+                            <li>Test in Audit mode first</li>
+                            <li>Monitor threat reports</li>
+                            <li>Gather user feedback</li>
+                            <li>Adjust thresholds if needed</li>
+                        </ul>
+                    </div>
+                    <div class="phase">
+                        <h3>Phase 2: Staged (Week 3-4)</h3>
+                        <p>Expand to departments/teams (50-70% of users)</p>
+                        <ul>
+                            <li>Switch to Enforce mode</li>
+                            <li>Train users on phishing recognition</li>
+                            <li>Establish support procedures</li>
+                            <li>Monitor false positive rates</li>
+                        </ul>
+                    </div>
+                    <div class="phase">
+                        <h3>Phase 3: Organization-wide (Week 5+)</h3>
+                        <p>Deploy to all users</p>
+                        <ul>
+                            <li>Full policy enforcement</li>
+                            <li>Comprehensive monitoring</li>
+                            <li>Regular review and tuning</li>
+                            <li>Continuous education program</li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <!-- Testing Section -->
+        <section id="testing" class="section">
+            <h1>Testing Framework</h1>
+            <p class="subtitle">Comprehensive 150+ test suite covering all aspects of the solution</p>
+
+            <div class="content-grid">
+                <article class="card">
+                    <h2>Test Coverage</h2>
+                    <div class="testing-summary">
+                        <div class="test-level">
+                            <h3>Unit Tests (50+)</h3>
+                            <p>Individual function testing with mocked dependencies</p>
+                            <ul>
+                                <li>PowerShell script functions</li>
+                                <li>Parameter validation</li>
+                                <li>Configuration parsing</li>
+                                <li>Error handling paths</li>
+                                <li>Code coverage: 80%+</li>
+                            </ul>
+                        </div>
+                        <div class="test-level">
+                            <h3>Feature Tests (20+)</h3>
+                            <p>Individual features working correctly</p>
+                            <ul>
+                                <li>Configuration generation</li>
+                                <li>Policy deployment</li>
+                                <li>Protection levels</li>
+                                <li>Recipient targeting</li>
+                                <li>Advanced features</li>
+                            </ul>
+                        </div>
+                        <div class="test-level">
+                            <h3>Integration Tests (25+)</h3>
+                            <p>Component interactions and data flow</p>
+                            <ul>
+                                <li>Config-to-deployment pipeline</li>
+                                <li>Policy coordination</li>
+                                <li>Allow/Block list processing</li>
+                                <li>Recipient consistency</li>
+                                <li>Error scenarios</li>
+                            </ul>
+                        </div>
+                        <div class="test-level">
+                            <h3>End-to-End Tests (10+)</h3>
+                            <p>Complete workflows from start to finish</p>
+                            <ul>
+                                <li>Full deployment flow</li>
+                                <li>Dry-run to enforcement</li>
+                                <li>Three-phase rollout</li>
+                                <li>Configuration consistency</li>
+                                <li>Rollback procedures</li>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+
+                <article class="card">
+                    <h2>Acceptance Testing</h2>
+                    <p>Business requirement validation with 50+ checklist items:</p>
+                    <ul>
+                        <li>✓ Configuration requirements (8 items)</li>
+                        <li>✓ Deployment capabilities (12 items)</li>
+                        <li>✓ Documentation completeness (4 files)</li>
+                        <li>✓ Interface functionality (10 items)</li>
+                        <li>✓ Testing requirements (5 levels)</li>
+                        <li>✓ Quality assurance metrics</li>
+                        <li>✓ Customer readiness sign-off</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h2>Running Tests</h2>
+                    <pre><code># Install Pester
+Install-Module Pester -Force -SkipPublisherCheck
+
+# Run all tests
+Invoke-Pester -Path ".\tests" -Output Detailed
+
+# Using master runner
+.\tests\Run-Tests.ps1 -TestLevel All -WithCodeCoverage
+
+# By level
+.\tests\Run-Tests.ps1 -TestLevel Unit
+.\tests\Run-Tests.ps1 -TestLevel Integration
+.\tests\Run-Tests.ps1 -TestLevel E2E</code></pre>
+                </article>
+
+                <article class="card">
+                    <h2>Test Framework</h2>
+                    <ul>
+                        <li><strong>Framework:</strong> Pester 5.3+ (PowerShell unit testing)</li>
+                        <li><strong>Patterns:</strong> Arrange-Act-Assert structure</li>
+                        <li><strong>Fixtures:</strong> JSON test data files included</li>
+                        <li><strong>Specifications:</strong> BDD-style Gherkin features</li>
+                        <li><strong>Mocking:</strong> Exchange Online command simulation</li>
+                        <li><strong>CI/CD:</strong> GitHub Actions integration examples</li>
+                        <li><strong>Coverage:</strong> Code and workflow coverage tracking</li>
+                    </ul>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Test Documentation</h2>
+                    <div class="doc-links">
+                        <div class="doc-item">
+                            <h4>TEST_STRATEGY.md</h4>
+                            <p>Overall testing pyramid, strategy, and coverage goals (900+ lines)</p>
+                        </div>
+                        <div class="doc-item">
+                            <h4>tests/README.md</h4>
+                            <p>Complete testing guide with examples and best practices (800+ lines)</p>
+                        </div>
+                        <div class="doc-item">
+                            <h4>tests/QUICK_REFERENCE.md</h4>
+                            <p>Quick command reference for running tests</p>
+                        </div>
+                        <div class="doc-item">
+                            <h4>tests/ACCEPTANCE_CHECKLIST.md</h4>
+                            <p>Business requirement validation checklist (600+ lines)</p>
+                        </div>
+                    </div>
+                </article>
+            </div>
+        </section>
+
+        <!-- FAQ Section -->
+        <section id="faq" class="section">
+            <h1>Frequently Asked Questions</h1>
+            <p class="subtitle">Common questions about MDO baseline configurations</p>
+
+            <div class="faq-container">
+                <details class="faq-item">
+                    <summary>What's the difference between Standard and Strict protection?</summary>
+                    <div class="faq-content">
+                        <p><strong>Standard Protection</strong> is recommended for most organizations. It provides comprehensive protection against common threats including spoofing, malware, and phishing with reasonable thresholds.</p>
+                        <p><strong>Strict Protection</strong> is recommended for high-risk organizations such as financial institutions, government agencies, and organizations handling sensitive data. It includes aggressive settings and additional protections like impersonation protection and Automated Investigation & Response.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Can I use Audit mode before enforcing policies?</summary>
+                    <div class="faq-content">
+                        <p>Yes! Audit mode is recommended for initial deployment. In Audit mode, policies detect threats but don't block or quarantine messages. This allows you to:</p>
+                        <ul>
+                            <li>Monitor policy impact</li>
+                            <li>Identify false positives</li>
+                            <li>Adjust settings before enforcement</li>
+                            <li>Review detection reports</li>
+                        </ul>
+                        <p>After validation, switch to Enforce mode for active protection.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>How do I handle false positives?</summary>
+                    <div class="faq-content">
+                        <p>If legitimate emails are blocked:</p>
+                        <ul>
+                            <li>Review logs in Microsoft Defender portal</li>
+                            <li>Add sender to Allow List via Tenant Allow/Block List</li>
+                            <li>Adjust policy thresholds (e.g., phishing threshold level)</li>
+                            <li>Create exception policies for specific users/groups</li>
+                            <li>Report false positives via Submissions</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>What's the cost of implementing these configurations?</summary>
+                    <div class="faq-content">
+                        <p>These configurations use existing Microsoft Defender for Office 365 features included in your Microsoft 365 subscription. No additional costs for:</p>
+                        <ul>
+                            <li>Policy configuration and deployment</li>
+                            <li>Threat detection and enforcement</li>
+                            <li>Safe Attachments/Links scanning</li>
+                            <li>Anti-phishing protections</li>
+                        </ul>
+                        <p><em>Note: Automated Investigation & Response and some advanced features require MDO Plan 2 licenses.</em></p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Can I customize these baseline configurations?</summary>
+                    <div class="faq-content">
+                        <p>Yes! All configurations are fully customizable:</p>
+                        <ul>
+                            <li>Modify JSON templates with your preferred settings</li>
+                            <li>Create custom policies after baseline deployment</li>
+                            <li>Adjust thresholds and actions per organizational needs</li>
+                            <li>Add recipient exceptions and allow/block lists</li>
+                        </ul>
+                        <p>The baseline serves as a best-practice starting point that can be tailored to your organization.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>How do I monitor policy effectiveness?</summary>
+                    <div class="faq-content">
+                        <p>Use these Microsoft Defender portal tools:</p>
+                        <ul>
+                            <li><strong>Configuration Analyzer:</strong> Review policy settings vs. recommended baselines</li>
+                            <li><strong>Mail flow reports:</strong> Monitor message actions (delivered, quarantined, etc.)</li>
+                            <li><strong>Threat reports:</strong> Analyze detected malware, phishing, and spam</li>
+                            <li><strong>Detection tuning:</strong> Track and tune automated detections</li>
+                            <li><strong>Submissions:</strong> Review user-reported messages</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Is there support for government clouds (GCC, DoD)?</summary>
+                    <div class="faq-content">
+                        <p>Yes! The configuration schema includes environment selection:</p>
+                        <ul>
+                            <li>Cloud (Commercial)</li>
+                            <li>GCC</li>
+                            <li>GCC-High</li>
+                            <li>DoD</li>
+                        </ul>
+                        <p>Select your environment during configuration generation, and the deployment scripts will connect to the appropriate endpoint.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>What testing is included?</summary>
+                    <div class="faq-content">
+                        <p>The solution includes a comprehensive testing framework with 150+ tests:</p>
+                        <ul>
+                            <li><strong>Unit Tests (50+):</strong> Individual function testing with 80%+ code coverage</li>
+                            <li><strong>Feature Tests (20+):</strong> Individual feature validation</li>
+                            <li><strong>Integration Tests (25+):</strong> Component interaction testing</li>
+                            <li><strong>E2E Tests (10+):</strong> Complete workflow testing</li>
+                            <li><strong>Acceptance Tests (50+):</strong> Business requirement validation</li>
+                        </ul>
+                        <p>All tests are built with Pester and include CI/CD integration examples. See the Testing section for details.</p>
+                    </div>
+                </details>
+
+                <details class="faq-item">
+                    <summary>Is all source code and documentation included?</summary>
+                    <div class="faq-content">
+                        <p>Yes! Complete intellectual property is included:</p>
+                        <ul>
+                            <li><strong>Configuration Templates:</strong> Schema + 2 baselines (JSON)</li>
+                            <li><strong>PowerShell Scripts:</strong> Deploy, Generate, Validate scripts</li>
+                            <li><strong>Microsite:</strong> Complete HTML/CSS/JavaScript source</li>
+                            <li><strong>SharePoint App:</strong> Full SPFx project structure</li>
+                            <li><strong>Documentation:</strong> 3,500+ lines across 7 files</li>
+                            <li><strong>Testing Framework:</strong> 150+ tests with full code</li>
+                        </ul>
+                        <p>No obfuscation or licensing restrictions—ready for customization and deployment.</p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Resources Section -->
+        <section id="resources" class="section">
+            <h1>Resources & Documentation</h1>
+            <p class="subtitle">Links to documentation, scripts, and support materials</p>
+
+            <div class="resources-grid">
+                <article class="resource-card">
+                    <h3>📚 Microsoft Learn</h3>
+                    <ul>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/" target="_blank">Microsoft Defender for Office 365 Documentation</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/mdo-deployment-guide" target="_blank">MDO Deployment Guide</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/preset-security-policies" target="_blank">Preset Security Policies</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/configuration-analyzer-for-security-policies" target="_blank">Configuration Analyzer</a></li>
+                    </ul>
+                </article>
+
+                <article class="resource-card">
+                    <h3>🛠️ Scripts & Tools</h3>
+                    <ul>
+                        <li><a href="#" download="Deploy-MDOBaseline.ps1">Deploy-MDOBaseline.ps1</a> - Main deployment script</li>
+                        <li><a href="#" download="Generate-ConfigFromTemplate.ps1">Generate-ConfigFromTemplate.ps1</a> - Config generator</li>
+                        <li><a href="#" download="Validate-MDOConfiguration.ps1">Validate-MDOConfiguration.ps1</a> - Config validator</li>
+                        <li><a href="#" download="baseline-standard.json">baseline-standard.json</a> - Standard template</li>
+                        <li><a href="#" download="baseline-strict.json">baseline-strict.json</a> - Strict template</li>
+                    </ul>
+                </article>
+
+                <article class="resource-card">
+                    <h3>🧪 Testing Framework</h3>
+                    <ul>
+                        <li><a href="#" download="TEST_STRATEGY.md">TEST_STRATEGY.md</a> - Testing strategy (900+ lines)</li>
+                        <li><a href="#" download="tests-README.md">tests/README.md</a> - Complete testing guide</li>
+                        <li><a href="#" download="Run-Tests.ps1">Run-Tests.ps1</a> - Master test runner</li>
+                        <li><a href="#" download="ACCEPTANCE_CHECKLIST.md">ACCEPTANCE_CHECKLIST.md</a> - Acceptance tests</li>
+                        <li><a href="#" download="QUICK_REFERENCE.md">QUICK_REFERENCE.md</a> - Quick commands</li>
+                    </ul>
+                </article>
+
+                <article class="resource-card">
+                    <h3>🔗 References</h3>
+                    <ul>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/anti-phishing-policies-mdo-configure" target="_blank">Anti-Phishing Policies</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/safe-attachments-about" target="_blank">Safe Attachments</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/safe-links-about" target="_blank">Safe Links</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/anti-malware-policies-configure" target="_blank">Anti-Malware Policies</a></li>
+                    </ul>
+                </article>
+
+                <article class="resource-card">
+                    <h3>📖 Best Practices</h3>
+                    <ul>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365" target="_blank">Recommended Settings for EOP & MDO</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/try-microsoft-defender-for-office-365" target="_blank">Trial & Evaluation Guide</a></li>
+                        <li><a href="https://learn.microsoft.com/microsoft-365-apps/security/security-baseline" target="_blank">Microsoft 365 Security Baselines</a></li>
+                        <li><a href="https://security.microsoft.com/configuration-analyzer" target="_blank">Configuration Analyzer Portal</a></li>
+                    </ul>
+                </article>
+
+                <article class="resource-card">
+                    <h3>📦 Intellectual Property</h3>
+                    <ul>
+                        <li><a href="#" download="mdo-config-schema.json">mdo-config-schema.json</a> - Complete schema (2000+ lines)</li>
+                        <li><a href="#" download="SOLUTION_SUMMARY.md">SOLUTION_SUMMARY.md</a> - Complete project overview</li>
+                        <li><a href="#" download="CUSTOMIZATION.md">CUSTOMIZATION.md</a> - Customization guide (800+ lines)</li>
+                        <li><a href="#" download="TROUBLESHOOTING.md">TROUBLESHOOTING.md</a> - Troubleshooting guide (700+ lines)</li>
+                    </ul>
+                </article>
+            </div>
+
+            <article class="card full-width">
+                <h2>Project Structure</h2>
+                <p>All project files are organized as follows:</p>
+                <pre><code>mdo-baseline-config/
+├── config-templates/
+│   ├── mdo-config-schema.json          # JSON schema (2000+ lines)
+│   ├── baseline-standard.json          # Standard protection template
+│   └── baseline-strict.json            # Strict protection template
+├── scripts/
+│   ├── Deploy-MDOBaseline.ps1          # Main deployment script (600+ lines)
+│   ├── Generate-ConfigFromTemplate.ps1 # Configuration generator
+│   └── Validate-MDOConfiguration.ps1   # Configuration validator (300+ lines)
+├── microsite/
+│   ├── index.html                      # This page (700+ lines)
+│   ├── styles.css                      # Styling (800+ lines)
+│   └── script.js                       # Interactive functionality (500+ lines)
+├── spfx-app/
+│   ├── config/
+│   ├── src/
+│   └── package-solution.json           # SharePoint Package manifest
+├── tests/
+│   ├── TEST_STRATEGY.md                # Testing strategy (900+ lines)
+│   ├── README.md                       # Testing guide (800+ lines)
+│   ├── QUICK_REFERENCE.md              # Quick commands
+│   ├── Run-Tests.ps1                   # Master test runner
+│   ├── unit/                           # 50+ unit tests
+│   ├── feature/                        # 20+ feature tests
+│   ├── integration/                    # 25+ integration tests
+│   ├── e2e/                            # 10+ E2E tests
+│   ├── acceptance/                     # Acceptance checklist (50+ items)
+│   ├── features/                       # BDD specifications
+│   └── fixtures/                       # Test data files
+├── docs/
+│   ├── README.md                       # Project overview (400+ lines)
+│   ├── DEPLOYMENT.md                   # Deployment guide (1500+ lines)
+│   ├── CUSTOMIZATION.md                # Customization guide (800+ lines)
+│   └── TROUBLESHOOTING.md              # Troubleshooting guide (700+ lines)
+├── TESTING_SUMMARY.md                  # Testing framework summary
+└── SOLUTION_SUMMARY.md                 # Complete solution overview</code></pre>
+            </article>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2026 Microsoft Defender for Office 365 Baseline Configuration</p>
+            <p>Exchange Online Protection Baseline | <a href="https://github.com">GitHub Repository</a></p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>

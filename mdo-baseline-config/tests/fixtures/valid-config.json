@@ -1,0 +1,65 @@
+{
+  "organizationSettings": {
+    "tenantId": "12345678-1234-1234-1234-123456789012",
+    "tenantName": "Contoso Inc",
+    "domain": "contoso.com",
+    "protectionStrategy": "Standard",
+    "deploymentMode": "Audit",
+    "rolloutPhase": 1
+  },
+  "protectionLevel": {
+    "customRiskThresholds": {
+      "phishingThreshold": 1,
+      "advancedPhishingThreshold": 2,
+      "spamConfidenceLevel": 6
+    }
+  },
+  "policies": {
+    "antiPhishing": {
+      "enabled": true,
+      "name": "Standard Anti-Phishing Policy",
+      "phishingThreshold": 1,
+      "spoofSettings": {
+        "enableSpoofIntelligence": true,
+        "authenticatedSenderAction": "MoveToJmf"
+      }
+    }
+  },
+  "recipients": {
+    "applyToAllRecipients": true,
+    "includedDomains": ["contoso.com"]
+  },
+  "allowBlockList": {
+    "allowedSenders": [],
+    "blockedSenders": []
+  },
+  "authentication": {
+    "dmarc": {
+      "enabled": true,
+      "policy": "quarantine",
+      "percentageToFilter": 100,
+      "alignmentDmarc": "Strict"
+    },
+    "dkim": {
+      "enabled": true
+    },
+    "spf": {
+      "enabled": true
+    }
+  },
+  "advancedThreatProtection": {
+    "automatedInvestigationResponse": false,
+    "threatExplorer": false,
+    "campaignView": false,
+    "attackSimulationTraining": false
+  },
+  "notifications": {
+    "alertNotifications": ["admin@contoso.com"]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "createdDate": "2026-01-15T10:00:00Z",
+    "createdBy": "AutomatedDeployment",
+    "description": "Standard baseline configuration for Contoso Inc"
+  }
+}

@@ -1,0 +1,189 @@
+{
+  "$schema": "./mdo-config-schema.json",
+  "organizationSettings": {
+    "tenantId": "{{TENANT_ID}}",
+    "tenantName": "{{TENANT_NAME}}",
+    "protectionStrategy": "Strict",
+    "executionEnvironment": "Cloud",
+    "deploymentMode": "Audit",
+    "rolloutPhase": 1,
+    "userTags": [
+      "C-Suite",
+      "Board Members",
+      "Finance Department",
+      "Legal Department",
+      "HR Department"
+    ]
+  },
+  "protectionLevel": {
+    "preset": "Strict",
+    "customRiskThresholds": {
+      "phishingThreshold": 1,
+      "advancedPhishingThreshold": 1,
+      "spamConfidenceLevel": 6
+    }
+  },
+  "policies": {
+    "antiPhishing": [
+      {
+        "name": "Strict Anti-Phishing Policy",
+        "enabled": true,
+        "spoofSettings": {
+          "spoofingAction": "Quarantine",
+          "intraOrgSpoof": true,
+          "externalPartnerSpoof": true
+        },
+        "impersonationProtection": {
+          "enableUserImpersonationProtection": true,
+          "enableDomainImpersonationProtection": true,
+          "userImpersonationAction": "Quarantine",
+          "domainImpersonationAction": "Quarantine",
+          "protectedUsers": [],
+          "protectedDomains": [
+            "{{TENANT_DOMAIN}}"
+          ],
+          "trustLevel": "Advanced"
+        },
+        "phishingThreshold": 1,
+        "recipientDomainIsManaged": true,
+        "priority": 0
+      }
+    ],
+    "antiMalware": [
+      {
+        "name": "Strict Anti-Malware Policy",
+        "enabled": true,
+        "commonAttachmentTypesFilter": true,
+        "enableFileTypeFilter": true,
+        "fileTypes": [
+          "ade", "adp", "app", "asp", "aspx", "asx", "bat", "cer", "chm", "cmd",
+          "com", "cpl", "crt", "csh", "exe", "fxp", "hlp", "hta", "inf", "ins",
+          "isp", "jar", "jse", "js", "ksh", "lnk", "mad", "maf", "mag", "mam",
+          "maq", "mar", "mas", "mat", "mau", "mav", "maw", "mda", "mdb", "mde",
+          "mdt", "mdw", "mdy", "mht", "mhtml", "mmc", "mno", "mny", "msi", "msp",
+          "mst", "mua", "mxp", "ocx", "oft", "ops", "pcd", "pif", "plg", "pot",
+          "pps", "ppt", "pptx", "prf", "prg", "pst", "pub", "rar", "reg", "scf",
+          "scr", "sct", "shb", "shm", "shs", "sig", "sis", "sit", "sitx", "slk",
+          "sln", "suo", "t36", "tar", "thm", "tmp", "tpl", "torrent", "ttf", "txt",
+          "u3p", "uls", "vb", "vbe", "vbs", "vcs", "vcf", "vsd", "vsmacros", "vss",
+          "vst", "vsw", "vsx", "vtx", "wab", "wav", "wbk", "wch", "wcm", "wdb", "wfx",
+          "wiz", "wll", "wls", "wlt", "wmd", "wmf", "wml", "wmz", "wps", "wsc", "wsf",
+          "wsh", "xcl", "xla", "xlam", "xlk", "xll", "xlm", "xls", "xlsb", "xlsm", "xlsx",
+          "xlt", "xltm", "xltx", "xlw", "xml", "xnk", "xsn", "xtp", "zip", "zipx"
+        ],
+        "scanResultAction": "Quarantine",
+        "zeroDayAction": "Quarantine",
+        "enableInternalScan": true,
+        "enableExternalScan": true,
+        "fallbackAction": "Block",
+        "priority": 0
+      }
+    ],
+    "antiSpam": [
+      {
+        "name": "Strict Anti-Spam Policy",
+        "enabled": true,
+        "spamAction": "Quarantine",
+        "highConfidenceSpamAction": "Quarantine",
+        "bulkSpamAction": "Quarantine",
+        "bulkThreshold": 6,
+        "phishSpamAction": "Quarantine",
+        "enableLanguageBlockList": false,
+        "languageBlockList": [],
+        "enableRegionBlockList": false,
+        "regionBlockList": [],
+        "priority": 0
+      }
+    ],
+    "safeAttachments": [
+      {
+        "name": "Strict Safe Attachments Policy",
+        "enable": true,
+        "action": "Block",
+        "redirectToRecipients": [
+          "{{SECURITY_ADMIN_EMAIL}}"
+        ],
+        "actionOnError": "Block",
+        "enableScanTeamsAttachments": true,
+        "priority": 0
+      }
+    ],
+    "safeLinks": [
+      {
+        "name": "Strict Safe Links Policy",
+        "enabled": true,
+        "scanUrls": true,
+        "detonationAction": "Block",
+        "enableForTeams": true,
+        "trackClicks": true,
+        "allowClickThrough": false,
+        "priority": 0
+      }
+    ],
+    "outboundSpam": [
+      {
+        "name": "Strict Outbound Spam Policy",
+        "enabled": true,
+        "spamOutboundAction": "Block",
+        "notifyOutboundSpam": true,
+        "notifyOutboundSpamRecipients": [
+          "{{SECURITY_ADMIN_EMAIL}}"
+        ]
+      }
+    ]
+  },
+  "recipients": {
+    "applyToAllRecipients": false,
+    "includedDomains": [
+      "{{TENANT_DOMAIN}}"
+    ],
+    "excludedDomains": [],
+    "includedGroups": [],
+    "excludedGroups": [],
+    "includedUsers": [],
+    "excludedUsers": []
+  },
+  "allowBlockList": {
+    "allowedSenders": [],
+    "blockedSenders": [],
+    "allowedDomains": [],
+    "blockedDomains": [],
+    "allowedUrls": [],
+    "blockedUrls": []
+  },
+  "authentication": {
+    "dmarc": {
+      "enabled": true,
+      "policy": "reject",
+      "percentageToFilter": 100,
+      "alignmentDmarc": "Strict"
+    },
+    "dkim": {
+      "enabled": true,
+      "signingEnabled": true
+    },
+    "spf": {
+      "enabled": true
+    }
+  },
+  "advancedThreatProtection": {
+    "automatedInvestigationResponse": true,
+    "threatExplorer": true,
+    "campaignView": true,
+    "attackSimulationTraining": true
+  },
+  "notifications": {
+    "alertNotifications": [
+      "{{SECURITY_ADMIN_EMAIL}}"
+    ],
+    "quarantineNotifications": true,
+    "dailyReport": true
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "createdDate": "2026-01-01T00:00:00Z",
+    "lastModified": "2026-01-01T00:00:00Z",
+    "createdBy": "MDO Baseline Configuration Generator",
+    "description": "Strict protection level baseline configuration for Microsoft Defender for Office 365. Recommended for high-risk organizations, financial institutions, and government entities."
+  }
+}

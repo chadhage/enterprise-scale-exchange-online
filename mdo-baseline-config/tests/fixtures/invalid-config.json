@@ -1,0 +1,7 @@
+{
+  "invalidConfig": "This is not valid JSON configuration",
+  "missingRequired": true,
+  "notProperly": {
+    "structured": "for deployment"
+  }
+}

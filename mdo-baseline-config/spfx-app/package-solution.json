@@ -1,0 +1,31 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/spfx/spfx-solution-schema.json",
+  "solution": {
+    "name": "MDO Baseline Configuration - SharePoint App",
+    "id": "a1d94a3b-2c3f-4b5a-8e9d-1f2a3b4c5d6e",
+    "version": "1.0.0.0",
+    "includeClientSideAssets": true,
+    "skipFeatureDeploymentOnSite": true,
+    "isDomainIsolated": false,
+    "webApiPermissionRequests": [
+      {
+        "resource": "Microsoft Graph",
+        "scopes": [
+          "User.Read",
+          "User.ReadAll",
+          "Group.ReadAll"
+        ]
+      }
+    ]
+  },
+  "paths": {
+    "zippedDeploymentPath": "./sharepoint/solution"
+  },
+  "serve": {
+    "https": true,
+    "initialPage": "https://enter-your-SharePoint-site/_layouts/workbench.aspx",
+    "port": 4321
+  },
+  "bundledPackages": {},
+  "externals": {}
+}

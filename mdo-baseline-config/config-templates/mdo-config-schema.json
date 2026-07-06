@@ -1,0 +1,667 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Microsoft Defender for Office 365 Baseline Configuration Schema",
+  "description": "Parameterized schema for MDO policy deployment with support for Standard and Strict protection levels",
+  "type": "object",
+  "required": [
+    "organizationSettings",
+    "protectionLevel",
+    "policies"
+  ],
+  "properties": {
+    "organizationSettings": {
+      "type": "object",
+      "description": "Global organization configuration parameters",
+      "required": ["tenantId", "tenantName", "protectionStrategy"],
+      "properties": {
+        "tenantId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+          "description": "Azure AD Tenant ID (GUID)"
+        },
+        "tenantName": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Organization display name (e.g., 'Contoso Inc')"
+        },
+        "protectionStrategy": {
+          "type": "string",
+          "enum": ["Built-in", "Standard", "Strict", "Custom"],
+          "description": "Protection level strategy"
+        },
+        "executionEnvironment": {
+          "type": "string",
+          "enum": ["Cloud", "GCC", "GCC-High", "DoD"],
+          "default": "Cloud",
+          "description": "Microsoft 365 cloud environment"
+        },
+        "deploymentMode": {
+          "type": "string",
+          "enum": ["Audit", "Enforce"],
+          "default": "Audit",
+          "description": "Audit mode detects only; Enforce mode actively blocks threats"
+        },
+        "rolloutPhase": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3,
+          "default": 1,
+          "description": "Rollout phase (1=Pilot, 2=Staged, 3=Organization-wide)"
+        },
+        "userTags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Priority account tags for enhanced protection (e.g., 'C-Suite', 'Board Members')"
+        }
+      }
+    },
+    "protectionLevel": {
+      "type": "object",
+      "description": "Overall protection configuration profile",
+      "required": ["preset"],
+      "properties": {
+        "preset": {
+          "type": "string",
+          "enum": ["Standard", "Strict"],
+          "description": "Preset security policy level"
+        },
+        "customRiskThresholds": {
+          "type": "object",
+          "properties": {
+            "phishingThreshold": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4,
+              "default": 1,
+              "description": "Phishing email threshold (1=Most aggressive, 4=Least aggressive)"
+            },
+            "advancedPhishingThreshold": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4,
+              "default": 2,
+              "description": "Advanced phishing threshold for Defender for Office 365"
+            },
+            "spamConfidenceLevel": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9,
+              "default": 6,
+              "description": "Spam confidence level (higher = more aggressive)"
+            }
+          }
+        }
+      }
+    },
+    "policies": {
+      "type": "object",
+      "description": "Collection of threat policies",
+      "properties": {
+        "antiPhishing": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/antiPhishingPolicy" },
+          "description": "Anti-phishing policies including impersonation protection"
+        },
+        "antiMalware": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/antiMalwarePolicy" },
+          "description": "Anti-malware policies"
+        },
+        "antiSpam": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/antiSpamPolicy" },
+          "description": "Anti-spam policies"
+        },
+        "safeAttachments": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/safeAttachmentsPolicy" },
+          "description": "Safe Attachments policies (MDO Plan 1+)"
+        },
+        "safeLinks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/safeLinksPolicy" },
+          "description": "Safe Links policies (MDO Plan 1+)"
+        },
+        "outboundSpam": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/outboundSpamPolicy" },
+          "description": "Outbound spam policies"
+        },
+        "connectionFilter": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/connectionFilterPolicy" },
+          "description": "Connection filter policies"
+        }
+      }
+    },
+    "recipients": {
+      "type": "object",
+      "description": "Recipient filtering and exclusions",
+      "properties": {
+        "applyToAllRecipients": {
+          "type": "boolean",
+          "default": false,
+          "description": "Apply policies to all users in organization"
+        },
+        "includedDomains": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Domains to include (e.g., 'contoso.com')"
+        },
+        "excludedDomains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains to explicitly exclude"
+        },
+        "includedGroups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Security groups to include (by ObjectId)"
+        },
+        "excludedGroups": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Security groups to exclude (by ObjectId)"
+        },
+        "includedUsers": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Specific user email addresses to include"
+        },
+        "excludedUsers": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Specific users to exclude (by ObjectId or UPN)"
+        }
+      }
+    },
+    "allowBlockList": {
+      "type": "object",
+      "description": "Tenant Allow/Block List entries",
+      "properties": {
+        "allowedSenders": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Email addresses to allowlist"
+        },
+        "blockedSenders": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Email addresses to blocklist"
+        },
+        "allowedDomains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains to allowlist"
+        },
+        "blockedDomains": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains to blocklist"
+        },
+        "allowedUrls": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "URLs to allowlist in Safe Links"
+        },
+        "blockedUrls": {
+          "type": "array",
+          "items": { "type": "string", "format": "uri" },
+          "description": "URLs to blocklist in Safe Links"
+        }
+      }
+    },
+    "authentication": {
+      "type": "object",
+      "description": "DKIM, DMARC, and SPF configuration",
+      "properties": {
+        "dmarc": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "policy": {
+              "type": "string",
+              "enum": ["none", "quarantine", "reject"],
+              "default": "quarantine"
+            },
+            "percentageToFilter": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 100,
+              "default": 100
+            },
+            "alignmentDmarc": {
+              "type": "string",
+              "enum": ["Strict", "Relaxed"],
+              "default": "Strict"
+            }
+          }
+        },
+        "dkim": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true },
+            "signingEnabled": { "type": "boolean", "default": true }
+          }
+        },
+        "spf": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean", "default": true }
+          }
+        }
+      }
+    },
+    "advancedThreatProtection": {
+      "type": "object",
+      "description": "Advanced features (MDO Plan 2 and above)",
+      "properties": {
+        "automatedInvestigationResponse": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable automated investigation and response (AIR)"
+        },
+        "threatExplorer": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable real-time threat explorer"
+        },
+        "campaignView": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable campaign view for threat analysis"
+        },
+        "attackSimulationTraining": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable attack simulation and training"
+        }
+      }
+    },
+    "notifications": {
+      "type": "object",
+      "description": "Alert and notification settings",
+      "properties": {
+        "alertNotifications": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Email addresses for alert notifications"
+        },
+        "quarantineNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send quarantine notifications to users"
+        },
+        "dailyReport": {
+          "type": "boolean",
+          "default": true,
+          "description": "Send daily mail protection report"
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Configuration metadata",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Configuration version (semantic versioning)"
+        },
+        "createdDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration creation timestamp"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modification timestamp"
+        },
+        "createdBy": {
+          "type": "string",
+          "description": "Creator identifier"
+        },
+        "description": {
+          "type": "string",
+          "description": "Configuration description/notes"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "antiPhishingPolicy": {
+      "type": "object",
+      "required": ["name", "recipientDomainIsManaged"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Policy name"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "spoofSettings": {
+          "type": "object",
+          "properties": {
+            "spoofingAction": {
+              "type": "string",
+              "enum": ["NoAction", "MoveToJmf", "Redirect", "Delete", "Quarantine"],
+              "default": "MoveToJmf"
+            },
+            "intraOrgSpoof": {
+              "type": "boolean",
+              "default": true
+            },
+            "externalPartnerSpoof": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "impersonationProtection": {
+          "type": "object",
+          "properties": {
+            "enableUserImpersonationProtection": {
+              "type": "boolean",
+              "default": true
+            },
+            "enableDomainImpersonationProtection": {
+              "type": "boolean",
+              "default": true
+            },
+            "userImpersonationAction": {
+              "type": "string",
+              "enum": ["NoAction", "MoveToJmf", "Redirect", "Delete", "Quarantine"],
+              "default": "Quarantine"
+            },
+            "domainImpersonationAction": {
+              "type": "string",
+              "enum": ["NoAction", "MoveToJmf", "Redirect", "Delete", "Quarantine"],
+              "default": "Quarantine"
+            },
+            "protectedUsers": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Email addresses of protected users"
+            },
+            "protectedDomains": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Domains to protect against impersonation"
+            },
+            "trustLevel": {
+              "type": "string",
+              "enum": ["Normal", "Advanced"],
+              "default": "Advanced"
+            }
+          }
+        },
+        "phishingThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4,
+          "default": 1
+        },
+        "recipientDomainIsManaged": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Policy priority (0 = highest)"
+        }
+      }
+    },
+    "antiMalwarePolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "commonAttachmentTypesFilter": {
+          "type": "boolean",
+          "default": true,
+          "description": "Block common attachment types"
+        },
+        "enableFileTypeFilter": {
+          "type": "boolean",
+          "default": true
+        },
+        "fileTypes": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "File types to block (e.g., 'ade', 'adp', 'bat')"
+        },
+        "scanResultAction": {
+          "type": "string",
+          "enum": ["DeleteMessage", "Quarantine", "Replace", "Allow"],
+          "default": "Quarantine"
+        },
+        "zeroDayAction": {
+          "type": "string",
+          "enum": ["Quarantine", "Allow"],
+          "default": "Quarantine"
+        },
+        "enableInternalScan": {
+          "type": "boolean",
+          "default": true
+        },
+        "enableExternalScan": {
+          "type": "boolean",
+          "default": true
+        },
+        "fallbackAction": {
+          "type": "string",
+          "enum": ["Allow", "Block"],
+          "default": "Block"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "antiSpamPolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "spamAction": {
+          "type": "string",
+          "enum": ["MoveToJmf", "Delete", "Quarantine", "AddXHeader"],
+          "default": "MoveToJmf"
+        },
+        "highConfidenceSpamAction": {
+          "type": "string",
+          "enum": ["MoveToJmf", "Delete", "Quarantine", "AddXHeader"],
+          "default": "Quarantine"
+        },
+        "bulkSpamAction": {
+          "type": "string",
+          "enum": ["MoveToJmf", "Delete", "Quarantine", "AddXHeader"],
+          "default": "MoveToJmf"
+        },
+        "bulkThreshold": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "default": 7
+        },
+        "phishSpamAction": {
+          "type": "string",
+          "enum": ["MoveToJmf", "Delete", "Quarantine", "AddXHeader"],
+          "default": "Quarantine"
+        },
+        "enableLanguageBlockList": {
+          "type": "boolean",
+          "default": false
+        },
+        "languageBlockList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Language codes to block (e.g., 'ar', 'zh', 'ko')"
+        },
+        "enableRegionBlockList": {
+          "type": "boolean",
+          "default": false
+        },
+        "regionBlockList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Country codes to block (e.g., 'KP', 'IR')"
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "safeAttachmentsPolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enable": {
+          "type": "boolean",
+          "default": true
+        },
+        "action": {
+          "type": "string",
+          "enum": ["Block", "Replace", "Allow", "DynamicDelivery"],
+          "default": "Block"
+        },
+        "redirectToRecipients": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" },
+          "description": "Email addresses for quarantine redirection"
+        },
+        "actionOnError": {
+          "type": "string",
+          "enum": ["Allow", "Block"],
+          "default": "Block"
+        },
+        "enableScanTeamsAttachments": {
+          "type": "boolean",
+          "default": true
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "safeLinksPolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "scanUrls": {
+          "type": "boolean",
+          "default": true
+        },
+        "detonationAction": {
+          "type": "string",
+          "enum": ["Block", "Allow", "Monitor"],
+          "default": "Block"
+        },
+        "enableForTeams": {
+          "type": "boolean",
+          "default": true
+        },
+        "trackClicks": {
+          "type": "boolean",
+          "default": true
+        },
+        "allowClickThrough": {
+          "type": "boolean",
+          "default": false
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "outboundSpamPolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "spamOutboundAction": {
+          "type": "string",
+          "enum": ["Block", "Allow"],
+          "default": "Block"
+        },
+        "notifyOutboundSpam": {
+          "type": "boolean",
+          "default": true
+        },
+        "notifyOutboundSpamRecipients": {
+          "type": "array",
+          "items": { "type": "string", "format": "email" }
+        }
+      }
+    },
+    "connectionFilterPolicy": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "ipAllowList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IP addresses or ranges to allow (CIDR notation)"
+        },
+        "ipBlockList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IP addresses or ranges to block (CIDR notation)"
+        },
+        "safeSenderList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains considered safe"
+        },
+        "blockedSenderList": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Domains to block"
+        }
+      }
+    }
+  }
+}
