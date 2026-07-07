@@ -3,9 +3,6 @@ name: Deploy Microsite to GitHub Pages
 on:
   push:
     branches: [ master ]
-    paths:
-      - 'mdo-baseline-config/microsite/**'
-      - '.github/workflows/deploy-pages.yml'
   workflow_dispatch:
 
 permissions:
