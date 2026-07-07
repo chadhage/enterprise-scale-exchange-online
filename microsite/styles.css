@@ -751,14 +751,16 @@ a:hover {
 .ordered-list li {
     counter-increment: step-counter;
     margin-bottom: var(--spacing-lg);
-    padding-left: 44px;
+    padding-left: 52px;
     position: relative;
+    min-height: 28px;
 }
 
 .ordered-list li:before {
     content: counter(step-counter);
     position: absolute;
     left: 0;
+    top: 0;
     width: 28px;
     height: 28px;
     background: var(--primary-color);
