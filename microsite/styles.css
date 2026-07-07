@@ -751,7 +751,7 @@ a:hover {
 .ordered-list li {
     counter-increment: step-counter;
     margin-bottom: var(--spacing-lg);
-    padding-left: var(--spacing-lg);
+    padding-left: 44px;
     position: relative;
 }
 
