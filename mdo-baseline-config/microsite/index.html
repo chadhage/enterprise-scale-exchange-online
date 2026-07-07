@@ -32,7 +32,7 @@
         <section id="overview" class="section active">
             <div class="hero">
                 <h1>Microsoft Defender for Office 365 Baseline Configuration</h1>
-                <p class="subtitle">Enterprise-grade security configuration templates for mailbox and collaboration protection</p>
+                <p class="subtitle">Security configuration templates for Exchange Online mail flow protection</p>
             </div>
 
             <!-- Disclaimer Banner -->
@@ -42,8 +42,8 @@
 
             <div class="content-grid">
                 <article class="card">
-                    <h2>What is This?</h2>
-                    <p>This microsite provides production-ready baseline configurations for Microsoft Defender for Office 365 (MDO) in both Standard and Strict protection levels. These configurations follow Microsoft security best practices and can be deployed using Infrastructure as Code (IaC) automation.</p>
+                    <h2>Overview</h2>
+                    <p>This microsite provides example baseline configuration templates for Microsoft Defender for Office 365 (MDO) in both Standard and Strict protection levels. The templates are based on Microsoft's published recommended settings for EOP and Defender for Office 365 and can be deployed using Infrastructure as Code (IaC) automation.</p>
                 </article>
 
                 <article class="card">
@@ -80,32 +80,32 @@
                         <div class="feature">
                             <span class="feature-icon">📋</span>
                             <h4>JSON Configuration Schema</h4>
-                            <p>Fully parameterized configuration templates with zero hardcoding</p>
+                            <p>Parameterized configuration templates that separate settings from tenant-specific values</p>
                         </div>
                         <div class="feature">
                             <span class="feature-icon">🚀</span>
                             <h4>PowerShell Automation</h4>
-                            <p>Complete IaC deployment scripts with dry-run and audit support</p>
+                            <p>IaC deployment scripts with dry-run and audit mode support</p>
                         </div>
                         <div class="feature">
                             <span class="feature-icon">✓</span>
-                            <h4>Validation & Testing</h4>
-                            <p>Schema validation and configuration audit tools included</p>
+                            <h4>Validation &amp; Testing</h4>
+                            <p>Schema validation and configuration checking tools</p>
                         </div>
                         <div class="feature">
                             <span class="feature-icon">📊</span>
                             <h4>Policy Coverage</h4>
-                            <p>Comprehensive support for all MDO threat policies and settings</p>
+                            <p>Support for the MDO threat policies listed below</p>
                         </div>
                         <div class="feature">
                             <span class="feature-icon">🔐</span>
-                            <h4>Enterprise Ready</h4>
-                            <p>Aligned with Microsoft 365 security baselines and compliance standards</p>
+                            <h4>Aligned to Microsoft Guidance</h4>
+                            <p>Based on Microsoft's published recommended settings for EOP and Defender for Office 365</p>
                         </div>
                         <div class="feature">
                             <span class="feature-icon">📦</span>
                             <h4>SPFx Package</h4>
-                            <p>Ready-to-deploy SharePoint modern app package included</p>
+                            <p>SharePoint Framework app package structure</p>
                         </div>
                     </div>
                 </article>
@@ -451,7 +451,7 @@ $policy | ConvertTo-Json | Out-File "backup.json"
         <!-- Testing Section -->
         <section id="testing" class="section">
             <h1>Testing Framework</h1>
-            <p class="subtitle">Comprehensive 150+ test suite covering all aspects of the solution</p>
+            <p class="subtitle">Test suite of 150+ tests covering unit, feature, integration, end-to-end, and acceptance levels</p>
 
             <div class="content-grid">
                 <article class="card">
@@ -581,7 +581,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>What's the difference between Standard and Strict protection?</summary>
                     <div class="faq-content">
-                        <p><strong>Standard Protection</strong> is recommended for most organizations. It provides comprehensive protection against common threats including spoofing, malware, and phishing with reasonable thresholds.</p>
+                        <p><strong>Standard Protection</strong> is recommended for most organizations. It provides protection against common threats including spoofing, malware, and phishing using Microsoft's recommended Standard preset thresholds.</p>
                         <p><strong>Strict Protection</strong> is recommended for high-risk organizations such as financial institutions, government agencies, and organizations handling sensitive data. It includes aggressive settings and additional protections like impersonation protection and Automated Investigation & Response.</p>
                     </div>
                 </details>
@@ -589,7 +589,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>Can I use Audit mode before enforcing policies?</summary>
                     <div class="faq-content">
-                        <p>Yes! Audit mode is recommended for initial deployment. In Audit mode, policies detect threats but don't block or quarantine messages. This allows you to:</p>
+                        <p>Yes. Audit mode is recommended for initial deployment. In Audit mode, policies detect threats but don't block or quarantine messages. This allows you to:</p>
                         <ul>
                             <li>Monitor policy impact</li>
                             <li>Identify false positives</li>
@@ -631,7 +631,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>Can I customize these baseline configurations?</summary>
                     <div class="faq-content">
-                        <p>Yes! All configurations are fully customizable:</p>
+                        <p>Yes. The configuration templates can be customized:</p>
                         <ul>
                             <li>Modify JSON templates with your preferred settings</li>
                             <li>Create custom policies after baseline deployment</li>
@@ -659,7 +659,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>Is there support for government clouds (GCC, DoD)?</summary>
                     <div class="faq-content">
-                        <p>Yes! The configuration schema includes environment selection:</p>
+                        <p>Yes. The configuration schema includes environment selection:</p>
                         <ul>
                             <li>Cloud (Commercial)</li>
                             <li>GCC</li>
@@ -673,7 +673,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>What testing is included?</summary>
                     <div class="faq-content">
-                        <p>The solution includes a comprehensive testing framework with 150+ tests:</p>
+                        <p>The repository includes a testing framework with 150+ tests:</p>
                         <ul>
                             <li><strong>Unit Tests (50+):</strong> Individual function testing with 80%+ code coverage</li>
                             <li><strong>Feature Tests (20+):</strong> Individual feature validation</li>
@@ -688,16 +688,16 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <details class="faq-item">
                     <summary>Is all source code and documentation included?</summary>
                     <div class="faq-content">
-                        <p>Yes! Complete intellectual property is included:</p>
+                        <p>Yes. The repository includes the following source artifacts:</p>
                         <ul>
-                            <li><strong>Configuration Templates:</strong> Schema + 2 baselines (JSON)</li>
-                            <li><strong>PowerShell Scripts:</strong> Deploy, Generate, Validate scripts</li>
-                            <li><strong>Microsite:</strong> Complete HTML/CSS/JavaScript source</li>
-                            <li><strong>SharePoint App:</strong> Full SPFx project structure</li>
-                            <li><strong>Documentation:</strong> 3,500+ lines across 7 files</li>
-                            <li><strong>Testing Framework:</strong> 150+ tests with full code</li>
+                            <li><strong>Configuration Templates:</strong> Schema and two baseline templates (JSON)</li>
+                            <li><strong>PowerShell Scripts:</strong> Deploy, Generate, and Validate scripts</li>
+                            <li><strong>Microsite:</strong> HTML, CSS, and JavaScript source</li>
+                            <li><strong>SharePoint App:</strong> SPFx project structure</li>
+                            <li><strong>Documentation:</strong> Setup, deployment, customization, and troubleshooting guides</li>
+                            <li><strong>Testing Framework:</strong> 150+ tests with source</li>
                         </ul>
-                        <p>No obfuscation or licensing restrictions—ready for customization and deployment.</p>
+                        <p>The repository contents are provided as source files that can be reviewed and customized. Refer to the repository license for terms of use.</p>
                     </div>
                 </details>
             </div>
@@ -810,7 +810,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
 │   ├── CUSTOMIZATION.md                # Customization guide (800+ lines)
 │   └── TROUBLESHOOTING.md              # Troubleshooting guide (700+ lines)
 ├── TESTING_SUMMARY.md                  # Testing framework summary
-└── SOLUTION_SUMMARY.md                 # Complete solution overview</code></pre>
+└── SOLUTION_SUMMARY.md                 # Solution overview</code></pre>
             </article>
         </section>
     </main>

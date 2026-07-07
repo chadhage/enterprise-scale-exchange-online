@@ -5,7 +5,8 @@
     
 .DESCRIPTION
     Parameterized IaC deployment script for MDO baseline configurations.
-    Supports both Standard and Strict protection levels with zero hardcoding.
+    Supports both Standard and Strict protection levels. Tenant-specific values
+    are supplied as parameters rather than hardcoded.
     
 .PARAMETER ConfigPath
     Path to the configuration JSON file (e.g., baseline-standard.json)

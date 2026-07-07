@@ -4,8 +4,8 @@
     Validates MDO configuration file against schema and best practices
     
 .DESCRIPTION
-    Comprehensive validation of MDO configuration JSON files to ensure compliance
-    with schema, organizational best practices, and Microsoft recommendations.
+    Validation of MDO configuration JSON files against the schema,
+    organizational best practices, and Microsoft recommended settings.
     
 .PARAMETER ConfigPath
     Path to configuration JSON file to validate

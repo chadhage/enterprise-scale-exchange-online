@@ -114,7 +114,7 @@ Located in `tests/fixtures/`:
 ### Acceptance Test Focus
 - All MDO policies supported
 - Both protection levels available
-- Zero hardcoding principle
+- No hardcoded tenant values
 - Multi-cloud support
 - Complete documentation
 - Professional interface

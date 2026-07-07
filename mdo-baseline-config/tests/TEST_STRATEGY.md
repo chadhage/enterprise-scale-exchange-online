@@ -1,6 +1,6 @@
 # MDO Baseline Configuration - Testing Strategy & Framework
 
-Comprehensive testing strategy covering unit, feature, integration, end-to-end, and acceptance testing.
+Testing strategy covering unit, feature, integration, end-to-end, and acceptance testing.
 
 ## Testing Pyramid
 
@@ -258,7 +258,7 @@ Validate business requirements and customer expectations.
 #### Configuration Requirements
 - ✓ All MDO policies supported
 - ✓ Both Standard and Strict levels available
-- ✓ Zero hardcoding (all parameterized)
+- ✓ No hardcoded tenant values (all parameterized)
 - ✓ Multi-cloud support (Cloud, GCC, GCC-High, DoD)
 
 #### Deployment Requirements

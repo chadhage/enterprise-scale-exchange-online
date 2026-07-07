@@ -1,28 +1,28 @@
 # Microsoft Defender for Office 365 Baseline Configuration
 
-Enterprise-grade Infrastructure as Code (IaC) solution for deploying Microsoft Defender for Office 365 (MDO) baseline security configurations with zero hardcoding and full parameterization.
+Infrastructure as Code (IaC) templates for deploying Microsoft Defender for Office 365 (MDO) baseline security configurations. Tenant-specific values are parameterized rather than hardcoded.
 
-## 📋 Overview
+## Overview
 
-This project provides production-ready baseline configurations for Microsoft Defender for Office 365 in both **Standard** and **Strict** protection levels. It includes:
+This project provides example baseline configuration templates for Microsoft Defender for Office 365 in both **Standard** and **Strict** protection levels, based on Microsoft's published recommended settings for EOP and Defender for Office 365. It includes:
 
-- **Fully Parameterized JSON Configuration Templates** - No hardcoding, environment-specific parameters
-- **PowerShell Automation Scripts** - Complete IaC deployment with dry-run and audit support
+- **Parameterized JSON Configuration Templates** - Tenant-specific values supplied at generation time
+- **PowerShell Automation Scripts** - IaC deployment with dry-run and audit mode support
 - **Interactive Microsite** - Web-based configuration builder and deployment guide
-- **SharePoint Modern App** - SPFx package for deployment in SharePoint environments
-- **Comprehensive Documentation** - Step-by-step deployment and customization guides
+- **SharePoint Modern App** - SPFx package structure for deployment in SharePoint environments
+- **Documentation** - Deployment, customization, and troubleshooting guides
 
-## 🎯 Key Features
+## Key Features
 
-- ✅ **Two Protection Levels**: Standard (recommended) and Strict (high-risk environments)
-- ✅ **Phased Rollout Support**: Pilot, Staged, and Organization-wide deployment phases
-- ✅ **Audit & Enforce Modes**: Test before enforcement with comprehensive logging
-- ✅ **Complete Policy Coverage**: Anti-phishing, Anti-malware, Anti-spam, Safe Attachments, Safe Links, Outbound Spam, Connection Filtering
-- ✅ **Authentication Framework**: Built-in DMARC, DKIM, and SPF configuration support
-- ✅ **Allow/Block List Management**: Tenant Allow/Block List integration
-- ✅ **Automated Validation**: Schema validation and configuration audit tools
-- ✅ **Multi-Cloud Support**: Commercial, GCC, GCC-High, and DoD environments
-- ✅ **Logging & Monitoring**: Comprehensive deployment logs and validation reporting
+- **Two Protection Levels**: Standard (recommended) and Strict (high-risk environments)
+- **Phased Rollout Support**: Pilot, Staged, and Organization-wide deployment phases
+- **Audit & Enforce Modes**: Test in Audit mode before enforcement, with logging
+- **Policy Coverage**: Anti-phishing, Anti-malware, Anti-spam, Safe Attachments, Safe Links, Outbound Spam, Connection Filtering
+- **Authentication Configuration**: DMARC, DKIM, and SPF configuration support
+- **Allow/Block List Management**: Tenant Allow/Block List integration
+- **Validation**: Schema validation and configuration checking tools
+- **Multi-Cloud Support**: Commercial, GCC, GCC-High, and DoD environments
+- **Logging**: Deployment logs and validation reporting
 
 ## 📁 Project Structure
 
@@ -126,7 +126,7 @@ mdo-baseline-config/
 
 ### Standard Protection (Recommended)
 
-Suitable for most organizations. Provides comprehensive protection against common threats:
+Suitable for most organizations. Provides protection against common threats:
 
 - Anti-phishing with spoofing detection (Level 1)
 - Anti-malware with file type filtering
@@ -174,7 +174,7 @@ Recommended for financial institutions, government agencies, and organizations h
 
 ## 📝 Configuration Schema
 
-Configurations are fully validated against `mdo-config-schema.json`. Key sections:
+Configurations are validated against `mdo-config-schema.json`. Key sections:
 
 - **organizationSettings**: Tenant identity, protection strategy, deployment mode
 - **protectionLevel**: Standard/Strict preset and custom risk thresholds
@@ -227,15 +227,15 @@ The microsite (`microsite/index.html`) provides:
 - Permission and RBAC requirements
 - Logging and diagnostic tools
 
-## 🔐 Security Best Practices
+## Security Best Practices
 
-All configurations follow Microsoft security baselines and include:
+The configurations are based on Microsoft's published recommended settings for EOP and Defender for Office 365 and include:
 
 - Principle of least privilege (recipient targeting)
 - Defense in depth (multiple detection layers)
 - Audit mode before enforcement
-- Comprehensive logging and monitoring
-- DMARC/DKIM/SPF authentication framework
+- Logging and monitoring
+- DMARC/DKIM/SPF authentication configuration
 - Priority account protection
 
 ## 🎁 SharePoint Modern App

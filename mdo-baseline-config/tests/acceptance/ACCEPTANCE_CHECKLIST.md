@@ -20,7 +20,7 @@ Complete checklist for validating that the solution meets all business requireme
   - Standard and Strict have documented differences
   - Both baselines pass schema validation
 
-- [ ] **Zero Hardcoding Principle**
+- [ ] **No Hardcoded Tenant Values**
   - No hardcoded organization identifiers
   - All {{PLACEHOLDER}} tokens in templates
   - {{TENANT_ID}} replaceable
