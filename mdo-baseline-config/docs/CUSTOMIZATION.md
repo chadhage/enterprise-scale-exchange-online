@@ -163,12 +163,12 @@ Add VIP protection through impersonation settings:
 ```json
 "allowBlockList": {
   "allowedSenders": [
-    "partner@trustedcompany.com",
-    "billing@vendor.com"
+    "partner@trusted-partner.contoso.com",
+    "billing@supplier.contoso.com"
   ],
   "allowedDomains": [
-    "trustedpartner.com",
-    "supplier.com"
+    "trusted-partner.contoso.com",
+    "supplier.contoso.com"
   ]
 }
 ```
@@ -178,15 +178,15 @@ Add VIP protection through impersonation settings:
 ```json
 "allowBlockList": {
   "blockedSenders": [
-    "spam@malicious.com"
+    "spam@malicious-simulation.contoso.com"
   ],
   "blockedDomains": [
-    "phishingsite.com",
-    "malware-distribution.net"
+    "phishing-simulation.contoso.com",
+    "malware-simulation.contoso.com"
   ],
   "blockedUrls": [
-    "https://malicious-site.com/payload",
-    "https://phishing-page.net/login"
+    "https://malicious-simulation.contoso.com/payload",
+    "https://phishing-simulation.contoso.com/login"
   ]
 }
 ```
@@ -360,7 +360,7 @@ Handle legitimate senders that trigger false positives:
 {
   "allowBlockList": {
     "allowedSenders": [
-      "notification@service-x.com"    // Third-party service
+      "notification@service-x.contoso.com"    // Third-party service
     ],
     "allowedUrls": [
       "https://safe-url.com/notifications"

@@ -321,13 +321,13 @@ Get-EffectiveAntiSpamPolicy -Identity user@contoso.com
    ```powershell
    # Add trusted sender
    New-TenantAllowBlockListSpoofItems `
-       -SpoofedUser "trusted@partner.com" `
+      -SpoofedUser "trusted@partner.contoso.com" `
        -Action Allow
    
    # Add trusted domain
    New-TenantAllowBlockListItems `
        -ListType Domain `
-       -Entries "trusteddomain.com" `
+      -Entries "trusted-partner.contoso.com" `
        -Action Allow
    ```
 

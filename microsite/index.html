@@ -291,7 +291,7 @@
                                 id="allowedSenders" 
                                 name="allowedSenders"
                                 rows="3"
-                                placeholder="e.g., trusted@example.com, vendor@supplier.com"
+                                placeholder="e.g., trusted@partner.contoso.com, billing@supplier.contoso.com"
                             ></textarea>
                         </div>
 
@@ -301,7 +301,7 @@
                                 id="blockedSenders" 
                                 name="blockedSenders"
                                 rows="3"
-                                placeholder="e.g., spam@domain.com"
+                                placeholder="e.g., spam@malicious-simulation.contoso.com"
                             ></textarea>
                         </div>
                     </fieldset>
@@ -364,26 +364,26 @@ Install-Module Microsoft.Graph.Users -Force</code></pre>
                         </li>
                         <li>
                             <strong>Validate Configuration</strong>
-                            <pre><code>.\Validate-MDOConfiguration.ps1 -ConfigPath "your-config.json"</code></pre>
+                            <pre><code>.\Validate-MDOConfiguration.ps1 -ConfigPath "contoso-standard.json"</code></pre>
                         </li>
                         <li>
                             <strong>Test Deployment (Dry Run)</strong>
                             <pre><code>.\Deploy-MDOBaseline.ps1 `
-  -ConfigPath "your-config.json" `
+    -ConfigPath "contoso-standard.json" `
   -TenantId "tenant-guid" `
-  -TenantName "Org Name" `
-  -TenantDomain "domain.com" `
-  -SecurityAdminEmail "admin@domain.com" `
+    -TenantName "Contoso Inc" `
+    -TenantDomain "contoso.com" `
+    -SecurityAdminEmail "admin@contoso.com" `
   -DryRun</code></pre>
                         </li>
                         <li>
                             <strong>Deploy Configuration</strong>
                             <pre><code>.\Deploy-MDOBaseline.ps1 `
-  -ConfigPath "your-config.json" `
+    -ConfigPath "contoso-standard.json" `
   -TenantId "tenant-guid" `
-  -TenantName "Org Name" `
-  -TenantDomain "domain.com" `
-  -SecurityAdminEmail "admin@domain.com"</code></pre>
+    -TenantName "Contoso Inc" `
+    -TenantDomain "contoso.com" `
+    -SecurityAdminEmail "admin@contoso.com"</code></pre>
                         </li>
                     </ol>
                 </article>

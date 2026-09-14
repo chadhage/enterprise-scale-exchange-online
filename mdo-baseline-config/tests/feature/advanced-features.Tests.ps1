@@ -131,7 +131,7 @@ Describe "Recipient Targeting Consistency" {
             $config = @{
                 recipients = @{
                     applyToAllRecipients = $true
-                    excludedDomains = @("test.com", "dev.com")
+                    excludedDomains = @("test.contoso.com", "dev.contoso.com")
                 }
             }
             

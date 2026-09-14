@@ -78,9 +78,9 @@ Describe "Configuration Generation Integration Tests" {
             
             $config = $template `
                 -replace '\{\{TENANT_ID\}\}', "12345678-1234-1234-1234-123456789012" `
-                -replace '\{\{TENANT_NAME\}\}', "Test Org" `
-                -replace '\{\{TENANT_DOMAIN\}\}', "test.com" `
-                -replace '\{\{SECURITY_ADMIN_EMAIL\}\}', "test@test.com"
+                -replace '\{\{TENANT_NAME\}\}', "Contoso Inc" `
+                -replace '\{\{TENANT_DOMAIN\}\}', "test.contoso.com" `
+                -replace '\{\{SECURITY_ADMIN_EMAIL\}\}', "test@test.contoso.com"
             
             { $config | ConvertFrom-Json } | Should -Not -Throw
         }
@@ -139,7 +139,7 @@ Describe "Allow/Block List Integration Tests" {
         It "Should parse allowed senders correctly" {
             $config = @{
                 allowBlockList = @{
-                    allowedSenders = @("trusted@company.com", "partner@org.com")
+                    allowedSenders = @("trusted@partner.contoso.com", "billing@supplier.contoso.com")
                 }
             }
             
@@ -149,7 +149,7 @@ Describe "Allow/Block List Integration Tests" {
         It "Should parse allowed domains correctly" {
             $config = @{
                 allowBlockList = @{
-                    allowedDomains = @("trusted.com", "partner.com")
+                    allowedDomains = @("trusted-partner.contoso.com", "supplier.contoso.com")
                 }
             }
             
@@ -161,7 +161,7 @@ Describe "Allow/Block List Integration Tests" {
         It "Should parse blocked senders correctly" {
             $config = @{
                 allowBlockList = @{
-                    blockedSenders = @("spam@malicious.com")
+                    blockedSenders = @("spam@malicious-simulation.contoso.com")
                 }
             }
             
@@ -171,7 +171,7 @@ Describe "Allow/Block List Integration Tests" {
         It "Should parse blocked domains correctly" {
             $config = @{
                 allowBlockList = @{
-                    blockedDomains = @("malicious.com", "phishing.net")
+                    blockedDomains = @("malicious-simulation.contoso.com", "phishing-simulation.contoso.com")
                 }
             }
             
@@ -191,9 +191,9 @@ Describe "Configuration Transformation Pipeline" {
             # Stage 2: Substitute parameters
             $config = $template `
                 -replace '\{\{TENANT_ID\}\}', "12345678-1234-1234-1234-123456789012" `
-                -replace '\{\{TENANT_NAME\}\}', "Test" `
-                -replace '\{\{TENANT_DOMAIN\}\}', "test.com" `
-                -replace '\{\{SECURITY_ADMIN_EMAIL\}\}', "admin@test.com"
+                -replace '\{\{TENANT_NAME\}\}', "Contoso Inc" `
+                -replace '\{\{TENANT_DOMAIN\}\}', "test.contoso.com" `
+                -replace '\{\{SECURITY_ADMIN_EMAIL\}\}', "admin@test.contoso.com"
             
             # Stage 3: Parse to object
             $parsed = $config | ConvertFrom-Json

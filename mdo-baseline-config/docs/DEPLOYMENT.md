@@ -513,7 +513,7 @@ New-TenantAllowBlockListSpoofItems -SpoofedUser user@contoso.com -Action Allow
 **Command**:
 ```powershell
 # Add domain to block list
-New-TenantAllowBlockListItems -ListType Domain -Entries malicious.com -Action Block
+New-TenantAllowBlockListItems -ListType Domain -Entries malicious-simulation.contoso.com -Action Block
 ```
 
 #### Policy Conflicts

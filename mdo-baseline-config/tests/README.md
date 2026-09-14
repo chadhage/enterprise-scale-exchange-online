@@ -226,8 +226,8 @@ Create JSON fixture files for reusable test data:
 {
   "organizationSettings": {
     "tenantId": "12345678-1234-1234-1234-123456789012",
-    "tenantName": "Test Organization",
-    "domain": "test.com"
+    "tenantName": "Contoso Inc",
+    "domain": "test.contoso.com"
   },
   "protectionLevel": "Standard"
 }
@@ -432,7 +432,7 @@ It "Should use mocked command" {
 
 ```powershell
 It "Should validate email <email>" -ForEach @(
-    @{ email = "test@example.com"; valid = $true },
+    @{ email = "test@contoso.com"; valid = $true },
     @{ email = "invalid-email"; valid = $false }
 ) {
     Validate-Email $email | Should -Be $valid

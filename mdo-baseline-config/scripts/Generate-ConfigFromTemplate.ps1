@@ -40,8 +40,8 @@
     # Using parameters file
     .\Generate-ConfigFromTemplate.ps1 `
         -TemplateFile "./baseline-strict.json" `
-        -OutputFile "./fabrikam-strict.json" `
-        -ParametersFile "./fabrikam-params.json"
+        -OutputFile "./contoso-strict.json" `
+        -ParametersFile "./contoso-params.json"
 #>
 
 param (

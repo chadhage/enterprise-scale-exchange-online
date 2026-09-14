@@ -91,9 +91,9 @@ mdo-baseline-config/
        -TemplateFile "./baseline-standard.json" `
        -OutputFile "./contoso-standard.json" `
        -TenantId "your-tenant-guid" `
-       -TenantName "Your Organization" `
-       -TenantDomain "yourdomain.com" `
-       -SecurityAdminEmail "admin@yourdomain.com"
+      -TenantName "Contoso Inc" `
+      -TenantDomain "contoso.com" `
+      -SecurityAdminEmail "admin@contoso.com"
    ```
 
 3. **Validate Configuration**
@@ -106,9 +106,9 @@ mdo-baseline-config/
    .\Deploy-MDOBaseline.ps1 `
        -ConfigPath "./contoso-standard.json" `
        -TenantId "your-tenant-guid" `
-       -TenantName "Your Organization" `
-       -TenantDomain "yourdomain.com" `
-       -SecurityAdminEmail "admin@yourdomain.com" `
+      -TenantName "Contoso Inc" `
+      -TenantDomain "contoso.com" `
+      -SecurityAdminEmail "admin@contoso.com" `
        -DryRun
    ```
 
@@ -117,9 +117,9 @@ mdo-baseline-config/
    .\Deploy-MDOBaseline.ps1 `
        -ConfigPath "./contoso-standard.json" `
        -TenantId "your-tenant-guid" `
-       -TenantName "Your Organization" `
-       -TenantDomain "yourdomain.com" `
-       -SecurityAdminEmail "admin@yourdomain.com"
+      -TenantName "Contoso Inc" `
+      -TenantDomain "contoso.com" `
+      -SecurityAdminEmail "admin@contoso.com"
    ```
 
 ## 📊 Protection Levels

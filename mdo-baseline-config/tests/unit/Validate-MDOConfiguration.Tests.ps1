@@ -92,7 +92,7 @@ Describe "Validate-MDOConfiguration Unit Tests" {
         }
         
         It "Should reject email without @ symbol" {
-            $invalidEmail = "adminemail.com"
+            $invalidEmail = "adminemail.contoso.com"
             $emailPattern = '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             
             $invalidEmail -match $emailPattern | Should -Be $false
