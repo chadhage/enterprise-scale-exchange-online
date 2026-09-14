@@ -14,16 +14,41 @@
             <div class="nav-logo">
                 <span>MDO Baseline Configuration Template</span>
             </div>
-            <div class="nav-menu">
-                <button class="nav-item active" onclick="showSection('overview')">Overview</button>
-                <button class="nav-item" onclick="showSection('configurator')">Configurator</button>
-                <button class="nav-item" onclick="showSection('deployment')">Deployment</button>
-                <button class="nav-item" onclick="showSection('testing')">Testing</button>
-                <button class="nav-item" onclick="showSection('faq')">FAQ</button>
-                <button class="nav-item" onclick="showSection('resources')">Resources</button>
-            </div>
+            <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-controls="navigationDrawer" aria-expanded="false">
+                <span class="menu-toggle-icon" aria-hidden="true"></span>
+            </button>
         </div>
     </nav>
+
+    <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+    <aside class="navigation-drawer" id="navigationDrawer" aria-labelledby="drawerTitle" aria-hidden="true">
+        <div class="drawer-header">
+            <div>
+                <p class="drawer-eyebrow">MDO Baseline</p>
+                <h2 id="drawerTitle">Navigation</h2>
+            </div>
+            <button class="drawer-close" id="drawerClose" type="button" aria-label="Close navigation">&times;</button>
+        </div>
+        <div class="nav-menu" aria-label="Microsite sections">
+            <button class="nav-item active" type="button" data-section="overview">Overview</button>
+            <button class="nav-item" type="button" data-section="configurator">Configurator</button>
+            <button class="nav-item" type="button" data-section="deployment">Deployment</button>
+            <button class="nav-item" type="button" data-section="testing">Testing</button>
+            <button class="nav-item" type="button" data-section="faq">FAQ</button>
+            <button class="nav-item" type="button" data-section="resources">Resources</button>
+        </div>
+        <div class="repository-panel">
+            <p class="repository-label">Source repository</p>
+            <a class="repository-link" href="https://github.com/chadhage/enterprise-scale-exchange-online" target="_blank" rel="noopener noreferrer">
+                Open on GitHub <span aria-hidden="true">&nearr;</span>
+            </a>
+            <div class="clone-command">
+                <code>git clone https://github.com/chadhage/enterprise-scale-exchange-online.git</code>
+                <button id="copyCloneUrl" type="button" aria-label="Copy Git clone command">Copy</button>
+            </div>
+            <p class="copy-status" id="copyStatus" role="status" aria-live="polite"></p>
+        </div>
+    </aside>
 
     <!-- Main Content -->
     <main class="main-container">
@@ -775,42 +800,74 @@ Invoke-Pester -Path ".\tests" -Output Detailed
             <article class="card full-width">
                 <h2>Project Structure</h2>
                 <p>All project files are organized as follows:</p>
-                <pre><code>mdo-baseline-config/
-├── config-templates/
-│   ├── mdo-config-schema.json          # JSON schema (2000+ lines)
-│   ├── baseline-standard.json          # Standard protection template
-│   └── baseline-strict.json            # Strict protection template
-├── scripts/
-│   ├── Deploy-MDOBaseline.ps1          # Main deployment script (600+ lines)
-│   ├── Generate-ConfigFromTemplate.ps1 # Configuration generator
-│   └── Validate-MDOConfiguration.ps1   # Configuration validator (300+ lines)
+                <pre><code>exchange-online-protection/
+├── .github/workflows/
+│   └── deploy-pages.yml
+├── mdo-baseline-config/
+│   ├── config-templates/
+│   │   ├── baseline-standard.json
+│   │   ├── baseline-strict.json
+│   │   └── mdo-config-schema.json
+│   ├── docs/
+│   │   ├── CUSTOMIZATION.md
+│   │   ├── DEPLOYMENT.md
+│   │   ├── README.md
+│   │   └── TROUBLESHOOTING.md
+│   ├── scripts/
+│   │   ├── Deploy-MDOBaseline.ps1
+│   │   ├── Generate-ConfigFromTemplate.ps1
+│   │   └── Validate-MDOConfiguration.ps1
+│   ├── spfx-app/
+│   │   ├── package-solution.json
+│   │   └── package.json
+│   ├── tests/
+│   │   ├── acceptance/
+│   │   │   └── ACCEPTANCE_CHECKLIST.md
+│   │   ├── e2e/
+│   │   │   └── complete-deployment-flow.Tests.ps1
+│   │   ├── feature/
+│   │   │   └── advanced-features.Tests.ps1
+│   │   ├── features/
+│   │   │   └── configuration.feature
+│   │   ├── fixtures/
+│   │   │   ├── invalid-config.json
+│   │   │   └── valid-config.json
+│   │   ├── integration/
+│   │   │   └── config-to-deployment.Tests.ps1
+│   │   ├── unit/
+│   │   │   ├── Deploy-MDOBaseline.Tests.ps1
+│   │   │   └── Validate-MDOConfiguration.Tests.ps1
+│   │   ├── QUICK_REFERENCE.md
+│   │   ├── README.md
+│   │   ├── Run-Tests.ps1
+│   │   └── TEST_STRATEGY.md
+│   └── TESTING_SUMMARY.md
 ├── microsite/
-│   ├── index.html                      # This page (700+ lines)
-│   ├── styles.css                      # Styling (800+ lines)
-│   └── script.js                       # Interactive functionality (500+ lines)
-├── spfx-app/
-│   ├── config/
-│   ├── src/
-│   └── package-solution.json           # SharePoint Package manifest
-├── tests/
-│   ├── TEST_STRATEGY.md                # Testing strategy (900+ lines)
-│   ├── README.md                       # Testing guide (800+ lines)
-│   ├── QUICK_REFERENCE.md              # Quick commands
-│   ├── Run-Tests.ps1                   # Master test runner
-│   ├── unit/                           # 50+ unit tests
-│   ├── feature/                        # 20+ feature tests
-│   ├── integration/                    # 25+ integration tests
-│   ├── e2e/                            # 10+ E2E tests
-│   ├── acceptance/                     # Acceptance checklist (50+ items)
-│   ├── features/                       # BDD specifications
-│   └── fixtures/                       # Test data files
-├── docs/
-│   ├── README.md                       # Project overview (400+ lines)
-│   ├── DEPLOYMENT.md                   # Deployment guide (1500+ lines)
-│   ├── CUSTOMIZATION.md                # Customization guide (800+ lines)
-│   └── TROUBLESHOOTING.md              # Troubleshooting guide (700+ lines)
-├── TESTING_SUMMARY.md                  # Testing framework summary
-└── SOLUTION_SUMMARY.md                 # Solution overview</code></pre>
+│   ├── .nojekyll
+│   ├── index.html                      # This published page
+│   ├── script.js
+│   └── styles.css
+├── samples/
+│   └── contoso-exchange-online-managed-service/
+│       ├── config/
+│       │   ├── exchange-online-secure-baseline.json
+│       │   ├── exchange-online-secure-baseline.schema.json
+│       │   └── parameters.sample.json
+│       ├── dashboard/
+│       │   ├── index.html
+│       │   ├── mail-flow.svg
+│       │   ├── script.js
+│       │   └── styles.css
+│       ├── docs/
+│       │   ├── CONTROL-CATALOG.md
+│       │   └── IMPLEMENTATION-GUIDE.md
+│       ├── scripts/
+│       │   ├── Deploy-ExchangeOnlineBaseline.ps1
+│       │   └── Test-ExchangeOnlineBaseline.ps1
+│       ├── tests/
+│       │   └── SecureBaseline.Tests.ps1
+│       └── README.md
+└── SOLUTION_SUMMARY.md</code></pre>
             </article>
         </section>
     </main>
@@ -820,7 +877,7 @@ Invoke-Pester -Path ".\tests" -Output Detailed
         <div class="footer-content">
             <p class="footer-disclaimer"><strong>Disclaimer:</strong> The information and templates provided in this repository are for example purposes only and are provided “as is, where is” without any warranty of any kind, express or implied. Use of this repository is entirely at your own risk. This is not an official Microsoft product, and it does not replace, equate to, or represent any official Microsoft product or service.</p>
             <p>&copy; 2026 MDO Baseline Configuration Template</p>
-            <p>Exchange Online Protection Baseline | <a href="https://github.com/chadhage/enterprise-scale-exchange-online" target="_blank">GitHub Repository</a></p>
+            <p>Exchange Online Protection Baseline</p>
         </div>
     </footer>
 

@@ -33,25 +33,28 @@ Invoke-Pester -Path ".\tests\unit\Deploy-MDOBaseline.Tests.ps1" -Output Detailed
 
 ## Test Structure
 
-```
+```text
 tests/
-├── TEST_STRATEGY.md                          # Overall testing strategy
-├── README.md                                 # This file
-├── unit/                                     # Unit tests (Pester)
-│   ├── Deploy-MDOBaseline.Tests.ps1          # Deployment function tests
-│   ├── Validate-MDOConfiguration.Tests.ps1   # Validation function tests
-│   └── *.Tests.ps1                           # Other unit tests
-├── integration/                              # Integration tests (Pester)
-│   ├── config-to-deployment.Tests.ps1        # Configuration pipeline
-│   └── *.Tests.ps1                           # Component interaction tests
-├── e2e/                                      # End-to-end tests (Pester)
-│   ├── complete-deployment-flow.Tests.ps1    # Full workflow tests
-│   └── *.Tests.ps1                           # Scenario-based tests
-├── acceptance/                               # Acceptance tests & checklists
-│   └── ACCEPTANCE_CHECKLIST.md              # Business requirement validation
-└── fixtures/                                 # Test data
-    ├── valid-config.json                     # Valid test configuration
-    └── *.json                                # Test data files
+├── acceptance/
+│   └── ACCEPTANCE_CHECKLIST.md
+├── e2e/
+│   └── complete-deployment-flow.Tests.ps1
+├── feature/
+│   └── advanced-features.Tests.ps1
+├── features/
+│   └── configuration.feature
+├── fixtures/
+│   ├── invalid-config.json
+│   └── valid-config.json
+├── integration/
+│   └── config-to-deployment.Tests.ps1
+├── unit/
+│   ├── Deploy-MDOBaseline.Tests.ps1
+│   └── Validate-MDOConfiguration.Tests.ps1
+├── QUICK_REFERENCE.md
+├── README.md
+├── Run-Tests.ps1
+└── TEST_STRATEGY.md
 ```
 
 ## Prerequisites

@@ -4,7 +4,7 @@ Testing strategy covering unit, feature, integration, end-to-end, and acceptance
 
 ## Testing Pyramid
 
-```
+```text
                       ▲
                      /│\
                     / │ \         Acceptance Tests (2-3 tests)
@@ -26,40 +26,28 @@ Testing strategy covering unit, feature, integration, end-to-end, and acceptance
 
 ## Test Structure
 
-```
+```text
 tests/
-├── unit/                              # Unit tests (Pester)
-│   ├── Deploy-MDOBaseline.Tests.ps1
-│   ├── Generate-ConfigFromTemplate.Tests.ps1
-│   ├── Validate-MDOConfiguration.Tests.ps1
-│   └── helpers.Tests.ps1
-│
-├── features/                          # Feature tests
-│   ├── configuration-generation.feature
-│   ├── policy-deployment.feature
-│   └── validation.feature
-│
-├── integration/                       # Integration tests (PowerShell)
-│   ├── config-to-deployment.Tests.ps1
-│   ├── policy-interactions.Tests.ps1
-│   └── allow-block-list.Tests.ps1
-│
-├── e2e/                              # End-to-end tests
-│   ├── complete-deployment-flow.Tests.ps1
-│   ├── dry-run-to-enforcement.Tests.ps1
-│   └── phased-rollout.Tests.ps1
-│
-├── acceptance/                        # Acceptance tests & checklists
-│   ├── business-requirements.Tests.ps1
+├── acceptance/
 │   └── ACCEPTANCE_CHECKLIST.md
-│
-├── fixtures/                          # Test data
-│   ├── valid-config.json
+├── e2e/
+│   └── complete-deployment-flow.Tests.ps1
+├── feature/
+│   └── advanced-features.Tests.ps1
+├── features/
+│   └── configuration.feature
+├── fixtures/
 │   ├── invalid-config.json
-│   ├── standard-config.json
-│   └── strict-config.json
-│
-└── README.md                         # Testing guide
+│   └── valid-config.json
+├── integration/
+│   └── config-to-deployment.Tests.ps1
+├── unit/
+│   ├── Deploy-MDOBaseline.Tests.ps1
+│   └── Validate-MDOConfiguration.Tests.ps1
+├── QUICK_REFERENCE.md
+├── README.md
+├── Run-Tests.ps1
+└── TEST_STRATEGY.md
 ```
 
 ## 1. Unit Tests
@@ -393,15 +381,10 @@ Located in `tests/fixtures/`, contains:
 - Invalid values
 - Fails schema validation
 
-**standard-config.json**
-- Standard protection baseline
-- Parameterized placeholders
-- All 7 policies defined
+Baseline source templates are maintained outside the fixtures directory:
 
-**strict-config.json**
-- Strict protection baseline
-- Advanced features enabled
-- More aggressive settings
+- `../config-templates/baseline-standard.json` - Standard protection baseline
+- `../config-templates/baseline-strict.json` - Strict protection baseline
 
 ## Quality Metrics
 

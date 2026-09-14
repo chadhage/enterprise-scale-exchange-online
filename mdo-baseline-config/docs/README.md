@@ -26,43 +26,75 @@ This project provides example baseline configuration templates for Microsoft Def
 
 ## 📁 Project Structure
 
-```
-mdo-baseline-config/
-├── config-templates/                   # Configuration templates and schema
-│   ├── mdo-config-schema.json         # JSON schema for validation
-│   ├── baseline-standard.json         # Standard protection baseline
-│   └── baseline-strict.json           # Strict protection baseline
-│
-├── scripts/                            # PowerShell automation scripts
-│   ├── Deploy-MDOBaseline.ps1         # Main deployment script
-│   ├── Generate-ConfigFromTemplate.ps1 # Configuration generator
-│   └── Validate-MDOConfiguration.ps1   # Configuration validator
-│
-├── microsite/                          # Interactive web interface
-│   ├── index.html                     # Main microsite page
-│   ├── styles.css                     # Styling (Fluent Design)
-│   └── script.js                      # Interactive functionality
-│
-├── spfx-app/                          # SharePoint Framework app
-│   ├── config/
-│   │   ├── config.json
-│   │   └── serve.json
-│   ├── src/
-│   │   ├── webparts/
-│   │   │   └── MdoBaseline/
-│   │   │       ├── MdoBaselineWebPart.ts
-│   │   │       └── MdoBaselineWebPart.module.scss
-│   │   └── index.ts
-│   ├── package.json
-│   └── package-solution.json
-│
-├── docs/                               # Documentation
-│   ├── README.md                      # Project overview
-│   ├── DEPLOYMENT.md                  # Deployment guide
-│   ├── CUSTOMIZATION.md               # Customization guide
-│   └── TROUBLESHOOTING.md             # Troubleshooting guide
-│
-└── .gitignore
+```text
+exchange-online-protection/
+├── .github/workflows/
+│   └── deploy-pages.yml
+├── mdo-baseline-config/
+│   ├── config-templates/
+│   │   ├── baseline-standard.json
+│   │   ├── baseline-strict.json
+│   │   └── mdo-config-schema.json
+│   ├── docs/
+│   │   ├── CUSTOMIZATION.md
+│   │   ├── DEPLOYMENT.md
+│   │   ├── README.md
+│   │   └── TROUBLESHOOTING.md
+│   ├── scripts/
+│   │   ├── Deploy-MDOBaseline.ps1
+│   │   ├── Generate-ConfigFromTemplate.ps1
+│   │   └── Validate-MDOConfiguration.ps1
+│   ├── spfx-app/
+│   │   ├── package-solution.json
+│   │   └── package.json
+│   ├── tests/
+│   │   ├── acceptance/
+│   │   │   └── ACCEPTANCE_CHECKLIST.md
+│   │   ├── e2e/
+│   │   │   └── complete-deployment-flow.Tests.ps1
+│   │   ├── feature/
+│   │   │   └── advanced-features.Tests.ps1
+│   │   ├── features/
+│   │   │   └── configuration.feature
+│   │   ├── fixtures/
+│   │   │   ├── invalid-config.json
+│   │   │   └── valid-config.json
+│   │   ├── integration/
+│   │   │   └── config-to-deployment.Tests.ps1
+│   │   ├── unit/
+│   │   │   ├── Deploy-MDOBaseline.Tests.ps1
+│   │   │   └── Validate-MDOConfiguration.Tests.ps1
+│   │   ├── QUICK_REFERENCE.md
+│   │   ├── README.md
+│   │   ├── Run-Tests.ps1
+│   │   └── TEST_STRATEGY.md
+│   └── TESTING_SUMMARY.md
+├── microsite/
+│   ├── .nojekyll
+│   ├── index.html
+│   ├── script.js
+│   └── styles.css
+├── samples/
+│   └── contoso-exchange-online-managed-service/
+│       ├── config/
+│       │   ├── exchange-online-secure-baseline.json
+│       │   ├── exchange-online-secure-baseline.schema.json
+│       │   └── parameters.sample.json
+│       ├── dashboard/
+│       │   ├── index.html
+│       │   ├── mail-flow.svg
+│       │   ├── script.js
+│       │   └── styles.css
+│       ├── docs/
+│       │   ├── CONTROL-CATALOG.md
+│       │   └── IMPLEMENTATION-GUIDE.md
+│       ├── scripts/
+│       │   ├── Deploy-ExchangeOnlineBaseline.ps1
+│       │   └── Test-ExchangeOnlineBaseline.ps1
+│       ├── tests/
+│       │   └── SecureBaseline.Tests.ps1
+│       └── README.md
+└── SOLUTION_SUMMARY.md
 ```
 
 ## 🚀 Quick Start
