@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/exchange-online-secure-baseline.schema.json",
+  "title": "Contoso Exchange Online secure managed service baseline",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["metadata", "administratorInputs", "desiredState", "deployment"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "version", "reviewedOn", "profile", "configurationOwner"]
+    },
+    "administratorInputs": {
+      "type": "object",
+      "minProperties": 10,
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string", "minLength": 1 },
+          { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+        ]
+      }
+    },
+    "desiredState": {
+      "type": "object",
+      "required": ["acceptedDomain", "mailFlow", "defenderForOffice365", "exchangeOnline", "emailAuthentication", "abnormalSecurity", "centralMonitoring"],
+      "properties": {
+        "acceptedDomain": { "type": "object" },
+        "mailFlow": { "type": "object" },
+        "defenderForOffice365": { "type": "object" },
+        "exchangeOnline": { "type": "object" },
+        "emailAuthentication": { "type": "object" },
+        "abnormalSecurity": { "type": "object" },
+        "centralMonitoring": { "type": "object" }
+      }
+    },
+    "deployment": {
+      "type": "object",
+      "required": ["defaultMode", "requireWhatIfBeforeApply", "pilotRequired", "evidenceOutputDirectory"],
+      "properties": {
+        "defaultMode": { "const": "Audit" },
+        "requireWhatIfBeforeApply": { "const": true },
+        "pilotRequired": { "const": true },
+        "pilotMinimumBusinessDays": { "type": "integer", "minimum": 5 },
+        "rollbackPlanRequired": { "const": true },
+        "evidenceOutputDirectory": { "type": "string" }
+      }
+    }
+  }
+}

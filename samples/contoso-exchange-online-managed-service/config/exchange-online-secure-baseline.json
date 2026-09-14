@@ -1,0 +1,186 @@
+{
+  "$schema": "./exchange-online-secure-baseline.schema.json",
+  "metadata": {
+    "name": "Contoso Exchange Online secure managed service baseline",
+    "version": "1.0.0",
+    "reviewedOn": "2026-09-14",
+    "profile": "Microsoft recommended Standard plus Strict for priority users",
+    "configurationOwner": "__ADMIN_REQUIRED:CONFIGURATION_OWNER_UPN__"
+  },
+  "administratorInputs": {
+    "tenantId": "__ADMIN_REQUIRED:MICROSOFT_ENTRA_TENANT_GUID__",
+    "organizationName": "__ADMIN_REQUIRED:LEGAL_ORGANIZATION_NAME__",
+    "primaryDomain": "__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__",
+    "initialDomain": "__ADMIN_REQUIRED:INITIAL_ONMICROSOFT_DOMAIN__",
+    "securityOperationsMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__",
+    "priorityUsersGroup": "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__",
+    "proofpointInboundConnectorName": "Proofpoint Inbound",
+    "proofpointOutboundConnectorName": "Proofpoint Outbound",
+    "proofpointPublicSendingIpRanges": [
+      "__ADMIN_REQUIRED:CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR__"
+    ],
+    "proofpointTlsCertificateName": "__ADMIN_REQUIRED:PROOFPOINT_TLS_CERTIFICATE_SUBJECT__",
+    "proofpointSmartHosts": [
+      "__ADMIN_REQUIRED:PROOFPOINT_OUTBOUND_SMART_HOST_FQDN__"
+    ],
+    "proofpointSpfRecord": "__ADMIN_REQUIRED:PROOFPOINT_APPROVED_SPF_RECORD__",
+    "abnormalTenantIdentifier": "__ADMIN_REQUIRED:ABNORMAL_TENANT_OR_PORTAL_IDENTIFIER__",
+    "siemPlatform": "__ADMIN_REQUIRED:CENTRAL_SIEM_PLATFORM__",
+    "changeRecord": "__ADMIN_REQUIRED:APPROVED_CHANGE_RECORD__"
+  },
+  "desiredState": {
+    "acceptedDomain": {
+      "domainName": "__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__",
+      "domainType": "Authoritative"
+    },
+    "mailFlow": {
+      "mxTarget": "__ADMIN_REQUIRED:PROOFPOINT_MX_TARGET__",
+      "inboundPath": "Internet -> Proofpoint -> Exchange Online Protection -> Exchange Online",
+      "outboundPath": "Exchange Online -> Proofpoint -> Internet",
+      "proofpointInboundConnector": {
+        "connectorType": "Partner",
+        "enabled": true,
+        "senderDomains": ["*"],
+        "requireTls": true,
+        "restrictDomainsToIpAddresses": true,
+        "restrictDomainsToCertificate": false,
+        "senderIpAddresses": [
+          "__ADMIN_REQUIRED:CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR__"
+        ]
+      },
+      "enhancedFiltering": {
+        "enabled": true,
+        "skipLastIp": false,
+        "skipIpAddresses": [
+          "__ADMIN_REQUIRED:ALL_NON_MICROSOFT_PUBLIC_HOP_IPS_OR_CIDRS__"
+        ],
+        "applyToAllRecipients": true
+      },
+      "proofpointOutboundConnector": {
+        "connectorType": "Partner",
+        "enabled": true,
+        "recipientDomains": ["*"],
+        "routeAllMessagesViaOnPremises": true,
+        "useMxRecord": false,
+        "smartHosts": [
+          "__ADMIN_REQUIRED:PROOFPOINT_OUTBOUND_SMART_HOST_FQDN__"
+        ],
+        "tlsSettings": "DomainValidation",
+        "tlsDomain": "__ADMIN_REQUIRED:PROOFPOINT_TLS_CERTIFICATE_SUBJECT__"
+      },
+      "prohibitedBypass": {
+        "sclMinusOneTransportRules": false,
+        "directToTenantMxFromInternet": false,
+        "ipAllowListForProofpoint": false
+      }
+    },
+    "defenderForOffice365": {
+      "standardPreset": {
+        "enabled": true,
+        "scope": "AllRecipientsExceptStrictAndSecOps"
+      },
+      "strictPreset": {
+        "enabled": true,
+        "scopeGroup": "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"
+      },
+      "builtInProtection": {
+        "enabled": true,
+        "exceptions": []
+      },
+      "safeAttachmentsForSharePointOneDriveTeams": true,
+      "safeDocuments": {
+        "enabled": true,
+        "allowBypass": false,
+        "licenseRequired": "Microsoft 365 E5/A5/G5 or Microsoft Defender Suite"
+      },
+      "zeroHourAutoPurge": true,
+      "userSubmissions": {
+        "microsoftReportMessageButton": true,
+        "sendReportedMessagesToMicrosoft": true,
+        "sendCopyToSecOpsMailbox": true
+      },
+      "tenantAllowBlockList": {
+        "permanentAllowEntries": [],
+        "blockEntriesRequireExpiryAndTicket": true
+      }
+    },
+    "exchangeOnline": {
+      "smtpClientAuthenticationDisabled": true,
+      "externalPostmasterAddress": "__ADMIN_REQUIRED:EXTERNAL_POSTMASTER_SMTP_ADDRESS__",
+      "mailboxAuditingDefault": true,
+      "modernAuthenticationRequired": true,
+      "legacyAuthenticationBlockedByConditionalAccess": true,
+      "automaticExternalForwarding": "Off",
+      "remoteDomainAutoForwardEnabled": false
+    },
+    "emailAuthentication": {
+      "dkim": {
+        "enabled": true,
+        "keySize": 2048,
+        "selector1Cname": "__ADMIN_REQUIRED:VALUE_RETURNED_BY_GET_DKIMSIGNINGCONFIG__",
+        "selector2Cname": "__ADMIN_REQUIRED:VALUE_RETURNED_BY_GET_DKIMSIGNINGCONFIG__"
+      },
+      "spf": {
+        "record": "__ADMIN_REQUIRED:PROOFPOINT_APPROVED_SPF_RECORD__",
+        "hardFail": true,
+        "singleRecordOnly": true
+      },
+      "dmarc": {
+        "policy": "reject",
+        "percentage": 100,
+        "aggregateReportAddress": "__ADMIN_REQUIRED:DMARC_AGGREGATE_REPORTING_ADDRESS__",
+        "forensicReportAddress": "__ADMIN_REQUIRED:DMARC_FORENSIC_REPORTING_ADDRESS_OR_NOT_APPLICABLE__",
+        "subdomainPolicy": "reject",
+        "dkimAlignment": "relaxed",
+        "spfAlignment": "relaxed"
+      },
+      "trustedArcSealers": [
+        "__ADMIN_REQUIRED:PROOFPOINT_ARC_SEALING_DOMAIN_OR_NOT_SUPPORTED__"
+      ]
+    },
+    "abnormalSecurity": {
+      "integrationMode": "Microsoft API post-delivery",
+      "smtpConnectorCreated": false,
+      "transportBypassCreated": false,
+      "servicePrincipalUsesLeastPrivilege": true,
+      "vendorHealthMonitoringEnabled": true,
+      "permissionReviewFrequencyDays": 90
+    },
+    "centralMonitoring": {
+      "defenderXdrIncidentQueue": true,
+      "unifiedAuditLog": true,
+      "exchangeAdminAudit": true,
+      "messageTrace": true,
+      "mailFlowReports": true,
+      "threatProtectionStatusReport": true,
+      "siemIntegration": {
+        "enabled": true,
+        "destination": "__ADMIN_REQUIRED:CENTRAL_SIEM_PLATFORM__",
+        "sources": [
+          "Microsoft Defender XDR incidents and alerts",
+          "Office 365 audit logs",
+          "Exchange admin audit events",
+          "Microsoft Entra sign-in and audit logs",
+          "Proofpoint alerts and message telemetry",
+          "Abnormal Security cases and remediation events"
+        ],
+        "minimumRetentionDays": 180,
+        "alertRecipients": [
+          "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+        ]
+      },
+      "serviceHealthNotifications": true,
+      "dailyOperationalReview": true,
+      "weeklyControlDriftReview": true,
+      "quarterlyAccessReview": true
+    }
+  },
+  "deployment": {
+    "defaultMode": "Audit",
+    "requireWhatIfBeforeApply": true,
+    "pilotRequired": true,
+    "pilotMinimumBusinessDays": 5,
+    "rollbackPlanRequired": true,
+    "evidenceOutputDirectory": "./evidence"
+  }
+}

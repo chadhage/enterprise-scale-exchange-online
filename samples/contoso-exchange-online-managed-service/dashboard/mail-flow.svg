@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 210" role="img" aria-labelledby="title desc">
+  <title id="title">Secure Exchange Online mail flow</title>
+  <desc id="desc">Inbound mail flows from the internet through Proofpoint and Microsoft Defender to Exchange Online. Abnormal Security analyzes Microsoft 365 through APIs and all services send telemetry to the SIEM.</desc>
+  <g fill="none" stroke="currentColor" stroke-width="2">
+    <rect x="20" y="58" width="130" height="64" rx="6"/>
+    <rect x="210" y="58" width="150" height="64" rx="6"/>
+    <rect x="420" y="58" width="180" height="64" rx="6"/>
+    <rect x="660" y="58" width="140" height="64" rx="6"/>
+    <rect x="420" y="150" width="180" height="44" rx="6" stroke-dasharray="6 5"/>
+    <rect x="830" y="150" width="110" height="44" rx="6"/>
+    <path d="M150 90h54m-10-8 10 8-10 8M360 90h54m-10-8 10 8-10 8M600 90h54m-10-8 10 8-10 8"/>
+    <path d="M730 122v50H606m10-8-10 8 10 8M510 150v-22m-8 10 8-10 8 10M800 110l76 34m-13-1 13 1-7-11M600 172h224m-10-8 10 8-10 8"/>
+  </g>
+  <g fill="currentColor" font-family="Segoe UI, sans-serif" text-anchor="middle">
+    <text x="85" y="86" font-size="16">Internet</text><text x="85" y="106" font-size="12">untrusted</text>
+    <text x="285" y="86" font-size="16">Proofpoint</text><text x="285" y="106" font-size="12">SMTP gateway</text>
+    <text x="510" y="82" font-size="16">EOP + Defender</text><text x="510" y="103" font-size="12">enhanced filtering</text>
+    <text x="730" y="86" font-size="16">Exchange Online</text><text x="730" y="106" font-size="12">mailboxes</text>
+    <text x="510" y="177" font-size="15">Abnormal API processing</text>
+    <text x="885" y="177" font-size="15">SIEM</text>
+  </g>
+</svg>
