@@ -238,10 +238,18 @@ a:hover {
     color: var(--primary-color);
 }
 
+.product-icons {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    flex: 0 0 auto;
+}
+
 .logo-icon {
     width: 32px;
     height: 32px;
-    color: var(--primary-color);
+    flex: 0 0 32px;
+    object-fit: contain;
 }
 
 .menu-toggle,
@@ -346,7 +354,6 @@ a:hover {
     margin: 0;
 }
 
-.drawer-eyebrow,
 .repository-label {
     margin-bottom: var(--spacing-xs);
     color: var(--neutral-medium);
