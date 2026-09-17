@@ -1,12 +1,14 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Microsoft Defender for Office 365 Baseline Configuration Deployment Script
-    
+    QUARANTINED. Microsoft Defender for Office 365 custom-policy deployment script.
+
 .DESCRIPTION
-    Parameterized IaC deployment script for MDO baseline configurations.
-    Supports both Standard and Strict protection levels. Tenant-specific values
-    are supplied as parameters rather than hardcoded.
+    This script is retained for history only and refuses to run. It builds custom
+    EOP/MDO policies from transcribed setting values, never creates the matching
+    policy rules, and passes parameters that do not exist on the target cmdlets.
+    See ../../README.md for the full defect list and the supported replacement at
+    samples/contoso-exchange-online-managed-service.
     
 .PARAMETER ConfigPath
     Path to the configuration JSON file (e.g., baseline-standard.json)
@@ -81,6 +83,20 @@ param (
     [ValidateSet('Audit', 'Enforce')]
     [string]$DeploymentMode = 'Audit'
 )
+
+throw @'
+Deploy-MDOBaseline.ps1 is quarantined and will not run.
+
+It creates custom EOP/MDO policies without the matching rules, so the policies
+apply to no recipients, and it calls cmdlets with parameters that do not exist.
+
+Use samples/contoso-exchange-online-managed-service instead:
+  docs/RUNBOOKS.md            setting-level steps
+  docs/LICENSING-GATE.md      what your licence entitles you to configure
+  scripts/Deploy-ExchangeOnlineBaseline.ps1
+
+See deprecated/README.md for the recorded defects and the migration path.
+'@
 
 #region Initialize
 Set-StrictMode -Version Latest

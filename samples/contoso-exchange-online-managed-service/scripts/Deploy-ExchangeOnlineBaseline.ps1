@@ -15,6 +15,8 @@ param(
 
     [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.json'),
 
+    [string]$SchemaPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.schema.json'),
+
     [switch]$Apply,
 
     [switch]$EnableDkim,
@@ -25,61 +27,29 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-function ConvertTo-ResolvedConfiguration {
-    param([string]$TemplatePath, [string]$ValuesPath)
+Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
 
-    $template = Get-Content -Path $TemplatePath -Raw
-    $values = Get-Content -Path $ValuesPath -Raw | ConvertFrom-Json -AsHashtable
+$script:Outcomes = [System.Collections.Generic.List[object]]::new()
 
-    foreach ($entry in $values.GetEnumerator()) {
-        $token = "__ADMIN_REQUIRED:$($entry.Key)__"
-        $replacement = if ($entry.Value -is [array]) {
-            ($entry.Value | ConvertTo-Json -Compress)
-        }
-        else {
-            [string]$entry.Value
-        }
+function Add-Outcome {
+    param([string]$Control, [string]$Status, [string]$Detail)
 
-        if ($entry.Value -is [array]) {
-            $arrayPattern = '\[\s*"' + [regex]::Escape($token) + '"\s*\]'
-            $template = [regex]::Replace($template, $arrayPattern, $replacement)
-        }
-        else {
-            $template = $template.Replace($token, $replacement.Replace('\', '\\').Replace('"', '\"'))
-        }
+    $script:Outcomes.Add([pscustomobject]@{ Control = $Control; Status = $Status; Detail = $Detail })
+    $colour = switch ($Status) {
+        'Applied'     { 'Green' }
+        'Planned'     { 'Cyan' }
+        'NotEntitled' { 'Yellow' }
+        'Manual'      { 'Yellow' }
+        default       { 'Gray' }
     }
-
-    if ($template -match '__ADMIN_REQUIRED:[A-Z0-9_]+__') {
-        $unresolved = [regex]::Matches($template, '__ADMIN_REQUIRED:[A-Z0-9_]+__').Value | Sort-Object -Unique
-        throw "Unresolved administrator inputs: $($unresolved -join ', ')"
-    }
-
-    $template | ConvertFrom-Json
-}
-
-function Assert-Configuration {
-    param([object]$Configuration)
-
-    $state = $Configuration.desiredState
-    if ($state.mailFlow.prohibitedBypass.sclMinusOneTransportRules) {
-        throw 'SCL -1 bypass rules are prohibited when Enhanced Filtering is enabled.'
-    }
-    if (-not $state.mailFlow.enhancedFiltering.enabled) {
-        throw 'Enhanced Filtering must be enabled for the Proofpoint inbound path.'
-    }
-    if (-not $state.exchangeOnline.smtpClientAuthenticationDisabled) {
-        throw 'SMTP AUTH must be disabled at the organization level.'
-    }
-    if ($state.abnormalSecurity.integrationMode -ne 'Microsoft API post-delivery') {
-        throw 'Abnormal Security must use API post-delivery integration, not SMTP routing.'
-    }
+    Write-Host ("[{0,-11}] {1} {2}" -f $Status, $Control, $Detail) -ForegroundColor $colour
 }
 
 function Set-InboundGatewayConnector {
     param([object]$Configuration, [bool]$UseWhatIf)
 
-    $name = $Configuration.administratorInputs.proofpointInboundConnectorName
-    $settings = $Configuration.desiredState.mailFlow.proofpointInboundConnector
+    $name = $Configuration.administratorInputs.gatewayInboundConnectorName
+    $settings = $Configuration.desiredState.mailFlow.gatewayInboundConnector
     $parameters = @{
         Enabled                      = $settings.enabled
         ConnectorType                = $settings.connectorType
@@ -101,23 +71,26 @@ function Set-InboundGatewayConnector {
     $filter = $Configuration.desiredState.mailFlow.enhancedFiltering
     Set-InboundConnector -Identity $name -EFSkipLastIP $filter.skipLastIp `
         -EFSkipIPs $filter.skipIpAddresses -EFUsers $null -WhatIf:$UseWhatIf
+
+    Add-Outcome -Control 'PP-001/PP-002' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
+        -Detail "Inbound connector '$name' with Enhanced Filtering"
 }
 
 function Set-OutboundGatewayConnector {
     param([object]$Configuration, [bool]$UseWhatIf)
 
-    $name = $Configuration.administratorInputs.proofpointOutboundConnectorName
-    $settings = $Configuration.desiredState.mailFlow.proofpointOutboundConnector
+    $name = $Configuration.administratorInputs.gatewayOutboundConnectorName
+    $settings = $Configuration.desiredState.mailFlow.gatewayOutboundConnector
     $parameters = @{
         Enabled                       = $settings.enabled
         ConnectorType                 = $settings.connectorType
         RecipientDomains              = $settings.recipientDomains
         RouteAllMessagesViaOnPremises = $settings.routeAllMessagesViaOnPremises
-        UseMXRecord                    = $settings.useMxRecord
-        SmartHosts                     = $settings.smartHosts
-        TlsSettings                    = $settings.tlsSettings
-        TlsDomain                      = $settings.tlsDomain
-        WhatIf                         = $UseWhatIf
+        UseMXRecord                   = $settings.useMxRecord
+        SmartHosts                    = $settings.smartHosts
+        TlsSettings                   = $settings.tlsSettings
+        TlsDomain                     = $settings.tlsDomain
+        WhatIf                        = $UseWhatIf
     }
 
     if (Get-OutboundConnector -Identity $name -ErrorAction SilentlyContinue) {
@@ -126,16 +99,22 @@ function Set-OutboundGatewayConnector {
     else {
         New-OutboundConnector -Name $name @parameters
     }
+
+    Add-Outcome -Control 'PP-003' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
+        -Detail "Outbound connector '$name'"
 }
 
 function Set-PresetProtection {
-    param([object]$Configuration, [bool]$UseWhatIf)
+    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement)
 
     $domain = $Configuration.administratorInputs.primaryDomain
     $priorityGroup = $Configuration.administratorInputs.priorityUsersGroup
     $secOps = $Configuration.administratorInputs.securityOperationsMailbox
 
-    foreach ($ruleType in @('EOP', 'ATP')) {
+    $ruleTypes = @('EOP')
+    if ($Entitlement.AtpPresets) { $ruleTypes += 'ATP' }
+
+    foreach ($ruleType in $ruleTypes) {
         $getCommand = "Get-${ruleType}ProtectionPolicyRule"
         if (-not (& $getCommand -Identity 'Standard Preset Security Policy' -ErrorAction SilentlyContinue)) {
             throw 'Initialize the Standard and Strict preset policies once in the Defender portal before running this script.'
@@ -144,32 +123,95 @@ function Set-PresetProtection {
 
     Set-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
         -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
-    Set-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
-        -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
     Set-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
         -WhatIf:$UseWhatIf
+    Enable-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
+    Enable-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'MDO-001/MDO-002' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
+        -Detail 'EOP Standard and Strict preset assignment'
+
+    if (-not $Entitlement.AtpPresets) {
+        Add-Outcome -Control 'MDO-001/MDO-002 (ATP)' -Status 'NotEntitled' `
+            -Detail "messagingTier is $($Entitlement.MessagingTier); Safe Links and Safe Attachments presets require Defender for Office 365"
+        return
+    }
+
+    Set-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
+        -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
     Set-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
         -WhatIf:$UseWhatIf
-
-    Enable-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
     Enable-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
-    Enable-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
     Enable-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
     Set-ATPBuiltInProtectionRule -Identity 'ATP Built-In Protection Rule' `
         -ExceptIfRecipientDomainIs $null -ExceptIfSentTo $null -ExceptIfSentToMemberOf $null -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'MDO-001/MDO-002/MDO-003' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
+        -Detail 'ATP preset assignment and unexcluded Built-in protection'
 }
 
 function Set-OrganizationControls {
-    param([object]$Configuration, [bool]$UseWhatIf)
+    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement)
 
     $state = $Configuration.desiredState
+    $verb = if ($UseWhatIf) { 'Planned' } else { 'Applied' }
+
     Set-TransportConfig -SmtpClientAuthenticationDisabled $state.exchangeOnline.smtpClientAuthenticationDisabled `
         -ExternalPostmasterAddress $state.exchangeOnline.externalPostmasterAddress -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'EXO-002/EXO-005' -Status $verb -Detail 'SMTP AUTH disabled, external postmaster set'
+
     Set-HostedOutboundSpamFilterPolicy -Identity Default `
         -AutoForwardingMode $state.exchangeOnline.automaticExternalForwarding -WhatIf:$UseWhatIf
-    Set-AtpPolicyForO365 -EnableATPForSPOTeamsODB $state.defenderForOffice365.safeAttachmentsForSharePointOneDriveTeams `
-        -EnableSafeDocs $state.defenderForOffice365.safeDocuments.enabled `
-        -AllowSafeDocsOpen $state.defenderForOffice365.safeDocuments.allowBypass -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'EXO-004' -Status $verb -Detail 'Automatic external forwarding Off'
+
+    Set-OrganizationConfig -AuditDisabled (-not $state.exchangeOnline.mailboxAuditingDefault) -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'EXO-006' -Status $verb -Detail 'Default mailbox auditing on'
+
+    $externalId = $state.exchangeOnline.externalSenderIdentification
+    Set-ExternalInOutlook -Enabled $externalId.enabled -AllowList $externalId.allowList -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'EXO-007' -Status $verb -Detail 'External sender identification enabled'
+
+    $remote = $state.exchangeOnline.remoteDomainDefault
+    Set-RemoteDomain -Identity Default -AutoForwardEnabled $remote.autoForwardEnabled `
+        -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remote.allowedOOFType `
+        -DeliveryReportEnabled $remote.deliveryReportEnabled -NDREnabled $remote.nonDeliveryReportEnabled `
+        -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'EXO-008' -Status $verb -Detail 'Default remote domain hardened'
+
+    $protocols = $state.exchangeOnline.protocolRestriction
+    Set-OrganizationConfig -EwsEnabled $protocols.ewsEnabled -EwsAllowList $protocols.ewsAllowList -WhatIf:$UseWhatIf
+    Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {
+        Set-CASMailboxPlan -Identity $_.Identity -PopEnabled $protocols.popEnabledByDefault `
+            -ImapEnabled $protocols.imapEnabledByDefault -WhatIf:$UseWhatIf
+    }
+    Add-Outcome -Control 'EXO-009' -Status $verb -Detail 'EWS off, POP/IMAP off for new mailboxes'
+
+    $quarantine = $state.defenderForOffice365.quarantinePolicies
+    Set-QuarantinePolicy -Identity DefaultGlobalTag `
+        -EndUserSpamNotificationFrequency (New-TimeSpan -Days $quarantine.endUserSpamNotificationFrequencyInDays) `
+        -WhatIf:$UseWhatIf
+    Add-Outcome -Control 'MDO-008' -Status $verb `
+        -Detail 'Global quarantine notification cadence set; preset policies keep Microsoft-managed quarantine tags'
+
+    if ($Entitlement.SafeAttachmentsSpo) {
+        $atpParameters = @{
+            EnableATPForSPOTeamsODB = $state.defenderForOffice365.safeAttachmentsForSharePointOneDriveTeams
+            WhatIf                  = $UseWhatIf
+        }
+        if ($Entitlement.SafeDocuments) {
+            $atpParameters.EnableSafeDocs = $state.defenderForOffice365.safeDocuments.enabled
+            $atpParameters.AllowSafeDocsOpen = $state.defenderForOffice365.safeDocuments.allowBypass
+        }
+        Set-AtpPolicyForO365 @atpParameters
+        Add-Outcome -Control 'MDO-004' -Status $verb -Detail 'Safe Attachments for SharePoint, OneDrive, and Teams'
+
+        if (-not $Entitlement.SafeDocuments) {
+            Add-Outcome -Control 'MDO-005' -Status 'NotEntitled' `
+                -Detail "messagingTier is $($Entitlement.MessagingTier); Safe Documents requires Defender for Office 365 Plan 2 or the Defender suite"
+        }
+    }
+    else {
+        Add-Outcome -Control 'MDO-004/MDO-005' -Status 'NotEntitled' `
+            -Detail "messagingTier is $($Entitlement.MessagingTier); file protection requires Defender for Office 365"
+    }
 }
 
 function Set-DomainAuthentication {
@@ -181,11 +223,45 @@ function Set-DomainAuthentication {
     }
     if ($ActivateDkim) {
         Set-DkimSigningConfig -Identity $domain -Enabled $true -WhatIf:$UseWhatIf
+        Add-Outcome -Control 'AUTH-001' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) -Detail 'DKIM signing enabled'
+    }
+    else {
+        Add-Outcome -Control 'AUTH-001' -Status 'Manual' `
+            -Detail 'DKIM config staged disabled. Publish the exact CNAMEs from Get-DkimSigningConfig, then rerun with -EnableDkim'
     }
 }
 
-$configuration = ConvertTo-ResolvedConfiguration -TemplatePath $ConfigurationPath -ValuesPath $ParameterPath
-Assert-Configuration -Configuration $configuration
+function Write-ManualControlPlan {
+    param([object]$Configuration, [object]$Entitlement)
+
+    Add-Outcome -Control 'EXO-003' -Status 'Manual' -Detail 'Block legacy authentication in Conditional Access (Microsoft Entra)'
+    Add-Outcome -Control 'EXO-010' -Status 'Manual' -Detail 'Review role groups and remove standing privilege (Entra PIM)'
+    Add-Outcome -Control 'EXO-011' -Status 'Manual' -Detail 'Publish MTA-STS policy, DNS record, and TLS-RPT record'
+    Add-Outcome -Control 'AUTH-002/AUTH-003' -Status 'Manual' -Detail 'Publish SPF and DMARC records in authoritative DNS'
+    Add-Outcome -Control 'MDO-006' -Status 'Manual' -Detail 'Configure user submission policy in the Defender portal'
+    Add-Outcome -Control 'MON-001' -Status 'Manual' -Detail 'Connect Microsoft and vendor telemetry to the SIEM'
+
+    if ($Entitlement.PurviewRetention) {
+        Add-Outcome -Control 'GOV-002/GOV-003/GOV-004' -Status 'Manual' `
+            -Detail 'Create DLP, retention, and litigation hold in Microsoft Purview (Security & Compliance PowerShell)'
+    }
+    else {
+        Add-Outcome -Control 'GOV-002/GOV-003/GOV-004' -Status 'NotEntitled' `
+            -Detail "complianceTier is $($Entitlement.ComplianceTier); DLP, retention, and hold require Microsoft 365 E3 or higher"
+    }
+
+    if ($Entitlement.AuditPremium) {
+        Add-Outcome -Control 'GOV-001' -Status 'Manual' -Detail 'Set Audit (Premium) retention policy to the required period'
+    }
+    else {
+        Add-Outcome -Control 'GOV-001' -Status 'NotEntitled' `
+            -Detail "complianceTier is $($Entitlement.ComplianceTier); audit retention beyond the standard period requires E5 Compliance"
+    }
+}
+
+$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath
+$configuration = $context.Configuration
+$entitlement = $context.Entitlement
 
 if (-not $SkipConnection) {
     Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
@@ -193,11 +269,29 @@ if (-not $SkipConnection) {
 }
 
 $useWhatIf = -not $Apply
-Write-Host "Deployment mode: $(if ($useWhatIf) { 'AUDIT / WHATIF' } else { 'APPLY' })"
-Set-InboundGatewayConnector -Configuration $configuration -UseWhatIf $useWhatIf
-Set-OutboundGatewayConnector -Configuration $configuration -UseWhatIf $useWhatIf
-Set-PresetProtection -Configuration $configuration -UseWhatIf $useWhatIf
-Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf
-Set-DomainAuthentication -Configuration $configuration -UseWhatIf $useWhatIf -ActivateDkim $EnableDkim
+$gatewayDeclared = $context.GatewayDeclared
 
+Write-Host "Profile:       $($configuration.metadata.deploymentProfile)"
+Write-Host "Gateway:       $(if ($gatewayDeclared) { $configuration.desiredState.mailFlow.gateway.vendor } else { 'none (Microsoft-native)' })"
+Write-Host "Licensing:     messaging=$($entitlement.MessagingTier) compliance=$($entitlement.ComplianceTier)"
+Write-Host "Configuration: $($context.Algorithm.ToLowerInvariant()):$($context.Hash)"
+Write-Host "Mode:          $(if ($useWhatIf) { 'AUDIT / WHATIF' } else { 'APPLY' })"
+Write-Host ''
+
+if ($gatewayDeclared) {
+    Set-InboundGatewayConnector -Configuration $configuration -UseWhatIf $useWhatIf
+    Set-OutboundGatewayConnector -Configuration $configuration -UseWhatIf $useWhatIf
+}
+else {
+    Add-Outcome -Control 'PP-001/PP-002/PP-003' -Status 'Skipped' `
+        -Detail 'No mail gateway declared; the tenant receives directly on its Microsoft 365 MX target'
+}
+
+Set-PresetProtection -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement
+Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement
+Set-DomainAuthentication -Configuration $configuration -UseWhatIf $useWhatIf -ActivateDkim $EnableDkim
+Write-ManualControlPlan -Configuration $configuration -Entitlement $entitlement
+
+Write-Host ''
+$script:Outcomes | Group-Object Status | ForEach-Object { Write-Host "$($_.Name): $($_.Count)" }
 Write-Host 'Configuration processing completed. Run Test-ExchangeOnlineBaseline.ps1 to collect evidence.'

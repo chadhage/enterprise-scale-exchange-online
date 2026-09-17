@@ -1,5 +1,7 @@
 # Microsoft Defender for Office 365 Baseline Configuration
 
+> **QUARANTINED — DO NOT DEPLOY.** This solution builds custom EOP/MDO policies from transcribed setting values, which Microsoft does not recommend and which this repository records as `BAD-010`. `Deploy-MDOBaseline.ps1` refuses to run. The supported path is [`samples/contoso-exchange-online-managed-service`](../../../samples/contoso-exchange-online-managed-service/). See [`deprecated/README.md`](../../README.md) for the recorded defects and migration steps. Everything below is retained for history and is not accurate as guidance.
+
 Infrastructure as Code (IaC) templates for deploying Microsoft Defender for Office 365 (MDO) baseline security configurations. Tenant-specific values are parameterized rather than hardcoded.
 
 ## Overview

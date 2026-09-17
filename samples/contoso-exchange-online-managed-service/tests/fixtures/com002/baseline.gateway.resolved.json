@@ -1,0 +1,60 @@
+{
+  "$schema": "./exchange-online-secure-baseline.schema.json",
+  "metadata": {
+    "name": "Contoso Exchange Online secure managed service baseline",
+    "version": "2.0.0",
+    "deploymentProfile": "ThirdPartyGateway",
+    "configurationOwner": "secops.owner@contoso.example"
+  },
+  "administratorInputs": {
+    "tenantId": "00000000-1111-2222-3333-444444444444",
+    "organizationName": "Contoso \"Global\" Ltd \\ EMEA",
+    "primaryDomain": "contoso.example",
+    "securityOperationsMailbox": "secops@contoso.example",
+    "proofpointTlsCertificateName": "CN=mail.contoso.example, O=Contoso \"Global\" Ltd",
+    "proofpointPublicSendingIpRanges": [
+      "198.51.100.0/24",
+      "203.0.113.10"
+    ],
+    "proofpointSmartHosts": [
+      "outbound1.pphosted.example",
+      "outbound2.pphosted.example"
+    ]
+  },
+  "desiredState": {
+    "acceptedDomain": {
+      "domainName": "contoso.example",
+      "domainType": "Authoritative"
+    },
+    "mailFlow": {
+      "gateway": {
+        "declared": true,
+        "vendor": "Proofpoint"
+      },
+      "gatewayInboundConnector": {
+        "enabled": true,
+        "senderDomains": ["*"],
+        "senderIpAddresses": [
+          "198.51.100.0/24",
+          "203.0.113.10"
+        ]
+      },
+      "gatewayOutboundConnector": {
+        "smartHosts": [
+          "outbound1.pphosted.example",
+          "outbound2.pphosted.example"
+        ],
+        "tlsDomain": "CN=mail.contoso.example, O=Contoso \"Global\" Ltd"
+      }
+    },
+    "purviewGovernance": {
+      "unifiedAuditLogEnabled": true,
+      "auditRetentionDays": 365
+    },
+    "advancedDelivery": {
+      "securityOperationsMailboxes": [
+        "secops@contoso.example"
+      ]
+    }
+  }
+}

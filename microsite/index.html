@@ -580,20 +580,20 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                     <h2>Test Documentation</h2>
                     <div class="doc-links">
                         <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/TEST_STRATEGY.md" target="_blank">TEST_STRATEGY.md</a></h4>
-                            <p>Overall testing pyramid, strategy, and coverage goals (900+ lines)</p>
+                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/tests/SecureBaseline.Tests.ps1" target="_blank" rel="noopener noreferrer">SecureBaseline.Tests.ps1</a></h4>
+                            <p>Static Pester guardrails covering both deployment profiles</p>
                         </div>
                         <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/README.md" target="_blank">tests/README.md</a></h4>
-                            <p>Complete testing guide with examples and best practices (800+ lines)</p>
+                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/CONTROL-CATALOG.md" target="_blank" rel="noopener noreferrer">CONTROL-CATALOG.md</a></h4>
+                            <p>MUST / SHOULD / AVOID matrix with an evidence command per control</p>
                         </div>
                         <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/QUICK_REFERENCE.md" target="_blank">tests/QUICK_REFERENCE.md</a></h4>
-                            <p>Quick command reference for running tests</p>
+                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a></h4>
+                            <p>Portal path, exact cmdlet and value, verification command, expected output</p>
                         </div>
                         <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/acceptance/ACCEPTANCE_CHECKLIST.md" target="_blank">tests/ACCEPTANCE_CHECKLIST.md</a></h4>
-                            <p>Business requirement validation checklist (600+ lines)</p>
+                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/deprecated/README.md" target="_blank" rel="noopener noreferrer">deprecated/README.md</a></h4>
+                            <p>Quarantined custom-policy solution and the defects recorded against it</p>
                         </div>
                     </div>
                 </article>
@@ -748,24 +748,23 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 </article>
 
                 <article class="resource-card">
-                    <h3>🛠️ Scripts & Tools</h3>
+                    <h3>🛠️ Scripts &amp; Tools</h3>
                     <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/scripts/Deploy-MDOBaseline.ps1" target="_blank">Deploy-MDOBaseline.ps1</a> - Main deployment script</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/scripts/Generate-ConfigFromTemplate.ps1" target="_blank">Generate-ConfigFromTemplate.ps1</a> - Config generator</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/scripts/Validate-MDOConfiguration.ps1" target="_blank">Validate-MDOConfiguration.ps1</a> - Config validator</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/config-templates/baseline-standard.json" target="_blank">baseline-standard.json</a> - Standard template</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/config-templates/baseline-strict.json" target="_blank">baseline-strict.json</a> - Strict template</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/scripts/Deploy-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Deploy-ExchangeOnlineBaseline.ps1</a> - WhatIf-by-default deployment</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Test-ExchangeOnlineBaseline.ps1</a> - Evidence collector</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.microsoft-native.json" target="_blank" rel="noopener noreferrer">Microsoft-native baseline</a> - No third-party gateway</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.json" target="_blank" rel="noopener noreferrer">Gateway baseline</a> - Third-party SMTP gateway</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.schema.json" target="_blank" rel="noopener noreferrer">Baseline schema</a> - Includes the gateway conditional</li>
                     </ul>
                 </article>
 
                 <article class="resource-card">
                     <h3>🧪 Testing Framework</h3>
                     <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/TEST_STRATEGY.md" target="_blank">TEST_STRATEGY.md</a> - Testing strategy (900+ lines)</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/README.md" target="_blank">tests/README.md</a> - Complete testing guide</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/Run-Tests.ps1" target="_blank">Run-Tests.ps1</a> - Master test runner</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/acceptance/ACCEPTANCE_CHECKLIST.md" target="_blank">ACCEPTANCE_CHECKLIST.md</a> - Acceptance tests</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/tests/QUICK_REFERENCE.md" target="_blank">QUICK_REFERENCE.md</a> - Quick commands</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/tests/SecureBaseline.Tests.ps1" target="_blank" rel="noopener noreferrer">SecureBaseline.Tests.ps1</a> - Static Pester guardrails</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/CONTROL-CATALOG.md" target="_blank" rel="noopener noreferrer">CONTROL-CATALOG.md</a> - MUST / SHOULD / AVOID matrix</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a> - Per-control verification steps</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/deprecated/README.md" target="_blank" rel="noopener noreferrer">deprecated/README.md</a> - Quarantined solution and its defects</li>
                     </ul>
                 </article>
 
@@ -792,10 +791,10 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <article class="resource-card">
                     <h3>📦 Intellectual Property</h3>
                     <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/config-templates/mdo-config-schema.json" target="_blank">mdo-config-schema.json</a> - Complete schema (2000+ lines)</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/SOLUTION_SUMMARY.md" target="_blank">SOLUTION_SUMMARY.md</a> - Complete project overview</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/docs/CUSTOMIZATION.md" target="_blank">CUSTOMIZATION.md</a> - Customization guide (800+ lines)</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/mdo-baseline-config/docs/TROUBLESHOOTING.md" target="_blank">TROUBLESHOOTING.md</a> - Troubleshooting guide (700+ lines)</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/SOLUTION_SUMMARY.md" target="_blank" rel="noopener noreferrer">SOLUTION_SUMMARY.md</a> - Control coverage and evidence map</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/IMPLEMENTATION-GUIDE.md" target="_blank" rel="noopener noreferrer">IMPLEMENTATION-GUIDE.md</a> - Ordered end-to-end setup</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/LICENSING-GATE.md" target="_blank" rel="noopener noreferrer">LICENSING-GATE.md</a> - Control availability by licence tier</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a> - Portal path, cmdlet, value, expected output</li>
                     </ul>
                 </article>
             </div>
@@ -806,70 +805,38 @@ Invoke-Pester -Path ".\tests" -Output Detailed
                 <pre><code>exchange-online-protection/
 ├── .github/workflows/
 │   └── deploy-pages.yml
-├── mdo-baseline-config/
-│   ├── config-templates/
-│   │   ├── baseline-standard.json
-│   │   ├── baseline-strict.json
-│   │   └── mdo-config-schema.json
-│   ├── docs/
-│   │   ├── CUSTOMIZATION.md
-│   │   ├── DEPLOYMENT.md
-│   │   ├── README.md
-│   │   └── TROUBLESHOOTING.md
-│   ├── scripts/
-│   │   ├── Deploy-MDOBaseline.ps1
-│   │   ├── Generate-ConfigFromTemplate.ps1
-│   │   └── Validate-MDOConfiguration.ps1
-│   ├── spfx-app/
-│   │   ├── package-solution.json
-│   │   └── package.json
-│   ├── tests/
-│   │   ├── acceptance/
-│   │   │   └── ACCEPTANCE_CHECKLIST.md
-│   │   ├── e2e/
-│   │   │   └── complete-deployment-flow.Tests.ps1
-│   │   ├── feature/
-│   │   │   └── advanced-features.Tests.ps1
-│   │   ├── features/
-│   │   │   └── configuration.feature
-│   │   ├── fixtures/
-│   │   │   ├── invalid-config.json
-│   │   │   └── valid-config.json
-│   │   ├── integration/
-│   │   │   └── config-to-deployment.Tests.ps1
-│   │   ├── unit/
-│   │   │   ├── Deploy-MDOBaseline.Tests.ps1
-│   │   │   └── Validate-MDOConfiguration.Tests.ps1
-│   │   ├── QUICK_REFERENCE.md
-│   │   ├── README.md
-│   │   ├── Run-Tests.ps1
-│   │   └── TEST_STRATEGY.md
-│   └── TESTING_SUMMARY.md
-├── microsite/
-│   ├── .nojekyll
-│   ├── index.html                      # This published page
-│   ├── script.js
-│   └── styles.css
 ├── samples/
-│   └── contoso-exchange-online-managed-service/
+│   └── contoso-exchange-online-managed-service/   # Supported solution
 │       ├── config/
-│       │   ├── exchange-online-secure-baseline.json
+│       │   ├── exchange-online-secure-baseline.json                  # Gateway profile
+│       │   ├── exchange-online-secure-baseline.microsoft-native.json # Native profile
 │       │   ├── exchange-online-secure-baseline.schema.json
-│       │   └── parameters.sample.json
+│       │   ├── parameters.sample.json
+│       │   └── parameters.microsoft-native.sample.json
 │       ├── dashboard/
 │       │   ├── index.html
 │       │   ├── mail-flow.svg
 │       │   ├── script.js
 │       │   └── styles.css
 │       ├── docs/
-│       │   ├── CONTROL-CATALOG.md
-│       │   └── IMPLEMENTATION-GUIDE.md
+│       │   ├── CONTROL-CATALOG.md      # MUST / SHOULD / AVOID matrix
+│       │   ├── IMPLEMENTATION-GUIDE.md # Ordered end-to-end setup
+│       │   ├── LICENSING-GATE.md       # Control availability by licence tier
+│       │   └── RUNBOOKS.md             # Setting-level procedures
 │       ├── scripts/
 │       │   ├── Deploy-ExchangeOnlineBaseline.ps1
 │       │   └── Test-ExchangeOnlineBaseline.ps1
 │       ├── tests/
 │       │   └── SecureBaseline.Tests.ps1
 │       └── README.md
+├── deprecated/                                     # Quarantined, do not deploy
+│   ├── README.md                                   # Recorded defects
+│   └── mdo-baseline-config-custom-policies/
+├── microsite/
+│   ├── .nojekyll
+│   ├── index.html                      # This published page
+│   ├── script.js
+│   └── styles.css
 └── SOLUTION_SUMMARY.md</code></pre>
             </article>
         </section>

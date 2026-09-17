@@ -1,16 +1,16 @@
 {
   "$schema": "./exchange-online-secure-baseline.schema.json",
   "metadata": {
-    "name": "Contoso Exchange Online secure managed service baseline",
+    "name": "Microsoft-native Exchange Online secure baseline",
     "version": "2.0.0",
     "reviewedOn": "2026-09-16",
-    "deploymentProfile": "ThirdPartyGateway",
-    "profile": "Microsoft recommended Standard plus Strict for priority users, fronted by a third-party SMTP gateway",
+    "deploymentProfile": "MicrosoftNative",
+    "profile": "Microsoft recommended Standard plus Strict for priority users, no third-party SMTP gateway",
     "configurationOwner": "__ADMIN_REQUIRED:CONFIGURATION_OWNER_UPN__"
   },
   "licensing": {
-    "messagingTier": "MDO_P2",
-    "complianceTier": "E5Compliance",
+    "messagingTier": "MDO_P1",
+    "complianceTier": "E3",
     "requiredServicePlans": [
       {
         "servicePlanId": "efb87545-963c-4e0d-99df-69c6916d9eb0",
@@ -21,11 +21,6 @@
         "servicePlanId": "f20fedf3-f3c3-43c3-8267-2bfdd51c0939",
         "servicePlanName": "ATP_ENTERPRISE",
         "controls": ["MDO-001", "MDO-002", "MDO-003", "MDO-004"]
-      },
-      {
-        "servicePlanId": "8e0c0a52-6a6c-4d40-8370-dd62790dcd70",
-        "servicePlanName": "THREAT_INTELLIGENCE",
-        "controls": ["MDO-003"]
       },
       {
         "servicePlanId": "bf6f5520-59e3-4f82-974b-7dbbc4fd27c7",
@@ -48,17 +43,6 @@
     "initialDomain": "__ADMIN_REQUIRED:INITIAL_ONMICROSOFT_DOMAIN__",
     "securityOperationsMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__",
     "priorityUsersGroup": "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__",
-    "gatewayInboundConnectorName": "Proofpoint Inbound",
-    "gatewayOutboundConnectorName": "Proofpoint Outbound",
-    "proofpointPublicSendingIpRanges": [
-      "__ADMIN_REQUIRED:CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR__"
-    ],
-    "proofpointTlsCertificateName": "__ADMIN_REQUIRED:PROOFPOINT_TLS_CERTIFICATE_SUBJECT__",
-    "proofpointSmartHosts": [
-      "__ADMIN_REQUIRED:PROOFPOINT_OUTBOUND_SMART_HOST_FQDN__"
-    ],
-    "proofpointSpfRecord": "__ADMIN_REQUIRED:PROOFPOINT_APPROVED_SPF_RECORD__",
-    "abnormalTenantIdentifier": "__ADMIN_REQUIRED:ABNORMAL_TENANT_OR_PORTAL_IDENTIFIER__",
     "siemPlatform": "__ADMIN_REQUIRED:CENTRAL_SIEM_PLATFORM__",
     "changeRecord": "__ADMIN_REQUIRED:APPROVED_CHANGE_RECORD__"
   },
@@ -69,43 +53,18 @@
     },
     "mailFlow": {
       "gateway": {
-        "declared": true,
-        "vendor": "Proofpoint",
-        "direction": "InboundAndOutbound"
+        "declared": false,
+        "vendor": "None",
+        "direction": "None"
       },
-      "mxTarget": "__ADMIN_REQUIRED:PROOFPOINT_MX_TARGET__",
-      "inboundPath": "Internet -> Proofpoint -> Exchange Online Protection -> Exchange Online",
-      "outboundPath": "Exchange Online -> Proofpoint -> Internet",
-      "gatewayInboundConnector": {
-        "connectorType": "Partner",
-        "enabled": true,
-        "senderDomains": ["*"],
-        "requireTls": true,
-        "restrictDomainsToIpAddresses": true,
-        "restrictDomainsToCertificate": false,
-        "senderIpAddresses": [
-          "__ADMIN_REQUIRED:CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR__"
-        ]
-      },
+      "mxTarget": "__ADMIN_REQUIRED:MICROSOFT_365_MX_TARGET__",
+      "inboundPath": "Internet -> Exchange Online Protection -> Exchange Online",
+      "outboundPath": "Exchange Online -> Internet",
       "enhancedFiltering": {
-        "enabled": true,
+        "enabled": false,
         "skipLastIp": false,
-        "skipIpAddresses": [
-          "__ADMIN_REQUIRED:ALL_NON_MICROSOFT_PUBLIC_HOP_IPS_OR_CIDRS__"
-        ],
-        "applyToAllRecipients": true
-      },
-      "gatewayOutboundConnector": {
-        "connectorType": "Partner",
-        "enabled": true,
-        "recipientDomains": ["*"],
-        "routeAllMessagesViaOnPremises": true,
-        "useMxRecord": false,
-        "smartHosts": [
-          "__ADMIN_REQUIRED:PROOFPOINT_OUTBOUND_SMART_HOST_FQDN__"
-        ],
-        "tlsSettings": "DomainValidation",
-        "tlsDomain": "__ADMIN_REQUIRED:PROOFPOINT_TLS_CERTIFICATE_SUBJECT__"
+        "skipIpAddresses": [],
+        "applyToAllRecipients": false
       },
       "prohibitedBypass": {
         "sclMinusOneTransportRules": false,
@@ -204,7 +163,7 @@
         "selector2Cname": "__ADMIN_REQUIRED:VALUE_RETURNED_BY_GET_DKIMSIGNINGCONFIG__"
       },
       "spf": {
-        "record": "__ADMIN_REQUIRED:PROOFPOINT_APPROVED_SPF_RECORD__",
+        "record": "v=spf1 include:spf.protection.outlook.com -all",
         "hardFail": true,
         "singleRecordOnly": true
       },
@@ -217,17 +176,7 @@
         "dkimAlignment": "relaxed",
         "spfAlignment": "relaxed"
       },
-      "trustedArcSealers": [
-        "__ADMIN_REQUIRED:PROOFPOINT_ARC_SEALING_DOMAIN_OR_NOT_SUPPORTED__"
-      ]
-    },
-    "abnormalSecurity": {
-      "integrationMode": "Microsoft API post-delivery",
-      "smtpConnectorCreated": false,
-      "transportBypassCreated": false,
-      "servicePrincipalUsesLeastPrivilege": true,
-      "vendorHealthMonitoringEnabled": true,
-      "permissionReviewFrequencyDays": 90
+      "trustedArcSealers": []
     },
     "centralMonitoring": {
       "defenderXdrIncidentQueue": true,
@@ -244,8 +193,8 @@
           "Office 365 audit logs",
           "Exchange admin audit events",
           "Microsoft Entra sign-in and audit logs",
-          "Proofpoint alerts and message telemetry",
-          "Abnormal Security cases and remediation events"
+          "Microsoft Defender for Office 365 email events",
+          "Microsoft Purview alerts and DLP events"
         ],
         "minimumRetentionDays": 180,
         "alertRecipients": [
@@ -259,7 +208,7 @@
     },
     "purviewGovernance": {
       "unifiedAuditLogEnabled": true,
-      "auditRetentionDays": 365,
+      "auditRetentionDays": 180,
       "exchangeDlpPolicyRequired": true,
       "exchangeDlpPolicyName": "__ADMIN_REQUIRED:EXCHANGE_DLP_POLICY_NAME__",
       "mailboxRetentionPolicyRequired": true,

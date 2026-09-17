@@ -1,0 +1,22 @@
+{
+  "CONFIGURATION_OWNER_UPN": "secops.owner@contoso.example",
+  "MICROSOFT_ENTRA_TENANT_GUID": "00000000-1111-2222-3333-444444444444",
+  "LEGAL_ORGANIZATION_NAME": "Contoso Global Ltd",
+  "PRIMARY_SMTP_DOMAIN": "contoso.example",
+  "INITIAL_ONMICROSOFT_DOMAIN": "contoso.onmicrosoft.example",
+  "SECURITY_OPERATIONS_MAILBOX": "secops@contoso.example",
+  "MAIL_ENABLED_PRIORITY_USERS_GROUP": "priority-users@contoso.example",
+  "MICROSOFT_365_MX_TARGET": "contoso-example.mail.protection.outlook.com",
+  "CENTRAL_SIEM_PLATFORM": "Microsoft Sentinel",
+  "EXTERNAL_POSTMASTER_SMTP_ADDRESS": "postmaster@contoso.example",
+  "DMARC_AGGREGATE_REPORTING_ADDRESS": "mailto:dmarc-rua@contoso.example",
+  "DMARC_FORENSIC_REPORTING_ADDRESS_OR_NOT_APPLICABLE": "NotApplicable",
+  "VALUE_RETURNED_BY_GET_DKIMSIGNINGCONFIG": "selector1-contoso-example._domainkey.contoso.onmicrosoft.example",
+  "TLS_RPT_REPORTING_ADDRESS": "mailto:tlsrpt@contoso.example",
+  "EXCHANGE_DLP_POLICY_NAME": "Contoso Exchange DLP",
+  "MAILBOX_RETENTION_POLICY_NAME": "Contoso Mailbox Retention",
+  "EDISCOVERY_CASE_OWNER_UPN": [
+    "ediscovery.owner@contoso.example"
+  ],
+  "APPROVED_CHANGE_RECORD": "CHG0012345"
+}
