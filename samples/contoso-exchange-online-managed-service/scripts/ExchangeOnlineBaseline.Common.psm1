@@ -3939,6 +3939,333 @@ function Get-RemoteDomainEvidence {
     return Get-BaselineEvidence -ControlId 'EXO-008' -Source 'ExchangeOnline' -Command 'Get-RemoteDomain' -Collection $Collection
 }
 
+# EXO-008: the five values a remote domain is decided by, each paired with the name the baseline
+# resolves it under. Exchange Online reports the non-delivery report switch as `NDREnabled` while
+# the baseline declares it as `nonDeliveryReportEnabled`, so the pairing is declared once here
+# rather than restated at each comparison.
+$script:RemoteDomainDecidedMember = @(
+    [pscustomobject]@{ Observed = 'AutoForwardEnabled'; Desired = 'autoForwardEnabled' }
+    [pscustomobject]@{ Observed = 'AutoReplyEnabled'; Desired = 'autoReplyEnabled' }
+    [pscustomobject]@{ Observed = 'AllowedOOFType'; Desired = 'allowedOOFType' }
+    [pscustomobject]@{ Observed = 'DeliveryReportEnabled'; Desired = 'deliveryReportEnabled' }
+    [pscustomobject]@{ Observed = 'NDREnabled'; Desired = 'nonDeliveryReportEnabled' }
+)
+
+# EXO-008: all five values are decided on every domain the tenant returned, because the shipping
+# script decided three of them on one domain - and a remote domain created beside the default with
+# automatic forwarding switched on overrides the default for exactly the addresses somebody created
+# it for, which is the route this control exists to close. Each failure names the domain, the
+# member, the value the tenant holds and the value the baseline requires, so an operator can act on
+# one reading. A member that was never observed is an `Error`, because read as off it reports a
+# hardened domain from a value nobody read.
+function Test-RemoteDomainControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredRemoteDomainStateRequired: EXO-008 cannot be decided without the remote-domain state the baseline resolved; an evaluator with no desired state decides the five values against whatever it defaults to rather than against what was approved.'
+    }
+
+    $decidedMember = $script:RemoteDomainDecidedMember
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $desired = [ordered]@{}
+
+    foreach ($pair in $decidedMember) {
+        $value = if ($pair.Desired -cin $declared) { Get-BaselineRecordMember -Node $DesiredState -Name $pair.Desired } else { $null }
+        if ($null -eq $value) {
+            throw "DesiredRemoteDomainMemberRequired: EXO-008 cannot be decided without a resolved '$($pair.Desired)' value; four values compared against the baseline and a fifth compared against nothing reads as a fully compared domain."
+        }
+
+        $desired[$pair.Observed] = $value
+    }
+
+    # One rule for all five, because four are switches and one is an out-of-office type, and the
+    # casing and surrounding whitespace Exchange Online reports back is never drift.
+    $normalize = { param($Value) ([string]$Value).Trim().ToLowerInvariant() }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $observed = @()
+        if ($null -ne $payload) { $observed = @($payload) }
+
+        if ($observed.Count -eq 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'RemoteDomainDrift: the tenant holds no remote domain at all.'
+            }
+        }
+
+        foreach ($domain in $observed) {
+            $present = @(Get-BaselineRecordMemberName -Node $domain)
+            foreach ($pair in $decidedMember) {
+                if ($pair.Observed -cnotin $present) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "RemoteDomainEvidenceIncomplete: an observed remote domain carries no '$($pair.Observed)' member."
+                    }
+                }
+            }
+        }
+
+        $finding = @(
+            foreach ($domain in $observed) {
+                $identity = Get-BaselineRecordMember -Node $domain -Name 'Identity'
+
+                foreach ($pair in $decidedMember) {
+                    $live = Get-BaselineRecordMember -Node $domain -Name $pair.Observed
+                    $want = $desired[$pair.Observed]
+                    if ((& $normalize $live) -ceq (& $normalize $want)) { continue }
+
+                    "remote domain '{0}' reports '{1}' as '{2}' where the baseline requires '{3}'" -f `
+                        $identity, $pair.Observed, $live, $want
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'RemoteDomainDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'EXO-008' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# EXO-009: the three observations the legacy protocol surface is decided from. The organization
+# switch and its allow list are tenant-wide, the mailbox plan decides what every mailbox created
+# after today is born with, and the existing mailboxes are what hardening the plan does not change
+# - which is why the shipping script, reading the first two only, reports a closed tenant while
+# every mailbox created before the plan was hardened still speaks POP and IMAP. Each command is
+# reached only through the supplied seam, inside the one try Get-BaselineEvidence runs, so a
+# refusal from any of the three is recorded as an uncollected observation rather than thrown.
+$script:ClientProtocolObservation = @('OrganizationConfig', 'CasMailboxPlan', 'CasMailbox')
+
+function Get-ClientProtocolEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$OrganizationConfigCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$CasMailboxPlanCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$CasMailboxCollection
+    )
+
+    if ($null -eq $OrganizationConfigCollection) {
+        throw 'OrganizationConfigCollectionRequired: EXO-009 cannot be observed without a collection that reaches the organization configuration.'
+    }
+
+    if ($null -eq $CasMailboxPlanCollection) {
+        throw 'CasMailboxPlanCollectionRequired: EXO-009 cannot be observed without a collection that reaches the client access mailbox plans.'
+    }
+
+    if ($null -eq $CasMailboxCollection) {
+        throw 'CasMailboxCollectionRequired: EXO-009 cannot be observed without a collection that reaches the existing client access mailboxes.'
+    }
+
+    $collection = {
+        [ordered]@{
+            OrganizationConfig = (& $OrganizationConfigCollection)
+            CasMailboxPlan     = @(& $CasMailboxPlanCollection)
+            CasMailbox         = @(& $CasMailboxCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'EXO-009' -Source 'ExchangeOnline' `
+        -Command 'Get-OrganizationConfig; Get-CASMailboxPlan; Get-CASMailbox' -Collection $collection
+}
+
+# EXO-009: the members each scope is decided by. The organization carries the tenant-wide EWS
+# switch and its allow list; a plan and a mailbox each carry all four values plus the identity
+# every failure has to name, because an operator told a legacy protocol is open somewhere cannot
+# act on it.
+$script:ClientProtocolOrganizationMember = @('EwsEnabled', 'EwsAllowList')
+$script:ClientProtocolScopedMember = @('Identity', 'EwsEnabled', 'EwsAllowList', 'PopEnabled', 'ImapEnabled')
+
+# The three switches, each paired with the name the baseline resolves it under. The organization
+# carries only the first; a plan and a mailbox carry all three.
+$script:ClientProtocolSwitch = @(
+    [pscustomobject]@{ Observed = 'EwsEnabled'; Desired = 'ewsEnabled' }
+    [pscustomobject]@{ Observed = 'PopEnabled'; Desired = 'popEnabledByDefault' }
+    [pscustomobject]@{ Observed = 'ImapEnabled'; Desired = 'imapEnabledByDefault' }
+)
+
+# EXO-009: the three scopes are decided together because the tenant is only as closed as the
+# weakest one. The shipping script reads the organization switch and the mailbox plans, so a tenant
+# whose plans are all clean still passes while every mailbox created before somebody cleaned them
+# keeps POP and IMAP - the existing mailboxes are the gap. The allow list is decided at every scope
+# rather than once tenant-wide, because an entry reopens EWS for exactly the application named in
+# it and is settable per plan and per mailbox. It is compared as a normalized set so the casing,
+# surrounding whitespace and repetition Exchange Online reports back is never drift, while an entry
+# the baseline never declared - and an approved one silently missing - always is.
+function Test-ClientProtocolControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredProtocolStateRequired: EXO-009 cannot be decided without the protocol state the baseline resolved; an evaluator with no desired state decides the protocol surface against whatever it defaults to rather than against what was approved.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $resolve = {
+        param($Name)
+
+        $value = if ($Name -cin $declared) { Get-BaselineRecordMember -Node $DesiredState -Name $Name } else { $null }
+        if ($null -eq $value) {
+            throw "DesiredProtocolMemberRequired: EXO-009 cannot be decided without a resolved '$Name' value; three protocols compared against the baseline and a fourth compared against nothing reads as a fully compared tenant."
+        }
+
+        return $value
+    }
+
+    $desired = [ordered]@{}
+    foreach ($pair in $script:ClientProtocolSwitch) {
+        $desired[$pair.Observed] = & $resolve $pair.Desired
+    }
+
+    # The EWS allow list holds application identifiers, which the canonical comparison contract
+    # declares no kind for, so the set is normalized here under the same trim-and-lower rule both
+    # sides are held to.
+    $normalize = { param($Value) ([string]$Value).Trim().ToLowerInvariant() }
+    $normalizeList = {
+        param($Collection)
+
+        $value = @(foreach ($item in @($Collection)) { ([string]$item).Trim().ToLowerInvariant() })
+        return , @(@($value | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique) | Sort-Object -CaseSensitive)
+    }
+
+    $desiredAllowList = & $normalizeList (& $resolve 'ewsAllowList')
+
+    $observationName = $script:ClientProtocolObservation
+    $organizationMember = $script:ClientProtocolOrganizationMember
+    $scopedMember = $script:ClientProtocolScopedMember
+    $organizationSwitch = @($script:ClientProtocolSwitch | Where-Object { $_.Observed -ceq 'EwsEnabled' })
+    $scopedSwitch = $script:ClientProtocolSwitch
+
+    $decideScope = {
+        param($Node, $Label, $SwitchPair)
+
+        foreach ($pair in $SwitchPair) {
+            $live = Get-BaselineRecordMember -Node $Node -Name $pair.Observed
+            $want = $desired[$pair.Observed]
+            if ((& $normalize $live) -ceq (& $normalize $want)) { continue }
+
+            "{0} reports '{1}' as '{2}' where the baseline requires '{3}'" -f $Label, $pair.Observed, $live, $want
+        }
+
+        $liveAllowList = & $normalizeList (Get-BaselineRecordMember -Node $Node -Name 'EwsAllowList')
+        $surplus = @($liveAllowList | Where-Object { $_ -cnotin $desiredAllowList })
+        $missing = @($desiredAllowList | Where-Object { $_ -cnotin $liveAllowList })
+
+        if ($surplus.Count -gt 0) {
+            "the EWS allow list of {0} holds '{1}' which the baseline does not declare" -f $Label, ($surplus -join "', '")
+        }
+
+        if ($missing.Count -gt 0) {
+            "the EWS allow list of {0} does not hold '{1}'" -f $Label, ($missing -join "', '")
+        }
+    }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "ClientProtocolEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        $organization = Get-BaselineRecordMember -Node $payload -Name 'OrganizationConfig'
+        $observedOrganizationMember = @()
+        if ($null -ne $organization) { $observedOrganizationMember = @(Get-BaselineRecordMemberName -Node $organization) }
+
+        foreach ($name in $organizationMember) {
+            if ($name -cnotin $observedOrganizationMember) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "ClientProtocolEvidenceIncomplete: the observed organization configuration carries no '$name' member."
+                }
+            }
+        }
+
+        $plan = @(Get-BaselineRecordMember -Node $payload -Name 'CasMailboxPlan')
+        $mailbox = @(Get-BaselineRecordMember -Node $payload -Name 'CasMailbox')
+
+        foreach ($scope in @(
+                [pscustomobject]@{ Entry = $plan; Noun = 'mailbox plan' }
+                [pscustomobject]@{ Entry = $mailbox; Noun = 'mailbox' }
+            )) {
+            foreach ($entry in $scope.Entry) {
+                foreach ($name in $scopedMember) {
+                    if ($name -cnotin @(Get-BaselineRecordMemberName -Node $entry)) {
+                        return [pscustomobject]@{
+                            Status = 'Error'
+                            Reason = "ClientProtocolEvidenceIncomplete: an observed $($scope.Noun) carries no '$name' member."
+                        }
+                    }
+                }
+            }
+        }
+
+        $finding = @(
+            & $decideScope $organization 'the organization' $organizationSwitch
+
+            foreach ($entry in $plan) {
+                & $decideScope $entry ("mailbox plan '{0}'" -f (Get-BaselineRecordMember -Node $entry -Name 'Identity')) $scopedSwitch
+            }
+
+            foreach ($entry in $mailbox) {
+                & $decideScope $entry ("mailbox '{0}'" -f (Get-BaselineRecordMember -Node $entry -Name 'Identity')) $scopedSwitch
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'LegacyProtocolOpen: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'EXO-009' -Evidence $Evidence -Evaluator $evaluator
+}
+
 # EXO-010: the five observations privilege is decided from. Exchange role membership alone reports
 # who holds a role today and nothing about who can elevate into it, active and eligible PIM
 # assignments report the elevation without the Exchange-side grants that bypass it, and neither
@@ -4348,6 +4675,1395 @@ function Test-SmtpAuthenticationControl {
     return Test-BaselineControl -ControlId 'EXO-002' -Evidence $Evidence -Evaluator $evaluator
 }
 
+# EXO-011: the four observations transport security is decided from. The discovery record tells a
+# sending server a policy exists, the policy document is the only place the mode, the maximum age
+# and the covered MX hosts are written down, the published MX answer is what the policy has to
+# cover before enforce mode can be reached without losing mail, and the TLS-RPT record is the only
+# thing that reports a failed negotiation to anybody. Both shipping scripts answer this control
+# with a literal `Manual`, which is the one status a go-live gate cannot act on. Every lookup and
+# the policy fetch are reached only through the supplied seam, inside the one try
+# Get-BaselineEvidence runs, so a refusal from any of the four is recorded as an uncollected
+# observation rather than thrown - and no query and no request is issued by this module itself.
+$script:MtaStsObservation = @('MtaStsRecord', 'MtaStsPolicy', 'TlsRptRecord', 'MxRecord')
+
+function Get-MtaStsEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MtaStsRecordCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MtaStsPolicyCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$TlsRptRecordCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MxRecordCollection
+    )
+
+    if ($null -eq $MtaStsRecordCollection) {
+        throw 'MtaStsRecordCollectionRequired: EXO-011 cannot be observed without a collection that reaches the MTA-STS discovery record.'
+    }
+
+    if ($null -eq $MtaStsPolicyCollection) {
+        throw 'MtaStsPolicyCollectionRequired: EXO-011 cannot be observed without a collection that fetches the MTA-STS policy document.'
+    }
+
+    if ($null -eq $TlsRptRecordCollection) {
+        throw 'TlsRptRecordCollectionRequired: EXO-011 cannot be observed without a collection that reaches the TLS-RPT record.'
+    }
+
+    if ($null -eq $MxRecordCollection) {
+        throw 'MxRecordCollectionRequired: EXO-011 cannot be observed without a collection that reaches the published MX record.'
+    }
+
+    $collection = {
+        [ordered]@{
+            MtaStsRecord = (& $MtaStsRecordCollection)
+            MtaStsPolicy = (& $MtaStsPolicyCollection)
+            TlsRptRecord = (& $TlsRptRecordCollection)
+            MxRecord     = (& $MxRecordCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'EXO-011' -Source 'Dns' `
+        -Command 'Resolve-DnsName -Type TXT _mta-sts; Invoke-WebRequest mta-sts.txt; Resolve-DnsName -Type TXT _smtp._tls; Resolve-DnsName -Type MX' `
+        -Collection $collection
+}
+
+# EXO-011: the members each observed answer is decided by. Every DNS answer carries whether the
+# server that gave it was authoritative for the zone, because a recursive resolver answers from a
+# cache that can outlive the record by the whole of its time to live - and the record that was just
+# withdrawn is the one still cached, so a non-authoritative answer is wrong in the flattering
+# direction. The policy fetch carries how it was reached as well as what it returned, because a
+# document a sender could not fetch over authenticated HTTPS commits the domain to nothing.
+$script:MtaStsTxtDecidedMember = @('Authoritative', 'Strings')
+$script:MtaStsMxDecidedMember = @('Authoritative', 'NameExchange')
+$script:MtaStsPolicyDecidedMember = @('Scheme', 'TlsValidated', 'StatusCode', 'ContentType', 'Content')
+
+# RFC 8461 requires all four directives, and a sender that cannot parse one discards the whole
+# policy rather than applying the rest.
+$script:MtaStsPolicyDirective = @('version', 'mode', 'mx', 'max_age')
+
+$script:MtaStsAuthoritativeAnswer = @(
+    [pscustomobject]@{ Observation = 'MtaStsRecord'; Noun = 'MTA-STS discovery' }
+    [pscustomobject]@{ Observation = 'TlsRptRecord'; Noun = 'TLS-RPT' }
+    [pscustomobject]@{ Observation = 'MxRecord'; Noun = 'MX' }
+)
+
+# EXO-011: the four observations are decided together because each one on its own reports a domain
+# that is protected. A discovery record announces a policy nobody has read, a policy document
+# commits a domain nobody was told to check, MX coverage only matters once a policy exists, and a
+# TLS-RPT destination is the only place a failed negotiation is ever visible. Both shipping scripts
+# answer this control with a literal `Manual`; it is now decided from evidence, and an answer the
+# run could not collect or could not trust is `Error` rather than a silent pass. Everything a real
+# domain reports back that is not drift is normalized on both sides - a media type carrying a
+# charset parameter, policy keys in any casing separated by carriage returns, values padded with
+# whitespace, a host reported with the trailing root label, a wildcard MX pattern that covers the
+# host, and a TXT answer split across character strings because it outgrew one.
+function Test-MtaStsControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredTransportSecurityStateRequired: EXO-011 cannot be decided without the transport-security state the baseline resolved; an evaluator with no desired state decides the published policy against whatever it defaults to rather than against what was approved.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $resolve = {
+        param($Name)
+
+        $value = if ($Name -cin $declared) { Get-BaselineRecordMember -Node $DesiredState -Name $Name } else { $null }
+        if ($null -eq $value) {
+            throw "DesiredTransportSecurityMemberRequired: EXO-011 cannot be decided without a resolved '$Name' value; two values compared against the baseline and a third compared against nothing reads as a fully decided domain."
+        }
+
+        return $value
+    }
+
+    $desiredMode = & $resolve 'mtaStsMode'
+    $desiredMaxAge = & $resolve 'mtaStsMaxAgeSeconds'
+    $desiredTlsRptAddress = & $resolve 'tlsRptAddress'
+
+    $normalize = { param($Value) ([string]$Value).Trim().ToLowerInvariant() }
+
+    # DNS returns a host name with the trailing root label; a policy is written without it.
+    $normalizeHost = { param($Value) ([string]$Value).Trim().TrimEnd('.').ToLowerInvariant() }
+
+    # A TXT record longer than one character string comes back split at an arbitrary octet, and the
+    # record is the concatenation rather than any one of the pieces.
+    $joinStrings = {
+        param($Collection)
+
+        return (-join @(foreach ($item in @($Collection)) { [string]$item }))
+    }
+
+    # `v=STSv1; id=...` and `v=TLSRPTv1; rua=...` are both tag-value records.
+    $parseTag = {
+        param($Text)
+
+        $tag = [ordered]@{}
+        foreach ($part in ([string]$Text -split ';')) {
+            $trimmed = $part.Trim()
+            $split = $trimmed.IndexOf('=')
+            if ($split -lt 1) { continue }
+
+            $name = $trimmed.Substring(0, $split).Trim().ToLowerInvariant()
+            if ($tag.Contains($name)) { continue }
+
+            $tag[$name] = $trimmed.Substring($split + 1).Trim()
+        }
+
+        return $tag
+    }
+
+    # The policy document is `key: value` per line, and `mx` may appear more than once.
+    $parsePolicy = {
+        param($Text)
+
+        $directive = [ordered]@{}
+        foreach ($line in ([string]$Text -split "`r?`n")) {
+            $trimmed = $line.Trim()
+            $split = $trimmed.IndexOf(':')
+            if ($split -lt 1) { continue }
+
+            $name = $trimmed.Substring(0, $split).Trim().ToLowerInvariant()
+            if (-not $directive.Contains($name)) { $directive[$name] = [System.Collections.Generic.List[string]]::new() }
+
+            $directive[$name].Add($trimmed.Substring($split + 1).Trim())
+        }
+
+        return $directive
+    }
+
+    $covers = {
+        param($Pattern, $HostName)
+
+        $declaredPattern = & $normalizeHost $Pattern
+        if ($declaredPattern.StartsWith('*.')) {
+            $suffix = $declaredPattern.Substring(1)
+            return $HostName.EndsWith($suffix) -and $HostName.Length -gt $suffix.Length
+        }
+
+        return $HostName -ceq $declaredPattern
+    }
+
+    $observationName = $script:MtaStsObservation
+    $txtMember = $script:MtaStsTxtDecidedMember
+    $mxMember = $script:MtaStsMxDecidedMember
+    $policyMember = $script:MtaStsPolicyDecidedMember
+    $requiredDirective = $script:MtaStsPolicyDirective
+    $authoritativeAnswer = $script:MtaStsAuthoritativeAnswer
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "MtaStsEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        $discovery = Get-BaselineRecordMember -Node $payload -Name 'MtaStsRecord'
+        $policy = Get-BaselineRecordMember -Node $payload -Name 'MtaStsPolicy'
+        $tlsRpt = Get-BaselineRecordMember -Node $payload -Name 'TlsRptRecord'
+        $mx = Get-BaselineRecordMember -Node $payload -Name 'MxRecord'
+
+        foreach ($scope in @(
+                [pscustomobject]@{ Node = $discovery; Member = $txtMember; Noun = 'MTA-STS discovery record' }
+                [pscustomobject]@{ Node = $tlsRpt; Member = $txtMember; Noun = 'TLS-RPT record' }
+                [pscustomobject]@{ Node = $mx; Member = $mxMember; Noun = 'MX answer' }
+                [pscustomobject]@{ Node = $policy; Member = $policyMember; Noun = 'MTA-STS policy fetch' }
+            )) {
+            $observed = @()
+            if ($null -ne $scope.Node) { $observed = @(Get-BaselineRecordMemberName -Node $scope.Node) }
+
+            foreach ($name in $scope.Member) {
+                if ($name -cnotin $observed) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "MtaStsEvidenceIncomplete: the observed $($scope.Noun) carries no '$name' member."
+                    }
+                }
+            }
+        }
+
+        foreach ($answer in $authoritativeAnswer) {
+            $node = Get-BaselineRecordMember -Node $payload -Name $answer.Observation
+            if (Get-BaselineRecordMember -Node $node -Name 'Authoritative') { continue }
+
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "MtaStsEvidenceInconclusive: the $($answer.Noun) answer was not authoritative for the zone."
+            }
+        }
+
+        $finding = @(
+            $scheme = & $normalize (Get-BaselineRecordMember -Node $policy -Name 'Scheme')
+            if ($scheme -cne 'https') {
+                "the MTA-STS policy endpoint was reached over '$scheme' rather than 'https'"
+            }
+
+            if (-not (Get-BaselineRecordMember -Node $policy -Name 'TlsValidated')) {
+                'the MTA-STS policy endpoint did not present a TLS chain that validated'
+            }
+
+            $status = & $normalize (Get-BaselineRecordMember -Node $policy -Name 'StatusCode')
+            if ($status -cne '200') {
+                "the MTA-STS policy endpoint answered with status '$status' rather than '200'"
+            }
+
+            # A real endpoint serves `text/plain; charset=utf-8`, and the parameter is not drift.
+            $mediaType = & $normalize (([string](Get-BaselineRecordMember -Node $policy -Name 'ContentType')) -split ';')[0]
+            if ($mediaType -cne 'text/plain') {
+                "the MTA-STS policy endpoint answered with media type '$mediaType' rather than 'text/plain'"
+            }
+
+            $directive = & $parsePolicy (Get-BaselineRecordMember -Node $policy -Name 'Content')
+
+            foreach ($name in $requiredDirective) {
+                if (-not $directive.Contains($name)) {
+                    "the MTA-STS policy declares no '$name'"
+                }
+            }
+
+            if ($directive.Contains('version')) {
+                $declaredVersion = @($directive['version'])[0]
+                if ((& $normalize $declaredVersion) -cne 'stsv1') {
+                    "the MTA-STS policy declares 'version' as '$declaredVersion' where the standard requires 'STSv1'"
+                }
+            }
+
+            foreach ($pair in @(
+                    [pscustomobject]@{ Name = 'mode'; Want = $desiredMode }
+                    [pscustomobject]@{ Name = 'max_age'; Want = $desiredMaxAge }
+                )) {
+                if (-not $directive.Contains($pair.Name)) { continue }
+
+                $live = @($directive[$pair.Name])[0]
+                if ((& $normalize $live) -ceq (& $normalize $pair.Want)) { continue }
+
+                "the MTA-STS policy declares '{0}' as '{1}' where the baseline requires '{2}'" -f $pair.Name, $live, $pair.Want
+            }
+
+            $publishedHost = @(
+                foreach ($item in @(Get-BaselineRecordMember -Node $mx -Name 'NameExchange')) {
+                    $name = & $normalizeHost $item
+                    if (-not [string]::IsNullOrWhiteSpace($name)) { $name }
+                }
+            )
+
+            if ($publishedHost.Count -eq 0) {
+                # An empty answer makes every coverage comparison vacuously true.
+                'the domain publishes no MX host at all'
+            }
+            elseif ($directive.Contains('mx')) {
+                $pattern = @($directive['mx'])
+                foreach ($name in $publishedHost) {
+                    $covered = $false
+                    foreach ($declaredPattern in $pattern) {
+                        if (& $covers $declaredPattern $name) { $covered = $true; break }
+                    }
+
+                    if (-not $covered) { "the MTA-STS policy does not cover published MX host '$name'" }
+                }
+            }
+
+            $discoveryText = & $joinStrings (Get-BaselineRecordMember -Node $discovery -Name 'Strings')
+            if ([string]::IsNullOrWhiteSpace($discoveryText)) {
+                'the domain publishes no MTA-STS discovery record'
+            }
+            else {
+                $discoveryTag = & $parseTag $discoveryText
+                $declaredVersion = if ($discoveryTag.Contains('v')) { $discoveryTag['v'] } else { '' }
+                if ((& $normalize $declaredVersion) -cne 'stsv1') {
+                    "the MTA-STS discovery record declares 'v=$declaredVersion' where the standard requires 'v=STSv1'"
+                }
+
+                # The id is the only signal a sender has that the document changed.
+                $policyId = if ($discoveryTag.Contains('id')) { $discoveryTag['id'] } else { '' }
+                if ([string]::IsNullOrWhiteSpace($policyId)) {
+                    'the MTA-STS discovery record carries no policy id'
+                }
+            }
+
+            $tlsRptText = & $joinStrings (Get-BaselineRecordMember -Node $tlsRpt -Name 'Strings')
+            if ([string]::IsNullOrWhiteSpace($tlsRptText)) {
+                'the domain publishes no TLS-RPT record'
+            }
+            else {
+                $tlsRptTag = & $parseTag $tlsRptText
+                $declaredVersion = if ($tlsRptTag.Contains('v')) { $tlsRptTag['v'] } else { '' }
+                if ((& $normalize $declaredVersion) -cne 'tlsrptv1') {
+                    "the TLS-RPT record declares 'v=$declaredVersion' where the standard requires 'v=TLSRPTv1'"
+                }
+
+                $destination = if ($tlsRptTag.Contains('rua')) { $tlsRptTag['rua'] } else { '' }
+                if ((& $normalize $destination) -cne (& $normalize $desiredTlsRptAddress)) {
+                    "the TLS-RPT record reports its destination as '$destination' where the baseline requires '$desiredTlsRptAddress'"
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'TransportSecurityUnenforced: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'EXO-011' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-001: the Standard preset is applied by two rules, not one. The EOP rule scopes anti-spam,
+# anti-malware and anti-phishing; the ATP rule scopes Safe Links and Safe Attachments. A tenant can
+# hold one enabled and the other disabled or differently scoped, so both are observed together and
+# either command refusing makes the whole record uncollected. Every rule the tenant holds is
+# recorded, including the custom rules beside the preset rule, because a collector that filtered to
+# the preset rule would decide which rule the control is about before any evaluator saw the set.
+function Get-StandardPresetEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$EopRuleCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$AtpRuleCollection
+    )
+
+    if ($null -eq $EopRuleCollection) {
+        throw 'EopProtectionPolicyRuleCollectionRequired: MDO-001 cannot be observed without a collection that reaches the EOP protection policy rules.'
+    }
+
+    if ($null -eq $AtpRuleCollection) {
+        throw 'AtpProtectionPolicyRuleCollectionRequired: MDO-001 cannot be observed without a collection that reaches the ATP protection policy rules.'
+    }
+
+    $collection = {
+        [ordered]@{
+            EOPProtectionPolicyRule = @(& $EopRuleCollection)
+            ATPProtectionPolicyRule = @(& $AtpRuleCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-001' -Source 'ExchangeOnline' `
+        -Command 'Get-EOPProtectionPolicyRule; Get-ATPProtectionPolicyRule' -Collection $collection
+}
+
+# MDO-001: the name Exchange Online applies the Standard preset through, the two rule sets it is
+# applied by, and the five members each rule is decided on. A tenant holds these rules beside every
+# custom rule it has ever created, so the name is what separates the rule this control decides from
+# the rules it must leave alone.
+$script:StandardPresetRuleName = 'Standard Preset Security Policy'
+$script:StandardPresetObservation = @('EOPProtectionPolicyRule', 'ATPProtectionPolicyRule')
+$script:StandardPresetDecidedMember = @('Name', 'State', 'RecipientDomainIs', 'ExceptIfSentToMemberOf', 'ExceptIfSentTo')
+
+# The three scoping members, each paired with the desired-state member it is compared against and
+# the canonical kind that decides equality. Groups resolve to a primary SMTP address, which is why
+# the evaluator takes a resolution seam rather than comparing display names to addresses.
+$script:StandardPresetScopeComparison = @(
+    [pscustomobject]@{ Observed = 'RecipientDomainIs'; Desired = 'sentToDomains'; Kind = 'Domain' }
+    [pscustomobject]@{ Observed = 'ExceptIfSentToMemberOf'; Desired = 'excludedGroups'; Kind = 'Group' }
+    [pscustomobject]@{ Observed = 'ExceptIfSentTo'; Desired = 'excludedSecOpsMailbox'; Kind = 'SmtpAddress' }
+)
+
+# MDO-001: both halves of the Standard preset are decided together, because the EOP rule scopes
+# anti-spam, anti-malware and anti-phishing while the ATP rule alone scopes Safe Links and Safe
+# Attachments, and the two are enabled and scoped independently. The deployment script reports this
+# control as `Applied` on the strength of having called the preset cmdlets and the evidence script
+# reads it out of the configuration document, so neither establishes who the preset actually
+# reaches. Each scoping member is compared as a normalized set, so the casing, whitespace, trailing
+# root label, routing prefix, duplication and ordering Exchange Online reports back is never drift,
+# while a domain the preset never reaches and an exclusion nobody approved always is.
+function Test-StandardPresetControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$GroupResolver
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredStandardPresetStateRequired: MDO-001 cannot be decided without the Standard preset scope the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    if ($null -eq $GroupResolver) {
+        throw 'StandardPresetGroupResolverRequired: MDO-001 compares group exclusions as primary SMTP addresses, so it cannot be decided without a resolution seam; comparing an unresolved display name against a resolved address reads every correctly excluded group as drift.'
+    }
+
+    $ruleName = $script:StandardPresetRuleName
+    $observationName = $script:StandardPresetObservation
+    $decidedMember = $script:StandardPresetDecidedMember
+    $comparison = $script:StandardPresetScopeComparison
+    $resolver = $GroupResolver
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $desired = [ordered]@{}
+    foreach ($pair in $comparison) {
+        $desired[$pair.Observed] = if ($pair.Desired -cin $declared) { @(Get-BaselineRecordMember -Node $DesiredState -Name $pair.Desired) } else { @() }
+    }
+
+    if (@($desired['RecipientDomainIs']).Count -eq 0) {
+        throw 'DesiredStandardPresetScopeRequired: MDO-001 cannot be decided without at least one resolved recipient domain; a preset scoped to no domain protects nobody, and comparing a tenant against an empty scope passes exactly the tenant that turned the preset off for everyone.'
+    }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "StandardPresetEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        foreach ($name in $observationName) {
+            foreach ($rule in @(Get-BaselineRecordMember -Node $payload -Name $name)) {
+                $ruleMember = @(Get-BaselineRecordMemberName -Node $rule)
+                foreach ($decided in $decidedMember) {
+                    if ($decided -cnotin $ruleMember) {
+                        return [pscustomobject]@{
+                            Status = 'Error'
+                            Reason = "StandardPresetEvidenceIncomplete: an observed $name carries no '$decided' member."
+                        }
+                    }
+                }
+            }
+        }
+
+        $finding = @(
+            foreach ($name in $observationName) {
+                $preset = @(foreach ($rule in @(Get-BaselineRecordMember -Node $payload -Name $name)) {
+                        if (([string](Get-BaselineRecordMember -Node $rule -Name 'Name')).Trim() -ieq $ruleName) { $rule }
+                    })
+
+                if ($preset.Count -eq 0) {
+                    "the tenant holds no '$ruleName' rule among the $name rules"
+                    continue
+                }
+
+                foreach ($rule in $preset) {
+                    $state = ([string](Get-BaselineRecordMember -Node $rule -Name 'State')).Trim()
+                    if ($state -ine 'Enabled') {
+                        "the $name rule '$ruleName' is '$state' where 'Enabled' is required"
+                    }
+
+                    foreach ($pair in $comparison) {
+                        $actual = @(Get-BaselineRecordMember -Node $rule -Name $pair.Observed)
+                        $compared = if ($pair.Kind -ceq 'Group') {
+                            Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind -Resolver $resolver
+                        }
+                        else {
+                            Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind
+                        }
+
+                        foreach ($missing in @($compared.Missing)) {
+                            "the $name rule does not scope '$($pair.Observed)' to '$missing'"
+                        }
+
+                        foreach ($surplus in @($compared.Surplus)) {
+                            "the $name rule scopes '$($pair.Observed)' to unapproved '$surplus'"
+                        }
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'StandardPresetDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-001' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-002: the Strict preset is applied by the same two rules the Standard preset uses, under its
+# own name, and is targeted rather than scoped-and-excluded: it reaches the priority group and
+# nobody else. Both rule sets are observed together for the same reason as MDO-001, and every rule
+# the tenant holds is recorded so the evaluator, not the collector, decides which rule is the
+# Strict one.
+function Get-StrictPresetEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$EopRuleCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$AtpRuleCollection
+    )
+
+    if ($null -eq $EopRuleCollection) {
+        throw 'EopProtectionPolicyRuleCollectionRequired: MDO-002 cannot be observed without a collection that reaches the EOP protection policy rules.'
+    }
+
+    if ($null -eq $AtpRuleCollection) {
+        throw 'AtpProtectionPolicyRuleCollectionRequired: MDO-002 cannot be observed without a collection that reaches the ATP protection policy rules.'
+    }
+
+    $collection = {
+        [ordered]@{
+            EOPProtectionPolicyRule = @(& $EopRuleCollection)
+            ATPProtectionPolicyRule = @(& $AtpRuleCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-002' -Source 'ExchangeOnline' `
+        -Command 'Get-EOPProtectionPolicyRule; Get-ATPProtectionPolicyRule' -Collection $collection
+}
+
+# MDO-002: the name Exchange Online applies the Strict preset through, and the five members each
+# rule is decided on. The Strict preset is targeted rather than scoped-and-excluded, so the three
+# targeting members are compared against the priority group and against nothing at all.
+$script:StrictPresetRuleName = 'Strict Preset Security Policy'
+$script:StrictPresetObservation = @('EOPProtectionPolicyRule', 'ATPProtectionPolicyRule')
+$script:StrictPresetDecidedMember = @('Name', 'State', 'SentToMemberOf', 'SentTo', 'RecipientDomainIs')
+
+# `SentToMemberOf` carries the priority group the baseline resolved; the other two carry nobody,
+# because a Strict rule stretched over a recipient or a domain reaches a population that never
+# approved the most restrictive policy the tenant applies.
+$script:StrictPresetTargetComparison = @(
+    [pscustomobject]@{ Observed = 'SentToMemberOf'; Kind = 'Group' }
+    [pscustomobject]@{ Observed = 'SentTo'; Kind = 'SmtpAddress' }
+    [pscustomobject]@{ Observed = 'RecipientDomainIs'; Kind = 'Domain' }
+)
+
+# MDO-002: both halves of the Strict preset are decided together, because the EOP rule targets
+# anti-spam, anti-malware and anti-phishing while the ATP rule alone targets Safe Links and Safe
+# Attachments, and the two are enabled and targeted independently. The evidence script reads
+# `strictPresetEnabled` out of the configuration document, which establishes nothing about who the
+# preset actually reaches. Each targeting member is compared as a normalized set in both
+# directions, so the casing, whitespace, routing prefix, duplication and ordering Exchange Online
+# reports back is never drift, while a rule that reaches nobody and a rule that reaches everybody
+# always are.
+function Test-StrictPresetControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$GroupResolver
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredStrictPresetStateRequired: MDO-002 cannot be decided without the Strict preset target the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    if ($null -eq $GroupResolver) {
+        throw 'StrictPresetGroupResolverRequired: MDO-002 compares the priority group as a primary SMTP address, so it cannot be decided without a resolution seam; comparing an unresolved display name against a resolved address reads every correctly targeted rule as drift.'
+    }
+
+    $scopeGroup = 'scopeGroup'
+    if ($scopeGroup -cnotin @(Get-BaselineRecordMemberName -Node $DesiredState)) {
+        throw "DesiredStrictPresetGroupRequired: the resolved Defender state declares no '$scopeGroup'; the priority group is the entire target of the Strict preset, and comparing a tenant against no group at all passes exactly the tenant whose Strict rules reach nobody."
+    }
+
+    $ruleName = $script:StrictPresetRuleName
+    $observationName = $script:StrictPresetObservation
+    $decidedMember = $script:StrictPresetDecidedMember
+    $comparison = $script:StrictPresetTargetComparison
+    $resolver = $GroupResolver
+
+    $desired = [ordered]@{
+        SentToMemberOf    = @(Get-BaselineRecordMember -Node $DesiredState -Name $scopeGroup)
+        SentTo            = @()
+        RecipientDomainIs = @()
+    }
+
+    if (@($desired['SentToMemberOf']).Count -eq 0) {
+        throw "DesiredStrictPresetGroupRequired: the resolved Defender state resolves '$scopeGroup' to no group; the priority group is the entire target of the Strict preset, and comparing a tenant against no group at all passes exactly the tenant whose Strict rules reach nobody."
+    }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "StrictPresetEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        foreach ($name in $observationName) {
+            foreach ($rule in @(Get-BaselineRecordMember -Node $payload -Name $name)) {
+                $ruleMember = @(Get-BaselineRecordMemberName -Node $rule)
+                foreach ($decided in $decidedMember) {
+                    if ($decided -cnotin $ruleMember) {
+                        return [pscustomobject]@{
+                            Status = 'Error'
+                            Reason = "StrictPresetEvidenceIncomplete: an observed $name carries no '$decided' member."
+                        }
+                    }
+                }
+            }
+        }
+
+        $finding = @(
+            foreach ($name in $observationName) {
+                $preset = @(foreach ($rule in @(Get-BaselineRecordMember -Node $payload -Name $name)) {
+                        if (([string](Get-BaselineRecordMember -Node $rule -Name 'Name')).Trim() -ieq $ruleName) { $rule }
+                    })
+
+                if ($preset.Count -eq 0) {
+                    "the tenant holds no '$ruleName' rule among the $name rules"
+                    continue
+                }
+
+                foreach ($rule in $preset) {
+                    $state = ([string](Get-BaselineRecordMember -Node $rule -Name 'State')).Trim()
+                    if ($state -ine 'Enabled') {
+                        "the $name rule '$ruleName' is '$state' where 'Enabled' is required"
+                    }
+
+                    foreach ($pair in $comparison) {
+                        $actual = @(Get-BaselineRecordMember -Node $rule -Name $pair.Observed)
+                        $compared = if ($pair.Kind -ceq 'Group') {
+                            Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind -Resolver $resolver
+                        }
+                        else {
+                            Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind
+                        }
+
+                        foreach ($missing in @($compared.Missing)) {
+                            "the $name rule does not target '$($pair.Observed)' at '$missing'"
+                        }
+
+                        foreach ($surplus in @($compared.Surplus)) {
+                            "the $name rule targets '$($pair.Observed)' at unapproved '$surplus'"
+                        }
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'StrictPresetDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-002' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-003: built-in protection is applied by one always-on rule, and the only thing an operator can
+# change about it is who it stops reaching. Every rule the command returns is recorded, including
+# any rule beside the built-in one, because a collector that filtered to the built-in rule would
+# decide which rule the control is about before any evaluator saw the set.
+function Get-BuiltInProtectionEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$RuleCollection
+    )
+
+    if ($null -eq $RuleCollection) {
+        throw 'BuiltInProtectionRuleCollectionRequired: MDO-003 cannot be observed without a collection that reaches the built-in protection rule.'
+    }
+
+    $collection = {
+        [ordered]@{
+            ATPBuiltInProtectionRule = @(& $RuleCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-003' -Source 'ExchangeOnline' `
+        -Command 'Get-ATPBuiltInProtectionRule' -Collection $collection
+}
+
+# MDO-003: the name Exchange Online applies built-in protection through, the observation it is
+# applied by, and the five members the rule is decided on.
+$script:BuiltInProtectionRuleName = 'ATP Built-In Protection Rule'
+$script:BuiltInProtectionObservation = 'ATPBuiltInProtectionRule'
+$script:BuiltInProtectionDecidedMember = @('Name', 'State', 'ExceptIfSentTo', 'ExceptIfSentToMemberOf', 'ExceptIfRecipientDomainIs')
+
+# Every approved exception is granted on exactly one exclusion member, and each member is compared
+# under the canonical kind that decides equality for the values it carries. Keeping the approvals
+# separated by member is what stops a mailbox approved by name from approving the whole domain it
+# sits in, which is the broad exclusion the catalog forbids.
+$script:BuiltInProtectionExclusion = @(
+    [pscustomobject]@{ ExceptionType = 'Mailbox'; Observed = 'ExceptIfSentTo'; Kind = 'SmtpAddress' }
+    [pscustomobject]@{ ExceptionType = 'Group'; Observed = 'ExceptIfSentToMemberOf'; Kind = 'Group' }
+    [pscustomobject]@{ ExceptionType = 'Domain'; Observed = 'ExceptIfRecipientDomainIs'; Kind = 'Domain' }
+)
+
+# MDO-003: built-in protection is always on and cannot be scoped, so the only thing an operator can
+# change about it is who it stops reaching. The evidence script decides this control from two of
+# the three exclusion members and never reads `ExceptIfSentTo` at all, which passes a tenant that
+# has exempted every interesting mailbox individually. Each exclusion member is compared as a
+# normalized set against the approvals granted on that member, so the casing, whitespace, trailing
+# root label, routing prefix, duplication and ordering Exchange Online reports back is never drift,
+# while an exclusion nobody approved always is.
+function Test-BuiltInProtectionControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$GroupResolver
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredBuiltInProtectionStateRequired: MDO-003 cannot be decided without the exclusions the baseline approved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    if ($null -eq $GroupResolver) {
+        throw 'BuiltInProtectionGroupResolverRequired: MDO-003 compares group exclusions as primary SMTP addresses, so it cannot be decided without a resolution seam; comparing an unresolved display name against a resolved address reads every approved exclusion as drift.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    if ('exceptions' -cnotin $declared) {
+        throw 'DesiredBuiltInProtectionExceptionsRequired: the resolved built-in protection state declares no approved exclusion register; a baseline that approves nothing and a baseline that never declared the register read identically once the member is absent, and only one of them is a decision somebody made.'
+    }
+
+    $ruleName = $script:BuiltInProtectionRuleName
+    $observationName = $script:BuiltInProtectionObservation
+    $decidedMember = $script:BuiltInProtectionDecidedMember
+    $exclusion = $script:BuiltInProtectionExclusion
+    $resolver = $GroupResolver
+
+    $desired = [ordered]@{}
+    foreach ($pair in $exclusion) {
+        $desired[$pair.Observed] = @()
+    }
+
+    foreach ($entry in @(Get-BaselineRecordMember -Node $DesiredState -Name 'exceptions')) {
+        $exceptionType = [string](Get-BaselineRecordMember -Node $entry -Name 'exceptionType')
+        $granted = @($exclusion | Where-Object { $_.ExceptionType -ceq $exceptionType })
+        if ($granted.Count -ne 1) {
+            throw "UnknownBuiltInProtectionExceptionType: the baseline approves an exclusion of type '$exceptionType', which is not one of $(($exclusion.ExceptionType) -join ', '); an approval granted on a member the rule has no such exclusion for can never be matched."
+        }
+
+        $desired[$granted[0].Observed] = @($desired[$granted[0].Observed]) + [string](Get-BaselineRecordMember -Node $entry -Name 'value')
+    }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        if ($observationName -cnotin $present) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "BuiltInProtectionEvidenceIncomplete: the record carries no '$observationName' observation."
+            }
+        }
+
+        $observed = @(Get-BaselineRecordMember -Node $payload -Name $observationName)
+
+        foreach ($rule in $observed) {
+            $ruleMember = @(Get-BaselineRecordMemberName -Node $rule)
+            foreach ($decided in $decidedMember) {
+                if ($decided -cnotin $ruleMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "BuiltInProtectionEvidenceIncomplete: an observed $observationName carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        $builtIn = @(foreach ($rule in $observed) {
+                if (([string](Get-BaselineRecordMember -Node $rule -Name 'Name')).Trim() -ieq $ruleName) { $rule }
+            })
+
+        $finding = @(
+            if ($builtIn.Count -eq 0) {
+                "the tenant holds no '$ruleName'"
+            }
+
+            foreach ($rule in $builtIn) {
+                $state = ([string](Get-BaselineRecordMember -Node $rule -Name 'State')).Trim()
+                if ($state -ine 'Enabled') {
+                    "the rule '$ruleName' is '$state' where 'Enabled' is required"
+                }
+
+                foreach ($pair in $exclusion) {
+                    $actual = @(Get-BaselineRecordMember -Node $rule -Name $pair.Observed)
+                    $compared = if ($pair.Kind -ceq 'Group') {
+                        Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind -Resolver $resolver
+                    }
+                    else {
+                        Compare-NormalizedCollection -Desired $desired[$pair.Observed] -Actual $actual -Kind $pair.Kind
+                    }
+
+                    foreach ($missing in @($compared.Missing)) {
+                        "the rule does not exclude approved '$missing' under '$($pair.Observed)'"
+                    }
+
+                    foreach ($surplus in @($compared.Surplus)) {
+                        "the rule excludes unapproved '$surplus' under '$($pair.Observed)'"
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'BuiltInProtectionDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-003' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-009: impersonation protection of the priority identities lives on the anti-phish policies,
+# and a tenant holds several of them at once - preset, custom and retired. Every policy the command
+# returns is recorded, the disabled ones included, because a collector that kept only the enabled
+# policies would decide which policies count before any evaluator saw the set.
+function Get-PriorityAccountEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$AntiPhishPolicyCollection
+    )
+
+    if ($null -eq $AntiPhishPolicyCollection) {
+        throw 'AntiPhishPolicyCollectionRequired: MDO-009 cannot be observed without a collection that reaches the anti-phish policies.'
+    }
+
+    $collection = {
+        [ordered]@{
+            AntiPhishPolicy = @(& $AntiPhishPolicyCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-009' -Source 'ExchangeOnline' `
+        -Command 'Get-AntiPhishPolicy' -Collection $collection
+}
+
+# MDO-009: the observation impersonation protection is applied by, and the eight members each
+# policy is decided on. A list of protected identities is inert while the switch that applies it is
+# off, so the switches are decided beside the lists rather than assumed.
+$script:ImpersonationObservation = 'AntiPhishPolicy'
+$script:ImpersonationDecidedMember = @(
+    'Name', 'Enabled', 'EnableTargetedUserProtection', 'EnableTargetedDomainsProtection',
+    'TargetedUsersToProtect', 'TargetedDomainsToProtect', 'ExcludedSenders', 'ExcludedDomains'
+)
+
+# Each approved exception is granted on the one policy member it names, and each member is compared
+# under the canonical kind that decides equality for the values it carries. Keeping them separated
+# is what stops an approval for a laboratory subdomain approving the whole domain above it.
+$script:ImpersonationException = @(
+    [pscustomobject]@{ ExceptionType = 'TrustedSender'; Observed = 'ExcludedSenders'; Kind = 'SmtpAddress'; Noun = 'sender' }
+    [pscustomobject]@{ ExceptionType = 'TrustedDomain'; Observed = 'ExcludedDomains'; Kind = 'Domain'; Noun = 'domain' }
+)
+
+# MDO-009: who the tenant actually protects from impersonation. A tenant holds several anti-phish
+# policies at once and only the enabled ones reach a message, so the protection is read from the
+# enabled policies together: a priority identity must be protected by at least one of them, while
+# the custom protected domains and the trusted exceptions must match the register exactly in both
+# directions. Protecting somebody beyond the priority identities is protection rather than drift;
+# trusting a sender or a domain nobody approved is a standing exemption and always is.
+function Test-PriorityAccountControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredImpersonationProtectionStateRequired: MDO-009 cannot be decided without the impersonation protection the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+
+    $protectedUser = @()
+    if ('protectedUsers' -cin $declared) { $protectedUser = @(Get-BaselineRecordMember -Node $DesiredState -Name 'protectedUsers') }
+    if ($protectedUser.Count -eq 0) {
+        throw 'DesiredImpersonationProtectedUserRequired: MDO-009 cannot be decided without at least one resolved priority identity; protection that names nobody passes exactly the tenant that protects nobody.'
+    }
+
+    if ('approvedExceptions' -cnotin $declared) {
+        throw 'DesiredImpersonationExceptionsRequired: the resolved impersonation protection declares no approved exception register; a baseline that approves nothing and a baseline that never declared the register read identically once the member is absent, and only one of them is a decision somebody made.'
+    }
+
+    $protectedDomain = @()
+    if ('protectedDomains' -cin $declared) { $protectedDomain = @(Get-BaselineRecordMember -Node $DesiredState -Name 'protectedDomains') }
+
+    $exceptionContract = $script:ImpersonationException
+    $approved = [ordered]@{}
+    foreach ($pair in $exceptionContract) {
+        $approved[$pair.Observed] = @()
+    }
+
+    foreach ($entry in @(Get-BaselineRecordMember -Node $DesiredState -Name 'approvedExceptions')) {
+        $exceptionType = [string](Get-BaselineRecordMember -Node $entry -Name 'exceptionType')
+        $granted = @($exceptionContract | Where-Object { $_.ExceptionType -ceq $exceptionType })
+        if ($granted.Count -ne 1) {
+            throw "UnknownImpersonationExceptionType: the baseline approves an exception of type '$exceptionType', which is not one of $(($exceptionContract.ExceptionType) -join ', '); an approval granted on a member an anti-phish policy has no such exception for can never be matched."
+        }
+
+        $approved[$granted[0].Observed] = @($approved[$granted[0].Observed]) + [string](Get-BaselineRecordMember -Node $entry -Name 'value')
+    }
+
+    $observationName = $script:ImpersonationObservation
+    $decidedMember = $script:ImpersonationDecidedMember
+
+    # Exchange Online reports a protected user as 'Display Name;address', and the address is the
+    # only half of that the baseline names.
+    $addressOf = {
+        param($Entry)
+
+        $text = [string]$Entry
+        $separator = $text.LastIndexOf(';')
+
+        return $(if ($separator -ge 0) { $text.Substring($separator + 1) } else { $text })
+    }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        if ($observationName -cnotin $present) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "ImpersonationProtectionEvidenceIncomplete: the record carries no '$observationName' observation."
+            }
+        }
+
+        $observed = @(Get-BaselineRecordMember -Node $payload -Name $observationName)
+
+        foreach ($policy in $observed) {
+            $policyMember = @(Get-BaselineRecordMemberName -Node $policy)
+            foreach ($decided in $decidedMember) {
+                if ($decided -cnotin $policyMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "ImpersonationProtectionEvidenceIncomplete: an observed $observationName carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        $enabledPolicy = @(foreach ($policy in $observed) {
+                if ([bool](Get-BaselineRecordMember -Node $policy -Name 'Enabled')) { $policy }
+            })
+
+        if ($enabledPolicy.Count -eq 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ImpersonationProtectionDrift: the tenant holds no enabled anti-phish policy.'
+            }
+        }
+
+        $protectingUser = @(foreach ($policy in $enabledPolicy) {
+                if ([bool](Get-BaselineRecordMember -Node $policy -Name 'EnableTargetedUserProtection')) { $policy }
+            })
+        $protectingDomain = @(foreach ($policy in $enabledPolicy) {
+                if ([bool](Get-BaselineRecordMember -Node $policy -Name 'EnableTargetedDomainsProtection')) { $policy }
+            })
+
+        $observedUser = @(foreach ($policy in $protectingUser) {
+                foreach ($entry in @(Get-BaselineRecordMember -Node $policy -Name 'TargetedUsersToProtect')) { & $addressOf $entry }
+            })
+        $observedDomain = @(foreach ($policy in $protectingDomain) {
+                @(Get-BaselineRecordMember -Node $policy -Name 'TargetedDomainsToProtect')
+            })
+
+        $finding = @(
+            # Protecting an identity the baseline did not name is protection, not drift, so only
+            # the identities nobody protects are reported.
+            foreach ($missing in @((Compare-NormalizedCollection -Desired $protectedUser -Actual $observedUser -Kind 'SmtpAddress').Missing)) {
+                "no enabled policy protects '$missing' from user impersonation"
+            }
+
+            foreach ($missing in @((Compare-NormalizedCollection -Desired $protectedDomain -Actual $observedDomain -Kind 'Domain').Missing)) {
+                "no enabled policy protects the domain '$missing' from domain impersonation"
+            }
+
+            foreach ($policy in $protectingDomain) {
+                $policyName = ([string](Get-BaselineRecordMember -Node $policy -Name 'Name')).Trim()
+                $actual = @(Get-BaselineRecordMember -Node $policy -Name 'TargetedDomainsToProtect')
+                foreach ($surplus in @((Compare-NormalizedCollection -Desired $protectedDomain -Actual $actual -Kind 'Domain').Surplus)) {
+                    "the policy '$policyName' protects unapproved domain '$surplus'"
+                }
+            }
+
+            foreach ($pair in $exceptionContract) {
+                $observedException = @(foreach ($policy in $enabledPolicy) {
+                        @(Get-BaselineRecordMember -Node $policy -Name $pair.Observed)
+                    })
+
+                foreach ($missing in @((Compare-NormalizedCollection -Desired $approved[$pair.Observed] -Actual $observedException -Kind $pair.Kind).Missing)) {
+                    "no enabled policy trusts approved $($pair.Noun) '$missing'"
+                }
+
+                foreach ($policy in $enabledPolicy) {
+                    $policyName = ([string](Get-BaselineRecordMember -Node $policy -Name 'Name')).Trim()
+                    $actual = @(Get-BaselineRecordMember -Node $policy -Name $pair.Observed)
+                    foreach ($surplus in @((Compare-NormalizedCollection -Desired $approved[$pair.Observed] -Actual $actual -Kind $pair.Kind).Surplus)) {
+                        "the policy '$policyName' trusts unapproved $($pair.Noun) '$surplus'"
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'ImpersonationProtectionDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-009' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-004 and MDO-005 are both recorded by `Get-AtpPolicyForO365`, but they are two controls with
+# two entitlements, so each collects its own record. The whole policy is recorded either way: a
+# collector narrowed to the one member Safe Attachments is decided on would leave Safe Documents
+# with nothing to be decided from.
+$script:AtpPolicyObservation = 'AtpPolicyForO365'
+
+function Get-SafeAttachmentsEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$AtpPolicyCollection
+    )
+
+    if ($null -eq $AtpPolicyCollection) {
+        throw 'AtpPolicyCollectionRequired: MDO-004 cannot be observed without a collection that reaches the tenant ATP policy.'
+    }
+
+    $observationName = $script:AtpPolicyObservation
+    $collection = {
+        [ordered]@{
+            $observationName = @(& $AtpPolicyCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-004' -Source 'ExchangeOnline' `
+        -Command 'Get-AtpPolicyForO365' -Collection $collection
+}
+
+# MDO-004: Safe Attachments for SharePoint, OneDrive and Teams is one tenant-wide switch, and this
+# control owns that switch alone - the Safe Documents members sharing the same policy are MDO-005.
+# The switch is compared against the resolved state in both directions, because an evaluator that
+# only ever checked it was on would report a tenant compliant with a baseline it never read.
+function Test-SafeAttachmentsControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredSafeAttachmentsStateRequired: MDO-004 cannot be decided without the Safe Attachments state the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $decision = 'safeAttachmentsForSharePointOneDriveTeams'
+    if ($decision -cnotin @(Get-BaselineRecordMemberName -Node $DesiredState)) {
+        throw "DesiredSafeAttachmentsDecisionRequired: the resolved Defender state declares no '$decision'; a baseline that switched file scanning off and a baseline that never decided read identically once the member is absent, and only one of them is a decision somebody made."
+    }
+
+    $desired = [bool](Get-BaselineRecordMember -Node $DesiredState -Name $decision)
+    $observationName = $script:AtpPolicyObservation
+    $decidedMember = 'EnableATPForSPOTeamsODB'
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        if ($observationName -cnotin $present) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "SafeAttachmentsEvidenceIncomplete: the record carries no '$observationName' observation."
+            }
+        }
+
+        $observed = @(Get-BaselineRecordMember -Node $payload -Name $observationName)
+
+        foreach ($policy in $observed) {
+            if ($decidedMember -cnotin @(Get-BaselineRecordMemberName -Node $policy)) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "SafeAttachmentsEvidenceIncomplete: an observed $observationName carries no '$decidedMember' member."
+                }
+            }
+        }
+
+        # The ATP policy is one tenant-wide object. Deciding from whichever of several happened to
+        # be first would pick the verdict by ordering.
+        if ($observed.Count -gt 1) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "SafeAttachmentsEvidenceAmbiguous: the record carries $($observed.Count) $observationName observations where the tenant holds one."
+            }
+        }
+
+        if ($observed.Count -eq 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'SafeAttachmentsDrift: the tenant holds no ATP policy.'
+            }
+        }
+
+        $actual = [bool](Get-BaselineRecordMember -Node $observed[0] -Name $decidedMember)
+        if ($actual -ne $desired) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = "SafeAttachmentsDrift: '$decidedMember' is '$actual' where '$desired' is required."
+            }
+        }
+
+        return [pscustomobject]@{ Status = 'Pass' }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-004' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-005: the same command, collected again under its own control. The call is made whatever the
+# tenant is entitled to, because a collector that skipped it on an unentitled tenant would leave
+# the control with no observation to report `NotApplicable` from.
+function Get-SafeDocumentsEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$AtpPolicyCollection
+    )
+
+    if ($null -eq $AtpPolicyCollection) {
+        throw 'AtpPolicyCollectionRequired: MDO-005 cannot be observed without a collection that reaches the tenant ATP policy.'
+    }
+
+    $observationName = $script:AtpPolicyObservation
+    $collection = {
+        [ordered]@{
+            $observationName = @(& $AtpPolicyCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-005' -Source 'ExchangeOnline' `
+        -Command 'Get-AtpPolicyForO365' -Collection $collection
+}
+
+# MDO-005: Safe Documents is two decisions - the scanner is on, and a user cannot open a file it
+# called malicious anyway - and the Safe Attachments member sharing the policy is MDO-004 rather
+# than drift here. The SAFEDOCS entitlement verdict is supplied rather than inferred: an unlicensed
+# tenant and a licensed tenant that switched Safe Documents off report the same ATP policy, so an
+# evaluator reading entitlement out of the observation gets the other answer every time.
+function Test-SafeDocumentsControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$EntitlementVerdict
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredSafeDocumentsStateRequired: MDO-005 cannot be decided without the Safe Documents state the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $planDecision = 'requiredServicePlan'
+    $desiredPlan = ''
+    if ($planDecision -cin @(Get-BaselineRecordMemberName -Node $DesiredState)) {
+        $desiredPlan = [string](Get-BaselineRecordMember -Node $DesiredState -Name $planDecision)
+    }
+
+    if ([string]::IsNullOrWhiteSpace($desiredPlan)) {
+        throw "DesiredSafeDocumentsServicePlanRequired: the resolved Safe Documents state declares no '$planDecision'; the plan the baseline declares is the only thing that makes an entitlement verdict checkable, and an evaluator that accepts any verdict at all accepts one reached on a plan that grants nothing."
+    }
+
+    if ($null -eq $EntitlementVerdict) {
+        throw 'SafeDocumentsEntitlementVerdictRequired: MDO-005 cannot be decided without an independently verified entitlement verdict; an unlicensed tenant and a licensed tenant that switched Safe Documents off report the same ATP policy.'
+    }
+
+    $verdictPlan = [string](Get-BaselineRecordMember -Node $EntitlementVerdict -Name 'RequiredServicePlanName')
+    if ($verdictPlan -cne $desiredPlan) {
+        throw "SafeDocumentsEntitlementPlanMismatch: the entitlement verdict was reached on '$verdictPlan' where the baseline declares '$desiredPlan'; a verdict cleared on another plan and read as this one passes Safe Documents on a licence that does not include it."
+    }
+
+    $entitlementStatus = [string](Get-BaselineRecordMember -Node $EntitlementVerdict -Name 'Status')
+    $entitlementReason = [string](Get-BaselineRecordMember -Node $EntitlementVerdict -Name 'Reason')
+    $observationName = $script:AtpPolicyObservation
+    $decidedMember = [ordered]@{
+        EnableSafeDocs    = [bool](Get-BaselineRecordMember -Node $DesiredState -Name 'enabled')
+        AllowSafeDocsOpen = [bool](Get-BaselineRecordMember -Node $DesiredState -Name 'allowBypass')
+    }
+
+    $evaluator = {
+        param($Record)
+
+        if ($entitlementStatus -ceq 'NotEntitled') {
+            return [pscustomobject]@{
+                Status = 'NotApplicable'
+                Reason = "SafeDocumentsNotEntitled: $entitlementReason"
+            }
+        }
+
+        # A preflight that disagreed with itself answered neither entitled nor unentitled, and
+        # resolving that silence either way decides the control on a question nobody settled.
+        if ($entitlementStatus -cne 'Pass') {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "SafeDocumentsEntitlementUnresolved: $entitlementReason"
+            }
+        }
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        if ($observationName -cnotin $present) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "SafeDocumentsEvidenceIncomplete: the record carries no '$observationName' observation."
+            }
+        }
+
+        $observed = @(Get-BaselineRecordMember -Node $payload -Name $observationName)
+
+        foreach ($policy in $observed) {
+            $policyMember = @(Get-BaselineRecordMemberName -Node $policy)
+            foreach ($name in $decidedMember.Keys) {
+                if ($name -cnotin $policyMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "SafeDocumentsEvidenceIncomplete: an observed $observationName carries no '$name' member."
+                    }
+                }
+            }
+        }
+
+        # The ATP policy is one tenant-wide object. Deciding from whichever of several happened to
+        # be first would pick the verdict by ordering.
+        if ($observed.Count -gt 1) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "SafeDocumentsEvidenceAmbiguous: the record carries $($observed.Count) $observationName observations where the tenant holds one."
+            }
+        }
+
+        if ($observed.Count -eq 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'SafeDocumentsDrift: the tenant holds no ATP policy.'
+            }
+        }
+
+        foreach ($name in $decidedMember.Keys) {
+            $required = [bool]$decidedMember[$name]
+            $actual = [bool](Get-BaselineRecordMember -Node $observed[0] -Name $name)
+            if ($actual -ne $required) {
+                return [pscustomobject]@{
+                    Status = 'Fail'
+                    Reason = "SafeDocumentsDrift: '$name' is '$actual' where '$required' is required."
+                }
+            }
+        }
+
+        return [pscustomobject]@{ Status = 'Pass' }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-005' -Evidence $Evidence -Evaluator $evaluator
+}
+
 # COM-007: the one configuration source both entry scripts share. Deployment and evidence cannot
 # reach different desired state or different hashes because neither builds a configuration of its
 # own; each receives this context, resolved, schema-validated and hashed by the same code path.
@@ -4447,10 +6163,27 @@ Export-ModuleMember -Function @(
     'Get-ExternalSenderTagEvidence'
     'Test-ExternalSenderTagControl'
     'Get-RemoteDomainEvidence'
+    'Test-RemoteDomainControl'
+    'Get-ClientProtocolEvidence'
+    'Test-ClientProtocolControl'
     'Get-ExchangeRoleAssignmentEvidence'
     'Test-ExchangeRoleAssignmentControl'
     'Get-SmtpAuthenticationEvidence'
     'Test-SmtpAuthenticationControl'
+    'Get-MtaStsEvidence'
+    'Test-MtaStsControl'
+    'Get-StandardPresetEvidence'
+    'Test-StandardPresetControl'
+    'Get-StrictPresetEvidence'
+    'Test-StrictPresetControl'
+    'Get-BuiltInProtectionEvidence'
+    'Test-BuiltInProtectionControl'
+    'Get-PriorityAccountEvidence'
+    'Test-PriorityAccountControl'
+    'Get-SafeAttachmentsEvidence'
+    'Test-SafeAttachmentsControl'
+    'Get-SafeDocumentsEvidence'
+    'Test-SafeDocumentsControl'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'

@@ -6,6 +6,14 @@
   "INITIAL_ONMICROSOFT_DOMAIN": "contoso.onmicrosoft.example",
   "SECURITY_OPERATIONS_MAILBOX": "secops@contoso.example",
   "MAIL_ENABLED_PRIORITY_USERS_GROUP": "priority-users@contoso.example",
+  "IMPERSONATION_PROTECTED_USER_SMTP_ADDRESSES": [
+    "ceo@contoso.example",
+    "cfo@contoso.example"
+  ],
+  "IMPERSONATION_PROTECTED_CUSTOM_DOMAINS": [
+    "contoso.example"
+  ],
+  "TENANT_ALLOW_BLOCK_LIST_REGISTER_LOCATION": "https://contoso.example/itsm/registers/tenant-allow-block-list",
   "MICROSOFT_365_MX_TARGET": "contoso-example.mail.protection.outlook.com",
   "CENTRAL_SIEM_PLATFORM": "Microsoft Sentinel",
   "EXTERNAL_POSTMASTER_SMTP_ADDRESS": "postmaster@contoso.example",

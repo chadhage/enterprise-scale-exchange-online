@@ -80,7 +80,16 @@
     "defenderForOffice365": {
       "standardPreset": {
         "enabled": true,
-        "scope": "AllRecipientsExceptStrictAndSecOps"
+        "scope": "AllRecipientsExceptStrictAndSecOps",
+        "sentToDomains": [
+          "__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__"
+        ],
+        "excludedGroups": [
+          "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"
+        ],
+        "excludedSecOpsMailbox": [
+          "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+        ]
       },
       "strictPreset": {
         "enabled": true,
@@ -89,6 +98,16 @@
       "builtInProtection": {
         "enabled": true,
         "exceptions": []
+      },
+      "impersonationProtection": {
+        "enabled": true,
+        "protectedUsers": [
+          "__ADMIN_REQUIRED:IMPERSONATION_PROTECTED_USER_SMTP_ADDRESSES__"
+        ],
+        "protectedDomains": [
+          "__ADMIN_REQUIRED:IMPERSONATION_PROTECTED_CUSTOM_DOMAINS__"
+        ],
+        "approvedExceptions": []
       },
       "safeAttachmentsForSharePointOneDriveTeams": true,
       "safeDocuments": {
@@ -103,16 +122,45 @@
         "highRiskAccessLevel": "AdminOnlyAccess",
         "highRiskCategories": ["Malware", "HighConfidencePhish"],
         "endUserSpamNotificationFrequencyInDays": 1,
-        "includeMessagesFromBlockedSenderAddress": false
+        "includeMessagesFromBlockedSenderAddress": false,
+        "categoryPermissions": [
+          { "category": "Malware", "accessLevel": "AdminOnlyAccess" },
+          { "category": "HighConfidencePhish", "accessLevel": "AdminOnlyAccess" },
+          { "category": "Phish", "accessLevel": "LimitedAccess" },
+          { "category": "HighConfidenceSpam", "accessLevel": "LimitedAccess" },
+          { "category": "Spam", "accessLevel": "LimitedAccess" },
+          { "category": "Bulk", "accessLevel": "LimitedAccess" },
+          { "category": "SpoofIntelligence", "accessLevel": "LimitedAccess" }
+        ]
       },
       "userSubmissions": {
         "microsoftReportMessageButton": true,
         "sendReportedMessagesToMicrosoft": true,
-        "sendCopyToSecOpsMailbox": true
+        "sendCopyToSecOpsMailbox": true,
+        "reportingDestination": "MicrosoftAndCustomMailbox",
+        "reportingMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+      },
+      "advancedDelivery": {
+        "secOpsMailbox": [
+          "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+        ],
+        "phishingSimulationOverrides": []
       },
       "tenantAllowBlockList": {
+        "registerLocation": "__ADMIN_REQUIRED:TENANT_ALLOW_BLOCK_LIST_REGISTER_LOCATION__",
         "permanentAllowEntries": [],
-        "blockEntriesRequireExpiryAndTicket": true
+        "blockEntriesRequireExpiryAndTicket": true,
+        "allowEntryMaximumDurationDays": 30,
+        "blockEntryRetentionDays": 90,
+        "requiredEntryFields": [
+          "entryType",
+          "entryValue",
+          "owner",
+          "ticket",
+          "createdDateTime",
+          "expirationDateTime",
+          "justification"
+        ]
       }
     },
     "exchangeOnline": {
