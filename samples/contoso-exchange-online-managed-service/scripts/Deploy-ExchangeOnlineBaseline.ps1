@@ -132,7 +132,7 @@ function Set-PresetProtection {
 
     if (-not $Entitlement.AtpPresets) {
         Add-Outcome -Control 'MDO-001/MDO-002 (ATP)' -Status 'NotEntitled' `
-            -Detail "messagingTier is $($Entitlement.MessagingTier); Safe Links and Safe Attachments presets require Defender for Office 365"
+            -Detail ($Entitlement.Capability | Where-Object { $_.Name -eq 'AtpPresets' }).Reason
         return
     }
 
@@ -149,7 +149,7 @@ function Set-PresetProtection {
 }
 
 function Set-OrganizationControls {
-    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement)
+    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight)
 
     $state = $Configuration.desiredState
     $verb = if ($UseWhatIf) { 'Planned' } else { 'Applied' }
@@ -196,21 +196,30 @@ function Set-OrganizationControls {
             EnableATPForSPOTeamsODB = $state.defenderForOffice365.safeAttachmentsForSharePointOneDriveTeams
             WhatIf                  = $UseWhatIf
         }
-        if ($Entitlement.SafeDocuments) {
+        # LIC-009: a tenant-wide SAFEDOCS plan says nothing about whether every targeted user holds
+        # one, so the capability is configured only under the preflight verdict.
+        if ($null -ne $SafeDocumentsPreflight -and $SafeDocumentsPreflight.MayApply) {
             $atpParameters.EnableSafeDocs = $state.defenderForOffice365.safeDocuments.enabled
             $atpParameters.AllowSafeDocsOpen = $state.defenderForOffice365.safeDocuments.allowBypass
         }
         Set-AtpPolicyForO365 @atpParameters
         Add-Outcome -Control 'MDO-004' -Status $verb -Detail 'Safe Attachments for SharePoint, OneDrive, and Teams'
 
-        if (-not $Entitlement.SafeDocuments) {
-            Add-Outcome -Control 'MDO-005' -Status 'NotEntitled' `
-                -Detail "messagingTier is $($Entitlement.MessagingTier); Safe Documents requires Defender for Office 365 Plan 2 or the Defender suite"
+        if ($null -eq $SafeDocumentsPreflight -or -not $SafeDocumentsPreflight.MayApply) {
+            $preflightDetail = if ($null -eq $SafeDocumentsPreflight) {
+                'Safe Documents was not evaluated because no tenant evidence was collected.'
+            }
+            else {
+                $SafeDocumentsPreflight.Reason
+            }
+
+            $preflightStatus = if ($null -ne $SafeDocumentsPreflight -and $SafeDocumentsPreflight.Status -eq 'Fail') { 'Failed' } else { 'NotEntitled' }
+            Add-Outcome -Control 'MDO-005' -Status $preflightStatus -Detail $preflightDetail
         }
     }
     else {
         Add-Outcome -Control 'MDO-004/MDO-005' -Status 'NotEntitled' `
-            -Detail "messagingTier is $($Entitlement.MessagingTier); file protection requires Defender for Office 365"
+            -Detail ($Entitlement.Capability | Where-Object { $_.Name -eq 'SafeAttachmentsSpo' }).Reason
     }
 }
 
@@ -247,7 +256,7 @@ function Write-ManualControlPlan {
     }
     else {
         Add-Outcome -Control 'GOV-002/GOV-003/GOV-004' -Status 'NotEntitled' `
-            -Detail "complianceTier is $($Entitlement.ComplianceTier); DLP, retention, and hold require Microsoft 365 E3 or higher"
+            -Detail ($Entitlement.Capability | Where-Object { $_.Name -eq 'PurviewRetention' }).Reason
     }
 
     if ($Entitlement.AuditPremium) {
@@ -255,27 +264,78 @@ function Write-ManualControlPlan {
     }
     else {
         Add-Outcome -Control 'GOV-001' -Status 'NotEntitled' `
-            -Detail "complianceTier is $($Entitlement.ComplianceTier); audit retention beyond the standard period requires E5 Compliance"
+            -Detail ($Entitlement.Capability | Where-Object { $_.Name -eq 'AuditPremium' }).Reason
     }
 }
 
-$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath
-$configuration = $context.Configuration
-$entitlement = $context.Entitlement
-
+# LIC-008: DES-003 makes the runtime tenant service-plan inventory the only entitlement authority,
+# so the tenant is connected before the context is built. With no connection nothing is collected,
+# and the context then reports every capability unentitled rather than trusting a declared tier.
+$graphRequest = $null
 if (-not $SkipConnection) {
     Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
     Connect-ExchangeOnline -ShowBanner:$false
+
+    Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
+    Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome
+    $graphRequest = {
+        param($Resource)
+        Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/$Resource" -OutputType PSObject
+    }
 }
+
+$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
+$configuration = $context.Configuration
+$entitlement = $context.Entitlement
 
 $useWhatIf = -not $Apply
 $gatewayDeclared = $context.GatewayDeclared
 
 Write-Host "Profile:       $($configuration.metadata.deploymentProfile)"
 Write-Host "Gateway:       $(if ($gatewayDeclared) { $configuration.desiredState.mailFlow.gateway.vendor } else { 'none (Microsoft-native)' })"
-Write-Host "Licensing:     messaging=$($entitlement.MessagingTier) compliance=$($entitlement.ComplianceTier)"
+Write-Host "Licensing:     source=$($entitlement.Source) entitled=$(@($entitlement.Capability | Where-Object { $_.Entitled } | ForEach-Object { $_.Name }) -join ', ')"
+Write-Host "Not entitled:  $(if (@($entitlement.NotEntitled).Count -gt 0) { @($entitlement.NotEntitled) -join ', ' } else { 'none' })"
+Write-Host "Planned tiers: messaging=$($entitlement.DeclaredMessagingTier) compliance=$($entitlement.DeclaredComplianceTier) (planning metadata only)"
 Write-Host "Configuration: $($context.Algorithm.ToLowerInvariant()):$($context.Hash)"
 Write-Host "Mode:          $(if ($useWhatIf) { 'AUDIT / WHATIF' } else { 'APPLY' })"
+
+# LIC-009: Safe Documents takes effect tenant-wide but is licensed per user, so the tenant verdict
+# alone is not a licence to apply it. The population and its per-user SAFEDOCS assignments are
+# collected here, before any mutation, and the verdict itself is decided by the shared module. With
+# no connection nothing is collected and the capability is refused rather than assumed.
+$safeDocumentsPreflight = $null
+if ($null -ne $graphRequest) {
+    $recipient = @(
+        Get-Recipient -ResultSize Unlimited |
+            Where-Object { $_.ExternalDirectoryObjectId } |
+            ForEach-Object {
+                $directoryObject = & $graphRequest "users/$($_.ExternalDirectoryObjectId)"
+                [pscustomobject]@{
+                    userPrincipalName    = [string]$directoryObject.userPrincipalName
+                    primarySmtpAddress   = [string]$_.PrimarySmtpAddress
+                    recipientTypeDetails = [string]$_.RecipientTypeDetails
+                    userType             = if ([string]::IsNullOrWhiteSpace([string]$directoryObject.userType)) { 'Member' } else { [string]$directoryObject.userType }
+                    accountEnabled       = [bool]$directoryObject.accountEnabled
+                    isLicensed           = @($directoryObject.assignedLicenses).Count -gt 0
+                }
+            }
+    )
+
+    $population = Get-BaselineTargetPopulation -Recipient $recipient `
+        -StandardDomain @($configuration.administratorInputs.primaryDomain) `
+        -PriorityGroupMember @(Get-DistributionGroupMember -Identity $configuration.administratorInputs.priorityUsersGroup -ResultSize Unlimited | ForEach-Object { [string]$_.WindowsLiveID }) `
+        -ExcludedRecipient @($configuration.administratorInputs.securityOperationsMailbox)
+
+    $targetEntitlement = Get-BaselineTargetEntitlement -UserPrincipalName @($population.LicensingTarget) `
+        -RequiredServicePlan @($configuration.licensing.requiredServicePlans | Where-Object { $_.servicePlanName -eq 'SAFEDOCS' }) `
+        -GraphRequest $graphRequest
+
+    $safeDocumentsPreflight = Test-BaselineSafeDocumentsPreflight -Configuration $configuration `
+        -Entitlement $entitlement -TargetPopulation $population -TargetEntitlement $targetEntitlement
+
+    Write-Host "Safe Documents: $($safeDocumentsPreflight.Status) ($($safeDocumentsPreflight.Reason))"
+}
+
 Write-Host ''
 
 if ($gatewayDeclared) {
@@ -288,7 +348,7 @@ else {
 }
 
 Set-PresetProtection -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement
-Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement
+Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement -SafeDocumentsPreflight $safeDocumentsPreflight
 Set-DomainAuthentication -Configuration $configuration -UseWhatIf $useWhatIf -ActivateDkim $EnableDkim
 Write-ManualControlPlan -Configuration $configuration -Entitlement $entitlement
 

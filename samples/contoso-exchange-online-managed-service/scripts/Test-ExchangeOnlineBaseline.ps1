@@ -3,10 +3,11 @@
 .SYNOPSIS
     Tests live Exchange Online state and writes machine-readable evidence.
 .DESCRIPTION
-    Builds the shared baseline context to learn the deployment profile and licence
-    tier, then collects evidence for every control that the tenant is entitled to
-    run. Controls above the declared licence tier are reported as NotEntitled and
-    do not fail the run. Controls owned by another system are reported as Manual.
+    Builds the shared baseline context to learn the deployment profile and the
+    entitlement the tenant service-plan inventory reports, then collects evidence
+    for every control the tenant is entitled to run. Controls the tenant does not
+    hold an enabled service plan for are reported as NotEntitled and do not fail
+    the run. Controls owned by another system are reported as Manual.
 #>
 [CmdletBinding()]
 param(
@@ -28,33 +29,50 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
 
+# LIC-008: DES-003 makes the runtime tenant service-plan inventory the only entitlement authority,
+# so Graph is connected before the context is built and the same seam feeds both entry scripts.
+# With no connection nothing is collected and every capability is reported unentitled.
+$graphRequest = $null
+if (-not $SkipConnection) {
+    Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
+    Connect-ExchangeOnline -ShowBanner:$false
+
+    Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
+    Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome
+    $graphRequest = {
+        param($Resource)
+        Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/$Resource" -OutputType PSObject
+    }
+}
+
 # COM-007: evidence and deployment draw from this one context, so neither can evaluate a desired
 # state or report an identity the other never saw. Unresolved administrator inputs are rejected here.
-$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath
+$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
 $configuration = $context.Configuration
 $entitlement = $context.Entitlement
 
 $gatewayDeclared = $context.GatewayDeclared
-$messagingTier = $entitlement.MessagingTier
-$complianceTier = $entitlement.ComplianceTier
 $mdoLicensed = $entitlement.AtpPresets
 $safeDocsLicensed = $entitlement.SafeDocuments
 $purviewLicensed = $entitlement.PurviewRetention
-
-if (-not $SkipConnection) {
-    Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-    Connect-ExchangeOnline -ShowBanner:$false
-}
+$auditPremiumLicensed = $entitlement.AuditPremium
+$entitlementReason = @{}
+foreach ($capability in @($entitlement.Capability)) { $entitlementReason[$capability.Name] = $capability.Reason }
 
 New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $domain = $configuration.administratorInputs.primaryDomain
 
 $evidence = [ordered]@{
-    collectedAtUtc     = (Get-Date).ToUniversalTime().ToString('o')
-    deploymentProfile  = $configuration.metadata.deploymentProfile
-    configurationHash  = '{0}:{1}' -f $context.Algorithm.ToLowerInvariant(), $context.Hash
-    licensing          = [ordered]@{ messagingTier = $messagingTier; complianceTier = $complianceTier }
+    licensing          = [ordered]@{
+        entitlementSource      = $entitlement.Source
+        entitlementDetermined  = $entitlement.Determined
+        enabledServicePlanId   = @($entitlement.EnabledServicePlanId)
+        capability             = @($entitlement.Capability)
+        notEntitled            = @($entitlement.NotEntitled)
+        declaredMessagingTier  = $entitlement.DeclaredMessagingTier
+        declaredComplianceTier = $entitlement.DeclaredComplianceTier
+    }
     acceptedDomain     = Get-AcceptedDomain -Identity $domain | Select-Object Name, DomainName, DomainType
     transport          = Get-TransportConfig | Select-Object SmtpClientAuthenticationDisabled, ExternalPostmasterAddress
     organization       = Get-OrganizationConfig | Select-Object AuditDisabled, EwsEnabled, EwsAllowList
@@ -141,12 +159,12 @@ if ($mdoLicensed) {
         )
     }
     else {
-        Add-Check 'MDO-005 safeDocumentsNoBypass' 'NotEntitled' "messagingTier is $messagingTier"
+        Add-Check 'MDO-005 safeDocumentsNoBypass' 'NotEntitled' $entitlementReason['SafeDocuments']
     }
 }
 else {
     foreach ($control in 'MDO-003 builtInProtectionUnexcluded', 'MDO-004 filesProtectionEnabled', 'MDO-005 safeDocumentsNoBypass') {
-        Add-Check $control 'NotEntitled' "messagingTier is $messagingTier"
+        Add-Check $control 'NotEntitled' $entitlementReason['AtpPresets']
     }
 }
 
@@ -188,18 +206,84 @@ if ($purviewLicensed) {
 }
 else {
     foreach ($control in 'GOV-002 exchangeDlpPolicy', 'GOV-003 mailboxRetentionPolicy', 'GOV-004 litigationHoldPriorityUsers') {
-        Add-Check $control 'NotEntitled' "complianceTier is $complianceTier"
+        Add-Check $control 'NotEntitled' $entitlementReason['PurviewRetention']
     }
 }
-Add-Check 'GOV-001 auditRetention' $(if ($complianceTier -eq 'E5Compliance') { 'Manual' } else { 'NotEntitled' }) `
-    "complianceTier is $complianceTier"
+Add-Check 'GOV-001 auditRetention' $(if ($auditPremiumLicensed) { 'Manual' } else { 'NotEntitled' }) `
+    $entitlementReason['AuditPremium']
 
 $summary = [ordered]@{}
 $checks.Values | Group-Object { $_.status } | ForEach-Object { $summary[$_.Name] = $_.Count }
 
-$result = [ordered]@{ evidence = $evidence; checks = $checks; summary = $summary }
+# EVD-004: which control each raw observation belongs to, and the command that actually produced
+# it. The envelope carries evidence records rather than a blob, so every observation has to name a
+# control; a control this run does not observe is recorded as an uncollected record rather than
+# left out, because a missing member reads exactly like a control that was checked and found clean.
+$observation = [ordered]@{
+    'EXO-001'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-AcceptedDomain'; Key = @('acceptedDomain') }
+    'EXO-002'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-TransportConfig'; Key = @('transport') }
+    'EXO-004'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-HostedOutboundSpamFilterPolicy'; Key = @('outboundSpam') }
+    'EXO-005'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-TransportConfig'; Key = @('transport') }
+    'EXO-006'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-OrganizationConfig'; Key = @('organization') }
+    'EXO-007'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-ExternalInOutlook'; Key = @('externalInOutlook') }
+    'EXO-008'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-RemoteDomain'; Key = @('remoteDomain') }
+    'EXO-009'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-CASMailboxPlan'; Key = @('organization', 'casMailboxPlans') }
+    'EXO-010'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-RoleGroup'; Key = @('roleGroups') }
+    'MDO-001'  = [ordered]@{ Source = 'Defender'; Command = 'Get-EOPProtectionPolicyRule'; Key = @('standardEop', 'standardAtp') }
+    'MDO-002'  = [ordered]@{ Source = 'Defender'; Command = 'Get-EOPProtectionPolicyRule'; Key = @('strictEop', 'strictAtp') }
+    'MDO-003'  = [ordered]@{ Source = 'Defender'; Command = 'Get-ATPBuiltInProtectionRule'; Key = @('builtInProtection') }
+    'MDO-004'  = [ordered]@{ Source = 'Defender'; Command = 'Get-AtpPolicyForO365'; Key = @('atpGlobal') }
+    'MDO-005'  = [ordered]@{ Source = 'Defender'; Command = 'Get-AtpPolicyForO365'; Key = @('atpGlobal') }
+    'MDO-008'  = [ordered]@{ Source = 'Defender'; Command = 'Get-QuarantinePolicy'; Key = @('quarantineGlobal', 'quarantinePolicies') }
+    'AUTH-001' = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-DkimSigningConfig'; Key = @('dkim') }
+    'PP-001'   = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-InboundConnector'; Key = @('inboundConnector') }
+    'PP-002'   = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-InboundConnector'; Key = @('inboundConnector') }
+    'PP-003'   = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-OutboundConnector'; Key = @('outboundConnector') }
+    'PP-005'   = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-InboundConnector'; Key = @('partnerInboundConnectors') }
+    'BAD-001'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-TransportRule'; Key = @('bypassRules') }
+}
+
+$observed = foreach ($id in @($observation.Keys)) {
+    $declaration = $observation[$id]
+    $absent = @(@($declaration.Key) | Where-Object { -not $evidence.Contains($_) })
+    if ($absent.Count -gt 0) {
+        New-BaselineEvidence -ControlId $id -Source $declaration.Source -Command $declaration.Command -Value $null `
+            -Failed -FailureReason "CollectionNotRun: '$($absent -join "', '")' was not collected in this run."
+        continue
+    }
+
+    $payload = [ordered]@{}
+    foreach ($name in @($declaration.Key)) { $payload[$name] = $evidence[$name] }
+    New-BaselineEvidence -ControlId $id -Source $declaration.Source -Command $declaration.Command -Value $payload
+}
+
+$uncollected = foreach ($control in Get-BaselineControlRegistry) {
+    if ($observation.Contains($control.ControlId)) { continue }
+    New-BaselineEvidence -ControlId $control.ControlId -Source $control.EvidencePath.Split('.')[0] -Command $control.Collector -Value $null `
+        -Failed -FailureReason "CollectorNotRun: '$($control.Collector)' observes '$($control.ControlId)' and did not run."
+}
+
+# The check names carry the control they decide, so the verdicts reach the envelope through the
+# result contract instead of as free-form text nothing downstream can reason about.
+$verdict = foreach ($check in $checks.GetEnumerator()) {
+    $decided = ($check.Key -split '\s+', 2)[0]
+    $reason = $check.Value.detail
+    if ($check.Value.status -cne 'Pass' -and [string]::IsNullOrWhiteSpace($reason)) {
+        $reason = "$($check.Key) did not pass."
+    }
+
+    New-ControlResult -ControlId $decided -Status $check.Value.status -Reason $reason
+}
+
+$envelope = New-BaselineEvidenceEnvelope -Context $context `
+    -TenantId $configuration.administratorInputs.tenantId `
+    -OrganizationName $configuration.administratorInputs.organizationName `
+    -ParameterPath $ParameterPath `
+    -Evidence (@($observed) + @($uncollected)) `
+    -Check @($verdict)
+
 $resultPath = Join-Path $OutputPath "exchange-online-evidence-$timestamp.json"
-$result | ConvertTo-Json -Depth 20 | Set-Content -Path $resultPath -Encoding utf8
+$envelope | ConvertTo-Json -Depth 20 | Set-Content -Path $resultPath -Encoding utf8
 
 $checks.GetEnumerator() | ForEach-Object {
     $colour = switch ($_.Value.status) {

@@ -14,6 +14,13 @@ BeforeAll {
     )
     $script:SharedModuleName = 'ExchangeOnlineBaseline.Common.psm1'
 
+    # The boundary is tenant mutation. The shared module reaches no service of its own, so a
+    # `New-` verb it exports builds a local record and is read against the manifest rather than
+    # restated here, so an added export cannot silently become an unreviewed exemption.
+    $script:SharedModuleCommand = @(
+        [string[]](Import-PowerShellDataFile -LiteralPath (Join-Path $script:SampleRoot 'scripts' 'ExchangeOnlineBaseline.Common.psd1')).FunctionsToExport
+    )
+
     function Get-TenantMutatingCommand {
         [CmdletBinding()]
         param(
@@ -43,6 +50,7 @@ BeforeAll {
             if ($name -notmatch $verbPattern) { continue }
             if ($Matches['noun'] -in $script:LocalNouns) { continue }
             if ($name -in $localFunctions) { continue }
+            if ($name -in $script:SharedModuleCommand) { continue }
             $mutating.Add($name)
         }
 

@@ -31,6 +31,11 @@
         "servicePlanId": "bf6f5520-59e3-4f82-974b-7dbbc4fd27c7",
         "servicePlanName": "SAFEDOCS",
         "controls": ["MDO-005"]
+      },
+      {
+        "servicePlanId": "2f442157-a11c-46b9-ae5b-6e39ff4e5849",
+        "servicePlanName": "M365_ADVANCED_AUDITING",
+        "controls": ["GOV-001"]
       }
     ],
     "targetValidationMode": "TenantAndEveryTarget",
