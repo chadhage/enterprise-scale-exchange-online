@@ -46,6 +46,7 @@ function Add-Outcome {
 }
 
 function Set-InboundGatewayConnector {
+    [CmdletBinding(SupportsShouldProcess)]
     param([object]$Configuration, [bool]$UseWhatIf)
 
     $name = $Configuration.administratorInputs.gatewayInboundConnectorName
@@ -62,21 +63,28 @@ function Set-InboundGatewayConnector {
     }
 
     if (Get-InboundConnector -Identity $name -ErrorAction SilentlyContinue) {
-        Set-InboundConnector -Identity $name @parameters
+        if ($PSCmdlet.ShouldProcess($name, 'Set inbound connector')) {
+            Set-InboundConnector -Identity $name @parameters
+        }
     }
     else {
-        New-InboundConnector -Name $name @parameters
+        if ($PSCmdlet.ShouldProcess($name, 'Create inbound connector')) {
+            New-InboundConnector -Name $name @parameters
+        }
     }
 
     $filter = $Configuration.desiredState.mailFlow.enhancedFiltering
-    Set-InboundConnector -Identity $name -EFSkipLastIP $filter.skipLastIp `
-        -EFSkipIPs $filter.skipIpAddresses -EFUsers $null -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess($name, 'Set Enhanced Filtering for Connectors')) {
+        Set-InboundConnector -Identity $name -EFSkipLastIP $filter.skipLastIp `
+            -EFSkipIPs $filter.skipIpAddresses -EFUsers $null -WhatIf:$UseWhatIf
+    }
 
     Add-Outcome -Control 'PP-001/PP-002' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
         -Detail "Inbound connector '$name' with Enhanced Filtering"
 }
 
 function Set-OutboundGatewayConnector {
+    [CmdletBinding(SupportsShouldProcess)]
     param([object]$Configuration, [bool]$UseWhatIf)
 
     $name = $Configuration.administratorInputs.gatewayOutboundConnectorName
@@ -94,10 +102,14 @@ function Set-OutboundGatewayConnector {
     }
 
     if (Get-OutboundConnector -Identity $name -ErrorAction SilentlyContinue) {
-        Set-OutboundConnector -Identity $name @parameters
+        if ($PSCmdlet.ShouldProcess($name, 'Set outbound connector')) {
+            Set-OutboundConnector -Identity $name @parameters
+        }
     }
     else {
-        New-OutboundConnector -Name $name @parameters
+        if ($PSCmdlet.ShouldProcess($name, 'Create outbound connector')) {
+            New-OutboundConnector -Name $name @parameters
+        }
     }
 
     Add-Outcome -Control 'PP-003' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
@@ -105,6 +117,7 @@ function Set-OutboundGatewayConnector {
 }
 
 function Set-PresetProtection {
+    [CmdletBinding(SupportsShouldProcess)]
     param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement)
 
     $domain = $Configuration.administratorInputs.primaryDomain
@@ -121,12 +134,14 @@ function Set-PresetProtection {
         }
     }
 
-    Set-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
-        -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
-    Set-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
-        -WhatIf:$UseWhatIf
-    Enable-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
-    Enable-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('EOP Standard and Strict preset security policies', 'Scope and enable preset assignment')) {
+        Set-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
+            -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
+        Set-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
+            -WhatIf:$UseWhatIf
+        Enable-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
+        Enable-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'MDO-001/MDO-002' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
         -Detail 'EOP Standard and Strict preset assignment'
 
@@ -136,58 +151,79 @@ function Set-PresetProtection {
         return
     }
 
-    Set-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
-        -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
-    Set-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
-        -WhatIf:$UseWhatIf
-    Enable-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
-    Enable-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
-    Set-ATPBuiltInProtectionRule -Identity 'ATP Built-In Protection Rule' `
-        -ExceptIfRecipientDomainIs $null -ExceptIfSentTo $null -ExceptIfSentToMemberOf $null -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('ATP Standard and Strict preset security policies', 'Scope and enable preset assignment')) {
+        Set-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -RecipientDomainIs $domain `
+            -ExceptIfSentToMemberOf $priorityGroup -ExceptIfSentTo $secOps -WhatIf:$UseWhatIf
+        Set-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -SentToMemberOf $priorityGroup `
+            -WhatIf:$UseWhatIf
+        Enable-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' -WhatIf:$UseWhatIf
+        Enable-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' -WhatIf:$UseWhatIf
+    }
+    if ($PSCmdlet.ShouldProcess('ATP Built-In Protection Rule', 'Remove every exclusion')) {
+        Set-ATPBuiltInProtectionRule -Identity 'ATP Built-In Protection Rule' `
+            -ExceptIfRecipientDomainIs $null -ExceptIfSentTo $null -ExceptIfSentToMemberOf $null -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'MDO-001/MDO-002/MDO-003' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) `
         -Detail 'ATP preset assignment and unexcluded Built-in protection'
 }
 
 function Set-OrganizationControls {
+    [CmdletBinding(SupportsShouldProcess)]
     param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight)
 
     $state = $Configuration.desiredState
     $verb = if ($UseWhatIf) { 'Planned' } else { 'Applied' }
 
-    Set-TransportConfig -SmtpClientAuthenticationDisabled $state.exchangeOnline.smtpClientAuthenticationDisabled `
-        -ExternalPostmasterAddress $state.exchangeOnline.externalPostmasterAddress -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('Transport configuration', 'Disable SMTP client authentication and set the external postmaster')) {
+        Set-TransportConfig -SmtpClientAuthenticationDisabled $state.exchangeOnline.smtpClientAuthenticationDisabled `
+            -ExternalPostmasterAddress $state.exchangeOnline.externalPostmasterAddress -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'EXO-002/EXO-005' -Status $verb -Detail 'SMTP AUTH disabled, external postmaster set'
 
-    Set-HostedOutboundSpamFilterPolicy -Identity Default `
-        -AutoForwardingMode $state.exchangeOnline.automaticExternalForwarding -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('Default hosted outbound spam filter policy', 'Set automatic forwarding mode')) {
+        Set-HostedOutboundSpamFilterPolicy -Identity Default `
+            -AutoForwardingMode $state.exchangeOnline.automaticExternalForwarding -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'EXO-004' -Status $verb -Detail 'Automatic external forwarding Off'
 
-    Set-OrganizationConfig -AuditDisabled (-not $state.exchangeOnline.mailboxAuditingDefault) -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('Organization configuration', 'Enable default mailbox auditing')) {
+        Set-OrganizationConfig -AuditDisabled (-not $state.exchangeOnline.mailboxAuditingDefault) -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'EXO-006' -Status $verb -Detail 'Default mailbox auditing on'
 
     $externalId = $state.exchangeOnline.externalSenderIdentification
-    Set-ExternalInOutlook -Enabled $externalId.enabled -AllowList $externalId.allowList -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('External sender identification in Outlook', 'Enable and set the allow list')) {
+        Set-ExternalInOutlook -Enabled $externalId.enabled -AllowList $externalId.allowList -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'EXO-007' -Status $verb -Detail 'External sender identification enabled'
 
     $remote = $state.exchangeOnline.remoteDomainDefault
-    Set-RemoteDomain -Identity Default -AutoForwardEnabled $remote.autoForwardEnabled `
-        -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remote.allowedOOFType `
-        -DeliveryReportEnabled $remote.deliveryReportEnabled -NDREnabled $remote.nonDeliveryReportEnabled `
-        -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('Default remote domain', 'Harden forwarding, auto-reply, and reporting')) {
+        Set-RemoteDomain -Identity Default -AutoForwardEnabled $remote.autoForwardEnabled `
+            -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remote.allowedOOFType `
+            -DeliveryReportEnabled $remote.deliveryReportEnabled -NDREnabled $remote.nonDeliveryReportEnabled `
+            -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'EXO-008' -Status $verb -Detail 'Default remote domain hardened'
 
     $protocols = $state.exchangeOnline.protocolRestriction
-    Set-OrganizationConfig -EwsEnabled $protocols.ewsEnabled -EwsAllowList $protocols.ewsAllowList -WhatIf:$UseWhatIf
-    Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {
-        Set-CASMailboxPlan -Identity $_.Identity -PopEnabled $protocols.popEnabledByDefault `
-            -ImapEnabled $protocols.imapEnabledByDefault -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('Organization configuration', 'Restrict Exchange Web Services')) {
+        Set-OrganizationConfig -EwsEnabled $protocols.ewsEnabled -EwsAllowList $protocols.ewsAllowList -WhatIf:$UseWhatIf
+    }
+    if ($PSCmdlet.ShouldProcess('Every CAS mailbox plan', 'Disable POP and IMAP for new mailboxes')) {
+        Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {
+            Set-CASMailboxPlan -Identity $_.Identity -PopEnabled $protocols.popEnabledByDefault `
+                -ImapEnabled $protocols.imapEnabledByDefault -WhatIf:$UseWhatIf
+        }
     }
     Add-Outcome -Control 'EXO-009' -Status $verb -Detail 'EWS off, POP/IMAP off for new mailboxes'
 
     $quarantine = $state.defenderForOffice365.quarantinePolicies
-    Set-QuarantinePolicy -Identity DefaultGlobalTag `
-        -EndUserSpamNotificationFrequency (New-TimeSpan -Days $quarantine.endUserSpamNotificationFrequencyInDays) `
-        -WhatIf:$UseWhatIf
+    if ($PSCmdlet.ShouldProcess('DefaultGlobalTag quarantine policy', 'Set the end-user spam notification cadence')) {
+        Set-QuarantinePolicy -Identity DefaultGlobalTag `
+            -EndUserSpamNotificationFrequency (New-TimeSpan -Days $quarantine.endUserSpamNotificationFrequencyInDays) `
+            -WhatIf:$UseWhatIf
+    }
     Add-Outcome -Control 'MDO-008' -Status $verb `
         -Detail 'Global quarantine notification cadence set; preset policies keep Microsoft-managed quarantine tags'
 
@@ -202,7 +238,9 @@ function Set-OrganizationControls {
             $atpParameters.EnableSafeDocs = $state.defenderForOffice365.safeDocuments.enabled
             $atpParameters.AllowSafeDocsOpen = $state.defenderForOffice365.safeDocuments.allowBypass
         }
-        Set-AtpPolicyForO365 @atpParameters
+        if ($PSCmdlet.ShouldProcess('Safe Attachments for SharePoint, OneDrive, and Teams', 'Apply ATP policy for Office 365')) {
+            Set-AtpPolicyForO365 @atpParameters
+        }
         Add-Outcome -Control 'MDO-004' -Status $verb -Detail 'Safe Attachments for SharePoint, OneDrive, and Teams'
 
         if ($null -eq $SafeDocumentsPreflight -or -not $SafeDocumentsPreflight.MayApply) {
@@ -224,14 +262,19 @@ function Set-OrganizationControls {
 }
 
 function Set-DomainAuthentication {
+    [CmdletBinding(SupportsShouldProcess)]
     param([object]$Configuration, [bool]$UseWhatIf, [bool]$ActivateDkim)
 
     $domain = $Configuration.administratorInputs.primaryDomain
     if (-not (Get-DkimSigningConfig -Identity $domain -ErrorAction SilentlyContinue)) {
-        New-DkimSigningConfig -DomainName $domain -Enabled $false -KeySize 2048 -WhatIf:$UseWhatIf
+        if ($PSCmdlet.ShouldProcess($domain, 'Create a disabled DKIM signing configuration')) {
+            New-DkimSigningConfig -DomainName $domain -Enabled $false -KeySize 2048 -WhatIf:$UseWhatIf
+        }
     }
     if ($ActivateDkim) {
-        Set-DkimSigningConfig -Identity $domain -Enabled $true -WhatIf:$UseWhatIf
+        if ($PSCmdlet.ShouldProcess($domain, 'Enable DKIM signing')) {
+            Set-DkimSigningConfig -Identity $domain -Enabled $true -WhatIf:$UseWhatIf
+        }
         Add-Outcome -Control 'AUTH-001' -Status $(if ($UseWhatIf) { 'Planned' } else { 'Applied' }) -Detail 'DKIM signing enabled'
     }
     else {

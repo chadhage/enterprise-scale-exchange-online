@@ -165,6 +165,17 @@ Describe 'COM-004-A1 canonical JSON serialization' {
             $canonical | Should -BeExactly '{"hops":["second","first"]}'
         }
 
+        It 'does not lose the canonical text of an empty list' {
+            # Arrange
+            $document = @()
+
+            # Act
+            $canonical = ConvertTo-CanonicalJson -InputObject $document
+
+            # Assert
+            $canonical | Should -BeExactly '[]' -Because 'a document whose canonical text vanishes cannot be hashed, so an empty collection would seal to whatever the caller passed next'
+        }
+
         It 'does not produce different text for documents that differ only in member order' {
             # Arrange
             $ascending = [ordered]@{ alpha = 1; bravo = 2; charlie = 3 }

@@ -21,6 +21,18 @@ param(
 
     [string]$OutputPath = (Join-Path $PSScriptRoot '..\evidence'),
 
+    # GATE-001: the go-live request and everything a fail-closed decision has to be measured
+    # against. All four are optional, because an ordinary evidence run must stay able to collect
+    # without being asked to decide, and a gate that every run is forced through is a gate that
+    # gets switched off. None of them is read until GATE-003 wires the decision.
+    [switch]$GoLive,
+
+    [string]$RiskAcceptancePath,
+
+    [timespan]$MaximumEvidenceAge,
+
+    [string]$ExpectedConfigurationHash,
+
     [switch]$SkipConnection
 )
 
@@ -29,16 +41,36 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
 
+# GATE-004: every exit this command produces is resolved from the one contract, so an automation
+# caller can tell a configuration it can fix from a connection it can retry, a collection it can
+# rerun, a compliance gap it must escalate, an approval it must obtain, and a defect in this tool.
+# A run that reported all six as `1` told the caller none of that.
+$exitCode = Get-BaselineExitCodeContract
+
+# A fault nothing below anticipated is a defect in this tool rather than a finding about the
+# tenant, and reporting it as a finding sends the operator to fix a tenant that was never at fault.
+trap {
+    Write-Error "InternalFault: $($_.Exception.Message)" -ErrorAction Continue
+    exit $exitCode.Internal
+}
+
 # LIC-008: DES-003 makes the runtime tenant service-plan inventory the only entitlement authority,
 # so Graph is connected before the context is built and the same seam feeds both entry scripts.
 # With no connection nothing is collected and every capability is reported unentitled.
 $graphRequest = $null
 if (-not $SkipConnection) {
-    Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-    Connect-ExchangeOnline -ShowBanner:$false
+    try {
+        Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
+        Connect-ExchangeOnline -ShowBanner:$false
 
-    Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
-    Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome
+        Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
+        Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome
+    }
+    catch {
+        Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+        exit $exitCode.Connection
+    }
+
     $graphRequest = {
         param($Resource)
         Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/$Resource" -OutputType PSObject
@@ -47,9 +79,15 @@ if (-not $SkipConnection) {
 
 # COM-007: evidence and deployment draw from this one context, so neither can evaluate a desired
 # state or report an identity the other never saw. Unresolved administrator inputs are rejected here.
-$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
-$configuration = $context.Configuration
-$entitlement = $context.Entitlement
+try {
+    $context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
+    $configuration = $context.Configuration
+    $entitlement = $context.Entitlement
+}
+catch {
+    Write-Error "ConfigurationUnusable: $($_.Exception.Message)" -ErrorAction Continue
+    exit $exitCode.Configuration
+}
 
 $gatewayDeclared = $context.GatewayDeclared
 $mdoLicensed = $entitlement.AtpPresets
@@ -63,47 +101,55 @@ New-Item -ItemType Directory -Path $OutputPath -Force | Out-Null
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 $domain = $configuration.administratorInputs.primaryDomain
 
-$evidence = [ordered]@{
-    licensing          = [ordered]@{
-        entitlementSource      = $entitlement.Source
-        entitlementDetermined  = $entitlement.Determined
-        enabledServicePlanId   = @($entitlement.EnabledServicePlanId)
-        capability             = @($entitlement.Capability)
-        notEntitled            = @($entitlement.NotEntitled)
-        declaredMessagingTier  = $entitlement.DeclaredMessagingTier
-        declaredComplianceTier = $entitlement.DeclaredComplianceTier
+# A tenant this run could not read is a rerun the caller can act on, not a control it must escalate,
+# so every observation is taken inside one boundary that reports the collection fault on its own.
+try {
+    $evidence = [ordered]@{
+        licensing          = [ordered]@{
+            entitlementSource      = $entitlement.Source
+            entitlementDetermined  = $entitlement.Determined
+            enabledServicePlanId   = @($entitlement.EnabledServicePlanId)
+            capability             = @($entitlement.Capability)
+            notEntitled            = @($entitlement.NotEntitled)
+            declaredMessagingTier  = $entitlement.DeclaredMessagingTier
+            declaredComplianceTier = $entitlement.DeclaredComplianceTier
+        }
+        acceptedDomain     = Get-AcceptedDomain -Identity $domain | Select-Object Name, DomainName, DomainType
+        transport          = Get-TransportConfig | Select-Object SmtpClientAuthenticationDisabled, ExternalPostmasterAddress
+        organization       = Get-OrganizationConfig | Select-Object AuditDisabled, EwsEnabled, EwsAllowList
+        externalInOutlook  = @(Get-ExternalInOutlook | Select-Object Enabled, AllowList)
+        remoteDomain       = Get-RemoteDomain -Identity Default | Select-Object Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled
+        casMailboxPlans    = @(Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, PopEnabled, ImapEnabled)
+        outboundSpam       = Get-HostedOutboundSpamFilterPolicy -Identity Default | Select-Object Name, AutoForwardingMode
+        quarantineGlobal   = Get-QuarantinePolicy -Identity DefaultGlobalTag | Select-Object Name, EndUserSpamNotificationFrequency
+        quarantinePolicies = @(Get-QuarantinePolicy | Select-Object Name, EndUserQuarantinePermissionsValue, ESNEnabled)
+        dkim               = Get-DkimSigningConfig -Identity $domain | Select-Object Name, Enabled, Status, Selector1CNAME, Selector2CNAME, Selector1KeySize, Selector2KeySize
+        standardEop        = Get-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' | Select-Object Name, State, RecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
+        strictEop          = Get-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' | Select-Object Name, State, SentToMemberOf
+        roleGroups         = @(Get-RoleGroup -ResultSize Unlimited | Select-Object Name, Members)
+        bypassRules        = @(Get-TransportRule | Where-Object { $_.SetSCL -eq '-1' } | Select-Object Name, State, SetSCL)
     }
-    acceptedDomain     = Get-AcceptedDomain -Identity $domain | Select-Object Name, DomainName, DomainType
-    transport          = Get-TransportConfig | Select-Object SmtpClientAuthenticationDisabled, ExternalPostmasterAddress
-    organization       = Get-OrganizationConfig | Select-Object AuditDisabled, EwsEnabled, EwsAllowList
-    externalInOutlook  = @(Get-ExternalInOutlook | Select-Object Enabled, AllowList)
-    remoteDomain       = Get-RemoteDomain -Identity Default | Select-Object Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled
-    casMailboxPlans    = @(Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, PopEnabled, ImapEnabled)
-    outboundSpam       = Get-HostedOutboundSpamFilterPolicy -Identity Default | Select-Object Name, AutoForwardingMode
-    quarantineGlobal   = Get-QuarantinePolicy -Identity DefaultGlobalTag | Select-Object Name, EndUserSpamNotificationFrequency
-    quarantinePolicies = @(Get-QuarantinePolicy | Select-Object Name, EndUserQuarantinePermissionsValue, ESNEnabled)
-    dkim               = Get-DkimSigningConfig -Identity $domain | Select-Object Name, Enabled, Status, Selector1CNAME, Selector2CNAME, Selector1KeySize, Selector2KeySize
-    standardEop        = Get-EOPProtectionPolicyRule -Identity 'Standard Preset Security Policy' | Select-Object Name, State, RecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
-    strictEop          = Get-EOPProtectionPolicyRule -Identity 'Strict Preset Security Policy' | Select-Object Name, State, SentToMemberOf
-    roleGroups         = @(Get-RoleGroup -ResultSize Unlimited | Select-Object Name, Members)
-    bypassRules        = @(Get-TransportRule | Where-Object { $_.SetSCL -eq '-1' } | Select-Object Name, State, SetSCL)
-}
 
-if ($gatewayDeclared) {
-    $inboundName = $configuration.administratorInputs.gatewayInboundConnectorName
-    $outboundName = $configuration.administratorInputs.gatewayOutboundConnectorName
-    $evidence.inboundConnector = Get-InboundConnector -Identity $inboundName | Select-Object Name, Enabled, ConnectorType, RequireTls, SenderIPAddresses, EFSkipLastIP, EFSkipIPs, EFUsers
-    $evidence.outboundConnector = Get-OutboundConnector -Identity $outboundName | Select-Object Name, Enabled, ConnectorType, RecipientDomains, SmartHosts, TlsSettings, TlsDomain
-}
-else {
-    $evidence.partnerInboundConnectors = @(Get-InboundConnector | Where-Object { $_.ConnectorType -eq 'Partner' -and $_.Enabled } | Select-Object Name, SenderIPAddresses)
-}
+    if ($gatewayDeclared) {
+        $inboundName = $configuration.administratorInputs.gatewayInboundConnectorName
+        $outboundName = $configuration.administratorInputs.gatewayOutboundConnectorName
+        $evidence.inboundConnector = Get-InboundConnector -Identity $inboundName | Select-Object Name, Enabled, ConnectorType, RequireTls, SenderIPAddresses, EFSkipLastIP, EFSkipIPs, EFUsers
+        $evidence.outboundConnector = Get-OutboundConnector -Identity $outboundName | Select-Object Name, Enabled, ConnectorType, RecipientDomains, SmartHosts, TlsSettings, TlsDomain
+    }
+    else {
+        $evidence.partnerInboundConnectors = @(Get-InboundConnector | Where-Object { $_.ConnectorType -eq 'Partner' -and $_.Enabled } | Select-Object Name, SenderIPAddresses)
+    }
 
-if ($mdoLicensed) {
-    $evidence.atpGlobal = Get-AtpPolicyForO365 | Select-Object EnableATPForSPOTeamsODB, EnableSafeDocs, AllowSafeDocsOpen
-    $evidence.standardAtp = Get-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' | Select-Object Name, State, RecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
-    $evidence.strictAtp = Get-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' | Select-Object Name, State, SentToMemberOf
-    $evidence.builtInProtection = Get-ATPBuiltInProtectionRule | Select-Object Name, State, ExceptIfRecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
+    if ($mdoLicensed) {
+        $evidence.atpGlobal = Get-AtpPolicyForO365 | Select-Object EnableATPForSPOTeamsODB, EnableSafeDocs, AllowSafeDocsOpen
+        $evidence.standardAtp = Get-ATPProtectionPolicyRule -Identity 'Standard Preset Security Policy' | Select-Object Name, State, RecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
+        $evidence.strictAtp = Get-ATPProtectionPolicyRule -Identity 'Strict Preset Security Policy' | Select-Object Name, State, SentToMemberOf
+        $evidence.builtInProtection = Get-ATPBuiltInProtectionRule | Select-Object Name, State, ExceptIfRecipientDomainIs, ExceptIfSentTo, ExceptIfSentToMemberOf
+    }
+}
+catch {
+    Write-Error "CollectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+    exit $exitCode.Collection
 }
 
 $checks = [ordered]@{}
@@ -257,7 +303,11 @@ $observed = foreach ($id in @($observation.Keys)) {
     New-BaselineEvidence -ControlId $id -Source $declaration.Source -Command $declaration.Command -Value $payload
 }
 
-$uncollected = foreach ($control in Get-BaselineControlRegistry) {
+# The registry is returned as one collection, so it is enumerated through a variable: iterating the
+# command itself binds the whole registry to `$control` and the run faults before it decides anything.
+$registry = Get-BaselineControlRegistry
+
+$uncollected = foreach ($control in $registry) {
     if ($observation.Contains($control.ControlId)) { continue }
     New-BaselineEvidence -ControlId $control.ControlId -Source $control.EvidencePath.Split('.')[0] -Command $control.Collector -Value $null `
         -Failed -FailureReason "CollectorNotRun: '$($control.Collector)' observes '$($control.ControlId)' and did not run."
@@ -301,4 +351,17 @@ $summary.GetEnumerator() | ForEach-Object { Write-Host "$($_.Key): $($_.Value)" 
 Write-Host "Evidence written to $resultPath"
 
 $failed = @($checks.Values | Where-Object { $_.status -eq 'Fail' })
-if ($failed.Count -gt 0) { exit 1 }
+Write-Host "Failed: $($failed.Count)"
+
+# GATE-006 wires `Test-BaselineGoLive` in behind `-GoLive`. Until the signing pipeline exists no
+# run can produce signed evidence, so a decision asked for here could only ever refuse, and a flag
+# that always refuses is a flag operators route around. The seam reads the checks in the meantime.
+$goLiveDecision = $null
+
+# GATE-004: the run's exit is resolved by the seam and nowhere else. The previous `exit 1` fired on
+# `Fail` alone, so a control nobody could decide - a `Manual`, a `NotEntitled`, an `Error` - left
+# this command reporting success, which is a gate that passes every tenant it never looked at.
+$outcome = Get-BaselineRunOutcome -Check @($verdict) -GoLive $goLiveDecision
+Write-Host ("Outcome: {0} ({1}) {2}" -f $outcome.Outcome, $outcome.ExitCode, $outcome.Reason)
+
+exit $outcome.ExitCode

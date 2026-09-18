@@ -21,7 +21,6 @@ $script:DeploymentProfileName = @('MicrosoftNative', 'ThirdPartyGateway')
 $script:RiskAcceptanceRequiredMember = @(
     'ControlId'
     'TenantId'
-    'ConfigurationHash'
     'Owner'
     'Justification'
     'CompensatingControl'
@@ -1640,6 +1639,12 @@ function ConvertTo-CanonicalJson {
 
     $canonical = ConvertTo-CanonicalNode -Node $InputObject -Depth $Depth -Level 0
 
+    # An empty list leaves the pipeline empty, and ConvertTo-Json then emits nothing at all; a
+    # canonical text that vanishes cannot be hashed, so the empty array is written out directly.
+    if ($canonical -is [System.Collections.IList] -and $canonical.Count -eq 0) {
+        return '[]'
+    }
+
     return ($canonical | ConvertTo-Json -Depth $Depth -Compress)
 }
 
@@ -1922,6 +1927,69 @@ function Get-ControlApplicability {
     }
 }
 
+# GATE-002: the published schema an exception is held to before any semantic check reads it. A
+# document the schema refuses is refused as the wrong shape, rather than read as an acceptance
+# that happens to declare nothing - an absent member and a member the reader never looked for are
+# indistinguishable once the document is being interpreted rather than validated.
+$script:RiskAcceptanceSchemaPath = Join-Path $PSScriptRoot '..' 'config' 'risk-acceptance.schema.json'
+
+function Test-RiskAcceptanceDocument {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$RiskAcceptance,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$SchemaPath
+    )
+
+    if ($null -eq $RiskAcceptance) {
+        throw 'RiskAcceptanceNotProvided: a risk acceptance is required.'
+    }
+
+    if ($RiskAcceptance -is [string] -or $RiskAcceptance -is [System.Collections.IList] -or $RiskAcceptance.GetType().IsPrimitive) {
+        throw "RiskAcceptanceNotAnObject: a risk acceptance must be an object, but a value of type '$($RiskAcceptance.GetType().FullName)' was supplied."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($SchemaPath)) {
+        throw 'RiskAcceptanceSchemaPathRequired: an exception measured against no schema is an exception nobody reviewed.'
+    }
+
+    if (-not (Test-Path -LiteralPath $SchemaPath -PathType Leaf)) {
+        throw "RiskAcceptanceSchemaNotFound: no risk acceptance schema exists at '$SchemaPath'."
+    }
+
+    try {
+        $null = Get-Content -LiteralPath $SchemaPath -Raw | ConvertFrom-Json -ErrorAction Stop
+    }
+    catch {
+        throw "RiskAcceptanceSchemaJsonInvalid: '$SchemaPath' is not valid JSON. $($_.Exception.Message)"
+    }
+
+    # A schema that cannot be applied is a fault in this repository, not a fault in the document
+    # somebody submitted, so it is thrown rather than reported as a non-conforming acceptance.
+    $violation = [System.Collections.Generic.List[string]]::new()
+    try {
+        $null = Test-Json -Json ($RiskAcceptance | ConvertTo-Json -Depth 20) -SchemaFile $SchemaPath -ErrorAction Stop
+    }
+    catch {
+        if ($_.Exception.Message -like '*parse the JSON schema*') {
+            throw "RiskAcceptanceSchemaNotUsable: '$SchemaPath' is not a usable JSON Schema. $($_.Exception.Message)"
+        }
+
+        $violation.Add([string]$_.Exception.Message)
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Conforms   = ($violation.Count -eq 0)
+                SchemaPath = (Resolve-Path -LiteralPath $SchemaPath).ProviderPath
+                Violation  = @($violation)
+            }))
+}
+
 # GATE-002 field set, DES-005 authority and signature model. Every check fails closed: an
 # incomplete, misbound, unapproved, out-of-window or unsigned acceptance is simply not valid.
 function Test-RiskAcceptance {
@@ -1944,7 +2012,13 @@ function Test-RiskAcceptance {
         [string]$RequestedBy,
 
         [Parameter(Mandatory)]
-        [datetime]$AsOf
+        [datetime]$AsOf,
+
+        [AllowEmptyString()]
+        [string]$DeploymentProfile,
+
+        [AllowEmptyString()]
+        [string]$BaselineVersion
     )
 
     if ($null -eq $RiskAcceptance) {
@@ -1982,6 +2056,11 @@ function Test-RiskAcceptance {
         }
     }
 
+    $document = Test-RiskAcceptanceDocument -RiskAcceptance $RiskAcceptance -SchemaPath $script:RiskAcceptanceSchemaPath
+    if (-not $document.Conforms) {
+        return & $reject ("RiskAcceptanceSchemaViolation: the risk acceptance does not conform to '$($document.SchemaPath)'. $(@($document.Violation) -join ' ')")
+    }
+
     if ([string]$RiskAcceptance.ControlId -ne $ControlId) {
         return & $reject "ControlMismatch: the risk acceptance is raised for '$($RiskAcceptance.ControlId)', not '$ControlId'."
     }
@@ -1990,8 +2069,29 @@ function Test-RiskAcceptance {
         return & $reject "TenantMismatch: the risk acceptance is raised for another tenant."
     }
 
-    if ([string]$RiskAcceptance.ConfigurationHash -ne $ConfigurationHash) {
-        return & $reject 'ConfigurationHashMismatch: the risk acceptance is bound to another configuration.'
+    # An acceptance may be pinned to one resolved configuration by hash, or to a stated finite
+    # applicability instead. The schema guarantees one of the two is present. Where a hash is
+    # stated it is the tighter binding and is decided first, so a matching applicability can
+    # never excuse a hash raised against another configuration.
+    if ($RiskAcceptance.PSObject.Properties.Match('ConfigurationHash').Count -gt 0 -and -not (& $isEmpty $RiskAcceptance.ConfigurationHash)) {
+        if ([string]$RiskAcceptance.ConfigurationHash -ne $ConfigurationHash) {
+            return & $reject "ConfigurationHashMismatch: the risk acceptance is bound to configuration '$($RiskAcceptance.ConfigurationHash)', but this run resolved '$ConfigurationHash'."
+        }
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($DeploymentProfile) -or [string]::IsNullOrWhiteSpace($BaselineVersion)) {
+            return & $reject 'ApplicabilityRunContextRequired: the risk acceptance is bound by applicability, but this run states no deployment profile and baseline version to measure it against.'
+        }
+
+        $appliesTo = $RiskAcceptance.AppliesTo
+
+        if ([string]$appliesTo.DeploymentProfile -ne $DeploymentProfile) {
+            return & $reject "ApplicabilityProfileMismatch: the risk acceptance is bounded to deployment profile '$($appliesTo.DeploymentProfile)', but this run is '$DeploymentProfile'."
+        }
+
+        if ([string]$appliesTo.BaselineVersion -ne $BaselineVersion) {
+            return & $reject "ApplicabilityBaselineMismatch: the risk acceptance is bounded to baseline version '$($appliesTo.BaselineVersion)', but this run is '$BaselineVersion'."
+        }
     }
 
     if ([string]$RiskAcceptance.ApprovalAuthority -ne $script:RiskAcceptanceAuthority) {
@@ -2238,10 +2338,1465 @@ function Get-ApprovalSignatureContract {
     }
 }
 
-# EVD-001: the product of a collector and the only thing an evaluator is ever handed. A record is
-# raw: it carries the payload the service returned, the command that returned it, and when, and it
-# is frozen so nothing downstream can edit what was observed. It deliberately carries no verdict,
-# because a collector that decides is a collector whose decision nobody can re-examine.
+# SAFE-001: the six files a single change leaves behind, in the order the change makes them. Each
+# one is named after the change it belongs to, so a second change cannot overwrite the evidence of
+# the first, and none of them is optional: an artifact a run may skip is an artifact no audit can
+# rely on. The rollback is the one artifact that has to execute, so it is the one that is not JSON.
+function Get-BaselineChangeArtifactContract {
+    [CmdletBinding()]
+    param()
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                ChangeIdentifierPattern     = '^[A-Za-z0-9][A-Za-z0-9-]{0,63}\z'
+                ChangeIdentifierPlaceholder = '<id>'
+                Artifact                    = @(
+                    [ordered]@{ Artifact = 'Preview'; FileNameTemplate = 'preview-<id>.json'; Format = 'Json'; Sequence = 1; Required = $true }
+                    [ordered]@{ Artifact = 'Approval'; FileNameTemplate = 'approval-<id>.json'; Format = 'Json'; Sequence = 2; Required = $true }
+                    [ordered]@{ Artifact = 'PreChange'; FileNameTemplate = 'prechange-<id>.json'; Format = 'Json'; Sequence = 3; Required = $true }
+                    [ordered]@{ Artifact = 'Apply'; FileNameTemplate = 'apply-<id>.json'; Format = 'Json'; Sequence = 4; Required = $true }
+                    [ordered]@{ Artifact = 'Rollback'; FileNameTemplate = 'rollback-<id>.ps1'; Format = 'PowerShell'; Sequence = 5; Required = $true }
+                    [ordered]@{ Artifact = 'PostChange'; FileNameTemplate = 'postchange-<id>.json'; Format = 'Json'; Sequence = 6; Required = $true }
+                )
+            }))
+}
+
+# SAFE-001: the file names one change writes. The identifier is checked against the contract pattern
+# before it is ever substituted into a file name, because a separator, a parent-directory segment or
+# a drive qualifier that survives into the name is a write to wherever the caller pointed rather than
+# to the change directory. The pattern is anchored with \z so a trailing newline cannot slip through.
+function New-BaselineChangeArtifactSet {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ChangeId,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Root
+    )
+
+    $contract = Get-BaselineChangeArtifactContract
+    $pattern = [string]$contract.ChangeIdentifierPattern
+
+    if ([string]::IsNullOrWhiteSpace($ChangeId) -or $ChangeId -cnotmatch $pattern) {
+        throw "ChangeIdentifierNotRecognized: '$ChangeId' is not a change identifier; supply one matching $pattern."
+    }
+
+    $placeholder = [string]$contract.ChangeIdentifierPlaceholder
+    $rooted = -not [string]::IsNullOrWhiteSpace($Root)
+
+    $entries = foreach ($artifact in (@($contract.Artifact) | Sort-Object { [int]$_.Sequence })) {
+        $fileName = ([string]$artifact.FileNameTemplate).Replace($placeholder, $ChangeId)
+
+        [ordered]@{
+            Artifact = [string]$artifact.Artifact
+            FileName = $fileName
+            Path     = if ($rooted) { Join-Path $Root $fileName } else { $fileName }
+            Format   = [string]$artifact.Format
+            Sequence = [int]$artifact.Sequence
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node @($entries))
+}
+
+# SAFE-001: writing one artifact of a change to the place the set resolved for it. A JSON artifact
+# is written as canonical text so two runs of the same change produce the same bytes and the same
+# seal; the rollback is written exactly as it was handed over, because a script the writer
+# reformatted is a script nobody reviewed. An artifact the change has already emitted is refused
+# rather than replaced: a change that can rewrite its own preview is a change whose approved plan
+# is whatever it last wrote.
+function Write-BaselineChangeArtifact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ChangeId,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Artifact,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Root,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Content
+    )
+
+    $declared = @((Get-BaselineChangeArtifactContract).Artifact | ForEach-Object { [string]$_.Artifact })
+    if ([string]::IsNullOrWhiteSpace($Artifact) -or ($declared -cnotcontains $Artifact)) {
+        throw "ChangeArtifactNotDeclared: '$Artifact' is not a change artifact; supply one of $($declared -join ', ')."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Root)) {
+        throw 'ChangeArtifactRootNotSupplied: supply the directory the change writes its artifacts to.'
+    }
+
+    if ($null -eq $Content) {
+        throw "ChangeArtifactContentNotSupplied: the $Artifact artifact was handed no content to write."
+    }
+
+    $set = New-BaselineChangeArtifactSet -ChangeId $ChangeId -Root $Root
+    $entry = $null
+    foreach ($candidate in $set) {
+        if ([string]$candidate['Artifact'] -eq $Artifact) {
+            $entry = $candidate
+            break
+        }
+    }
+
+    $text = if ([string]$entry['Format'] -eq 'PowerShell') {
+        if ($Content -isnot [string]) {
+            throw "ChangeArtifactContentNotExecutable: the $Artifact artifact must be handed the script text it is to run, not a $($Content.GetType().Name)."
+        }
+
+        [string]$Content
+    }
+    else {
+        ConvertTo-CanonicalJson -InputObject (ConvertTo-BaselineHashableNode -Node $Content)
+    }
+
+    $path = [string]$entry['Path']
+    if (Test-Path -LiteralPath $path) {
+        throw "ChangeArtifactAlreadyEmitted: '$path' was already written by this change; a change does not rewrite its own evidence."
+    }
+
+    $directory = Split-Path -Parent $path
+    if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory -PathType Container)) {
+        New-Item -ItemType Directory -Path $directory -Force | Out-Null
+    }
+
+    $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($text)
+    [System.IO.File]::WriteAllBytes($path, $bytes)
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Artifact  = [string]$entry['Artifact']
+                FileName  = [string]$entry['FileName']
+                Path      = $path
+                Format    = [string]$entry['Format']
+                Sequence  = [int]$entry['Sequence']
+                Algorithm = 'SHA256'
+                Hash      = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+            }))
+}
+
+# Membership rather than value: a member that is present and null is a caller who said nothing
+# about it, and a member that is absent is a caller who never knew it was required. Both are
+# refused, but only a presence test can tell them apart from a member legitimately holding $false.
+function Test-BaselineNodeMember {
+    param(
+        [AllowNull()]
+        [object]$Node,
+
+        [Parameter(Mandatory)]
+        [string]$Name
+    )
+
+    if ($null -eq $Node) { return $false }
+
+    if ($Node -is [System.Collections.IDictionary]) {
+        return (@(foreach ($key in $Node.Keys) { [string]$key }) -ccontains $Name)
+    }
+
+    return ($Node.PSObject.Properties.Match($Name).Count -gt 0)
+}
+
+# SAFE-002: the version of the tool that produced an artifact, read from the shipped manifest
+# rather than from the loaded module, because the tests import the .psm1 directly and a module
+# loaded without its manifest reports no version at all.
+$script:BaselineToolVersion = $null
+
+function Get-BaselineToolVersion {
+    if ($null -eq $script:BaselineToolVersion) {
+        $manifestPath = Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psd1'
+        $script:BaselineToolVersion = [string](Import-PowerShellDataFile -LiteralPath $manifestPath).ModuleVersion
+    }
+
+    return $script:BaselineToolVersion
+}
+
+$script:BaselineChangeStateMember = @('Exists', 'Value')
+$script:BaselineChangeOperationMember = @('OperationId', 'Command', 'Identity', 'Before', 'After')
+
+# SAFE-002: the whole change, written down before any of it happens. Everything an approver needs
+# to decide is here and nothing is left for the run to fill in later: which tenant, which profile,
+# which resolved configuration by hash, every operation in the order it runs with the value the
+# object holds now and the value it will hold, what each operation waits on, when the plan was made
+# and when it stops being true. A dependency is resolved against the operations already declared
+# rather than against the whole set, because an operation that runs before the one it waits on is
+# applied to an object that does not exist yet, and a cycle can never be ordered at all.
+function New-BaselineChangePreview {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ChangeId,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Tenant,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Context,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Operation,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$GeneratedOn,
+
+        [AllowNull()]
+        [object]$ValidFor
+    )
+
+    $pattern = [string](Get-BaselineChangeArtifactContract).ChangeIdentifierPattern
+    if ([string]::IsNullOrWhiteSpace($ChangeId) -or $ChangeId -cnotmatch $pattern) {
+        throw "ChangeIdentifierNotRecognized: '$ChangeId' is not a change identifier; supply one matching $pattern."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Tenant)) {
+        throw 'ChangePreviewTenantNotSupplied: a preview must name the tenant the change is planned against.'
+    }
+
+    foreach ($required in @('DeploymentProfile', 'Algorithm', 'Hash')) {
+        $value = Get-BaselineRecordMember -Node $Context -Name $required
+        if (-not (Test-BaselineNodeMember -Node $Context -Name $required) -or [string]::IsNullOrWhiteSpace([string]$value)) {
+            throw "ChangePreviewContextNotRecognized: the supplied context carries no $required; pass the output of Get-BaselineContext."
+        }
+    }
+
+    $declaredOperation = @($Operation | Where-Object { $null -ne $_ })
+    if ($declaredOperation.Count -eq 0) {
+        throw 'ChangePreviewOperationNotSupplied: a preview of no operations approves every mutation the run later invents.'
+    }
+
+    if ($GeneratedOn -isnot [datetime] -and $GeneratedOn -isnot [datetimeoffset]) {
+        throw 'ChangePreviewGenerationTimeNotSupplied: a preview must record the instant it was built.'
+    }
+
+    $generated = if ($GeneratedOn -is [datetimeoffset]) { $GeneratedOn.UtcDateTime } else { $GeneratedOn.ToUniversalTime() }
+
+    $window = if ($null -eq $ValidFor) { [timespan]::FromHours(24) } else { [timespan]$ValidFor }
+    if ($window -le [timespan]::Zero) {
+        throw "ChangePreviewValidityNotUsable: a validity period of $window leaves no window an approval can be acted on inside."
+    }
+
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $entry = foreach ($candidate in $declaredOperation) {
+        foreach ($required in $script:BaselineChangeOperationMember) {
+            if (-not (Test-BaselineNodeMember -Node $candidate -Name $required)) {
+                throw "ChangePreviewOperationNotRecognized: an operation carries no $required; every planned mutation must state all of $($script:BaselineChangeOperationMember -join ', ')."
+            }
+        }
+
+        $operationId = [string](Get-BaselineRecordMember -Node $candidate -Name 'OperationId')
+        $command = [string](Get-BaselineRecordMember -Node $candidate -Name 'Command')
+        $identity = [string](Get-BaselineRecordMember -Node $candidate -Name 'Identity')
+
+        foreach ($name in @('OperationId', 'Command', 'Identity')) {
+            if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $candidate -Name $name))) {
+                throw "ChangePreviewOperationNotRecognized: an operation carries an empty $name; every planned mutation must state all of $($script:BaselineChangeOperationMember -join ', ')."
+            }
+        }
+
+        foreach ($stateName in @('Before', 'After')) {
+            $state = Get-BaselineRecordMember -Node $candidate -Name $stateName
+            foreach ($required in $script:BaselineChangeStateMember) {
+                if (-not (Test-BaselineNodeMember -Node $state -Name $required)) {
+                    throw "ChangePreviewStateNotRecognized: the $stateName state of operation '$operationId' carries no $required; a state that does not declare both is a state nothing can be restored to."
+                }
+            }
+        }
+
+        if (-not $seen.Add($operationId)) {
+            throw "ChangePreviewOperationNotUnique: operation identifier '$operationId' is declared more than once, so every dependency on it is ambiguous."
+        }
+
+        $dependsOn = @()
+        if (Test-BaselineNodeMember -Node $candidate -Name 'DependsOn') {
+            $dependsOn = @(Get-BaselineRecordMember -Node $candidate -Name 'DependsOn' | ForEach-Object { [string]$_ })
+        }
+
+        foreach ($dependency in $dependsOn) {
+            if ($dependency -ceq $operationId) {
+                throw "ChangePreviewDependencyNotResolvable: operation '$operationId' depends on itself, so it never runs."
+            }
+
+            if (-not $seen.Contains($dependency)) {
+                throw "ChangePreviewDependencyNotResolvable: operation '$operationId' depends on '$dependency', which the preview does not declare before it."
+            }
+        }
+
+        [ordered]@{
+            Sequence    = 0
+            OperationId = $operationId
+            Command     = $command
+            Identity    = $identity
+            Before      = ConvertTo-BaselineHashableNode -Node (Get-BaselineRecordMember -Node $candidate -Name 'Before')
+            After       = ConvertTo-BaselineHashableNode -Node (Get-BaselineRecordMember -Node $candidate -Name 'After')
+            DependsOn   = $dependsOn
+        }
+    }
+
+    $entry = @($entry)
+    for ($index = 0; $index -lt $entry.Count; $index++) { $entry[$index]['Sequence'] = $index + 1 }
+
+    $schemaVersion = [string](@((Get-ArtifactVersionContract).Artifact) | Where-Object { [string]$_.Artifact -eq 'Preview' }).SchemaVersion
+    $invariant = [System.Globalization.CultureInfo]::InvariantCulture
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                SchemaVersion          = $schemaVersion
+                ChangeId               = $ChangeId
+                Tenant                 = $Tenant
+                DeploymentProfile      = [string](Get-BaselineRecordMember -Node $Context -Name 'DeploymentProfile')
+                ConfigurationAlgorithm = [string](Get-BaselineRecordMember -Node $Context -Name 'Algorithm')
+                ConfigurationHash      = [string](Get-BaselineRecordMember -Node $Context -Name 'Hash')
+                Operation              = $entry
+                GeneratedOn            = $generated.ToString('o', $invariant)
+                ExpiresOn              = $generated.Add($window).ToString('o', $invariant)
+                ToolVersion            = Get-BaselineToolVersion
+            }))
+}
+
+$script:BaselineChangeApprovalPreviewMember = @('SchemaVersion', 'ChangeId', 'Tenant', 'DeploymentProfile', 'ConfigurationAlgorithm', 'ConfigurationHash', 'Operation', 'GeneratedOn', 'ExpiresOn', 'ToolVersion')
+$script:BaselineChangeApprovalMember = @('SchemaVersion', 'ChangeId', 'Tenant', 'DeploymentProfile', 'PreviewHash', 'ApprovalIdentity', 'ApprovalAuthority', 'ApprovalTimeUtc', 'Signature')
+
+# DES-005: the one role whose approval admits a change into Exchange Online. Anyone else's
+# sign-off is a record that somebody looked, not an authorisation to mutate a tenant.
+$script:BaselineChangeApprovalAuthority = 'ExchangeOnlineChangeApproval'
+
+# SAFE-003: one artifact read off disk and held to its declared member set. The bytes are hashed
+# before they are parsed, because the approval binds to the bytes rather than to the document a
+# parser reconstructed from them. A document short of any required member is unreadable as a
+# whole rather than member by member, so an operator is handed one refusal naming everything
+# missing instead of a queue of them.
+function Read-BaselineChangeApprovalArtifact {
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Path,
+
+        [Parameter(Mandatory)]
+        [string[]]$Member
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        return @{ Fault = 'NotSupplied'; Detail = ''; Document = $null; Hash = $null }
+    }
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return @{ Fault = 'NotFound'; Detail = $Path; Document = $null; Hash = $null }
+    }
+
+    $bytes = [System.IO.File]::ReadAllBytes($Path)
+    $hash = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    $text = [System.Text.UTF8Encoding]::new($false).GetString($bytes)
+
+    $document = $null
+    try { $document = $text | ConvertFrom-Json -Depth 64 } catch { $document = $null }
+
+    if ($null -eq $document -or $document -is [string] -or $document -is [System.Collections.IList] -or $document -is [valuetype]) {
+        return @{ Fault = 'NotReadable'; Detail = "'$Path' does not parse as a JSON document"; Document = $null; Hash = $hash }
+    }
+
+    $missing = @(foreach ($name in $Member) {
+            $value = Get-BaselineRecordMember -Node $document -Name $name
+            if (-not (Test-BaselineNodeMember -Node $document -Name $name) -or
+                $null -eq $value -or
+                ($value -is [string] -and [string]::IsNullOrWhiteSpace($value))) {
+                $name
+            }
+        })
+
+    if ($missing.Count -gt 0) {
+        return @{ Fault = 'NotReadable'; Detail = "'$Path' carries no $($missing -join ', ')"; Document = $null; Hash = $hash }
+    }
+
+    return @{ Fault = $null; Detail = ''; Document = $document; Hash = $hash }
+}
+
+# SAFE-003: the gate an apply has to get through, and the only thing that separates a reviewed
+# change from a change invented at run time. The approval is bound to the preview by the hash of
+# the preview's bytes on disk, so a plan edited after it was signed is a plan nobody approved; the
+# preview is bound to this run by the tenant, the deployment profile and the configuration hash
+# the run actually resolved, so an approval cannot be carried across tenants, across profiles or
+# across a configuration that moved after review. Every refusal is collected rather than thrown,
+# because an operator handed one blocker at a time has to run the whole gate again to learn what
+# else was already wrong, and the decision is immutable, because a verdict a caller can rewrite is
+# a gate that permits whatever the caller wanted.
+function Test-BaselineChangeApproval {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$PreviewPath,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ApprovalPath,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Tenant,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$DeploymentProfile,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ConfigurationHash,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$RequestedBy,
+
+        [AllowNull()]
+        [object]$AsOf
+    )
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+
+    $preview = Read-BaselineChangeApprovalArtifact -Path $PreviewPath -Member $script:BaselineChangeApprovalPreviewMember
+    switch ($preview.Fault) {
+        'NotSupplied' { $finding.Add('ChangeApprovalPreviewPathNotSupplied: supply the preview the apply is to be held to; an apply with no plan to point at is an apply from configuration alone.') }
+        'NotFound' { $finding.Add("ChangeApprovalPreviewNotFound: '$($preview.Detail)' names no preview, so there is nothing to check the approval against.") }
+        'NotReadable' { $finding.Add("ChangeApprovalPreviewNotReadable: $($preview.Detail); a file the gate cannot read is a plan the gate cannot hold the run to.") }
+    }
+
+    $approval = Read-BaselineChangeApprovalArtifact -Path $ApprovalPath -Member $script:BaselineChangeApprovalMember
+    switch ($approval.Fault) {
+        'NotSupplied' { $finding.Add('ChangeApprovalPathNotSupplied: supply the approval that admits this change; a plan nobody signed is a plan nobody approved.') }
+        'NotFound' { $finding.Add("ChangeApprovalNotFound: '$($approval.Detail)' names no approval; a missing approval is a refusal, not an absence of opinion.") }
+        'NotReadable' { $finding.Add("ChangeApprovalNotReadable: $($approval.Detail); an approval the gate cannot read grants nothing.") }
+    }
+
+    $changeId = ''
+
+    if ($null -ne $preview.Document -and $null -ne $approval.Document) {
+        $changeId = [string](Get-BaselineRecordMember -Node $preview.Document -Name 'ChangeId')
+        $previewTenant = [string](Get-BaselineRecordMember -Node $preview.Document -Name 'Tenant')
+        $previewProfile = [string](Get-BaselineRecordMember -Node $preview.Document -Name 'DeploymentProfile')
+        $previewHash = [string](Get-BaselineRecordMember -Node $preview.Document -Name 'ConfigurationHash')
+        $expiresOn = Get-BaselineRecordMember -Node $preview.Document -Name 'ExpiresOn'
+
+        $approvedHash = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'PreviewHash')
+        if ($approvedHash -ne [string]$preview.Hash) {
+            $finding.Add("ChangeApprovalPreviewTampered: the approval was raised over preview $approvedHash and '$PreviewPath' now hashes to $($preview.Hash); a preview edited after it was signed is a plan nobody approved.")
+        }
+
+        $approvedChangeId = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ChangeId')
+        if ($approvedChangeId -ne $changeId) {
+            $finding.Add("ChangeApprovalChangeMismatch: the approval names change '$approvedChangeId' and the preview plans change '$changeId'.")
+        }
+
+        $approvedTenant = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'Tenant')
+        if ($approvedTenant -ne $previewTenant) {
+            $finding.Add("ChangeApprovalTenantMismatch: the approval names tenant '$approvedTenant' and the preview plans against '$previewTenant'.")
+        }
+        elseif ($previewTenant -ne [string]$Tenant) {
+            $finding.Add("ChangeApprovalTenantMismatch: the preview plans against tenant '$previewTenant' and this run is connected to '$Tenant'.")
+        }
+
+        $approvedProfile = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'DeploymentProfile')
+        if ($approvedProfile -ne $previewProfile) {
+            $finding.Add("ChangeApprovalProfileMismatch: the approval names deployment profile '$approvedProfile' and the preview plans profile '$previewProfile'.")
+        }
+        elseif ($previewProfile -ne [string]$DeploymentProfile) {
+            $finding.Add("ChangeApprovalProfileMismatch: the preview plans deployment profile '$previewProfile' and this run resolved '$DeploymentProfile'.")
+        }
+
+        if ($previewHash -ne [string]$ConfigurationHash) {
+            $finding.Add("ChangeApprovalConfigurationMismatch: the preview was built over configuration $previewHash and this run resolved $ConfigurationHash; a configuration edited after approval turns an approved plan into an unreviewed one.")
+        }
+
+        $decisionInstant = if ($AsOf -is [datetimeoffset]) { $AsOf.UtcDateTime }
+        elseif ($AsOf -is [datetime]) { ([datetime]$AsOf).ToUniversalTime() }
+        else { [datetime]::UtcNow }
+
+        $expiryInstant = [datetime]::MinValue
+        $expiryParsed = $false
+        $expiryCandidate = [datetime]::MinValue
+
+        if ($expiresOn -is [datetimeoffset]) {
+            $expiryInstant = $expiresOn.UtcDateTime
+            $expiryParsed = $true
+        }
+        elseif ($expiresOn -is [datetime]) {
+            $expiryCandidate = [datetime]$expiresOn
+            $expiryParsed = $true
+        }
+        elseif ([datetime]::TryParse(
+                [string]$expiresOn,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::RoundtripKind,
+                [ref]$expiryCandidate)) {
+            $expiryParsed = $true
+        }
+
+        # A declared UTC expiry that arrives without a kind is still a UTC expiry; reading it as
+        # local time moves the instant the plan stops being true by the operator's offset.
+        if ($expiryParsed -and $expiresOn -isnot [datetimeoffset]) {
+            $expiryInstant = if ($expiryCandidate.Kind -eq [System.DateTimeKind]::Unspecified) {
+                [datetime]::SpecifyKind($expiryCandidate, [System.DateTimeKind]::Utc)
+            }
+            else {
+                $expiryCandidate.ToUniversalTime()
+            }
+        }
+
+        if (-not $expiryParsed) {
+            $finding.Add("ChangeApprovalPreviewNotReadable: the preview expiry '$expiresOn' is not an instant, so nothing can decide whether the plan is still in force.")
+        }
+        elseif ($decisionInstant -ge $expiryInstant) {
+            $finding.Add("ChangeApprovalPreviewExpired: the preview stopped being in force at $($expiryInstant.ToString('o', [System.Globalization.CultureInfo]::InvariantCulture)) and the decision is being made at $($decisionInstant.ToString('o', [System.Globalization.CultureInfo]::InvariantCulture)).")
+        }
+
+        $signature = Get-BaselineRecordMember -Node $approval.Document -Name 'Signature'
+        $signatureModel = [string](Get-BaselineRecordMember -Node $signature -Name 'Model')
+        $signatureValue = [string](Get-BaselineRecordMember -Node $signature -Name 'Value')
+        $selectedModel = @((Get-ApprovalSignatureContract).SelectedModel)
+
+        if ([string]::IsNullOrWhiteSpace($signatureValue)) {
+            $finding.Add('ChangeApprovalUnsigned: the approval carries no signature value, so it binds these bytes to nobody.')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($signatureModel) -or $selectedModel -notcontains $signatureModel) {
+            $finding.Add("ChangeApprovalSignatureModelNotApproved: the approval is signed under '$signatureModel' and only $($selectedModel -join ', ') is selected; a signature model nobody selected is a signature nobody can verify.")
+        }
+
+        $approvalAuthority = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalAuthority')
+        if ($approvalAuthority -ne $script:BaselineChangeApprovalAuthority) {
+            $finding.Add("ChangeApprovalAuthorityNotApproved: the approval was granted under '$approvalAuthority' and only $($script:BaselineChangeApprovalAuthority) admits a change; an approval from somebody who does not hold the role is not an approval.")
+        }
+
+        $approvalIdentity = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')
+        if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and $approvalIdentity -eq [string]$RequestedBy) {
+            $finding.Add("ChangeApprovalSelfApproved: '$approvalIdentity' both requested and approved this change, which removes the review entirely.")
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Permitted    = ($finding.Count -eq 0)
+                ChangeId     = $changeId
+                PreviewPath  = [string]$PreviewPath
+                ApprovalPath = [string]$ApprovalPath
+                DecidedFor   = [string]$RequestedBy
+                Finding      = @($finding)
+            }))
+}
+
+# SAFE-004: what the tenant held before the run touched it, written down while it is still true.
+# The capture is taken from the operations the change declared rather than from whatever the run
+# happens to touch later, so an object mutated without being declared has no captured prior value
+# and no rollback - which is the point. One object may be captured once: two recorded prior values
+# for the same object under the same command is no restorable prior value at all. The snapshot is
+# sealed over the canonical text of the entries alone, so the instant it was taken can be read
+# without moving the identity of the state it describes.
+function New-BaselineChangeStateCapture {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ChangeId,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Tenant,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Operation,
+
+        [AllowNull()]
+        [object]$CapturedOn
+    )
+
+    $pattern = [string](Get-BaselineChangeArtifactContract).ChangeIdentifierPattern
+    if ([string]::IsNullOrWhiteSpace($ChangeId) -or $ChangeId -cnotmatch $pattern) {
+        throw "ChangeIdentifierNotRecognized: '$ChangeId' is not a change identifier; supply one matching $pattern."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($Tenant)) {
+        throw 'ChangeCaptureTenantNotSupplied: a capture must name the tenant the prior state was read from.'
+    }
+
+    $declared = @($Operation | Where-Object { $null -ne $_ })
+    if ($declared.Count -eq 0) {
+        throw 'ChangeCaptureOperationNotSupplied: a capture of no objects lets a run mutate anything and still claim it captured the state first.'
+    }
+
+    if ($null -eq $CapturedOn) { $CapturedOn = [datetime]::UtcNow }
+    if ($CapturedOn -isnot [datetime] -and $CapturedOn -isnot [datetimeoffset]) {
+        throw 'ChangeCaptureTimeNotSupplied: a capture must record the instant it was taken, so it can be shown to predate the mutation it precedes.'
+    }
+
+    $captured = if ($CapturedOn -is [datetimeoffset]) { $CapturedOn.UtcDateTime } else { ([datetime]$CapturedOn).ToUniversalTime() }
+
+    $seenOperation = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $seenObject = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    $entry = foreach ($candidate in $declared) {
+        foreach ($required in @('OperationId', 'Command', 'Identity')) {
+            if (-not (Test-BaselineNodeMember -Node $candidate -Name $required) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $candidate -Name $required))) {
+                throw "ChangeCaptureOperationNotRecognized: an operation carries no $required; every captured object must state all of OperationId, Command, Identity."
+            }
+        }
+
+        $operationId = [string](Get-BaselineRecordMember -Node $candidate -Name 'OperationId')
+        $command = [string](Get-BaselineRecordMember -Node $candidate -Name 'Command')
+        $identity = [string](Get-BaselineRecordMember -Node $candidate -Name 'Identity')
+
+        $before = Get-BaselineRecordMember -Node $candidate -Name 'Before'
+        foreach ($required in $script:BaselineChangeStateMember) {
+            if (-not (Test-BaselineNodeMember -Node $candidate -Name 'Before') -or
+                -not (Test-BaselineNodeMember -Node $before -Name $required)) {
+                throw "ChangeCaptureStateNotRecognized: the prior state of operation '$operationId' carries no $required; a state that does not declare both is a state nothing can be restored to."
+            }
+        }
+
+        $exists = [bool](Get-BaselineRecordMember -Node $before -Name 'Exists')
+        $value = Get-BaselineRecordMember -Node $before -Name 'Value'
+
+        if (-not $exists -and -not ($null -eq $value -or ($value -is [string] -and $value -eq ''))) {
+            throw "ChangeCaptureStateNotRestorable: operation '$operationId' captured '$identity' as absent while recording the value '$value'; an object that did not exist and held a value is two prior states at once."
+        }
+
+        if (-not $seenOperation.Add($operationId)) {
+            throw "ChangeCaptureOperationNotUnique: operation identifier '$operationId' is captured more than once, so every restore of it is ambiguous."
+        }
+
+        if (-not $seenObject.Add("$command`u{001F}$identity")) {
+            throw "ChangeCaptureObjectNotUnique: '$identity' is captured more than once under $command, so it has no restorable prior value."
+        }
+
+        [ordered]@{
+            Sequence    = 0
+            OperationId = $operationId
+            Command     = $command
+            Identity    = $identity
+            Exists      = $exists
+            Value       = ConvertTo-BaselineHashableNode -Node $value
+        }
+    }
+
+    $entry = @($entry)
+    for ($index = 0; $index -lt $entry.Count; $index++) { $entry[$index]['Sequence'] = $index + 1 }
+
+    $sealed = ConvertTo-ImmutableBaselineNode -Node $entry
+    $canonical = [System.Text.UTF8Encoding]::new($false).GetBytes((ConvertTo-CanonicalJson -InputObject $sealed))
+    $invariant = [System.Globalization.CultureInfo]::InvariantCulture
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                SchemaVersion = [string](@((Get-ArtifactVersionContract).Artifact) | Where-Object { [string]$_.Artifact -eq 'Rollback' }).SchemaVersion
+                ChangeId      = $ChangeId
+                Tenant        = $Tenant
+                CapturedOn    = $captured.ToString('o', $invariant)
+                Algorithm     = 'SHA256'
+                Hash          = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($canonical)).ToLowerInvariant()
+                Entry         = $entry
+            }))
+}
+
+# SAFE-004: the script that puts the tenant back, written from the capture and from nothing else.
+# Every value is emitted as a single-quoted literal with its quotes doubled, so a prior value that
+# happens to contain PowerShell is restored as text rather than run as code. An object the change
+# created is removed rather than set, because setting a value on it leaves it behind; an object the
+# change only edited is set rather than removed, because deleting it turns a rollback into an
+# outage. The restores unwind in the reverse of the capture order, so nothing is restored before
+# the object it depends on. Each one sits inside a `ShouldProcess` decision, so the rollback can
+# itself be rehearsed with `-WhatIf` before anyone runs it against a tenant.
+function New-BaselineRollbackScript {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Capture
+    )
+
+    foreach ($required in @('ChangeId', 'Tenant', 'CapturedOn', 'Entry')) {
+        if ($null -eq $Capture -or -not (Test-BaselineNodeMember -Node $Capture -Name $required)) {
+            throw "ChangeRollbackCaptureNotRecognized: the supplied capture carries no $required; pass the output of New-BaselineChangeStateCapture."
+        }
+    }
+
+    $entry = @(Get-BaselineRecordMember -Node $Capture -Name 'Entry')
+    if ($entry.Count -eq 0) {
+        throw 'ChangeRollbackCaptureNotRecognized: the supplied capture carries no entries, so the script it generates would make an irreversible change look reversible.'
+    }
+
+    $changeId = [string](Get-BaselineRecordMember -Node $Capture -Name 'ChangeId')
+    $tenant = [string](Get-BaselineRecordMember -Node $Capture -Name 'Tenant')
+    $capturedOn = [string](Get-BaselineRecordMember -Node $Capture -Name 'CapturedOn')
+
+    if ([string]::IsNullOrWhiteSpace($changeId) -or [string]::IsNullOrWhiteSpace($tenant)) {
+        throw 'ChangeRollbackCaptureNotRecognized: the supplied capture does not name both the change and the tenant it was taken from.'
+    }
+
+    $sealed = [string](Get-BaselineRecordMember -Node $Capture -Name 'Hash')
+    if (-not (Test-BaselineNodeMember -Node $Capture -Name 'Hash') -or [string]::IsNullOrWhiteSpace($sealed)) {
+        throw 'ChangeRollbackCaptureNotSealed: the supplied capture carries no hash, so it cannot be shown to be the snapshot the run took.'
+    }
+
+    $recomputed = [System.Convert]::ToHexString(
+        [System.Security.Cryptography.SHA256]::HashData(
+            [System.Text.UTF8Encoding]::new($false).GetBytes(
+                (ConvertTo-CanonicalJson -InputObject (Get-BaselineRecordMember -Node $Capture -Name 'Entry'))))).ToLowerInvariant()
+
+    if ($sealed -ne $recomputed) {
+        throw "ChangeRollbackCaptureNotSealed: the capture is sealed as $sealed and now hashes to $recomputed; a snapshot edited after it was sealed is a prior state nobody observed."
+    }
+
+    $line = [System.Collections.Generic.List[string]]::new()
+    $line.Add('#requires -Version 7.0')
+    $line.Add("# SAFE-004 rollback for change $changeId in tenant $tenant.")
+    $line.Add("# Generated from capture $sealed taken at $capturedOn.")
+    $line.Add('# Restores run in the reverse of the order the mutations were captured in.')
+    $line.Add('[CmdletBinding(SupportsShouldProcess)]')
+    $line.Add('param()')
+    $line.Add('')
+    $line.Add("`$ErrorActionPreference = 'Stop'")
+
+    for ($index = $entry.Count - 1; $index -ge 0; $index--) {
+        $restore = $entry[$index]
+
+        foreach ($required in @('OperationId', 'Command', 'Identity', 'Exists', 'Value')) {
+            if (-not (Test-BaselineNodeMember -Node $restore -Name $required)) {
+                throw "ChangeRollbackEntryNotRecognized: a captured entry carries no $required; a restore must name the object, the command it is restored through, whether it existed and what it held."
+            }
+        }
+
+        $command = [string](Get-BaselineRecordMember -Node $restore -Name 'Command')
+        $part = $command.Split('-')
+        if ($part.Count -ne 2 -or [string]::IsNullOrWhiteSpace($part[0]) -or [string]::IsNullOrWhiteSpace($part[1])) {
+            throw "ChangeRollbackCommandNotRecognized: '$command' is not a verb-noun command, so no removal can be derived from it; guessing one is worse than admitting the change cannot be rolled back."
+        }
+
+        $operationId = [string](Get-BaselineRecordMember -Node $restore -Name 'OperationId') -replace '[\r\n]+', ' '
+        $identity = [string](Get-BaselineRecordMember -Node $restore -Name 'Identity')
+        $quotedIdentity = $identity.Replace("'", "''")
+        $safeIdentity = $identity -replace '[\r\n]+', ' '
+
+        $line.Add('')
+
+        if ([bool](Get-BaselineRecordMember -Node $restore -Name 'Exists')) {
+            $quotedValue = ([string](Get-BaselineRecordMember -Node $restore -Name 'Value')).Replace("'", "''")
+
+            $line.Add("# $operationId restores $safeIdentity to the value the capture recorded.")
+            $line.Add("if (`$PSCmdlet.ShouldProcess('$quotedIdentity', '$command')) {")
+            $line.Add("    $command -Identity '$quotedIdentity' -Value '$quotedValue' -Confirm:`$false")
+            $line.Add('}')
+        }
+        else {
+            $removal = "Remove-$($part[1])"
+
+            $line.Add("# $operationId restores $safeIdentity, which did not exist before the change.")
+            $line.Add("if (`$PSCmdlet.ShouldProcess('$quotedIdentity', '$removal')) {")
+            $line.Add("    $removal -Identity '$quotedIdentity' -Confirm:`$false")
+            $line.Add('}')
+        }
+    }
+
+    $line.Add('')
+
+    return ($line -join "`n")
+}
+
+# SAFE-005: which commands change a tenant and what a decision to change one looks like. The verbs# are listed rather than the cmdlets, so a mutation added later is caught by default instead of
+# being invisible until someone remembers to extend a list. The non-tenant commands are the ones
+# that carry a mutating verb while changing nothing outside this process.
+function Get-BaselineMutationGuardContract {
+    [CmdletBinding()]
+    param()
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                MutatingVerb     = @('Add', 'Clear', 'Disable', 'Enable', 'Grant', 'New', 'Remove', 'Reset', 'Revoke', 'Set', 'Start', 'Stop', 'Update')
+                NonTenantCommand = @(
+                    'Add-Member'
+                    'Add-Type'
+                    'Clear-Variable'
+                    'New-Guid'
+                    'New-Item'
+                    'New-Object'
+                    'New-TemporaryFile'
+                    'New-TimeSpan'
+                    'New-Variable'
+                    'Remove-Item'
+                    'Remove-Module'
+                    'Remove-Variable'
+                    'Set-Content'
+                    'Set-Item'
+                    'Set-Location'
+                    'Set-StrictMode'
+                    'Set-Variable'
+                    'Start-Sleep'
+                    'Update-TypeData'
+                )
+                GuardExpression  = '$PSCmdlet.ShouldProcess'
+                State            = @('Pending', 'Succeeded', 'Failed', 'RolledBack')
+            }))
+}
+
+# SAFE-005: one entry per mutation the run declared, carrying the object it touched and the state
+# it reached. The journal is built from the declared plan rather than from whatever the run managed
+# to do, so a mutation that was never attempted is still present and still outstanding instead of
+# silently absent. A mutation the operator declined at the guard never ran, so it is recorded
+# pending whatever outcome the caller claims for it - otherwise a declined change reads as an
+# applied one. A failure has to carry its fault, because a failure nobody can diagnose cannot be
+# recovered from, and a state the contract never declared is refused rather than written through.
+function New-BaselineMutationJournal {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Operation
+    )
+
+    $declared = @($Operation | Where-Object { $null -ne $_ })
+    if ($declared.Count -eq 0) {
+        throw 'MutationJournalOperationNotSupplied: a journal of no mutations reports the same empty record whether the run changed one object or every object.'
+    }
+
+    $state = @((Get-BaselineMutationGuardContract).State)
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $sequence = 0
+
+    $entry = foreach ($candidate in $declared) {
+        foreach ($required in @('OperationId', 'Command', 'Identity')) {
+            if (-not (Test-BaselineNodeMember -Node $candidate -Name $required) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $candidate -Name $required))) {
+                throw "MutationJournalOperationNotRecognized: a mutation carries no $required; every entry must state all of OperationId, Command, Identity."
+            }
+        }
+
+        $operationId = [string](Get-BaselineRecordMember -Node $candidate -Name 'OperationId')
+        if (-not $seen.Add($operationId)) {
+            throw "MutationJournalOperationNotUnique: operation identifier '$operationId' is journalled more than once, so neither entry is the state it reached."
+        }
+
+        $reached = if (Test-BaselineNodeMember -Node $candidate -Name 'State') {
+            [string](Get-BaselineRecordMember -Node $candidate -Name 'State')
+        }
+        else { 'Pending' }
+
+        if ($reached -cnotin $state) {
+            throw "MutationJournalStateNotDeclared: operation '$operationId' reached '$reached', which is not one of $($state -join ', ')."
+        }
+
+        if ((Test-BaselineNodeMember -Node $candidate -Name 'Approved') -and
+            -not [bool](Get-BaselineRecordMember -Node $candidate -Name 'Approved')) {
+            $reached = 'Pending'
+        }
+
+        $fault = [string](Get-BaselineRecordMember -Node $candidate -Name 'Fault')
+        if ($reached -eq 'Failed' -and [string]::IsNullOrWhiteSpace($fault)) {
+            throw "MutationJournalFaultNotRecorded: operation '$operationId' is journalled as failed while recording no fault, so the failure cannot be diagnosed or recovered from."
+        }
+
+        if ($reached -ne 'Failed') { $fault = '' }
+
+        $sequence++
+
+        [ordered]@{
+            Sequence    = $sequence
+            OperationId = $operationId
+            Command     = [string](Get-BaselineRecordMember -Node $candidate -Name 'Command')
+            Identity    = [string](Get-BaselineRecordMember -Node $candidate -Name 'Identity')
+            State       = $reached
+            Fault       = $fault
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node @($entry))
+}
+
+# SAFE-005: a condition counts as a decision only when it is exactly `$PSCmdlet.ShouldProcess(...)`.
+# Anything wrapping it can invert or short-circuit the answer it gave - `-not` runs the mutation
+# precisely when the operator declined - and a `ShouldProcess` on any other object is a method the
+# script invented and can answer however it finds convenient.
+function Test-BaselineShouldProcessCondition {
+    param([object]$Condition)
+
+    if ($Condition -isnot [System.Management.Automation.Language.PipelineAst]) { return $false }
+    if (@($Condition.PipelineElements).Count -ne 1) { return $false }
+
+    $element = $Condition.PipelineElements[0]
+    if ($element -isnot [System.Management.Automation.Language.CommandExpressionAst]) { return $false }
+
+    $expression = $element.Expression
+    while ($expression -is [System.Management.Automation.Language.ParenExpressionAst]) {
+        $inner = $expression.Pipeline
+        if ($inner -isnot [System.Management.Automation.Language.PipelineAst] -or @($inner.PipelineElements).Count -ne 1) { return $false }
+        if ($inner.PipelineElements[0] -isnot [System.Management.Automation.Language.CommandExpressionAst]) { return $false }
+        $expression = $inner.PipelineElements[0].Expression
+    }
+
+    if ($expression -isnot [System.Management.Automation.Language.InvokeMemberExpressionAst]) { return $false }
+    if ([string]$expression.Member.Value -ne 'ShouldProcess') { return $false }
+
+    $target = $expression.Expression
+    return ($target -is [System.Management.Automation.Language.VariableExpressionAst] -and
+        [string]$target.VariablePath.UserPath -eq 'PSCmdlet')
+}
+
+# SAFE-005: walk from the command out to the script root and look for an enclosing `if` whose
+# taken branch this command sits in. Matching the branch by reference is what keeps an `else` from
+# counting: the else branch is the path the operator declined, so a mutation there runs exactly
+# when it was refused. Walking the whole ancestry is what stops a loop or a nested `if` from being
+# used to slip a mutation out from under a guard that does enclose it.
+function Test-BaselineShouldProcessEnclosure {
+    param([object]$Node)
+
+    $child = $Node
+    $parent = $Node.Parent
+
+    while ($null -ne $parent) {
+        if ($parent -is [System.Management.Automation.Language.IfStatementAst]) {
+            foreach ($clause in $parent.Clauses) {
+                if ([object]::ReferenceEquals($clause.Item2, $child) -and
+                    (Test-BaselineShouldProcessCondition -Condition $clause.Item1)) {
+                    return $true
+                }
+            }
+        }
+
+        $child = $parent
+        $parent = $parent.Parent
+    }
+
+    return $false
+}
+
+# SAFE-005: every tenant-mutating command a script can reach, and whether a `ShouldProcess`
+# decision encloses it. This is decided from the parsed script rather than from a run, because a
+# mutation only reachable down some branch nobody exercised is exactly the one that ships
+# unguarded. A command the script defines itself is not counted: the helper mutates nothing on its
+# own, and counting it hides the real mutations inside it behind a name that looks handled.
+function Get-BaselineMutationGuardReport {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ScriptPath
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ScriptPath)) {
+        throw 'ScriptPathNotSupplied: supply the path of the script whose mutations are to be reported.'
+    }
+
+    if (-not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+        throw "ScriptPathNotFound: '$ScriptPath' names no file."
+    }
+
+    $parseToken = $null
+    $parseError = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Resolve-Path -LiteralPath $ScriptPath).ProviderPath, [ref]$parseToken, [ref]$parseError)
+
+    if (@($parseError).Count -gt 0) {
+        throw "ScriptNotParsable: '$ScriptPath' did not parse; $($parseError[0].Message)"
+    }
+
+    $contract = Get-BaselineMutationGuardContract
+    $verbPattern = '^(?:' + ((@($contract.MutatingVerb) | ForEach-Object { [regex]::Escape([string]$_) }) -join '|') + ')-'
+    $nonTenantCommand = @($contract.NonTenantCommand | ForEach-Object { [string]$_ })
+
+    $localFunction = @(
+        $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) |
+            ForEach-Object { [string]$_.Name }
+    )
+
+    $site = foreach ($command in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+        $name = $command.GetCommandName()
+
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+        if ($name -notmatch $verbPattern) { continue }
+        if ($localFunction -contains $name) { continue }
+        if ($nonTenantCommand -contains $name) { continue }
+
+        [ordered]@{
+            Command = [string]$name
+            Line    = [int]$command.Extent.StartLineNumber
+            Guarded = [bool](Test-BaselineShouldProcessEnclosure -Node $command)
+        }
+    }
+
+    $site = @($site)
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                ScriptPath    = [string]$ScriptPath
+                MutationSite  = $site
+                UnguardedSite = @(
+                    $site |
+                        Where-Object { -not $_.Guarded } |
+                        ForEach-Object { [ordered]@{ Command = $_.Command; Line = $_.Line } }
+                )
+            }))
+}
+
+# SAFE-006: what a run that stopped halfway actually left on the tenant, and the one order it can
+# be recovered in. The record is reconciled against the plan the change declared rather than
+# against whatever the run managed to journal, because a mutation outside the approved plan is the
+# one change nobody previewed and a declared mutation nobody journalled is a change whose state the
+# run cannot state either way. An operation is halted transitively: stopping only the immediate
+# dependents of a failure leaves everything behind them free to apply onto a state that never
+# arrived. An operation that already landed is never called halted, because a mutation reported as
+# stopped is a mutation the recovery will not account for. The record carries no clock, so two runs
+# over the same plan and journal produce the same recovery and the same bytes.
+function Resolve-BaselinePartialApplication {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ChangeId,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Operation,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Journal,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Root
+    )
+
+    $null = New-BaselineChangeArtifactSet -ChangeId $ChangeId
+
+    $declared = @($Operation | Where-Object { $null -ne $_ })
+    if ($declared.Count -eq 0) {
+        throw 'PartialApplicationOperationNotSupplied: a run reconciled against no plan calls any amount of damage a complete application.'
+    }
+
+    $plan = [ordered]@{}
+    foreach ($candidate in $declared) {
+        foreach ($required in @('OperationId', 'Command', 'Identity')) {
+            if (-not (Test-BaselineNodeMember -Node $candidate -Name $required) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $candidate -Name $required))) {
+                throw "PartialApplicationOperationNotRecognized: a declared operation carries no $required; every operation must state all of OperationId, Command, Identity."
+            }
+        }
+
+        $operationId = [string](Get-BaselineRecordMember -Node $candidate -Name 'OperationId')
+        if ($plan.Contains($operationId)) {
+            throw "PartialApplicationOperationNotRecognized: operation identifier '$operationId' is declared more than once, so neither declaration is the change that was planned."
+        }
+
+        $plan[$operationId] = [ordered]@{
+            OperationId = $operationId
+            Command     = [string](Get-BaselineRecordMember -Node $candidate -Name 'Command')
+            Identity    = [string](Get-BaselineRecordMember -Node $candidate -Name 'Identity')
+            DependsOn   = @(@(Get-BaselineRecordMember -Node $candidate -Name 'DependsOn') |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
+                    ForEach-Object { [string]$_ })
+        }
+    }
+
+    if ($null -eq $Journal -or @($Journal | Where-Object { $null -ne $_ }).Count -eq 0) {
+        throw 'PartialApplicationJournalNotSupplied: a run with no journal behind it has no partial state to persist, only an assumption.'
+    }
+
+    $recorded = [ordered]@{}
+    foreach ($entry in @($Journal | Where-Object { $null -ne $_ })) {
+        $operationId = [string](Get-BaselineRecordMember -Node $entry -Name 'OperationId')
+        if (-not $plan.Contains($operationId)) {
+            throw "PartialApplicationJournalNotReconciled: the run journalled operation '$operationId', which the approved plan never declared."
+        }
+
+        $recorded[$operationId] = $entry
+    }
+
+    foreach ($operationId in @($plan.Keys)) {
+        if (-not $recorded.Contains($operationId)) {
+            throw "PartialApplicationJournalNotReconciled: the plan declared operation '$operationId', which the run never journalled, so its state cannot be stated either way."
+        }
+    }
+
+    foreach ($operationId in @($plan.Keys)) {
+        foreach ($dependency in $plan[$operationId]['DependsOn']) {
+            if ($dependency -ceq $operationId) {
+                throw "PartialApplicationDependencyNotOrdered: operation '$operationId' depends on itself, so it can never be stopped or resumed."
+            }
+
+            if (-not $plan.Contains($dependency)) {
+                throw "PartialApplicationDependencyNotDeclared: operation '$operationId' waits on '$dependency', which the plan never declared."
+            }
+        }
+    }
+
+    $settled = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    $order = [System.Collections.Generic.List[string]]::new()
+    while ($order.Count -lt $plan.Count) {
+        $progressed = $false
+        foreach ($operationId in @($plan.Keys)) {
+            if ($settled.Contains($operationId)) { continue }
+
+            $ready = $true
+            foreach ($dependency in $plan[$operationId]['DependsOn']) {
+                if (-not $settled.Contains($dependency)) { $ready = $false; break }
+            }
+
+            if ($ready) {
+                $null = $settled.Add($operationId)
+                $order.Add($operationId)
+                $progressed = $true
+            }
+        }
+
+        if (-not $progressed) {
+            throw 'PartialApplicationDependencyNotOrdered: the plan carries a cycle of dependencies, so every operation in it is both the blocker and the blocked and no recovery order exists.'
+        }
+    }
+
+    $state = [ordered]@{}
+    $blocker = [ordered]@{}
+    foreach ($operationId in $order) {
+        $journalled = [string](Get-BaselineRecordMember -Node $recorded[$operationId] -Name 'State')
+
+        if ($journalled -ceq 'Succeeded') {
+            $state[$operationId] = 'Applied'
+            continue
+        }
+
+        if ($journalled -ceq 'Failed') {
+            $state[$operationId] = 'Failed'
+            continue
+        }
+
+        $stopped = $null
+        foreach ($dependency in $plan[$operationId]['DependsOn']) {
+            if ($state[$dependency] -cin @('Failed', 'Halted')) { $stopped = $dependency; break }
+        }
+
+        if ($null -ne $stopped) {
+            $state[$operationId] = 'Halted'
+            $blocker[$operationId] = $stopped
+        }
+        else {
+            $state[$operationId] = 'Outstanding'
+        }
+    }
+
+    $sequence = 0
+    $recovery = foreach ($operationId in @($plan.Keys)) {
+        $reached = [string]$state[$operationId]
+        if ($reached -ceq 'Applied') { continue }
+
+        $action = 'Apply'
+        $reason = ''
+        if ($reached -ceq 'Failed') {
+            $action = 'Investigate'
+            $reason = [string](Get-BaselineRecordMember -Node $recorded[$operationId] -Name 'Fault')
+        }
+        elseif ($reached -ceq 'Halted') {
+            $action = 'Resume'
+            $reason = "blocked by '{0}'" -f $blocker[$operationId]
+        }
+
+        $sequence++
+
+        [ordered]@{
+            Sequence    = $sequence
+            OperationId = $operationId
+            Action      = $action
+            Reason      = $reason
+            Command     = [string]$plan[$operationId]['Command']
+            Identity    = [string]$plan[$operationId]['Identity']
+        }
+    }
+
+    $named = {
+        param([string]$Reached)
+        return @(@($plan.Keys) | Where-Object { [string]$state[$_] -ceq $Reached })
+    }
+
+    $application = [ordered]@{
+        ChangeId    = $ChangeId
+        Applied     = @(& $named 'Applied')
+        Failed      = @(& $named 'Failed')
+        Halted      = @(& $named 'Halted')
+        Outstanding = @(& $named 'Outstanding')
+        Recovery    = @($recovery)
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($Root)) {
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact 'Apply' -Root $Root -Content $application
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $application)
+}
+
+# SAFE-006: the one verdict that may call a change successful. Success is not "nothing threw": a
+# run whose mutations all returned has still only proved that the commands were accepted, so the
+# verdict is withheld until something observed the tenant afterwards and admitted it. A decision
+# that reached no conclusion is silence rather than consent, and a decision nobody can trace back
+# to the evidence behind it is an assertion an audit cannot re-decide, so both refuse. Every reason
+# is collected rather than returned at the first one, because an operator handed one blocker at a
+# time has to rerun the whole change to learn what else was already wrong.
+function Test-BaselineChangeSuccess {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Application,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$PostChange
+    )
+
+    if ($null -eq $Application) {
+        throw 'ChangeSuccessApplicationNotSupplied: a change cannot be called successful without the record of what its run actually left behind.'
+    }
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+
+    foreach ($operationId in @(Get-BaselineRecordMember -Node $Application -Name 'Failed')) {
+        $finding.Add("ChangeOperationFailed: operation '$operationId' failed, so the tenant does not hold the change the plan declared.")
+    }
+
+    foreach ($operationId in @(Get-BaselineRecordMember -Node $Application -Name 'Halted')) {
+        $finding.Add("ChangeOperationHalted: operation '$operationId' was stopped behind an earlier failure and is still owed.")
+    }
+
+    foreach ($operationId in @(Get-BaselineRecordMember -Node $Application -Name 'Outstanding')) {
+        $finding.Add("ChangeOperationOutstanding: operation '$operationId' was never applied, which is not the same as having succeeded.")
+    }
+
+    $evidence = ''
+    if ($null -eq $PostChange) {
+        $finding.Add('PostChangeDecisionNotSupplied: nothing observed the tenant after the change, so this run can report its intentions and nothing else.')
+    }
+    else {
+        $evidence = [string](Get-BaselineRecordMember -Node $PostChange -Name 'Evidence')
+        if ([string]::IsNullOrWhiteSpace($evidence)) {
+            $finding.Add('PostChangeEvidenceNotNamed: the post-change decision names no evidence it was decided from, so no audit can re-decide it.')
+        }
+
+        if (-not (Test-BaselineNodeMember -Node $PostChange -Name 'Permitted')) {
+            $finding.Add('PostChangeDecidedNothing: the post-change decision reached no conclusion, and silence is not consent.')
+        }
+        elseif (-not [bool](Get-BaselineRecordMember -Node $PostChange -Name 'Permitted')) {
+            $refusal = @(Get-BaselineRecordMember -Node $PostChange -Name 'Finding')
+            $finding.Add("PostChangeRefused: the post-change decision refused this run: $($refusal -join '; ')")
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Successful         = ($finding.Count -eq 0)
+                ChangeId           = [string](Get-BaselineRecordMember -Node $Application -Name 'ChangeId')
+                PostChangeEvidence = $evidence
+                Finding            = @($finding)
+            }))
+}
+
+# SAFE-007: the one decision that lets `-Apply` reach a tenant. A run that applies from the
+# configuration alone applies whatever the configuration happens to say today, so an apply has to
+# name the preview it was reviewed against, the approval that admitted it and the directory its
+# pre-change state, outcome and rollback will be written to. The approval itself is decided
+# elsewhere and handed in, so this gate can be exercised without a tenant; an approval decision
+# that is absent or that reached no conclusion is refused rather than read as consent, because two
+# paths on a command line prove that two files were named and not that anything read them. An audit
+# run is governed by none of this: a read-only run that demands an approval before it may look at a
+# tenant makes the audit harder to run than the change.
+function Test-BaselineApplyPrerequisite {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [bool]$Apply,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$PreviewPath,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ApprovalPath,
+
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ArtifactRoot,
+
+        [AllowNull()]
+        [object]$ApprovalDecision
+    )
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+    $changeId = ''
+
+    if ($Apply) {
+        if ([string]::IsNullOrWhiteSpace($PreviewPath)) {
+            $finding.Add('ApplyPreviewPathNotSupplied: an apply must name the preview it was reviewed against, or it applies whatever the configuration says at the moment it runs.')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($ApprovalPath)) {
+            $finding.Add('ApplyApprovalPathNotSupplied: an apply must name the approval that admitted it; a preview nobody approved is a plan, not permission.')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($ArtifactRoot)) {
+            $finding.Add('ApplyArtifactRootNotSupplied: an apply must name the directory its pre-change state, outcome and rollback are written to, or the change can be neither audited nor undone.')
+        }
+
+        if ($null -eq $ApprovalDecision) {
+            $finding.Add('ApplyApprovalNotDecided: no approval decision stands behind this apply; naming two files is not the same as reading them.')
+        }
+        else {
+            $changeId = [string](Get-BaselineRecordMember -Node $ApprovalDecision -Name 'ChangeId')
+
+            if (-not (Test-BaselineNodeMember -Node $ApprovalDecision -Name 'Permitted')) {
+                $finding.Add('ApplyApprovalDecidedNothing: the approval gate reached no conclusion, and silence is not consent.')
+            }
+            elseif (-not [bool](Get-BaselineRecordMember -Node $ApprovalDecision -Name 'Permitted')) {
+                $refusal = @(Get-BaselineRecordMember -Node $ApprovalDecision -Name 'Finding')
+                $finding.Add("ApplyApprovalRefused: the approval gate refused this change: $($refusal -join '; ')")
+            }
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Permitted    = ($finding.Count -eq 0)
+                Apply        = $Apply
+                ChangeId     = $changeId
+                PreviewPath  = [string]$PreviewPath
+                ApprovalPath = [string]$ApprovalPath
+                ArtifactRoot = [string]$ArtifactRoot
+                Finding      = @($finding)
+            }))
+}
+
+# GATE-004: the only exit statuses this solution speaks. An automation caller has to be able to
+# act on which kind of failure this was - a configuration it can fix, a connection it can retry,
+# a collection it can rerun, a compliance gap it must escalate, an approval it must obtain, or a
+# defect in this tool - and a run that reports every one of those as `1` tells it none of that.
+# Every code sits inside 1-125: 126 and 127 already mean "could not execute" to a POSIX shell,
+# 128 and above are signal terminations, and 0 is reserved for the one outcome that is success.
+function Get-BaselineExitCodeContract {
+    [CmdletBinding()]
+    param()
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Success       = 0
+                Configuration = 10
+                Connection    = 11
+                Collection    = 12
+                Compliance    = 13
+                Approval      = 14
+                Internal      = 15
+            }))
+}
+
+# A control decided `Error` was never measured, so it is a rerun the caller can act on rather than
+# a compliance gap it must escalate. The rest were measured and found wanting, or could not be
+# decided at all, and neither is a control anyone has verified.
+$script:BaselineCollectionStatus = @('Error')
+$script:BaselineComplianceStatus = @('Fail', 'Manual', 'NotEntitled', 'Unverified')
+
+# The one refusal the caller resolves by obtaining an approval rather than by fixing a control.
+$script:BaselineApprovalFinding = 'GoLiveExceptionRefused'
+
+# GATE-004: which of the contract's outcomes a finished run resolved to. The run is read here and
+# nowhere else, so an entry script cannot decide its own exit: a collection that never happened, a
+# control nobody could decide and an approval nobody granted are three different answers to the
+# caller, and a script that resolves them itself is a script that can quietly resolve them all to
+# zero.
+function Get-BaselineRunOutcome {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Check,
+
+        [AllowNull()]
+        [object]$GoLive
+    )
+
+    if ($null -eq $Check) {
+        throw 'RunOutcomeCheckRequired: a run outcome must be decided from the verdicts the run produced.'
+    }
+
+    $code = Get-BaselineExitCodeContract
+    $decided = @($Check | Where-Object { $null -ne $_ })
+
+    $outcome = 'Success'
+    $controlId = ''
+    $reason = ''
+
+    if ($decided.Count -eq 0) {
+        $outcome = 'Collection'
+        $reason = 'RunDecidedNothing: the run produced no verdicts at all, so there is nothing it could have been found compliant against.'
+    }
+    else {
+        $status = @(foreach ($result in $decided) { [string](Get-BaselineRecordMember -Node $result -Name 'Status') })
+        $uncollected = @(0..($decided.Count - 1) | Where-Object { $status[$_] -cin $script:BaselineCollectionStatus })
+        $unverified = @(0..($decided.Count - 1) | Where-Object { $status[$_] -cin $script:BaselineComplianceStatus })
+
+        if ($uncollected.Count -gt 0) {
+            $index = $uncollected[0]
+            $outcome = 'Collection'
+            $controlId = [string](Get-BaselineRecordMember -Node $decided[$index] -Name 'ControlId')
+            $reason = "ControlNotCollected: '$controlId' was decided '$($status[$index])'."
+        }
+        elseif ($unverified.Count -gt 0) {
+            $index = $unverified[0]
+            $outcome = 'Compliance'
+            $controlId = [string](Get-BaselineRecordMember -Node $decided[$index] -Name 'ControlId')
+            $reason = "ControlNotPassed: '$controlId' was decided '$($status[$index])'."
+        }
+    }
+
+    if ($outcome -ceq 'Success' -and $null -ne $GoLive -and -not [bool](Get-BaselineRecordMember -Node $GoLive -Name 'Admitted')) {
+        $finding = @(Get-BaselineRecordMember -Node $GoLive -Name 'Finding')
+        $ungranted = @($finding | Where-Object { ([string]$_).StartsWith($script:BaselineApprovalFinding, [System.StringComparison]::Ordinal) })
+        $outcome = if ($ungranted.Count -gt 0) { 'Approval' } else { 'Compliance' }
+
+        $result = Get-BaselineRecordMember -Node $GoLive -Name 'Result'
+        $controlId = [string](Get-BaselineRecordMember -Node $result -Name 'ControlId')
+        $reason = [string](Get-BaselineRecordMember -Node $result -Name 'Reason')
+    }
+
+    $member = [ordered]@{
+        Outcome   = $outcome
+        ExitCode  = $code.$outcome
+        ControlId = $controlId
+        Reason    = $reason
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $member)
+}
+
+
 $script:ControlResultVerdictMember = @('Status', 'Normalized', 'GoLiveSuccess')
 
 function Test-BaselineEvidenceVerdict {
@@ -2746,6 +4301,109 @@ function Get-BaselineControlRegistry {
     return , (New-BaselineControlRegistry -Definition $script:BaselineControlDefinition)
 }
 
+# EVD-006: EVD-002 refuses an entry that names no collector or evaluator; this refuses an entry
+# that names the wrong one. The registry is a declaration of command names, so a name that no
+# longer matches a shipped command registers a control that is collected by nobody or decided by
+# nobody, and the run reports the tenant clean either way. Two defects are reported apart because
+# they cost differently: `Unexported` is a command the module wrote and left out of the export
+# list, one line from working, and `Unresolved` is a control shipped as half of itself. A control
+# whose collector and evaluator are both absent is backlog the board already tracks, so it is
+# reported as `Unbuilt` and is not drift - a guard that is red for unstarted work gets ignored.
+function Test-BaselineControlResolution {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Registry,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$ExportedCommand,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$DefinedCommand
+    )
+
+    if ($null -eq $Registry -or @($Registry).Count -eq 0) {
+        throw 'ControlRegistryRequired: a resolution check must be handed the registry it holds to the module; a check over no entry reports that nothing is broken.'
+    }
+
+    if ($null -eq $ExportedCommand -or @($ExportedCommand).Count -eq 0) {
+        throw 'ExportedCommandSurfaceRequired: a resolution check must be handed the commands the module exports; a module that exports nothing is a broken measurement rather than a finding about the registry.'
+    }
+
+    if ($null -eq $DefinedCommand -or @($DefinedCommand).Count -eq 0) {
+        throw 'DefinedCommandSurfaceRequired: a resolution check must be handed the commands the module defines; without them a function written and left unexported cannot be told from one nobody has written.'
+    }
+
+    # PowerShell resolves a command name case-insensitively, so the guard must too, or it reports
+    # a defect the runtime does not have.
+    $exported = [System.Collections.Generic.HashSet[string]]::new([string[]]@($ExportedCommand | ForEach-Object { ([string]$_).Trim() }), [System.StringComparer]::OrdinalIgnoreCase)
+    $defined = [System.Collections.Generic.HashSet[string]]::new([string[]]@($DefinedCommand | ForEach-Object { ([string]$_).Trim() }), [System.StringComparer]::OrdinalIgnoreCase)
+
+    $unresolved = [System.Collections.Generic.List[string]]::new()
+    $unexported = [System.Collections.Generic.List[string]]::new()
+    $unbuilt = [System.Collections.Generic.List[string]]::new()
+
+    foreach ($entry in $Registry) {
+        if ($null -eq $entry -or -not ($entry -is [System.Collections.IDictionary] -or $entry -is [System.Management.Automation.PSCustomObject])) {
+            throw 'ControlRegistryEntryNotRecognized: a resolution check reads a registry of records naming a control, a collector and an evaluator.'
+        }
+
+        $controlId = [string](Get-BaselineRecordMember -Node $entry -Name 'ControlId')
+        $declared = [ordered]@{
+            Collector = [string](Get-BaselineRecordMember -Node $entry -Name 'Collector')
+            Evaluator = [string](Get-BaselineRecordMember -Node $entry -Name 'Evaluator')
+        }
+
+        if ([string]::IsNullOrWhiteSpace($declared['Collector'])) {
+            throw "ControlCollectorRequired: '$controlId' names no collector, so there is nothing to resolve and nothing to observe it."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($declared['Evaluator'])) {
+            throw "ControlEvaluatorRequired: '$controlId' names no evaluator, so there is nothing to resolve and nothing to decide it."
+        }
+
+        $absent = [System.Collections.Generic.List[string]]::new()
+        foreach ($member in $declared.Keys) {
+            $command = ([string]$declared[$member]).Trim()
+            $named = "$controlId $member '$command'"
+
+            if ($exported.Contains($command)) {
+                continue
+            }
+
+            if ($defined.Contains($command)) {
+                $unexported.Add($named)
+                continue
+            }
+
+            $absent.Add($named)
+        }
+
+        if ($absent.Count -eq $declared.Count) {
+            $unbuilt.Add($controlId)
+            continue
+        }
+
+        $unresolved.AddRange($absent)
+    }
+
+    $member = [ordered]@{
+        Satisfied  = ($unresolved.Count -eq 0 -and $unexported.Count -eq 0)
+        Registered = @($Registry).Count
+        Unresolved = @($unresolved)
+        Unexported = @($unexported)
+        Unbuilt    = @($unbuilt)
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $member)
+}
+
 # EVD-003: the catalog is what a reviewer reads, so it is what every other artifact is measured
 # against. The identifiers are read from the document itself rather than restated in code, because
 # a restated list drifts silently the moment somebody edits only one of the two. A control row is
@@ -3158,6 +4816,323 @@ function Test-BaselineEvidenceFramework {
         DuplicatedControl = $duplicatedControl
         CatalogDrift      = $catalogDrift
         Result            = $result
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $member)
+}
+
+# GATE-003: the hash the evidence signature is taken over. Held apart from the envelope itself so
+# that signing never mutates the artifact, and computed from the canonical form so that reordering
+# or re-serializing the evidence cannot change the answer while editing it always does.
+# Canonicalization is defined for configuration documents and refuses a timestamp outright, but an
+# envelope is mostly timestamps, so each one is rendered round-trip first. A leaf of any other kind
+# is rendered as its own text rather than refused, because the observations a tenant returns are
+# not drawn from a fixed set of types and a hash that throws on an unfamiliar one would make
+# unsigned evidence the easier path.
+function ConvertTo-BaselineHashableNode {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]
+        [object]$Node,
+
+        [int]$Level = 0
+    )
+
+    if ($null -eq $Node) {
+        return $null
+    }
+
+    if ($Node -is [datetime]) {
+        return $Node.ToUniversalTime().ToString('o', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+
+    if ($Node -is [datetimeoffset]) {
+        return $Node.ToUniversalTime().ToString('o', [System.Globalization.CultureInfo]::InvariantCulture)
+    }
+
+    if ($Node -is [string] -or $Node -is [bool] -or $Node -is [decimal] -or $Node.GetType().IsPrimitive) {
+        return $Node
+    }
+
+    if ($Level -ge 64) {
+        throw 'CanonicalDepthExceeded: the evidence nests deeper than the supported depth of 64.'
+    }
+
+    if ($Node -is [System.Collections.IDictionary]) {
+        $member = [ordered]@{}
+        foreach ($name in @($Node.Keys)) {
+            $member[[string]$name] = ConvertTo-BaselineHashableNode -Node $Node[$name] -Level ($Level + 1)
+        }
+
+        return $member
+    }
+
+    if ($Node -is [System.Management.Automation.PSCustomObject]) {
+        $member = [ordered]@{}
+        foreach ($property in @($Node.PSObject.Properties)) {
+            $member[$property.Name] = ConvertTo-BaselineHashableNode -Node $property.Value -Level ($Level + 1)
+        }
+
+        return $member
+    }
+
+    if ($Node -is [System.Collections.IList]) {
+        return , @(foreach ($item in $Node) { ConvertTo-BaselineHashableNode -Node $item -Level ($Level + 1) })
+    }
+
+    return [string]$Node
+}
+
+function Get-BaselineEvidenceContentHash {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Envelope
+    )
+
+    if ($null -eq $Envelope) {
+        throw 'GoLiveEnvelopeRequired: an evidence content hash must be taken over an envelope.'
+    }
+
+    $canonicalJson = ConvertTo-CanonicalJson -InputObject (ConvertTo-BaselineHashableNode -Node $Envelope)
+    $canonicalBytes = [System.Text.UTF8Encoding]::new($false).GetBytes($canonicalJson)
+
+    return [pscustomobject]@{
+        Algorithm = 'SHA256'
+        Hash      = [System.Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($canonicalBytes)).ToLowerInvariant()
+    }
+}
+
+# GATE-003: the one decision that lets a change reach production. Everything it can refuse on is
+# refused on, and every refusal is collected rather than returned at the first one, because an
+# operator who fixes one blocker and is handed the next has to run the whole collection again to
+# learn what else was already wrong. Nothing here is a warning: a control that did not pass, a
+# catalog control nobody decided, a binding that does not hold, evidence too old to describe the
+# tenant, a licensing gap and an artifact nobody signed all produce the same refusal, because each
+# one is a claim this run cannot support.
+function Test-BaselineGoLive {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Envelope,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$CatalogPath,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ExpectedTenantId,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ExpectedDeploymentProfile,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ExpectedConfigurationHash,
+
+        [Parameter(Mandatory)]
+        [timespan]$MaximumEvidenceAge,
+
+        [AllowEmptyString()]
+        [string]$RequestedBy = '',
+
+        [AllowNull()]
+        [object[]]$RiskAcceptance,
+
+        [AllowNull()]
+        [object]$Signature,
+
+        [AllowNull()]
+        [object]$TargetEntitlement,
+
+        [datetime]$AsOf = [datetime]::UtcNow
+    )
+
+    if ($null -eq $Envelope) {
+        throw 'GoLiveEnvelopeRequired: a go-live decision must be handed the evidence the run produced.'
+    }
+
+    foreach ($binding in @('TenantId', 'DeploymentProfile', 'ConfigurationHash')) {
+        if ([string]::IsNullOrWhiteSpace((Get-Variable -Name ('Expected' + $binding) -ValueOnly))) {
+            throw "GoLiveExpected$($binding)Required: a binding the caller never states is a binding the envelope decides for itself."
+        }
+    }
+
+    # Read before anything is judged, so an unusable catalog is a fault the caller sees rather than
+    # a coverage answer of nothing missing.
+    $null = Get-BaselineControlCatalog -Path $CatalogPath
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+
+    $decided = Get-BaselineRecordMember -Node $Envelope -Name 'Check'
+    $check = @()
+    if ($null -ne $decided) { $check = @($decided) }
+    if ($check.Count -eq 0) {
+        throw 'GoLiveCheckRequired: the supplied envelope carries no verdicts; a run that decided nothing has not passed, it has failed to start.'
+    }
+
+    $contract = Get-BaselineResultContract
+    $declaredStatus = @($contract.NormalizedStatus) + @($contract.NonNormalizedStatus)
+
+    $acceptance = @()
+    if ($null -ne $RiskAcceptance) { $acceptance = @($RiskAcceptance | Where-Object { $null -ne $_ }) }
+    $baselineVersion = [string](Get-ArtifactVersionContract).BaselineVersion
+    $excused = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($result in $check) {
+        $controlId = [string](Get-BaselineRecordMember -Node $result -Name 'ControlId')
+        $status = [string](Get-BaselineRecordMember -Node $result -Name 'Status')
+
+        if ($status -cnotin $declaredStatus) {
+            $finding.Add("UnknownControlStatus: '$controlId' was decided '$status', which the result contract never declared.")
+            continue
+        }
+
+        if ($status -cin @($contract.GoLiveSuccessStatus)) {
+            continue
+        }
+
+        # GATE-003: an exception is honoured only for the one control it names, and only where
+        # the control was measured and found wanting. A control nobody could decide - an `Error`,
+        # a `Manual`, a `NotEntitled` or an `Unverified` - is a risk nobody has sized, and signing
+        # off a risk nobody has sized is declining to look rather than accepting anything.
+        $raised = @($acceptance | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'ControlId') -eq $controlId })
+
+        if ($raised.Count -eq 0) {
+            $finding.Add("ControlNotPassed: '$controlId' was decided '$status'.")
+            continue
+        }
+
+        if ($status -cne 'Fail') {
+            $finding.Add("GoLiveExceptionNotApplicable: '$controlId' was decided '$status', and a risk acceptance can only excuse a control decided 'Fail'.")
+            continue
+        }
+
+        $verdict = Test-RiskAcceptance -RiskAcceptance $raised[0] `
+            -ControlId $controlId `
+            -TenantId $ExpectedTenantId `
+            -ConfigurationHash $ExpectedConfigurationHash `
+            -RequestedBy $RequestedBy `
+            -AsOf $AsOf `
+            -DeploymentProfile $ExpectedDeploymentProfile `
+            -BaselineVersion $baselineVersion
+
+        if (-not $verdict.Valid) {
+            $finding.Add("GoLiveExceptionRefused: the risk acceptance raised for '$controlId' does not excuse it. $($verdict.Reason)")
+            continue
+        }
+
+        $excused.Add((New-ControlResult -ControlId $controlId -Status 'ApprovedException' -Reason ([string]$verdict.Reason)))
+    }
+
+    $coverage = Test-BaselineControlCoverage -CatalogPath $CatalogPath -Observed $check -Subject 'Check'
+    foreach ($controlId in @($coverage.Missing)) {
+        $finding.Add("CatalogControlMissing: the catalog declares '$controlId' and no check decided it.")
+    }
+    foreach ($controlId in @($coverage.Unknown)) {
+        $finding.Add("CatalogControlUnknown: '$controlId' was decided and the catalog never declared it.")
+    }
+    foreach ($controlId in @($coverage.Duplicated)) {
+        $finding.Add("CatalogControlDuplicated: '$controlId' was decided more than once.")
+    }
+
+    $observedTenant = [string](Get-BaselineRecordMember -Node $Envelope -Name 'TenantId')
+    if ($observedTenant -ne $ExpectedTenantId) {
+        $finding.Add("GoLiveTenantMismatch: the evidence names tenant '$observedTenant', but this go-live is for '$ExpectedTenantId'.")
+    }
+
+    $observedProfile = [string](Get-BaselineRecordMember -Node $Envelope -Name 'DeploymentProfile')
+    if ($observedProfile -ne $ExpectedDeploymentProfile) {
+        $finding.Add("GoLiveProfileMismatch: the evidence was collected under deployment profile '$observedProfile', but this go-live is for '$ExpectedDeploymentProfile'.")
+    }
+
+    # The envelope carries the algorithm with the digest and a caller usually holds the bare digest,
+    # so the prefix is not part of the comparison.
+    $observedHash = ([string](Get-BaselineRecordMember -Node $Envelope -Name 'ConfigurationHash')) -replace '(?i)^sha256:', ''
+    $expectedHash = $ExpectedConfigurationHash -replace '(?i)^sha256:', ''
+    if ($observedHash -ne $expectedHash) {
+        $finding.Add("GoLiveConfigurationHashMismatch: the evidence was collected for configuration '$observedHash', but this go-live is for '$expectedHash'.")
+    }
+
+    $collectedText = [string](Get-BaselineRecordMember -Node $Envelope -Name 'CollectedAtUtc')
+    $collectedAt = [datetime]::MinValue
+    $readable = [datetime]::TryParse(
+        $collectedText,
+        [System.Globalization.CultureInfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::AdjustToUniversal -bor [System.Globalization.DateTimeStyles]::AssumeUniversal,
+        [ref]$collectedAt)
+
+    if (-not $readable) {
+        $finding.Add("GoLiveCollectionTimeUnreadable: the evidence records its collection time as '$collectedText', which is not a timestamp.")
+    }
+    else {
+        $age = $AsOf - $collectedAt
+        if ($age -gt $MaximumEvidenceAge) {
+            $finding.Add("GoLiveEvidenceStale: the evidence is $([math]::Floor($age.TotalDays)) days old and the maximum evidence age is $([math]::Floor($MaximumEvidenceAge.TotalDays)) days.")
+        }
+    }
+
+    $servicePlan = Get-BaselineRecordMember -Node $Envelope -Name 'ServicePlan'
+    if ($null -ne $servicePlan) {
+        foreach ($capability in @(Get-BaselineRecordMember -Node $servicePlan -Name 'NotEntitled')) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$capability)) {
+                $finding.Add("GoLiveTenantNotEntitled: the tenant holds no enabled service plan for '$capability'.")
+            }
+        }
+    }
+
+    # A tenant-wide licence says nothing about whether the people the baseline protects are covered,
+    # so the per-user answer is read separately and a gap in it refuses on its own.
+    if ($null -ne $TargetEntitlement) {
+        foreach ($gap in @(Get-BaselineRecordMember -Node $TargetEntitlement -Name 'Missing')) {
+            if ($null -eq $gap) { continue }
+            $user = [string](Get-BaselineRecordMember -Node $gap -Name 'UserPrincipalName')
+            $plan = [string](Get-BaselineRecordMember -Node $gap -Name 'ServicePlanName')
+            $finding.Add("GoLiveTargetNotEntitled: '$user' holds no enabled service plan '$plan'.")
+        }
+    }
+
+    $signatureModel = ''
+    $signatureValue = ''
+    $signatureContentHash = ''
+    if ($null -ne $Signature) {
+        $signatureModel = [string](Get-BaselineRecordMember -Node $Signature -Name 'Model')
+        $signatureValue = [string](Get-BaselineRecordMember -Node $Signature -Name 'Value')
+        $signatureContentHash = [string](Get-BaselineRecordMember -Node $Signature -Name 'ContentHash')
+    }
+
+    if ([string]::IsNullOrWhiteSpace($signatureValue)) {
+        $finding.Add('GoLiveEvidenceUnsigned: the evidence carries no signature, so nothing binds these bytes to anybody who vouched for them.')
+    }
+    elseif ($signatureModel -cnotin @((Get-ApprovalSignatureContract).SelectedModel)) {
+        $finding.Add("GoLiveSignatureModelNotApproved: the evidence is signed under '$signatureModel', which is not the selected approval signature model.")
+    }
+    elseif ($signatureContentHash -ne [string](Get-BaselineEvidenceContentHash -Envelope $Envelope).Hash) {
+        $finding.Add("GoLiveEvidenceTampered: the evidence no longer hashes to the content that was signed as '$signatureContentHash'.")
+    }
+
+    $admitted = ($finding.Count -eq 0)
+    $result = if ($admitted) {
+        New-ControlResult -ControlId 'GATE-003' -Status 'Pass'
+    }
+    else {
+        New-ControlResult -ControlId 'GATE-003' -Status 'Fail' -Reason "GoLiveRefused: $($finding -join ' ')"
+    }
+
+    $member = [ordered]@{
+        Admitted    = $admitted
+        RequestedBy = $RequestedBy
+        Finding     = @($finding)
+        Exception   = @($excused)
+        Result      = $result
     }
 
     return , (ConvertTo-ImmutableBaselineNode -Node $member)
@@ -5038,6 +7013,181 @@ function Test-MtaStsControl {
     return Test-BaselineControl -ControlId 'EXO-011' -Evidence $Evidence -Evaluator $evaluator
 }
 
+# EXO-012: what a user may install into their own mailbox is written in two places that only mean
+# something together. `Get-RoleAssignmentPolicy` says which policy every mailbox falls under by
+# default, and `Get-ManagementRoleAssignment` says which roles hang off each policy; neither on its
+# own reports whether a user can acquire an add-in. Both are recorded whole - every policy, not the
+# default one, and every assignment, not the add-in ones - because narrowing at collection decides
+# which policy and which roles the control is about before any evaluator sees the tenant. Either
+# command refusing makes the whole record uncollected, since a record built from half the tenant is
+# indistinguishable from a record of a tenant with nothing to report.
+function Get-AddInAcquisitionEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$RoleAssignmentPolicyCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$ManagementRoleAssignmentCollection
+    )
+
+    if ($null -eq $RoleAssignmentPolicyCollection) {
+        throw 'RoleAssignmentPolicyCollectionRequired: EXO-012 cannot be observed without a collection that reaches the role assignment policies.'
+    }
+
+    if ($null -eq $ManagementRoleAssignmentCollection) {
+        throw 'ManagementRoleAssignmentCollectionRequired: EXO-012 cannot be observed without a collection that reaches the management role assignments.'
+    }
+
+    # Both collections are invoked inside the one seam Get-BaselineEvidence runs, so a refusal from
+    # either is recorded as an uncollected observation rather than thrown.
+    $collection = {
+        [ordered]@{
+            RoleAssignmentPolicy     = @(& $RoleAssignmentPolicyCollection)
+            ManagementRoleAssignment = @(& $ManagementRoleAssignmentCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'EXO-012' -Source 'ExchangeOnline' `
+        -Command 'Get-RoleAssignmentPolicy; Get-ManagementRoleAssignment' -Collection $collection
+}
+
+$script:AddInAcquisitionObservation = [ordered]@{
+    RoleAssignmentPolicy     = 'Get-RoleAssignmentPolicy'
+    ManagementRoleAssignment = 'Get-ManagementRoleAssignment'
+}
+
+# EXO-012: the three management roles that let a user acquire an add-in into their own mailbox.
+# Each is a separate grant and each is cleared separately, so a verdict names the role it found
+# rather than reporting that add-ins are on.
+$script:AddInAcquisitionRole = @('My Custom Apps', 'My Marketplace Apps', 'My ReadWriteMailboxApps')
+$script:AddInAcquisitionDecision = 'outlookAddInsForUsers'
+$script:RoleAssignmentPolicyDecidedMember = @('Identity', 'IsDefault')
+$script:ManagementRoleAssignmentDecidedMember = @('Role', 'RoleAssignee')
+
+# EXO-012: the default role assignment policy is the one every mailbox falls under without anybody
+# choosing it, so it is the only policy this control decides. An add-in acquisition role hanging
+# off a policy somebody deliberately assigned is out of scope rather than drift, and an ordinary
+# mailbox role hanging off the default policy is not an add-in grant. The comparison runs in both
+# directions against the role set the baseline resolved, because a tenant more restricted than the
+# approved state is still not the approved state.
+function Test-AddInAcquisitionControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredAddInAcquisitionStateRequired: EXO-012 cannot be decided without the add-in acquisition state the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $decision = $script:AddInAcquisitionDecision
+    if ($decision -cnotin @(Get-BaselineRecordMemberName -Node $DesiredState)) {
+        throw "DesiredAddInAcquisitionDecisionRequired: the resolved protocol restriction state declares no '$decision'; a baseline that never decided whether users may acquire add-ins reads identically to one that decided they may not."
+    }
+
+    $acquisitionRole = $script:AddInAcquisitionRole
+    $desiredRole = @(if ([bool](Get-BaselineRecordMember -Node $DesiredState -Name $decision)) { $acquisitionRole })
+    $observationName = @($script:AddInAcquisitionObservation.Keys)
+    $policyMember = $script:RoleAssignmentPolicyDecidedMember
+    $assignmentMember = $script:ManagementRoleAssignmentDecidedMember
+    $normalize = { param($Value) ([string]$Value).Trim().ToLowerInvariant() }
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "AddInAcquisitionEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        $policy = @(Get-BaselineRecordMember -Node $payload -Name 'RoleAssignmentPolicy')
+        foreach ($observed in $policy) {
+            $observedMember = @(Get-BaselineRecordMemberName -Node $observed)
+            foreach ($decided in $policyMember) {
+                if ($decided -cnotin $observedMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "AddInAcquisitionEvidenceIncomplete: an observed RoleAssignmentPolicy carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        $assignment = @(Get-BaselineRecordMember -Node $payload -Name 'ManagementRoleAssignment')
+        foreach ($observed in $assignment) {
+            $observedMember = @(Get-BaselineRecordMemberName -Node $observed)
+            foreach ($decided in $assignmentMember) {
+                if ($decided -cnotin $observedMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "AddInAcquisitionEvidenceIncomplete: an observed ManagementRoleAssignment carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        $defaultPolicy = @(foreach ($observed in $policy) {
+                if ([bool](Get-BaselineRecordMember -Node $observed -Name 'IsDefault')) {
+                    & $normalize (Get-BaselineRecordMember -Node $observed -Name 'Identity')
+                }
+            })
+
+        $finding = @(
+            if ($defaultPolicy.Count -eq 0) {
+                'the tenant holds no default role assignment policy'
+            }
+            else {
+                $heldRole = @(foreach ($observed in $assignment) {
+                        if ((& $normalize (Get-BaselineRecordMember -Node $observed -Name 'RoleAssignee')) -cin $defaultPolicy) {
+                            & $normalize (Get-BaselineRecordMember -Node $observed -Name 'Role')
+                        }
+                    })
+
+                foreach ($role in $acquisitionRole) {
+                    $held = ((& $normalize $role) -cin $heldRole)
+                    $permitted = ($role -cin $desiredRole)
+
+                    if ($held -and -not $permitted) {
+                        "the default role assignment policy holds user add-in acquisition role '$role'"
+                    }
+
+                    if ($permitted -and -not $held) {
+                        "the default role assignment policy does not hold user add-in acquisition role '$role'"
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'AddInAcquisitionDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'EXO-012' -Evidence $Evidence -Evaluator $evaluator
+}
+
 # MDO-001: the Standard preset is applied by two rules, not one. The EOP rule scopes anti-spam,
 # anti-malware and anti-phishing; the ATP rule scopes Safe Links and Safe Attachments. A tenant can
 # hold one enabled and the other disabled or differently scoped, so both are observed together and
@@ -6064,6 +8214,565 @@ function Test-SafeDocumentsControl {
     return Test-BaselineControl -ControlId 'MDO-005' -Evidence $Evidence -Evaluator $evaluator
 }
 
+# MDO-006: user reporting and Advanced Delivery are two commands and the card carries a clause
+# each. The report submission policy holds every reporting decision, and the SecOps mailbox is
+# registered on a separate Advanced Delivery override policy that no part of the reporting policy
+# describes. Both are read inside the one try `Get-BaselineEvidence` runs, so either command
+# refusing makes the whole record uncollected rather than letting the clause that answered stand in
+# for the clause that did not.
+$script:ReportSubmissionObservation = [ordered]@{
+    ReportSubmissionPolicy = 'Get-ReportSubmissionPolicy'
+    SecOpsOverridePolicy   = 'Get-SecOpsOverridePolicy'
+}
+
+function Get-ReportSubmissionEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$ReportSubmissionPolicyCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$SecOpsOverridePolicyCollection
+    )
+
+    if ($null -eq $ReportSubmissionPolicyCollection) {
+        throw 'ReportSubmissionPolicyCollectionRequired: MDO-006 cannot be observed without a collection that reaches the tenant report submission policies.'
+    }
+
+    if ($null -eq $SecOpsOverridePolicyCollection) {
+        throw 'SecOpsOverridePolicyCollectionRequired: MDO-006 cannot be observed without a collection that reaches the Advanced Delivery SecOps override policies.'
+    }
+
+    $collection = {
+        [ordered]@{
+            ReportSubmissionPolicy = @(& $ReportSubmissionPolicyCollection)
+            SecOpsOverridePolicy   = @(& $SecOpsOverridePolicyCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-006' -Source 'ExchangeOnline' `
+        -Command (@($script:ReportSubmissionObservation.Values) -join '; ') -Collection $collection
+}
+
+# MDO-006: the three reporting decisions the baseline declares and the member each is actually held
+# by. The Microsoft report button is in use precisely when reports are not diverted to a
+# third-party address, so that decision is compared against the inverse of the member Exchange
+# Online reports it through rather than against a member of its own.
+$script:ReportSubmissionDecision = @(
+    [pscustomobject]@{ Declared = 'microsoftReportMessageButton'; Observed = 'EnableThirdPartyAddress'; Inverted = $true }
+    [pscustomobject]@{ Declared = 'sendReportedMessagesToMicrosoft'; Observed = 'EnableReportToMicrosoft'; Inverted = $false }
+    [pscustomobject]@{ Declared = 'sendCopyToSecOpsMailbox'; Observed = 'ReportJunkToCustomizedAddress'; Inverted = $false }
+)
+
+# Exchange Online exposes no destination member; the portal presents the destination as the
+# combination of the two switches below, and that is the combination this control names.
+$script:ReportingDestination = [ordered]@{
+    Microsoft                 = [pscustomobject]@{ EnableReportToMicrosoft = $true; ReportJunkToCustomizedAddress = $false }
+    CustomMailbox             = [pscustomobject]@{ EnableReportToMicrosoft = $false; ReportJunkToCustomizedAddress = $true }
+    MicrosoftAndCustomMailbox = [pscustomobject]@{ EnableReportToMicrosoft = $true; ReportJunkToCustomizedAddress = $true }
+}
+$script:UnrecordedReportingDestination = 'Nowhere'
+$script:ReportSubmissionMailboxMember = 'ReportJunkAddresses'
+$script:SecOpsOverrideDecidedMember = @('Identity', 'SentTo')
+
+# MDO-006: the card carries two clauses that no single command answers. The report submission
+# policy holds the reporting switches, the destination they combine into and the mailbox reported
+# messages land in; Advanced Delivery registers the SecOps mailboxes on a separate override policy.
+# Every mailbox is compared as a normalized SMTP address set in both directions, so the casing,
+# whitespace, routing prefix, duplication and ordering Exchange Online reports back is never drift,
+# while a mailbox nobody approved and a mailbox nobody registered always are.
+function Test-ReportSubmissionControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$SecOpsMailbox
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredReportSubmissionStateRequired: MDO-006 cannot be decided without the user-submission state the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $decision = $script:ReportSubmissionDecision
+    $destinationContract = $script:ReportingDestination
+    $mailboxMember = $script:ReportSubmissionMailboxMember
+    $overrideMember = $script:SecOpsOverrideDecidedMember
+    $unrecorded = $script:UnrecordedReportingDestination
+
+    $desiredSwitch = [ordered]@{}
+    foreach ($pair in $decision) {
+        if ($pair.Declared -cnotin $declared) {
+            throw "DesiredReportSubmissionDecisionRequired: the resolved user-submission state declares no '$($pair.Declared)'; a baseline that never made the decision reads identically to a baseline that decided against it."
+        }
+
+        $value = [bool](Get-BaselineRecordMember -Node $DesiredState -Name $pair.Declared)
+        $desiredSwitch[$pair.Observed] = if ($pair.Inverted) { -not $value } else { $value }
+    }
+
+    if ('reportingDestination' -cnotin $declared) {
+        throw 'DesiredReportingDestinationRequired: the resolved user-submission state declares no reporting destination; the card calls the destination exact, and a tenant compared against none passes whether reported phishing reaches Microsoft, the SecOps mailbox or nobody.'
+    }
+
+    $desiredDestination = ([string](Get-BaselineRecordMember -Node $DesiredState -Name 'reportingDestination')).Trim()
+    if ($desiredDestination -cnotin @($destinationContract.Keys)) {
+        throw "DesiredReportingDestinationUnknown: the resolved user-submission state declares a reporting destination of '$desiredDestination', which the destination contract does not name; a destination with no declared switch combination behind it resolves to nothing."
+    }
+
+    $desiredMailbox = ([string](Get-BaselineRecordMember -Node $DesiredState -Name 'reportingMailbox')).Trim()
+    if ([string]::IsNullOrWhiteSpace($desiredMailbox)) {
+        throw 'DesiredReportingMailboxRequired: the resolved user-submission state names no reporting mailbox; the mailbox reported messages land in is the whole point of the custom destination.'
+    }
+
+    if ($desiredMailbox -match $script:PlaceholderPattern) {
+        throw "DesiredReportingMailboxUnresolved: the reporting mailbox is still the placeholder '$desiredMailbox'; a placeholder that reached the evaluator is a parameter nobody supplied, and comparing a tenant against the literal placeholder text fails every tenant for the wrong reason."
+    }
+
+    $desiredSecOps = @(foreach ($mailbox in $SecOpsMailbox) {
+            if (-not [string]::IsNullOrWhiteSpace($mailbox)) { $mailbox }
+        })
+
+    if ($desiredSecOps.Count -eq 0) {
+        throw 'DesiredSecOpsMailboxRequired: MDO-006 cannot be decided without the SecOps mailboxes the baseline resolved; a tenant compared against no SecOps mailbox passes precisely when Advanced Delivery registers nobody.'
+    }
+
+    $observationName = @($script:ReportSubmissionObservation.Keys)
+    $policyMember = @(@($decision.Observed) + @($mailboxMember))
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "ReportSubmissionEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        $reportPolicy = @(Get-BaselineRecordMember -Node $payload -Name 'ReportSubmissionPolicy')
+        foreach ($policy in $reportPolicy) {
+            $observedMember = @(Get-BaselineRecordMemberName -Node $policy)
+            foreach ($decided in $policyMember) {
+                if ($decided -cnotin $observedMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "ReportSubmissionEvidenceIncomplete: an observed ReportSubmissionPolicy carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        $overridePolicy = @(Get-BaselineRecordMember -Node $payload -Name 'SecOpsOverridePolicy')
+        foreach ($policy in $overridePolicy) {
+            $observedMember = @(Get-BaselineRecordMemberName -Node $policy)
+            foreach ($decided in $overrideMember) {
+                if ($decided -cnotin $observedMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "ReportSubmissionEvidenceIncomplete: an observed SecOpsOverridePolicy carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        if ($reportPolicy.Count -gt 1) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "ReportSubmissionEvidenceAmbiguous: the record carries $($reportPolicy.Count) report submission policies where the tenant holds one."
+            }
+        }
+
+        $finding = @(
+            if ($reportPolicy.Count -eq 0) {
+                'the tenant holds no report submission policy'
+            }
+            else {
+                foreach ($observed in $desiredSwitch.Keys) {
+                    $actual = [bool](Get-BaselineRecordMember -Node $reportPolicy[0] -Name $observed)
+                    if ($actual -ne $desiredSwitch[$observed]) {
+                        "the report submission policy sets '$observed' to '$actual' where '$($desiredSwitch[$observed])' is required"
+                    }
+                }
+
+                $observedDestination = $unrecorded
+                foreach ($name in $destinationContract.Keys) {
+                    $combination = $destinationContract[$name]
+                    $matched = $true
+                    foreach ($member in @(Get-BaselineRecordMemberName -Node $combination)) {
+                        if ([bool](Get-BaselineRecordMember -Node $reportPolicy[0] -Name $member) -ne [bool]$combination.$member) { $matched = $false }
+                    }
+
+                    if ($matched) { $observedDestination = $name }
+                }
+
+                if ($observedDestination -cne $desiredDestination) {
+                    "the report submission policy sends reported messages to '$observedDestination' where '$desiredDestination' is required"
+                }
+
+                $mailbox = Compare-NormalizedCollection -Desired @($desiredMailbox) `
+                    -Actual @(Get-BaselineRecordMember -Node $reportPolicy[0] -Name $mailboxMember) -Kind 'SmtpAddress'
+
+                foreach ($missing in @($mailbox.Missing)) { "the report submission policy does not report to '$missing'" }
+                foreach ($surplus in @($mailbox.Surplus)) { "the report submission policy reports to unapproved '$surplus'" }
+            }
+
+            if ($overridePolicy.Count -eq 0) {
+                'the tenant registers no SecOps override policy in Advanced Delivery'
+            }
+            else {
+                $registered = @(foreach ($policy in $overridePolicy) { Get-BaselineRecordMember -Node $policy -Name 'SentTo' })
+                $secOps = Compare-NormalizedCollection -Desired $desiredSecOps -Actual $registered -Kind 'SmtpAddress'
+
+                foreach ($missing in @($secOps.Missing)) { "Advanced Delivery does not register SecOps mailbox '$missing'" }
+                foreach ($surplus in @($secOps.Surplus)) { "Advanced Delivery registers unapproved SecOps mailbox '$surplus'" }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'ReportSubmissionDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-006' -Evidence $Evidence -Evaluator $evaluator
+}
+
+# MDO-008: quarantine behaviour is spread over three commands and is decidable from no subset of
+# them. The quarantine policies carry the notification cadence and the end-user permission values;
+# the hosted content filter says which quarantine policy each spam and phish category is released
+# under; and malware is quarantined by the malware filter, not by the content filter, so the one
+# category the card names first is invisible without it. All three are read inside the one try
+# `Get-BaselineEvidence` runs, so any command refusing makes the whole record uncollected rather
+# than leaving the categories that did answer to stand in for the ones that did not.
+$script:QuarantineObservation = [ordered]@{
+    QuarantinePolicy          = 'Get-QuarantinePolicy'
+    HostedContentFilterPolicy = 'Get-HostedContentFilterPolicy'
+    MalwareFilterPolicy       = 'Get-MalwareFilterPolicy'
+}
+
+function Get-QuarantinePolicyEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$QuarantinePolicyCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$ContentFilterPolicyCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MalwareFilterPolicyCollection
+    )
+
+    if ($null -eq $QuarantinePolicyCollection) {
+        throw 'QuarantinePolicyCollectionRequired: MDO-008 cannot be observed without a collection that reaches the tenant quarantine policies.'
+    }
+
+    if ($null -eq $ContentFilterPolicyCollection) {
+        throw 'ContentFilterPolicyCollectionRequired: MDO-008 cannot be observed without a collection that reaches the hosted content filter policies.'
+    }
+
+    if ($null -eq $MalwareFilterPolicyCollection) {
+        throw 'MalwareFilterPolicyCollectionRequired: MDO-008 cannot be observed without a collection that reaches the malware filter policies.'
+    }
+
+    $collection = {
+        [ordered]@{
+            QuarantinePolicy          = @(& $QuarantinePolicyCollection)
+            HostedContentFilterPolicy = @(& $ContentFilterPolicyCollection)
+            MalwareFilterPolicy       = @(& $MalwareFilterPolicyCollection)
+        }
+    }.GetNewClosure()
+
+    return Get-BaselineEvidence -ControlId 'MDO-008' -Source 'ExchangeOnline' `
+        -Command (@($script:QuarantineObservation.Values) -join '; ') -Collection $collection
+}
+
+# MDO-008: Exchange Online reports end-user quarantine permissions as a bitmask rather than as the
+# access level name the baseline declares, so the access level is only comparable through the exact
+# value each preset permission group is stored as. An access level with no value here resolves to
+# nothing, which would compare every tenant as compliant, so it is refused rather than defaulted.
+$script:QuarantinePermissionValue = [ordered]@{
+    AdminOnlyAccess = 0
+    LimitedAccess   = 106
+    FullAccess      = 236
+}
+
+# The one member each quarantined category's release permission is actually decided through.
+# Malware is quarantined by the malware filter and every other category by the hosted content
+# filter, so a category with no entry here is a category the control can locate no quarantine tag
+# for and must refuse rather than silently skip.
+$script:QuarantineCategoryTag = [ordered]@{
+    Malware             = [pscustomobject]@{ Observation = 'MalwareFilterPolicy'; Member = 'QuarantineTag' }
+    HighConfidencePhish = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'HighConfidencePhishQuarantineTag' }
+    Phish               = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'PhishQuarantineTag' }
+    HighConfidenceSpam  = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'HighConfidenceSpamQuarantineTag' }
+    Spam                = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'SpamQuarantineTag' }
+    Bulk                = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'BulkQuarantineTag' }
+    SpoofIntelligence   = [pscustomobject]@{ Observation = 'HostedContentFilterPolicy'; Member = 'SpoofQuarantineTag' }
+}
+
+$script:QuarantinePolicyDecidedMember = @(
+    'Name'
+    'QuarantinePolicyType'
+    'EndUserQuarantinePermissionsValue'
+    'EndUserSpamNotificationFrequency'
+    'IncludeMessagesFromBlockedSenderAddress'
+)
+$script:GlobalQuarantinePolicyType = 'GlobalQuarantinePolicy'
+$script:QuarantineAdminOnlyAccessLevel = 'AdminOnlyAccess'
+
+# MDO-008: the cadence and the blocked-sender decision are held by the single global quarantine
+# policy, while the permission a category actually gets is the permission of whichever quarantine
+# policy that category's filter tag points at. The two are only decidable together, so every
+# declared category is resolved through its tag to a policy and then to a permission value. Every
+# observed filter policy is decided, because each one applies to some population and an evaluator
+# that stopped at the first agreeing policy would report the whole tenant protected by a policy
+# that reaches only part of it. Tag and policy names are matched trimmed and case-insensitively,
+# because Exchange Online reports a name back in whatever form it was stored with.
+function Test-QuarantinePolicyControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$DesiredState
+    )
+
+    if ($null -eq $DesiredState) {
+        throw 'DesiredQuarantineStateRequired: MDO-008 cannot be decided without the quarantine state the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
+    }
+
+    $declared = @(Get-BaselineRecordMemberName -Node $DesiredState)
+    $permissionValue = $script:QuarantinePermissionValue
+    $categoryTag = $script:QuarantineCategoryTag
+    $adminOnly = $script:QuarantineAdminOnlyAccessLevel
+
+    if ('endUserSpamNotificationFrequencyInDays' -cnotin $declared) {
+        throw 'DesiredQuarantineNotificationCadenceRequired: the resolved quarantine state declares no end-user notification cadence; the cadence is the whole reason a user learns a message was quarantined, and a baseline that declares none compares every tenant against nothing at all.'
+    }
+
+    $cadenceDay = 0
+    $declaredCadence = [string](Get-BaselineRecordMember -Node $DesiredState -Name 'endUserSpamNotificationFrequencyInDays')
+    if (-not [int]::TryParse($declaredCadence, [ref]$cadenceDay) -or $cadenceDay -le 0) {
+        throw "DesiredQuarantineNotificationCadenceInvalid: the resolved quarantine state declares an end-user notification cadence of '$declaredCadence'; the card requires an exact cadence, which is only comparable as a positive whole number of days."
+    }
+
+    if ('includeMessagesFromBlockedSenderAddress' -cnotin $declared) {
+        throw 'DesiredQuarantineBlockedSenderDecisionRequired: the resolved quarantine state declares no blocked-sender decision; a baseline that never made it reads identically to a baseline that decided against it, and only one of them is a decision somebody made.'
+    }
+
+    $desiredBlockedSender = [bool](Get-BaselineRecordMember -Node $DesiredState -Name 'includeMessagesFromBlockedSenderAddress')
+
+    $categoryPermission = @(foreach ($entry in @(Get-BaselineRecordMember -Node $DesiredState -Name 'categoryPermissions')) {
+            if ($null -ne $entry) { $entry }
+        })
+    if ($categoryPermission.Count -eq 0) {
+        throw 'DesiredQuarantineCategoryPermissionRequired: the resolved quarantine state declares no category permission at all; the category permissions are the entire comparison this control makes, and a tenant compared against none of them passes with every category on full end-user access.'
+    }
+
+    $desiredCategory = [ordered]@{}
+    foreach ($entry in $categoryPermission) {
+        $category = ([string](Get-BaselineRecordMember -Node $entry -Name 'category')).Trim()
+        $accessLevel = ([string](Get-BaselineRecordMember -Node $entry -Name 'accessLevel')).Trim()
+
+        if ([string]::IsNullOrWhiteSpace($category) -or [string]::IsNullOrWhiteSpace($accessLevel)) {
+            throw "DesiredQuarantineCategoryPermissionIncomplete: the resolved quarantine state declares a permission naming category '$category' at access level '$accessLevel'; a permission missing either half approves nothing, and reading it as a permission grants whatever the missing half defaults to."
+        }
+
+        if ($accessLevel -cnotin @($permissionValue.Keys)) {
+            throw "DesiredQuarantineAccessLevelUnknown: the resolved quarantine state declares '$category' at access level '$accessLevel', which the permission contract does not name; an access level with no declared permission value resolves to nothing and compares every tenant as compliant."
+        }
+
+        if ($category -cnotin @($categoryTag.Keys)) {
+            throw "DesiredQuarantineCategoryUnmapped: the resolved quarantine state declares category '$category', which no filter policy member releases; a category the control can locate no quarantine tag for is a category the tenant is never actually checked for."
+        }
+
+        $desiredCategory[$category] = $accessLevel
+    }
+
+    $highRiskCategory = @(foreach ($name in @(Get-BaselineRecordMember -Node $DesiredState -Name 'highRiskCategories')) {
+            $trimmed = ([string]$name).Trim()
+            if (-not [string]::IsNullOrWhiteSpace($trimmed)) { $trimmed }
+        })
+
+    if ($highRiskCategory.Count -eq 0) {
+        throw 'DesiredQuarantineHighRiskCategoryRequired: the resolved quarantine state names no high-risk category; malware and high-confidence phishing being admin-only is the clause this control holds first, and a baseline naming no high-risk category has dropped it.'
+    }
+
+    foreach ($name in $highRiskCategory) {
+        if ($name -cnotin @($desiredCategory.Keys)) {
+            throw "DesiredQuarantineHighRiskCategoryUncovered: the resolved quarantine state names '$name' high-risk but declares no permission for it; a high-risk category with no permission is a category this control would never look at."
+        }
+
+        if ($desiredCategory[$name] -cne $adminOnly) {
+            throw "DesiredQuarantineHighRiskAccessRequired: the resolved quarantine state names '$name' high-risk and then holds it at '$($desiredCategory[$name])'; the card requires the high-risk categories at '$adminOnly', so a baseline letting end users reach one is a baseline this control refuses rather than enforces."
+        }
+    }
+
+    $observationName = @($script:QuarantineObservation.Keys)
+    $policyMember = $script:QuarantinePolicyDecidedMember
+    $globalType = $script:GlobalQuarantinePolicyType
+
+    $evaluator = {
+        param($Record)
+
+        $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
+        $present = @()
+        if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        foreach ($name in $observationName) {
+            if ($name -cnotin $present) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "QuarantineEvidenceIncomplete: the record carries no '$name' observation."
+                }
+            }
+        }
+
+        $quarantinePolicy = @(Get-BaselineRecordMember -Node $payload -Name 'QuarantinePolicy')
+        foreach ($policy in $quarantinePolicy) {
+            $observedMember = @(Get-BaselineRecordMemberName -Node $policy)
+            foreach ($decided in $policyMember) {
+                if ($decided -cnotin $observedMember) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "QuarantineEvidenceIncomplete: an observed QuarantinePolicy carries no '$decided' member."
+                    }
+                }
+            }
+        }
+
+        foreach ($category in @($desiredCategory.Keys)) {
+            $tagSource = $categoryTag[$category]
+            foreach ($policy in @(Get-BaselineRecordMember -Node $payload -Name $tagSource.Observation)) {
+                if ($tagSource.Member -cnotin @(Get-BaselineRecordMemberName -Node $policy)) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "QuarantineEvidenceIncomplete: an observed $($tagSource.Observation) carries no '$($tagSource.Member)' member for '$category'."
+                    }
+                }
+            }
+        }
+
+        $policyByName = @{}
+        foreach ($policy in $quarantinePolicy) {
+            $key = ([string](Get-BaselineRecordMember -Node $policy -Name 'Name')).Trim().ToLowerInvariant()
+            if ($policyByName.ContainsKey($key)) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "QuarantineEvidenceAmbiguous: the record carries two quarantine policies under the name '$key'."
+                }
+            }
+
+            $policyByName[$key] = $policy
+        }
+
+        $globalPolicy = @(foreach ($policy in $quarantinePolicy) {
+                if (([string](Get-BaselineRecordMember -Node $policy -Name 'QuarantinePolicyType')).Trim() -ieq $globalType) { $policy }
+            })
+
+        if ($globalPolicy.Count -gt 1) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "QuarantineEvidenceAmbiguous: the record carries $($globalPolicy.Count) global quarantine policies where the tenant holds one."
+            }
+        }
+
+        $observedCadence = [string]$null
+        $cadenceSpan = [timespan]::Zero
+        if ($globalPolicy.Count -eq 1) {
+            $observedCadence = [string](Get-BaselineRecordMember -Node $globalPolicy[0] -Name 'EndUserSpamNotificationFrequency')
+            if (-not [timespan]::TryParse($observedCadence, [ref]$cadenceSpan)) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "QuarantineEvidenceNotRecognized: the global quarantine policy reports an end-user notification cadence of '$observedCadence', which is not a time span."
+                }
+            }
+        }
+
+        $finding = @(
+            if ($globalPolicy.Count -eq 0) { 'the tenant holds no global quarantine policy' }
+            if (@(Get-BaselineRecordMember -Node $payload -Name 'HostedContentFilterPolicy').Count -eq 0) { 'the tenant holds no hosted content filter policy' }
+            if (@(Get-BaselineRecordMember -Node $payload -Name 'MalwareFilterPolicy').Count -eq 0) { 'the tenant holds no malware filter policy' }
+
+            if ($globalPolicy.Count -eq 1) {
+                if ($cadenceSpan.TotalDays -ne $cadenceDay) {
+                    "the global quarantine policy notifies end users every '$observedCadence' where exactly $cadenceDay day is required"
+                }
+
+                $observedBlockedSender = [bool](Get-BaselineRecordMember -Node $globalPolicy[0] -Name 'IncludeMessagesFromBlockedSenderAddress')
+                if ($observedBlockedSender -ne $desiredBlockedSender) {
+                    "the global quarantine policy includes messages from blocked senders as '$observedBlockedSender' where '$desiredBlockedSender' is required"
+                }
+            }
+
+            foreach ($category in @($desiredCategory.Keys)) {
+                $tagSource = $categoryTag[$category]
+                $accessLevel = $desiredCategory[$category]
+                $required = $permissionValue[$accessLevel]
+
+                foreach ($policy in @(Get-BaselineRecordMember -Node $payload -Name $tagSource.Observation)) {
+                    $policyName = ([string](Get-BaselineRecordMember -Node $policy -Name 'Name')).Trim()
+                    $tag = ([string](Get-BaselineRecordMember -Node $policy -Name $tagSource.Member)).Trim()
+
+                    if (-not $policyByName.ContainsKey($tag.ToLowerInvariant())) {
+                        "the $($tagSource.Observation) '$policyName' releases '$category' under quarantine tag '$tag', which the tenant does not hold"
+                        continue
+                    }
+
+                    $observedValue = [int](Get-BaselineRecordMember -Node $policyByName[$tag.ToLowerInvariant()] -Name 'EndUserQuarantinePermissionsValue')
+                    if ($observedValue -eq $required) { continue }
+
+                    if ($category -cin $highRiskCategory) {
+                        "the $($tagSource.Observation) '$policyName' resolves high-risk '$category' to permission value '$observedValue' where admin-only access requires '$required'"
+                    }
+                    else {
+                        "the $($tagSource.Observation) '$policyName' resolves '$category' to permission value '$observedValue' where '$accessLevel' requires '$required'"
+                    }
+                }
+            }
+        )
+
+        if ($finding.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+
+        return [pscustomobject]@{
+            Status = 'Fail'
+            Reason = 'QuarantineDrift: {0}.' -f ($finding -join '; ')
+        }
+    }
+
+    return Test-BaselineControl -ControlId 'MDO-008' -Evidence $Evidence -Evaluator $evaluator
+}
+
 # COM-007: the one configuration source both entry scripts share. Deployment and evidence cannot
 # reach different desired state or different hashes because neither builds a configuration of its
 # own; each receives this context, resolved, schema-validated and hashed by the same code path.
@@ -6142,14 +8851,20 @@ Export-ModuleMember -Function @(
     'Compare-NormalizedCollection'
     'Get-ControlApplicability'
     'Test-RiskAcceptance'
+    'Test-RiskAcceptanceDocument'
     'New-ControlResult'
     'New-BaselineEvidence'
     'Get-BaselineEvidence'
     'New-BaselineControlRegistry'
     'Get-BaselineControlRegistry'
+    'Test-BaselineControlResolution'
     'Get-BaselineControlCatalog'
     'Test-BaselineControlCoverage'
     'Test-BaselineEvidenceFramework'
+    'Get-BaselineEvidenceContentHash'
+    'Test-BaselineGoLive'
+    'Get-BaselineExitCodeContract'
+    'Get-BaselineRunOutcome'
     'Get-ConditionalAccessEvidence'
     'Test-ConditionalAccessControl'
     'Get-AcceptedDomainEvidence'
@@ -6172,6 +8887,8 @@ Export-ModuleMember -Function @(
     'Test-SmtpAuthenticationControl'
     'Get-MtaStsEvidence'
     'Test-MtaStsControl'
+    'Get-AddInAcquisitionEvidence'
+    'Test-AddInAcquisitionControl'
     'Get-StandardPresetEvidence'
     'Test-StandardPresetControl'
     'Get-StrictPresetEvidence'
@@ -6184,6 +8901,10 @@ Export-ModuleMember -Function @(
     'Test-SafeAttachmentsControl'
     'Get-SafeDocumentsEvidence'
     'Test-SafeDocumentsControl'
+    'Get-ReportSubmissionEvidence'
+    'Test-ReportSubmissionControl'
+    'Get-QuarantinePolicyEvidence'
+    'Test-QuarantinePolicyControl'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'
@@ -6191,4 +8912,17 @@ Export-ModuleMember -Function @(
     'Get-ApplicabilityAuthorityContract'
     'Get-ArtifactVersionContract'
     'Get-ApprovalSignatureContract'
+    'Get-BaselineChangeArtifactContract'
+    'New-BaselineChangeArtifactSet'
+    'Write-BaselineChangeArtifact'
+    'New-BaselineChangePreview'
+    'Test-BaselineChangeApproval'
+    'New-BaselineChangeStateCapture'
+    'New-BaselineRollbackScript'
+    'Get-BaselineMutationGuardContract'
+    'Get-BaselineMutationGuardReport'
+    'New-BaselineMutationJournal'
+    'Resolve-BaselinePartialApplication'
+    'Test-BaselineChangeSuccess'
+    'Test-BaselineApplyPrerequisite'
 )
