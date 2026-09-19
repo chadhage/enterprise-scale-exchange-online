@@ -1,0 +1,8 @@
+# Mutation-testing harnesses coworkers generate to prove a negative fails for its own reason.
+# Throwaway, and they hardcode absolute paths, so they must never be committed.
+redproof-*
+
+# Test and evidence output
+test-reports/
+TestResults.xml
+coverage.xml
