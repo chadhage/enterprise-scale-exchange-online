@@ -103,6 +103,8 @@
         'Resolve-BaselinePartialApplication'
         'Test-BaselineChangeSuccess'
         'Test-BaselineApplyPrerequisite'
+        'Test-BaselineDeploymentApplyOrder'
+        'Test-BaselineDeploymentMutationPlan'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()

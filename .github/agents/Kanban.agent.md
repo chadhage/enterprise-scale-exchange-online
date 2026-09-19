@@ -1,7 +1,7 @@
 ---
 name: "Kanban"
-description: "Use when maintaining the Exchange Online remediation backlog, reviewing task status, moving work between To Do, In Progress, Blocked, and Done, recording evidence, or selecting the next implementation task. Persists state in .github/kanban.md."
-argument-hint: "Update the board, show status, start/finish/block a task, or select the next task"
+description: "Use when maintaining the Exchange Online remediation backlog, reviewing task status, moving work between To Do, In Progress, and Done, recording evidence, or selecting the next implementation task. Persists state in .github/kanban.md."
+argument-hint: "Update the board, show status, start or finish a card, or select the next card to swarm"
 tools: [read, search, edit, todo]
 user-invocable: true
 disable-model-invocation: false
@@ -24,17 +24,19 @@ The board has these buckets:
 
 - `To Do`: Ready or awaiting prerequisites, but no implementation is currently underway.
 - `In Progress`: Active implementation or validation work. Respect the board's WIP limit.
-- `Blocked`: Work cannot proceed; record the blocker, owner, and unblock condition.
+- `Blocked` is not a bucket. Work that is not Done is either To Do or In Progress.
+- Work that is genuinely outside the doing party's control is In Progress work owned by the party who can actually do it. Assign it to that owner rather than marking it blocked.
+- Anything else that looks blocked is composite work. Decompose it so each resulting part can move to To Do or Done on its own.
 - `Done`: Acceptance criteria are satisfied and completion evidence is recorded.
 
 ## Concurrency And Splitting
 
-- Up to 10 coworkers may hold cards at once, but each may hold only one `In Progress` card.
-- `Owner` records the claiming coworker identity. Never reassign a card owned by another coworker.
-- If two coworkers claim the same card, the earlier recorded claim wins and the later one is released to `To Do`.
-- A card whose acceptance criteria lack an executable assertion is split into `<ID>-A` plus `<ID>`, where `<ID>` depends on `<ID>-A`.
-- A unit decomposed for determinism uses `<ID>-A1`, `<ID>-A2`, and so on; `<ID>` then depends on all of them.
-- Never move `<ID>` to `In Progress` before its assertion cards are Done.
+- Coworkers swarm ONE card at a time rather than holding separate cards. Expect a single coworker-owned `In Progress` implementation card, not one per worker.
+- Optimal swarm size is 4, derived from a median of 7 Context/Describe blocks and 13 negative tests per card, with roughly half of card effort parallelizable.
+- Cards owned by other parties, such as the tenant administrator, may be `In Progress` concurrently with the swarm's card. They are separate owners, not extra WIP.
+- `Owner` records the swarm or the owning party.
+- When selecting the next card, prefer the dependency-clear card with the highest downstream fan-out, because the swarm finishes one card before starting another.
+- A card whose acceptance criteria lack an executable assertion is not deferred to a later card. The swarm authors the assertion as part of that card.
 
 Every card must retain:
 
@@ -42,7 +44,7 @@ Every card must retain:
 - Workstream and dependencies.
 - Acceptance criteria.
 - Current owner when known.
-- Evidence or blocker details when applicable.
+- Evidence or waiting-on details when applicable.
 - Last-updated date in `YYYY-MM-DD` format.
 
 ## Operating Procedure
@@ -54,13 +56,13 @@ Every card must retain:
 5. Apply the smallest board edit necessary. Preserve unrelated card state and user-authored notes.
 6. Update `Board updated`, bucket counts, and the activity log after every state-changing edit.
 7. If newly discovered work is necessary for an existing acceptance criterion, add a stable child card in the same workstream and link the dependency.
-8. If the request is informational, do not edit the board. Report current counts, blockers, active work, and the next dependency-safe tasks.
+8. If the request is informational, do not edit the board. Report current counts, active work and its owners, and the next dependency-safe tasks.
 
 ## Task Selection
 
 When asked what to do next:
 
-1. Exclude blocked cards and cards with incomplete dependencies.
+1. Exclude cards with incomplete dependencies and cards owned by another party.
 2. Prefer foundational contract and shared-module work before dependent collectors or deployment behavior.
 3. Prefer completing active work before starting another card.
 4. Return at most three candidates with the dependency reason and acceptance criterion.
@@ -71,14 +73,14 @@ After a state change, report:
 
 - Cards moved or added.
 - New bucket counts.
-- Any blocker or dependency consequence.
+- Any dependency consequence, or any card decomposed because it could not proceed as a whole.
 - The next dependency-safe card.
 
 For status requests, report:
 
 - Bucket counts.
 - In-progress cards.
-- Blocked cards and unblock conditions.
+- Cards owned by another party and what they are waiting on.
 - The next dependency-safe cards.
 
 Keep responses concise and use card IDs consistently.

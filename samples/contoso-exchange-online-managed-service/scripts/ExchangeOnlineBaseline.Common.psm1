@@ -3695,6 +3695,637 @@ function Test-BaselineApplyPrerequisite {
             }))
 }
 
+# SAFE-007-A2: the function a command sits lexically inside, or nothing when it sits at script
+# level. A definition runs nothing on its own, so this is what separates where a command is
+# written from where it is reached.
+function Get-BaselineEnclosingFunction {
+    param([object]$Node)
+
+    $parent = $Node.Parent
+    while ($null -ne $parent -and $parent -isnot [System.Management.Automation.Language.FunctionDefinitionAst]) {
+        $parent = $parent.Parent
+    }
+
+    return $parent
+}
+
+# SAFE-007-A2: the earliest line a command can actually run at. A command at script level runs
+# where it is written; a command inside a function runs no earlier than the earliest call that
+# reaches that function, resolved through however many helpers stand between them. A function
+# nothing calls runs nowhere, and a function that reaches itself is not made any earlier by the
+# recursion, so both report the last line any ordering could place them at.
+function Get-BaselineApplyOrderLine {
+    param(
+        [object]$Node,
+        [object]$Root,
+        [System.Collections.Generic.HashSet[string]]$Visited
+    )
+
+    $enclosing = Get-BaselineEnclosingFunction -Node $Node
+    if ($null -eq $enclosing) { return [int]$Node.Extent.StartLineNumber }
+
+    $name = [string]$enclosing.Name
+    if ($Visited.Contains($name)) { return [int]::MaxValue }
+
+    $reached = [int]::MaxValue
+    foreach ($candidate in $Root.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+        if ([string]$candidate.GetCommandName() -ne $name) { continue }
+
+        $branch = [System.Collections.Generic.HashSet[string]]::new($Visited, [System.StringComparer]::OrdinalIgnoreCase)
+        $null = $branch.Add($name)
+
+        $line = Get-BaselineApplyOrderLine -Node $candidate -Root $Root -Visited $branch
+        if ($line -lt $reached) { $reached = $line }
+    }
+
+    return $reached
+}
+
+# SAFE-007-A2: whether the gate is governed by the run's own apply switch. A gate reached outside
+# it refuses audit runs that change nothing, which proves nothing about the apply run that does.
+function Test-BaselineApplySwitchEnclosure {
+    param([object]$Node)
+
+    $child = $Node
+    $parent = $Node.Parent
+
+    while ($null -ne $parent) {
+        if ($parent -is [System.Management.Automation.Language.IfStatementAst]) {
+            foreach ($clause in $parent.Clauses) {
+                if (-not [object]::ReferenceEquals($clause.Item2, $child)) { continue }
+
+                $read = @(
+                    $clause.Item1.FindAll({ param($node) $node -is [System.Management.Automation.Language.VariableExpressionAst] }, $true) |
+                        Where-Object { [string]$_.VariablePath.UserPath -eq 'Apply' }
+                )
+
+                if ($read.Count -gt 0) { return $true }
+            }
+        }
+
+        $child = $parent
+        $parent = $parent.Parent
+    }
+
+    return $false
+}
+
+# SAFE-007-A2: whether a refusal from the gate stops the run. The decision has to be captured
+# before anything can test it, an `if` has to test the captured decision, and that branch has to
+# terminate: a refusal the run only logs is a refusal that changed the tenant anyway.
+function Test-BaselineApplyRefusalEnforced {
+    param([object]$Node, [object]$Root)
+
+    $assignment = $Node.Parent
+    while ($null -ne $assignment -and $assignment -isnot [System.Management.Automation.Language.AssignmentStatementAst]) {
+        $assignment = $assignment.Parent
+    }
+
+    if ($null -eq $assignment) { return $false }
+
+    $target = $assignment.Left
+    while ($target -is [System.Management.Automation.Language.ConvertExpressionAst]) { $target = $target.Child }
+    if ($target -isnot [System.Management.Automation.Language.VariableExpressionAst]) { return $false }
+
+    $name = [string]$target.VariablePath.UserPath
+
+    foreach ($statement in $Root.FindAll({ param($node) $node -is [System.Management.Automation.Language.IfStatementAst] }, $true)) {
+        foreach ($clause in $statement.Clauses) {
+            $read = @(
+                $clause.Item1.FindAll({ param($node) $node -is [System.Management.Automation.Language.VariableExpressionAst] }, $true) |
+                    Where-Object { [string]$_.VariablePath.UserPath -eq $name }
+            )
+
+            if ($read.Count -eq 0) { continue }
+
+            $terminator = @(
+                $clause.Item2.Statements |
+                    Where-Object {
+                        $_ -is [System.Management.Automation.Language.ThrowStatementAst] -or
+                        $_ -is [System.Management.Automation.Language.ReturnStatementAst] -or
+                        $_ -is [System.Management.Automation.Language.ExitStatementAst]
+                    }
+            )
+
+            if ($terminator.Count -gt 0) { return $true }
+        }
+    }
+
+    return $false
+}
+
+# SAFE-007-A2: the one order in which an apply can still be refused. The gate is the only thing
+# that can withhold a change, so everything it exists to withhold - the credential and every
+# tenant mutation - has to come after it decided. This is read off the parsed script rather than
+# from a run, because the branch nobody exercised is exactly the one that connects first, and it
+# is read from the shipped script rather than from a description of it, because a documented
+# ordering nothing checks is the ordering that drifts. The mutation sites are taken from the
+# mutation guard report rather than re-derived from the verb, so creating a local directory above
+# the gate is not reported as changing a tenant. Every refusal is collected rather than thrown, so
+# an operator learns the whole ordering at once instead of one reordering at a time.
+function Test-BaselineDeploymentApplyOrder {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ScriptPath
+    )
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+
+    if ([string]::IsNullOrWhiteSpace($ScriptPath) -or -not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+        $finding.Add("ApplyOrderScriptNotFound: '$ScriptPath' names no file, so there is no shipped apply order to read and nothing a run can be held to.")
+
+        return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                    Ordered        = $false
+                    Finding        = @($finding)
+                    GateLine       = 0
+                    ConnectionSite = @()
+                    MutationSite   = @()
+                }))
+    }
+
+    $parseToken = $null
+    $parseError = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Resolve-Path -LiteralPath $ScriptPath).ProviderPath, [ref]$parseToken, [ref]$parseError)
+
+    if (@($parseError).Count -gt 0) {
+        throw "ScriptNotParsable: '$ScriptPath' did not parse; $($parseError[0].Message)"
+    }
+
+    $requiredParameter = [ordered]@{
+        PreviewPath  = 'the preview it was reviewed against, so it applies whatever the configuration happens to say at the moment it runs'
+        ApprovalPath = 'the approval that admitted it, so nothing tells it that anyone agreed to the change it is about to make'
+        ChangeId     = 'the change it is applying, so the mutation cannot be tied back to the change record that authorised it'
+        ArtifactRoot = 'anywhere to write its preview, approval and outcome, so the apply leaves no evidence that it happened'
+    }
+
+    $declared = @(
+        if ($null -ne $ast.ParamBlock) {
+            $ast.ParamBlock.Parameters | ForEach-Object { [string]$_.Name.VariablePath.UserPath }
+        }
+    )
+
+    foreach ($name in $requiredParameter.Keys) {
+        if ($declared -contains $name) { continue }
+        $finding.Add("ApplyOrderParameter${name}NotDeclared: the script cannot be handed $($requiredParameter[$name]).")
+    }
+
+    $command = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true))
+    $gate = @(
+        $command |
+            Where-Object { [string]$_.GetCommandName() -eq 'Test-BaselineApplyPrerequisite' } |
+            Sort-Object { [int]$_.Extent.StartLineNumber }
+    )
+
+    $gateLine = 0
+    if ($gate.Count -eq 0) {
+        $finding.Add('ApplyOrderGateNotReached: the script never asks the apply prerequisite gate whether it may apply, so it has no gate, only a gate function nobody calls.')
+    }
+    else {
+        $gateLine = [int]$gate[0].Extent.StartLineNumber
+
+        if (-not (Test-BaselineApplySwitchEnclosure -Node $gate[0])) {
+            $finding.Add("ApplyOrderGateNotUnderApplySwitch: the gate on line $gateLine is not governed by the run's own apply switch, so it refuses audit runs that change nothing and decides nothing about the apply run that does.")
+        }
+
+        if (-not (Test-BaselineApplyRefusalEnforced -Node $gate[0] -Root $ast)) {
+            $finding.Add("ApplyOrderGateRefusalNotEnforced: nothing captures the decision on line $gateLine and terminates the run when it refuses, and a gate whose No is advisory is not a gate.")
+        }
+    }
+
+    $reported = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+    foreach ($entry in @((Get-BaselineMutationGuardReport -ScriptPath $ScriptPath).MutationSite)) {
+        $null = $reported.Add(('{0}@{1}' -f $entry.Command, $entry.Line))
+    }
+
+    $connectionSite = [System.Collections.Generic.List[object]]::new()
+    $mutationSite = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($candidate in $command) {
+        $name = [string]$candidate.GetCommandName()
+        if ([string]::IsNullOrWhiteSpace($name)) { continue }
+
+        $line = [int]$candidate.Extent.StartLineNumber
+        $isConnection = $name -match '^Connect-'
+        $isMutation = $reported.Contains(('{0}@{1}' -f $name, $line))
+
+        if (-not $isConnection -and -not $isMutation) { continue }
+
+        $site = [ordered]@{
+            Command       = $name
+            Line          = $line
+            EffectiveLine = (Get-BaselineApplyOrderLine -Node $candidate -Root $ast `
+                    -Visited ([System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)))
+        }
+
+        if ($isConnection) { $connectionSite.Add($site) }
+        if ($isMutation) { $mutationSite.Add($site) }
+    }
+
+    if ($gateLine -gt 0) {
+        $earlyConnection = @($connectionSite | Where-Object { [int]$_.EffectiveLine -lt $gateLine })
+        if ($earlyConnection.Count -gt 0) {
+            $finding.Add("ApplyOrderConnectionBeforeGate: $((@($earlyConnection | ForEach-Object { '{0} reached at line {1}' -f $_.Command, $_.EffectiveLine }) -join '; ')) signs into the tenant before the gate on line $gateLine decides, so the credential the gate exists to withhold is already spent.")
+        }
+
+        $earlyMutation = @($mutationSite | Where-Object { [int]$_.EffectiveLine -lt $gateLine })
+        if ($earlyMutation.Count -gt 0) {
+            $finding.Add("ApplyOrderMutationBeforeGate: $((@($earlyMutation | ForEach-Object { '{0} reached at line {1}' -f $_.Command, $_.EffectiveLine }) -join '; ')) changes the tenant before the gate on line $gateLine decides, so the gate can only refuse it retrospectively, which is not a refusal at all.")
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Ordered        = ($finding.Count -eq 0)
+                Finding        = @($finding)
+                GateLine       = $gateLine
+                ConnectionSite = @($connectionSite)
+                MutationSite   = @($mutationSite)
+            }))
+}
+
+# SAFE-007-A3: the one variable a mutation plan is declared as, and the four artifacts the
+# mutating run itself leaves behind. `Preview` and `Approval` are made before the run that mutates
+# and are governed by the approval gate, so they are not counted here.
+$script:BaselineMutationPlanVariable = 'MutationPlan'
+$script:BaselineMutationPlanArtifactReason = [ordered]@{
+    PreChange  = 'the run writes no record of the state it found, so the change cannot be shown to have altered only what it meant to.'
+    Apply      = 'the run writes no account of what it applied, so the before and after states have nothing between them to explain the difference.'
+    Rollback   = 'the run writes no script that puts the tenant back, so the change has to be survived rather than reversed.'
+    PostChange = 'the run writes no record of the state it left behind, so it has asserted its own success rather than confirmed it.'
+}
+$script:BaselineMutationPlanArtifact = @($script:BaselineMutationPlanArtifactReason.Keys)
+$script:BaselineToolCommandName = $null
+
+# SAFE-007-A3: the commands this solution ships itself, read from the manifest rather than
+# restated here, so an added export cannot silently become an unreviewed exemption. They write
+# this run's own records and reach no tenant, so no mutation plan declares them.
+function Get-BaselineToolCommandName {
+    if ($null -eq $script:BaselineToolCommandName) {
+        $manifestPath = Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psd1'
+        $script:BaselineToolCommandName = @([string[]](Import-PowerShellDataFile -LiteralPath $manifestPath).FunctionsToExport)
+    }
+
+    return $script:BaselineToolCommandName
+}
+
+# SAFE-007-A3: what a named parameter was actually bound to, whether it was written as
+# `-Name value` or `-Name:value`. A parameter nobody bound is nothing rather than whatever
+# element happened to follow it.
+function Get-BaselineCommandArgument {
+    param([object]$Command, [string]$ParameterName)
+
+    $element = @($Command.CommandElements)
+    for ($index = 1; $index -lt $element.Count; $index++) {
+        $candidate = $element[$index]
+        if ($candidate -isnot [System.Management.Automation.Language.CommandParameterAst]) { continue }
+        if ([string]$candidate.ParameterName -ne $ParameterName) { continue }
+        if ($null -ne $candidate.Argument) { return $candidate.Argument }
+        if ($index + 1 -lt $element.Count) { return $element[$index + 1] }
+
+        return $null
+    }
+
+    return $null
+}
+
+# SAFE-007-A3: the literal a plan member was written as. A member assembled from an expression
+# names no object at the time the plan is read, so it names nothing here rather than whatever it
+# would have evaluated to on some run.
+function Get-BaselineMutationPlanMemberValue {
+    param([object]$Statement)
+
+    $expression = $Statement
+    if ($expression -is [System.Management.Automation.Language.PipelineAst]) {
+        if (@($expression.PipelineElements).Count -ne 1) { return '' }
+
+        $element = $expression.PipelineElements[0]
+        if ($element -isnot [System.Management.Automation.Language.CommandExpressionAst]) { return '' }
+
+        $expression = $element.Expression
+    }
+
+    if ($expression -is [System.Management.Automation.Language.ConstantExpressionAst]) { return [string]$expression.Value }
+
+    return ''
+}
+
+# SAFE-007-A3: the operations the script declares, read from the script-level assignment the plan
+# is written as. Only the outermost record of each entry is an operation: a record nested inside
+# one is a member of that operation rather than a mutation of its own.
+function Get-BaselineMutationPlanDeclaration {
+    param([object]$Root)
+
+    $declared = $false
+    $operation = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($assignment in $Root.FindAll({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] }, $true)) {
+        $target = $assignment.Left
+        while ($target -is [System.Management.Automation.Language.ConvertExpressionAst]) { $target = $target.Child }
+        if ($target -isnot [System.Management.Automation.Language.VariableExpressionAst]) { continue }
+        if ([string]$target.VariablePath.UserPath -cne $script:BaselineMutationPlanVariable) { continue }
+
+        $declared = $true
+
+        foreach ($entry in $assignment.Right.FindAll({ param($node) $node -is [System.Management.Automation.Language.HashtableAst] }, $true)) {
+            $nested = $false
+            $parent = $entry.Parent
+            while ($null -ne $parent -and -not [object]::ReferenceEquals($parent, $assignment)) {
+                if ($parent -is [System.Management.Automation.Language.HashtableAst]) { $nested = $true; break }
+                $parent = $parent.Parent
+            }
+
+            if ($nested) { continue }
+
+            $member = [ordered]@{ OperationId = ''; Command = ''; Identity = '' }
+            foreach ($pair in $entry.KeyValuePairs) {
+                $name = ''
+                if ($pair.Item1 -is [System.Management.Automation.Language.ConstantExpressionAst]) { $name = [string]$pair.Item1.Value }
+                if (-not [string]::IsNullOrWhiteSpace($name) -and $member.Contains($name)) {
+                    $member[$name] = Get-BaselineMutationPlanMemberValue -Statement $pair.Item2
+                }
+            }
+
+            $operation.Add($member)
+        }
+    }
+
+    return [pscustomobject]@{ Declared = $declared; Operation = @($operation) }
+}
+
+# SAFE-007-A3: whether an `if` exists to stop the run rather than to do something optional. A
+# conditional that can abort leaves the run only one way to be past it; one that merely does
+# something when asked leaves two, and evidence that depends on which way is evidence nobody can
+# count on.
+function Test-BaselineMutationPlanAbortive {
+    param([object]$Statement)
+
+    $body = @(
+        foreach ($clause in $Statement.Clauses) { $clause.Item2 }
+        if ($null -ne $Statement.ElseClause) { $Statement.ElseClause }
+    )
+
+    foreach ($block in $body) {
+        foreach ($inner in $block.Statements) {
+            if ($inner -is [System.Management.Automation.Language.ThrowStatementAst] -or
+                $inner -is [System.Management.Automation.Language.ReturnStatementAst] -or
+                $inner -is [System.Management.Automation.Language.ExitStatementAst]) {
+                return $true
+            }
+        }
+    }
+
+    return $false
+}
+
+# SAFE-007-A3: whether a branch is part of the path a mutating run takes. The run's own apply
+# switch and the `ShouldProcess` decision the operator answered yes to are both conditions that a
+# run which changes a tenant has already satisfied, so what is inside them is reached rather than
+# skipped.
+function Test-BaselineMutationPlanRunClause {
+    param([object]$Clause)
+
+    if (Test-BaselineShouldProcessCondition -Condition $Clause.Item1) { return $true }
+
+    $read = @(
+        $Clause.Item1.FindAll({ param($node) $node -is [System.Management.Automation.Language.VariableExpressionAst] }, $true) |
+            Where-Object { [string]$_.VariablePath.UserPath -eq 'Apply' }
+    )
+
+    return ($read.Count -gt 0)
+}
+
+# SAFE-007-A3: the artifact writes a mutating run certainly reaches. A definition runs nothing on
+# its own, so function bodies are not walked; an optional branch is not entered, because an
+# artifact the caller has to ask for is one the tenant is changed without; and nothing after an
+# optional branch on the run's own path is counted either, because the run can reach the end by a
+# path that skipped it.
+function Get-BaselineMutationPlanEmission {
+    param(
+        [object]$Block,
+        [bool]$OnRunPath,
+        [System.Collections.Generic.List[object]]$Emission
+    )
+
+    foreach ($statement in $Block.Statements) {
+        if ($statement -is [System.Management.Automation.Language.FunctionDefinitionAst]) { continue }
+
+        if ($statement -is [System.Management.Automation.Language.IfStatementAst]) {
+            $entered = $false
+            foreach ($clause in $statement.Clauses) {
+                if (-not (Test-BaselineMutationPlanRunClause -Clause $clause)) { continue }
+
+                Get-BaselineMutationPlanEmission -Block $clause.Item2 -OnRunPath $true -Emission $Emission
+                $entered = $true
+            }
+
+            if ($entered) { continue }
+            if (Test-BaselineMutationPlanAbortive -Statement $statement) { continue }
+            if ($OnRunPath) { return }
+
+            continue
+        }
+
+        foreach ($candidate in $statement.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+            if ([string]$candidate.GetCommandName() -ne 'Write-BaselineChangeArtifact') { continue }
+
+            $Emission.Add($candidate)
+        }
+    }
+}
+
+# SAFE-007-A3: every tenant mutation the shipped script can reach, held to the plan the script
+# declares and to the lifecycle a change has to run. The mutation sites are taken from the
+# mutation guard report rather than re-derived from the verb, so a local helper and a file-system
+# call are not reported as changes to a tenant; the commands this solution ships itself are
+# exempt, because they write this run's own records and a plan that declared them would be a plan
+# of its own bookkeeping. The lifecycle is read off the parsed script rather than from a run,
+# because a step that is missing is missing on every path, and the rollback is only a restoration
+# when it is generated from the capture this run took - a rollback written from anything else
+# describes a tenant nobody observed. Every refusal is collected rather than thrown, so an
+# operator learns the whole gap at once instead of one omission at a time.
+function Test-BaselineDeploymentMutationPlan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ScriptPath
+    )
+
+    $finding = [System.Collections.Generic.List[string]]::new()
+
+    if ([string]::IsNullOrWhiteSpace($ScriptPath) -or -not (Test-Path -LiteralPath $ScriptPath -PathType Leaf)) {
+        $finding.Add("MutationPlanScriptNotFound: '$ScriptPath' names no file, so there is no shipped mutation plan to read and no run that can be held to one.")
+
+        return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                    Planned      = $false
+                    Finding      = @($finding)
+                    Operation    = @()
+                    MutationSite = @()
+                    Artifact     = @()
+                }))
+    }
+
+    $parseToken = $null
+    $parseError = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseFile(
+        (Resolve-Path -LiteralPath $ScriptPath).ProviderPath, [ref]$parseToken, [ref]$parseError)
+
+    if (@($parseError).Count -gt 0) {
+        throw "ScriptNotParsable: '$ScriptPath' did not parse; $($parseError[0].Message)"
+    }
+
+    $plan = Get-BaselineMutationPlanDeclaration -Root $ast
+    if (-not $plan.Declared) {
+        $finding.Add('MutationPlanScriptNotDeclared: the script declares no mutation plan, so every change it makes is applied outside a plan anyone reviewed, captured a prior state for or can roll back.')
+    }
+
+    $declaredCommand = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($operation in $plan.Operation) {
+        $operationId = [string]$operation['OperationId']
+
+        if ([string]::IsNullOrWhiteSpace([string]$operation['Command'])) {
+            $finding.Add("MutationPlanOperationCommandNotNamed: operation '$operationId' names no command, so it cannot be matched to the mutation it covers and clears every mutation and none of them.")
+        }
+        else {
+            $null = $declaredCommand.Add([string]$operation['Command'])
+        }
+
+        if ([string]::IsNullOrWhiteSpace([string]$operation['Identity'])) {
+            $finding.Add("MutationPlanOperationIdentityNotNamed: operation '$operationId' names no identity, so nothing says which object it changes, no prior state can be captured for it and no restore can be written.")
+        }
+    }
+
+    $toolCommand = @(Get-BaselineToolCommandName)
+    $site = [System.Collections.Generic.List[object]]::new()
+    $undeclared = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
+
+    foreach ($entry in @((Get-BaselineMutationGuardReport -ScriptPath $ScriptPath).MutationSite)) {
+        $name = [string]$entry['Command']
+        $covered = ($toolCommand -contains $name) -or $declaredCommand.Contains($name)
+
+        $site.Add([ordered]@{ Command = $name; Line = [int]$entry['Line']; Declared = $covered })
+
+        if ($covered -or -not $plan.Declared) { continue }
+        if (-not $undeclared.Add($name)) { continue }
+
+        $finding.Add("MutationPlanOperationNotDeclared: the run can reach '$name', which the mutation plan does not declare, so that change is applied outside the plan that was previewed and approved.")
+    }
+
+    $command = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true))
+    $called = {
+        param([string]$Name)
+
+        return @($command | Where-Object { [string]$_.GetCommandName() -eq $Name })
+    }
+
+    $assigned = [System.Collections.Generic.List[object]]::new()
+    $capturedBy = @{}
+    foreach ($assignment in $ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] }, $true)) {
+        $target = $assignment.Left
+        while ($target -is [System.Management.Automation.Language.ConvertExpressionAst]) { $target = $target.Child }
+        if ($target -isnot [System.Management.Automation.Language.VariableExpressionAst]) { continue }
+
+        $name = [string]$target.VariablePath.UserPath
+        $line = [int]$assignment.Extent.StartLineNumber
+        $assigned.Add([pscustomobject]@{ Name = $name; Line = $line })
+
+        $produced = @(
+            $assignment.Right.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) |
+                Where-Object { [string]$_.GetCommandName() -eq 'New-BaselineChangeStateCapture' }
+        )
+
+        if ($produced.Count -eq 0) { continue }
+        if (-not $capturedBy.ContainsKey($name) -or $line -lt $capturedBy[$name]) { $capturedBy[$name] = $line }
+    }
+
+    if (@(& $called 'New-BaselineChangeStateCapture').Count -eq 0) {
+        $finding.Add('MutationPlanLifecycleStateNotCaptured: nothing records what the tenant held before this run overwrote it, so a prior state read from anywhere else is whatever the last run left behind and the change has nothing to be put back to.')
+    }
+
+    if (@(& $called 'New-BaselineMutationJournal').Count -eq 0) {
+        $finding.Add('MutationPlanLifecycleMutationNotJournalled: nothing records the state each mutation actually reached, so the run reports its own plan back to itself instead of what the tenant now holds.')
+    }
+
+    if (@(& $called 'Resolve-BaselinePartialApplication').Count -eq 0) {
+        $finding.Add('MutationPlanLifecyclePartialApplicationNotResolved: nothing reconciles the declared plan against the journal, so a half-applied tenant is indistinguishable from a finished one.')
+    }
+
+    $restored = @(
+        foreach ($candidate in @(& $called 'New-BaselineRollbackScript')) {
+            $argument = Get-BaselineCommandArgument -Command $candidate -ParameterName 'Capture'
+            if ($argument -isnot [System.Management.Automation.Language.VariableExpressionAst]) { continue }
+
+            $name = [string]$argument.VariablePath.UserPath
+            if (-not $capturedBy.ContainsKey($name)) { continue }
+            if ($capturedBy[$name] -ge [int]$candidate.Extent.StartLineNumber) { continue }
+
+            $candidate
+        }
+    )
+
+    if ($restored.Count -eq 0) {
+        $finding.Add('MutationPlanLifecycleRollbackNotGeneratedFromCapture: no restoration is generated from the capture this run took, so a capture taken and never turned into a script leaves a tenant that reads as reversible and is not.')
+    }
+
+    $decided = @(
+        foreach ($candidate in @(& $called 'Test-BaselineChangeSuccess')) {
+            if ($null -eq (Get-BaselineCommandArgument -Command $candidate -ParameterName 'Application')) { continue }
+
+            $postChange = Get-BaselineCommandArgument -Command $candidate -ParameterName 'PostChange'
+            if ($postChange -isnot [System.Management.Automation.Language.VariableExpressionAst]) { continue }
+
+            $name = [string]$postChange.VariablePath.UserPath
+            $line = [int]$candidate.Extent.StartLineNumber
+            if (@($assigned | Where-Object { $_.Name -eq $name -and $_.Line -lt $line }).Count -eq 0) { continue }
+
+            $candidate
+        }
+    )
+
+    if ($decided.Count -eq 0) {
+        $finding.Add('MutationPlanLifecycleSuccessNotDecidedFromPostChange: no verdict is reached from the record of what the run applied together with evidence read back from the tenant afterwards, so the run proves only that its commands returned.')
+    }
+
+    $emission = [System.Collections.Generic.List[object]]::new()
+    if ($null -ne $ast.EndBlock) {
+        Get-BaselineMutationPlanEmission -Block $ast.EndBlock -OnRunPath $false -Emission $emission
+    }
+
+    $emitted = @{}
+    foreach ($candidate in $emission) {
+        $argument = Get-BaselineCommandArgument -Command $candidate -ParameterName 'Artifact'
+        if ($argument -isnot [System.Management.Automation.Language.ConstantExpressionAst]) { continue }
+
+        $name = [string]$argument.Value
+        if (-not $emitted.ContainsKey($name)) { $emitted[$name] = [int]$candidate.Extent.StartLineNumber }
+    }
+
+    $artifact = foreach ($name in $script:BaselineMutationPlanArtifact) {
+        $present = $emitted.ContainsKey($name)
+        if (-not $present) {
+            $finding.Add("MutationPlanArtifact${name}NotEmitted: $($script:BaselineMutationPlanArtifactReason[$name])")
+        }
+
+        [ordered]@{
+            Artifact = $name
+            Emitted  = $present
+            Line     = $(if ($present) { $emitted[$name] } else { 0 })
+        }
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Planned      = ($finding.Count -eq 0)
+                Finding      = @($finding)
+                Operation    = @($plan.Operation)
+                MutationSite = @($site)
+                Artifact     = @($artifact)
+            }))
+}
+
 # GATE-004: the only exit statuses this solution speaks. An automation caller has to be able to
 # act on which kind of failure this was - a configuration it can fix, a connection it can retry,
 # a collection it can rerun, a compliance gap it must escalate, an approval it must obtain, or a
@@ -8925,4 +9556,6 @@ Export-ModuleMember -Function @(
     'Resolve-BaselinePartialApplication'
     'Test-BaselineChangeSuccess'
     'Test-BaselineApplyPrerequisite'
+    'Test-BaselineDeploymentApplyOrder'
+    'Test-BaselineDeploymentMutationPlan'
 )
