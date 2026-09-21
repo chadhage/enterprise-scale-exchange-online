@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tst006.invalid/schemas/compliant-offline-fixture.schema.json",
+  "title": "TST-006 compliant Microsoft-native offline fixture",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["SchemaVersion", "FixtureId", "Sanitized", "Offline", "Binding", "Entitlement", "Controls", "Signature"],
+  "properties": {
+    "SchemaVersion": { "const": "1.0.0" },
+    "FixtureId": { "const": "tst006-microsoft-native-v1" },
+    "Sanitized": { "const": true },
+    "Offline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["TenantConnectionAllowed", "NetworkAllowed", "CredentialsRequired", "ApplyAllowed"],
+      "properties": {
+        "TenantConnectionAllowed": { "const": false },
+        "NetworkAllowed": { "const": false },
+        "CredentialsRequired": { "const": false },
+        "ApplyAllowed": { "const": false }
+      }
+    },
+    "Binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["TenantId", "OrganizationName", "DeploymentProfile", "ConfigurationHash", "CollectedAtUtc"],
+      "properties": {
+        "TenantId": { "const": "00000000-0000-4000-8000-000000000006" },
+        "OrganizationName": { "const": "tst006.invalid" },
+        "DeploymentProfile": { "const": "MicrosoftNative" },
+        "ConfigurationHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "CollectedAtUtc": { "const": "2026-09-19T12:00:00Z" }
+      }
+    },
+    "Entitlement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Determined", "FullyEntitled", "EnabledServicePlan"],
+      "properties": {
+        "Determined": { "const": true },
+        "FullyEntitled": { "const": true },
+        "EnabledServicePlan": { "type": "array", "minItems": 5, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "Controls": {
+      "type": "array",
+      "minItems": 43,
+      "maxItems": 43,
+      "items": { "$ref": "#/$defs/control" }
+    },
+    "Signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Model", "MediaType", "Canonicalization", "PayloadHash", "Value", "Certificate", "SignerSubject"],
+      "properties": {
+        "Model": { "const": "DetachedCms" },
+        "MediaType": { "const": "application/pkcs7-signature" },
+        "Canonicalization": { "const": "TST006-Canonical-JSON-SHA256-v1" },
+        "PayloadHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+        "Value": { "type": "string", "minLength": 1 },
+        "Certificate": { "type": "string", "minLength": 1 },
+        "SignerSubject": { "const": "CN=TST-006 Offline Fixture" }
+      }
+    }
+  },
+  "$defs": {
+    "control": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ControlId", "ApplicableProfile", "Applicability", "Entitlement", "Collector", "Evaluator", "Evidence", "Result"],
+      "properties": {
+        "ControlId": { "type": "string", "pattern": "^[A-Z]+-[0-9]{3}$" },
+        "ApplicableProfile": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "enum": ["Native", "Gateway"] } },
+        "Applicability": {
+          "type": "object", "additionalProperties": false, "required": ["Determined", "Applicable", "Reason"],
+          "properties": { "Determined": { "const": true }, "Applicable": { "type": "boolean" }, "Reason": { "enum": ["IncludedByMicrosoftNativeProfile", "ExcludedFromMicrosoftNativeProfile"] } }
+        },
+        "Entitlement": {
+          "type": "object", "additionalProperties": false, "required": ["Determined", "Entitled", "Prerequisite"],
+          "properties": { "Determined": { "const": true }, "Entitled": { "const": true }, "Prerequisite": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } } }
+        },
+        "Collector": { "type": "string", "pattern": "^Get-.+Evidence$" },
+        "Evaluator": { "type": "string", "pattern": "^Test-.+Control$" },
+        "Evidence": {
+          "type": "object", "additionalProperties": false,
+          "required": ["ControlId", "TenantId", "DeploymentProfile", "ConfigurationHash", "CollectedAtUtc", "Collected", "Source", "Command", "Value"],
+          "properties": {
+            "ControlId": { "type": "string", "pattern": "^[A-Z]+-[0-9]{3}$" },
+            "TenantId": { "const": "00000000-0000-4000-8000-000000000006" },
+            "DeploymentProfile": { "const": "MicrosoftNative" },
+            "ConfigurationHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+            "CollectedAtUtc": { "const": "2026-09-19T12:00:00Z" },
+            "Collected": { "const": true },
+            "Source": { "const": "SyntheticOffline" },
+            "Command": { "type": "string", "minLength": 1 },
+            "Value": { "type": "object", "required": ["Compliant"], "properties": { "Compliant": { "const": true } }, "additionalProperties": false }
+          }
+        },
+        "Result": {
+          "type": "object", "additionalProperties": false, "required": ["ControlId", "Status", "EvidenceControlId"],
+          "properties": {
+            "ControlId": { "type": "string", "pattern": "^[A-Z]+-[0-9]{3}$" },
+            "Status": { "enum": ["Pass", "NotApplicable"] },
+            "EvidenceControlId": { "type": "string", "pattern": "^[A-Z]+-[0-9]{3}$" }
+          }
+        }
+      }
+    }
+  }
+}

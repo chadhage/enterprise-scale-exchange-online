@@ -1,5 +1,15 @@
 # Exchange Online Managed Service Sample
 
+**Active entrypoint:** [Exchange-only execution](docs/EXCHANGE-ONLY.md). Both public scripts default to the versioned Exchange-only profile.
+
+**Net-new onboarding:** [Ordered Exchange administrator journey](docs/EXCHANGE-ADMINISTRATOR-JOURNEY.md). Start from externally provisioned and attested prerequisites; follow recipient setup, preset initialization, approved hardening and mail/client validation. Includes an executable offline walkthrough, not tenant provisioning or live readiness certification.
+
+**Approved scoped changes:** [Preview, approve, validate, apply and roll back](docs/APPROVED-CHANGE.md). This tested workflow requires external signer authority and preserves exact artifact bytes; supported scope is explicit, not whole-baseline conformance.
+
+**Scoped evidence gate:** [Collect, freeze, sign and verify](docs/EXCHANGE-GO-LIVE.md). Verify exact bytes without recollection; exit 0 does not certify external readiness and approved deviations remain `ApprovedException`.
+
+**Historical reference only:** the material below describes the former cross-workload profiles. It is not the active Exchange administrator journey. Historical execution requires an explicit configuration path and `-AllowHistoricalProfile`; do not use these examples for an Exchange-only deployment. Full documentation reconciliation is tracked by EXR-012.
+
 An evidence-oriented starting point for onboarding a net-new business entity to Exchange Online, Exchange Online Protection (EOP), and Microsoft Defender for Office 365 (MDO).
 
 Pick a profile:
@@ -76,11 +86,11 @@ The sample does not contain tenant IDs, domains, vendor endpoints, public IPs, o
 | --- | --- | --- |
 | `Applied` / `Planned` | Configured, or would be under `-WhatIf` | — |
 | `Pass` / `Fail` | Live state confirmed or contradicted | `Fail` exits non-zero |
-| `NotEntitled` | Above the declared licence tier | No |
+| `NotEntitled` | Required entitlement is not established | Yes, compliance exit 13 |
 | `NotApplicable` | Belongs to the other deployment profile | No |
-| `Manual` | Owned by DNS, Entra, Purview, SharePoint, or the SIEM | No |
+| `Manual` | Unresolved manual evidence | Yes, compliance exit 13 |
 
-Every `Manual` and `NotEntitled` outcome needs a completed runbook or a recorded risk acceptance before the service goes live.
+Unresolved `Manual` and `NotEntitled` results cannot be excused into Pass. The active Exchange profile excludes externally owned controls explicitly and reports external readiness separately as Unverified. Use the [signed scoped gate](docs/EXCHANGE-GO-LIVE.md), not a collection-only exit, for Exchange evidence admission.
 
 ## Security Boundary
 

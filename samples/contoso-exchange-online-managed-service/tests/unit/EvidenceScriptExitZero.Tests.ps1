@@ -25,8 +25,9 @@ function Get-AcceptedDomain { param([string]$Identity) __ACCEPTED_DOMAIN__ }
 function Get-TransportConfig { [pscustomobject]@{ SmtpClientAuthenticationDisabled = __SMTP_AUTH_DISABLED__; ExternalPostmasterAddress = 'postmaster@contoso.example' } }
 function Get-OrganizationConfig { [pscustomobject]@{ AuditDisabled = $false; EwsEnabled = $false; EwsAllowList = @() } }
 function Get-ExternalInOutlook { [pscustomobject]@{ Enabled = $true; AllowList = @() } }
-function Get-RemoteDomain { param([string]$Identity) [pscustomobject]@{ Name = 'Default'; AutoForwardEnabled = $false; AutoReplyEnabled = $false; AllowedOOFType = 'None'; DeliveryReportEnabled = $false; NDREnabled = $false } }
+function Get-RemoteDomain { param([string]$Identity) [pscustomobject]@{ Identity = 'Default'; DomainName = '*'; Name = 'Default'; AutoForwardEnabled = $false; AutoReplyEnabled = $false; AllowedOOFType = 'None'; DeliveryReportEnabled = $false; NDREnabled = $false } }
 function Get-CASMailboxPlan { param($ResultSize) [pscustomobject]@{ Identity = 'ExchangeOnlineEnterprise'; PopEnabled = $false; ImapEnabled = $false } }
+function Get-CASMailbox { param($ResultSize, $ErrorAction) [pscustomobject]@{ Identity = 'user@contoso.example'; EwsEnabled = $null; EwsApplicationAccessPolicy = $null; EwsAllowList = @(); PopEnabled = $false; ImapEnabled = $false } }
 function Get-HostedOutboundSpamFilterPolicy { param([string]$Identity) [pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'Off' } }
 function Get-QuarantinePolicy { param([string]$Identity) [pscustomobject]@{ Name = 'DefaultGlobalTag'; EndUserSpamNotificationFrequency = '1.00:00:00'; EndUserQuarantinePermissionsValue = 0; ESNEnabled = $true } }
 function Get-DkimSigningConfig { param([string]$Identity) [pscustomobject]@{ Name = 'contoso.example'; Enabled = $true; Status = 'Valid'; Selector1CNAME = 'selector1-cname'; Selector2CNAME = 'selector2-cname'; Selector1KeySize = 2048; Selector2KeySize = 2048 } }
@@ -55,7 +56,7 @@ function Get-InboundConnector { param([string]$Identity) @() }
         Replace('__SMTP_AUTH_DISABLED__', $smtpAuthDisabled)
 
         $invocation = @'
-& $args[0] -ParameterPath $args[1] -ConfigurationPath $args[2] -SchemaPath $args[3] -OutputPath $args[4] -SkipConnection
+& $args[0] -ParameterPath $args[1] -ConfigurationPath $args[2] -SchemaPath $args[3] -OutputPath $args[4] -SkipConnection -AllowHistoricalProfile
 exit $LASTEXITCODE
 '@
 
@@ -91,7 +92,7 @@ exit $LASTEXITCODE
             'UndecidableVerdictDropped' {
                 $text = $text.Replace(
                     '-Check @($verdict) -GoLive $goLiveDecision',
-                    "-Check @(`$verdict | Where-Object { [string]`$_['Status'] -cnotin @('Manual', 'NotEntitled') }) -GoLive `$goLiveDecision")
+                    "-Check @(`$verdict | Where-Object { [string]`$_['Status'] -cnotin @('Error', 'Manual', 'NotEntitled') }) -GoLive `$goLiveDecision")
             }
             'AlwaysSuccessExit' {
                 $text = $text.Replace('exit $outcome.ExitCode', 'exit $exitCode.Success')
@@ -121,6 +122,7 @@ exit $LASTEXITCODE
         Set-Content -LiteralPath $path -Value $text -Encoding utf8
         Copy-Item -LiteralPath $script:CommonModulePath -Destination (Join-Path $Directory 'ExchangeOnlineBaseline.Common.psm1')
         Copy-Item -LiteralPath $script:CommonManifestPath -Destination (Join-Path $Directory 'ExchangeOnlineBaseline.Common.psd1')
+        Copy-Item -LiteralPath (Join-Path $script:SampleRoot 'scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1') -Destination (Join-Path $Directory 'ExchangeOnlineBaseline.ApprovedAdapters.ps1')
         return $path
     }
 
@@ -343,7 +345,7 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
             $result.Reason | Should -BeExactly 'ExitZeroWithUnverifiedControl'
         }
 
-        It 'refuses a run that dropped its Manual and NotEntitled verdicts before deciding its exit' {
+        It 'refuses a run that dropped its Error, Manual, and NotEntitled verdicts before deciding its exit' {
             # Arrange
             $scriptPath = New-PerturbedRunDirectory -Perturbation 'UndecidableVerdictDropped'
 
@@ -396,7 +398,7 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
 
     Context 'Positive: the shipped command resolves its exit from the verdicts it recorded' {
 
-        It 'exits at the compliance code because controls it could not decide stand Manual and NotEntitled' {
+        It 'exits at the collection code when live RBAC collection has no admitted fallback' {
             # Arrange
             $scriptPath = $script:EvidenceScriptPath
 
@@ -406,8 +408,8 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
             # Assert
             $result.Satisfied | Should -BeTrue
             $result.Reason | Should -BeExactly 'EvidenceCommandExitZeroSemanticsSatisfied'
-            $result.Outcome | Should -BeExactly 'Compliance'
-            $result.ExitCode | Should -Be (Get-BaselineExitCodeContract).Compliance
+            $result.Outcome | Should -BeExactly 'Collection'
+            $result.ExitCode | Should -Be (Get-BaselineExitCodeContract).Collection
         }
     }
 }

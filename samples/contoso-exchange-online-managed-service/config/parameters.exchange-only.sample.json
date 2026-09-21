@@ -1,0 +1,10 @@
+{
+  "MICROSOFT_ENTRA_TENANT_GUID": "00000000-0000-0000-0000-000000000000",
+  "PRIMARY_SMTP_DOMAIN": "contoso.example",
+  "INITIAL_ONMICROSOFT_DOMAIN": "contoso.onmicrosoft.com",
+  "EXTERNAL_POSTMASTER_SMTP_ADDRESS": "postmaster@contoso.example",
+  "MAIL_ENABLED_PRIORITY_USERS_GROUP": "priority-users@contoso.example",
+  "SECURITY_OPERATIONS_MAILBOX": "secops@contoso.example",
+  "MAILBOX_RETENTION_POLICY_NAME": "Externally approved Exchange MRM policy",
+  "entitlement": { "verified": false, "tenantId": "00000000-0000-0000-0000-000000000000", "expiresOn": "2026-09-20T00:00:00Z", "owner": "Licensing administrator", "reference": "RAID-D02", "servicePlans": [], "recipientDomains": ["contoso.example"] }
+}

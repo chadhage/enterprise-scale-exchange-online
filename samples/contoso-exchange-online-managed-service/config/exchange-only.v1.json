@@ -1,0 +1,31 @@
+{
+  "$schema": "./exchange-only.schema.v1.json",
+  "metadata": { "deploymentProfile": "ExchangeOnly", "version": "1.0.0", "reviewedOn": "2026-09-20" },
+  "controls": {
+    "EXO-001": { "domainType": "Authoritative" },
+    "EXO-002": { "smtpClientAuthenticationDisabled": true },
+    "EXO-004": { "automaticExternalForwarding": "Off" },
+    "EXO-005": { "address": "__ADMIN_REQUIRED:EXTERNAL_POSTMASTER_SMTP_ADDRESS__" },
+    "EXO-006": { "mailboxAuditingDefault": true },
+    "EXO-007": { "allowList": [] },
+    "EXO-008": { "autoForwardEnabled": false, "autoReplyEnabled": false, "allowedOOFType": "None", "deliveryReportEnabled": false, "nonDeliveryReportEnabled": false },
+    "EXO-009": { "ewsEnabled": false, "ewsApplicationAccessPolicy": "EnforceAllowList", "ewsAllowList": [], "popEnabledByDefault": false, "imapEnabledByDefault": false, "outlookAddInsForUsers": false },
+    "EXO-010": { "approvedRoleGroups": ["Organization Management","Security Administrator","Security Reader","View-Only Organization Management"], "approvedMembers": [], "approval": null, "assignments": [], "scopes": [], "mailboxPolicies": [], "effectiveUsers": [] },
+    "EXO-012": { "outlookAddInsForUsers": false },
+    "MDO-001": { "enabled": true, "sentToDomains": ["__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__"], "excludedGroups": ["__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"], "excludedSecOpsMailbox": ["__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"], "approval": null, "recipientMatrix": [], "settingExceptions": [] },
+    "MDO-002": { "enabled": true, "scopeGroup": "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__" },
+    "MDO-003": { "enabled": true, "exceptions": [] },
+    "MDO-006": { "microsoftReportMessageButton": true, "sendReportedMessagesToMicrosoft": true, "sendCopyToSecOpsMailbox": true, "reportingDestination": "MicrosoftAndCustomMailbox", "reportingMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__" },
+    "MDO-007": { "permanentAllowEntries": [], "blockEntriesRequireExpiryAndTicket": true, "allowEntryMaximumDurationDays": 30, "blockEntryRetentionDays": 90, "requiredEntryFields": ["entryType","entryValue","owner","ticket","createdDateTime","expirationDateTime","justification"] },
+    "MDO-008": { "endUserAccessLevel": "LimitedAccess", "highRiskAccessLevel": "AdminOnlyAccess", "highRiskCategories": ["Malware","HighConfidencePhish"], "endUserSpamNotificationFrequencyInDays": 1, "includeMessagesFromBlockedSenderAddress": false, "categoryPermissions": [{ "category": "Malware", "accessLevel": "AdminOnlyAccess" },{ "category": "HighConfidencePhish", "accessLevel": "AdminOnlyAccess" },{ "category": "Phish", "accessLevel": "LimitedAccess" },{ "category": "HighConfidenceSpam", "accessLevel": "LimitedAccess" },{ "category": "Spam", "accessLevel": "LimitedAccess" },{ "category": "Bulk", "accessLevel": "LimitedAccess" },{ "category": "SpoofIntelligence", "accessLevel": "LimitedAccess" }] },
+    "MDO-009": { "enabled": true, "protectedUsers": ["__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"], "protectedDomains": ["__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__"], "approvedExceptions": [] },
+    "PP-005": { "enabledPartnerConnectors": false },
+    "AUTH-001": { "enabled": true, "keySize": 2048 },
+    "MON-003": { "scheduledCollectionEnabled": true, "collectionFrequencyHours": 24, "minimumRetentionDays": 90, "maximumEvidenceAgeHours": 48, "requireSignedEvidence": true },
+    "OPS-001": { "maximumEvidenceAgeHours": 48, "requireSignedEvidence": true, "requirePreview": true, "requirePilot": true, "requireApproval": true, "requireRollback": true, "requirePostChange": true },
+    "OPS-002": { "requiredServicePlan": "THREAT_INTELLIGENCE", "frequencyDays": 90, "exerciseTypes": ["ExchangeIncidentResponse"], "owners": ["__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"], "requireTrackedActions": true, "maximumEvidenceAgeDays": 90 },
+    "GOV-003": { "policyName": "__ADMIN_REQUIRED:MAILBOX_RETENTION_POLICY_NAME__", "policyType": "ExchangeMRM", "approval": null, "tags": [], "maximumProcessingAgeDays": 7, "mailboxEntitlement": [] },
+    "GOV-004": { "enabled": true, "custodians": [], "approval": null, "holds": [], "minimumRecoverableItemsFreeBytes": null },
+    "GOV-005": { "internalLicensingEnabled": true, "azureRmsLicensingEnabled": true, "transportDecryptionSetting": "Mandatory", "journalReportDecryptionEnabled": true, "approval": null, "decryptionApproval": null, "messageClasses": [] }
+  }
+}

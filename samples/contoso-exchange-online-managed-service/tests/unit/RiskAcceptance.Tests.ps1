@@ -176,6 +176,18 @@ Describe 'COM-005-A3 risk acceptance validation' {
 
     Context 'Negative: a risk acceptance outside its window is never valid' {
 
+        It 'rejects a risk acceptance approved after the evaluation time' {
+            # Arrange
+            $riskAcceptance = New-RiskAcceptance -Override @{ ApprovalTimeUtc = $script:AsOf.AddMinutes(1) }
+
+            # Act
+            $result = Invoke-RiskAcceptanceTest -RiskAcceptance $riskAcceptance
+
+            # Assert
+            ('Valid={0}:Reason={1}' -f $result.Valid, $result.Reason) |
+                Should -BeLike 'Valid=False:Reason=ApprovalFromFuture:*' -Because 'an approval that has not happened at the evaluation time cannot authorize an exception'
+        }
+
         It 'rejects a risk acceptance that is not yet effective at the evaluation time' {
             # Arrange
             $riskAcceptance = New-RiskAcceptance -Override @{ EffectiveTimeUtc = $script:AsOf.AddDays(1) }

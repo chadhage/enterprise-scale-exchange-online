@@ -29,7 +29,7 @@ BeforeAll {
 
     # The registry is returned as one read-only collection deliberately protected from pipeline
     # unrolling, so the entry is read by index rather than by piping the collection.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:ClientProtocolRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'EXO-009') { $entry }
         })[0]
@@ -303,7 +303,7 @@ Describe 'EXO-009-A1 client-protocol collector' {
 
             # Assert
             $act | Should -Throw -ExpectedMessage 'OrganizationConfigCollectionRequired*' `
-                -Because 'the organization EWS switch and the allow list that reopens it for named applications are the tenant-wide half of this control, and a record that never read them reports a closed protocol surface from mailbox settings alone'
+                    -Because 'the historical configuration comparison requires both declared properties; a dormant list does not reopen organization-disabled EWS'
         }
 
         It 'refuses a run with no mailbox plan collection' {
@@ -634,7 +634,7 @@ Describe 'EXO-009-A2 client-protocol evaluator' {
             # Assert
             (Get-VerdictFold -Result $result) |
                 Should -BeExactly "Fail|golive=False|reason=LegacyProtocolOpen: the EWS allow list of the organization holds 'legacy-crm' which the baseline does not declare." `
-                    -Because 'an allow-list entry reopens EWS for exactly the application named in it, so a tenant with the switch off and the interesting application exempted is open on the only path that matters'
+                    -Because 'a surplus dormant user-agent entry is historical configuration drift, not an exception to organization disablement'
         }
 
         It 'fails an organization EWS allow list that does not hold an entry the baseline declares' {

@@ -13,7 +13,7 @@ BeforeAll {
     # deliberately protected from pipeline unrolling, so piping it would filter the collection
     # itself rather than the entries inside it, and every member read afterwards would answer for
     # all forty-three controls at once.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:AcceptedDomainRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'EXO-001') { $entry }
         })[0]

@@ -11,7 +11,7 @@ BeforeAll {
 
     # Assigning before unrolling matters: the registry is returned as one read-only collection
     # deliberately protected from pipeline unrolling, so it is read by index rather than by pipe.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:ReportSubmissionRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'MDO-006') { $entry }
         })[0]

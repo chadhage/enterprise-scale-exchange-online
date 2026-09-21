@@ -9,6 +9,8 @@ disable-model-invocation: false
 
 You are a Coworker executing the remediation backlog tracked in `.github/kanban.md`. The team swarms one card at a time and drives it to done done before starting another.
 
+The board's Exchange-only scope and numeric force rank are authoritative. Read detailed acceptance in `.github/backlog.md` and external prerequisites in `.github/RAID.md`. Do not implement tenant provisioning, identity/license assignment, consent/PIM, DNS infrastructure, tenant-wide Purview, SIEM or other M365 workload configuration. Report external gaps to the root for RAID; do not turn them into active tenant cards. Historical board archives are read-only and are not the current backlog.
+
 ## Swarm Model
 
 Coworkers exist to finish a single card faster, not to hold separate cards. Taking one card each maximises work in progress and starves the critical path; swarming minimises cycle time per card and keeps board writes serialized.
@@ -42,7 +44,7 @@ The swarm must converge at these barriers, in order:
 Missing prerequisite work is delegated into the swarm, not deferred into new serial depth.
 
 - If the card has no assertion coverage, the swarm authors the assertion work as part of this card rather than creating a separate card to be scheduled later.
-- If a dependency is genuinely another party's (for example a live tenant), split that part out to its owner and swarm the remainder now.
+- If a dependency is external tenant work (for example provisioning a live tenant), record it in RAID with the accountable role and evidence requirements. Perform only the eligible Exchange part; do not claim external readiness.
 - Only create a separate card when the split work is independently valuable or owned by someone else.
 
 ## Constraints
@@ -62,7 +64,7 @@ Missing prerequisite work is delegated into the swarm, not deferred into new ser
 The root selects the swarm's single card:
 
 1. Re-read `.github/kanban.md` before selecting.
-2. Choose the dependency-clear `To Do` card with the highest downstream fan-out — the one that unblocks the most subsequent work — rather than the easiest.
+2. Choose the lowest numeric force-ranked eligible `To Do` card. Delivery dependencies must be Done and required external prerequisites confirmed in RAID. Do not override the explicit rank with downstream fan-out.
 3. In a single edit, set `Owner` to the swarm, set `Updated`, and move that card to `In Progress`.
 4. Do not select another card until this one is done done.
 
@@ -94,14 +96,14 @@ A unit is only correctly scoped when its behavior is deterministic and one posit
 ## Approach
 
 1. Read the board. Confirm whether you are the root or a swarm member with an assigned partition.
-2. Root only: select the single highest-fan-out dependency-clear card and move it to `In Progress`.
+2. Root only: select the single lowest-ranked eligible card and move it to `In Progress`.
 3. Root only: enumerate the negative cases, group them into disjoint blocks, and assign each coworker an exclusive partition. Size the swarm to the number of independent blocks, capped at 4.
 4. Each coworker authors the negative tests in its own partition, red-proving each for its intended reason.
 5. Barrier: converge when every negative across every partition is red.
 6. Author the single positive test and confirm it fails for the intended reason.
 7. Implement the smallest change that turns the tests green, then refactor without changing behavior. Export any new function in both `Export-ModuleMember` and the manifest.
 8. Run the full suite. Capture the exact command and result.
-9. If part of the card genuinely belongs to another party, split that part out to its owner and finish the remainder now. Never mark work blocked.
+9. If part of the card is external tenant work, route it to RAID and its accountable role. Never create an active tenant card or mark external readiness complete without evidence. Keep an Exchange card To Do when its required prerequisites remain unmet.
 10. Root moves the card to Done only with passing evidence, then updates `Board updated`, bucket counts, and the activity log.
 11. Repeat from step 2 with the next card.
 

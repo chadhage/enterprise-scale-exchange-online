@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/rbac-pim-fallback.schema.json",
+  "title": "Sanitized Exchange RBAC and Entra PIM fallback evidence",
+  "description": "EXO-014. A closed tenant-bound snapshot of the five observations required to evaluate Exchange RBAC hygiene when live collection is unavailable.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "SchemaVersion",
+    "TenantId",
+    "GeneratedAtUtc",
+    "RoleGroup",
+    "ManagementRoleAssignment",
+    "ActivePimAssignment",
+    "EligiblePimAssignment",
+    "AccessReview"
+  ],
+  "properties": {
+    "SchemaVersion": { "const": "1.0.0" },
+    "TenantId": { "$ref": "#/$defs/guid" },
+    "GeneratedAtUtc": { "$ref": "#/$defs/timestampUtc" },
+    "RoleGroup": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["Name", "Members", "WhenChangedUtc"],
+        "properties": {
+          "Name": { "$ref": "#/$defs/nonBlank" },
+          "Members": { "type": "array", "items": { "$ref": "#/$defs/nonBlank" } },
+          "WhenChangedUtc": { "$ref": "#/$defs/timestampUtc" }
+        }
+      }
+    },
+    "ManagementRoleAssignment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["Role", "RoleAssigneeName", "RoleAssigneeType", "RecipientWriteScope"],
+        "properties": {
+          "Role": { "$ref": "#/$defs/nonBlank" },
+          "RoleAssigneeName": { "$ref": "#/$defs/nonBlank" },
+          "RoleAssigneeType": { "$ref": "#/$defs/nonBlank" },
+          "RecipientWriteScope": { "$ref": "#/$defs/nonBlank" }
+        }
+      }
+    },
+    "ActivePimAssignment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["PrincipalId", "RoleDefinitionId", "EndDateTime", "MemberType"],
+        "properties": {
+          "PrincipalId": { "$ref": "#/$defs/guid" },
+          "RoleDefinitionId": { "$ref": "#/$defs/guid" },
+          "EndDateTime": { "$ref": "#/$defs/timestampUtc" },
+          "MemberType": { "$ref": "#/$defs/nonBlank" }
+        }
+      }
+    },
+    "EligiblePimAssignment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["PrincipalId", "RoleDefinitionId", "StartDateTime"],
+        "properties": {
+          "PrincipalId": { "$ref": "#/$defs/guid" },
+          "RoleDefinitionId": { "$ref": "#/$defs/guid" },
+          "StartDateTime": { "$ref": "#/$defs/timestampUtc" }
+        }
+      }
+    },
+    "AccessReview": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["DisplayName", "ScopeRoleDefinitionId", "LastCompletedDateTime", "CreatedBy"],
+        "properties": {
+          "DisplayName": { "$ref": "#/$defs/nonBlank" },
+          "ScopeRoleDefinitionId": { "$ref": "#/$defs/guid" },
+          "LastCompletedDateTime": { "$ref": "#/$defs/timestampUtc" },
+          "CreatedBy": { "$ref": "#/$defs/nonBlank" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "guid": {
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "nonBlank": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "timestampUtc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    }
+  }
+}

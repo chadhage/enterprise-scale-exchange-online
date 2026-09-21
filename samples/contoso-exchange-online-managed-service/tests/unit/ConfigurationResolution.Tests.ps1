@@ -78,6 +78,17 @@ Describe 'COM-002-A profile and placeholder resolution' {
             $act | Should -Throw -ExpectedMessage 'ConfigurationJsonInvalid*'
         }
 
+        It 'fails with ConfigurationDocumentNotObject when the configuration document is not an object' {
+            # Arrange
+            $arrayConfiguration = New-JsonFile -Directory $TestDrive -Text '[ "metadata", "desiredState" ]'
+
+            # Act
+            $act = { Resolve-BaselineConfiguration -ConfigurationPath $arrayConfiguration -ParameterPath $script:ParameterPath }
+
+            # Assert
+            $act | Should -Throw -ExpectedMessage 'ConfigurationDocumentNotObject*'
+        }
+
         It 'fails with ParameterJsonInvalid when the parameter file is malformed JSON' {
             # Arrange
             $malformedParameters = New-JsonFile -Directory $TestDrive -Text '{ "PRIMARY_SMTP_DOMAIN": '

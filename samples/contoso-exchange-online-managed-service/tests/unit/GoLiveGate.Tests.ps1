@@ -375,6 +375,20 @@ Describe 'GATE-003-A1 the fail-closed go-live decision' {
             ('Admitted={0}:Finding={1}' -f $decision.Admitted, (Get-GateFinding -Decision $decision)) |
                 Should -BeLike 'Admitted=False:Finding=*GoLiveCollectionTimeUnreadable:*recently*' -Because 'a collection time nobody can compare against a clock is evidence that can never go stale'
         }
+
+        It 'refuses evidence whose collection time is in the future' {
+            # Arrange
+            $envelope = New-GateEnvelope
+            $collectedAt = [datetime]::Parse([string]$envelope.CollectedAtUtc, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::RoundtripKind)
+            $beforeCollection = $collectedAt.AddMinutes(-1)
+
+            # Act
+            $decision = Invoke-GateTest -Envelope $envelope -AsOf $beforeCollection
+
+            # Assert
+            ('Admitted={0}:Finding={1}' -f $decision.Admitted, (Get-GateFinding -Decision $decision)) |
+                Should -BeLike 'Admitted=False:Finding=*GoLiveEvidenceFromFuture:*' -Because 'future-dated evidence has not been collected at the decision time and a negative age must never make it fresh'
+        }
     }
 
     Context 'Negative: a licensing gap is a control nobody could have proved' {

@@ -1,5 +1,9 @@
 # Setting-Level Runbooks
 
+**Active entrypoint:** [Exchange-only execution](EXCHANGE-ONLY.md).
+
+**Historical reference only:** these cross-workload runbooks are retained for historical regression and traceability. They are not the active Exchange-only procedure and do not authorize tenant, Graph, Purview, SIEM or gateway configuration. EXR-012 owns their comprehensive replacement.
+
 Step procedures for every control in the [control catalog](CONTROL-CATALOG.md). Each runbook gives the **portal path**, the **exact cmdlet and value**, a **verification cmdlet**, and the **expected output**.
 
 Authoritative-source review date: **2026-09-16**.
@@ -251,30 +255,41 @@ Allow up to 24–48 hours for the tag to appear in Outlook clients.
 Set-RemoteDomain -Identity Default `
     -AutoForwardEnabled $false `
     -AutoReplyEnabled $false `
-    -AllowedOOFType InternalLegacy `
+    -AllowedOOFType None `
     -DeliveryReportEnabled $false `
     -NDREnabled $false
 ```
 
-`AllowedOOFType InternalLegacy` stops internal out-of-office text — which routinely names colleagues, dates, and reporting lines — from reaching external senders. `NDREnabled $false` stops non-delivery reports from confirming valid recipients to directory harvesters.
+This sample implements the locally approved **block-external-OOF** policy: `AllowedOOFType None` sends no OOF to recipients in the remote domain. `InternalLegacy` instead permits internal replies and undesignated legacy replies; it can also set `IsInternal` to true. It is not an internal-disclosure protection. `ExternalLegacy` permits undesignated legacy replies and is not an approved option here.
+
+Microsoft documents `External` as the service default: only replies designated external are sent. Use `External` only when the Exchange service owner has explicitly approved an external-reply policy. In configuration, set `allowedOOFType` to `External` and supply a nonblank `externalReplyApproval` change/policy reference. This reference records the policy decision, not cryptographic approval or proof of authorization; the deployment approval gate still applies. Mailbox automatic-reply audience/settings can further restrict delivery. `AutoReplyEnabled` governs client-rule automatic replies and is not a substitute for `AllowedOOFType`.
+
+The forwarding, client-rule auto-reply, delivery-report and NDR values above are separate local business choices, not universal Microsoft best-practice defaults. In particular, disabling NDRs can suppress useful failure notices. Preserve approved choices in the four corresponding configuration properties when changing OOF policy.
+
+**Microsoft sources, reviewed 2026-09-20:** [Set-RemoteDomain: AllowedOOFType, IsInternal, AutoReplyEnabled and NDREnabled](https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/set-remotedomain?view=exchange-ps) and [Remote domains in Exchange Online](https://learn.microsoft.com/en-us/exchange/mail-flow-best-practices/remote-domains/remote-domains). The date is this repository's review date, not the publication date.
 
 **Verify**
 
 ```powershell
-Get-RemoteDomain -Identity Default |
-    Format-List Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled
+Get-RemoteDomain -ErrorAction Stop |
+    Format-List Identity, DomainName, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled, IsInternal
 ```
 
 **Expected**
 
 ```text
-Name                  : Default
+Identity              : Default
+DomainName            : *
 AutoForwardEnabled    : False
 AutoReplyEnabled      : False
-AllowedOOFType        : InternalLegacy
+AllowedOOFType        : None
 DeliveryReportEnabled : False
 NDREnabled            : False
 ```
+
+The wildcard Default covers domains without a more specific remote-domain entry. Specific domains (including wildcard subdomain entries) take precedence, so **every returned domain** must have the selected OOF value and the approved forwarding/reporting values. Default alone is not sufficient readback. `IsInternal` is displayed to expose the side effect of a previous `InternalLegacy` configuration; do not silently change domain trust as part of OOF repair.
+
+Deployment validates the policy and enumerates remote domains before organization writes. A conflicting specific OOF entry stops with `RemoteDomainOverrideConflict`; missing Default or failed collection also stops. The approved deployment operation still targets Default only. Have the Exchange change owner approve an identity-scoped change for each conflicting override, preserving its independently approved forwarding/NDR settings, then repeat all-domain verification and the approved deployment workflow. This runbook's default command is a settings reference, not a substitute for that workflow. The evaluator fails any conflicting effective override and never infers compliance from Default alone.
 
 ---
 
@@ -285,14 +300,20 @@ NDREnabled            : False
 **Set** — Organization-wide EWS:
 
 ```powershell
-Set-OrganizationConfig -EwsEnabled $false -EwsAllowList @()
+Set-OrganizationConfig -EwsEnabled $false -EwsApplicationAccessPolicy EnforceAllowList -EwsAllowList @()
 ```
 
-If a sanctioned application still requires EWS, allow only that application's user agent:
+This is the approved local disabled default and the exception rollback target, not a universal Microsoft default. Organization disablement overrides mailbox enablement; an allow-list entry does not reopen EWS.
 
-```powershell
-Set-OrganizationConfig -EwsEnabled $true -EwsAllowList @('ApprovedArchiver/*')
-```
+**Retirement review: 2026-09-20.** Microsoft's [retirement guidance](https://learn.microsoft.com/exchange/clients-and-mobile-in-exchange-online/deprecation-of-ews-exchange-online) and [phased disablement announcement](https://techcommunity.microsoft.com/blog/exchange/exchange-online-ews-your-time-is-almost-up/4492361) specify default disablement starting October 2026 and complete shutdown in April 2027. Temporary continuation requires explicit organization enablement and an AppID allow list. No exception here is offered at or after 2027-04-01 UTC; this conservative boundary is not an assurance of availability until that instant. The contract is reviewed for Worldwide only; other environments need a separate source-backed review, not a guessed exception. Review sources again before each live change and at least quarterly.
+
+`EwsAllowList` contains user-agent patterns, **not authenticated application identities**. User agents can be spoofed. `EwsApplicationAccessPolicy EnforceAllowList` is mandatory for the filter to operate. `EwsAllowedAppIDs` is a separate organization control containing externally supplied application GUIDs. Neither setting grants OAuth permissions, establishes consent, nor provisions an app. Consult [EWS access control](https://learn.microsoft.com/exchange/client-developer/exchange-web-services/how-to-control-access-to-ews-in-exchange) and [Set-CASMailbox](https://learn.microsoft.com/powershell/module/exchangepowershell/set-casmailbox?view=exchange-ps). Client-specific Outlook/Entourage switches are not governed by the user-agent filter; AppID restriction and externally owned identity controls remain necessary.
+
+An enabled exception must supply `ewsEnabled: true`, `ewsApplicationAccessPolicy: EnforceAllowList`, exact nonempty `ewsAllowList` and `ewsAllowedAppIds` arrays, and `ewsException` with nonblank `owner`, external `approval` reference, timezone-qualified `expiresAt`, `cloud: Worldwide`, `rollback: DisableEws`, and a specific `clientImpact` statement. Expiry must be future and no later than 2027-04-01 UTC. Source review and a typed approval reference do not authenticate an approval: external risk/change authorization is still required. Keep this deviation separate from conformance to the disabled default.
+
+Use the approved preview/change workflow, not an ad hoc enable command. Deployment resolves this contract before any Exchange mutation (including connectors and preset protection), reads all CAS mailboxes with terminating errors, and refuses contradictory overrides. The organization helper repeats admission immediately before its own writes. It sends the exact mode and replacement user-agent list together with `EwsEnabled` and the comma-delimited `EwsAllowedAppIDs`. It never creates applications or changes mailbox exceptions implicitly. A mailbox with null mode inherits the organization filter and must have no dormant list; an explicit mailbox allow mode must contain the exact approved list. A mailbox with `EwsEnabled False` remains blocked. Resolve conflicts through separately approved identity-scoped Exchange changes, then repeat collection.
+
+The exception owner must schedule rollback before expiry, preserve the before-state and change artifacts, migrate dependent clients, and confirm disabled readback afterward. Expiry checks refuse continued approval; they do not run a scheduler or silently mutate a tenant. Run the disabled command above through the approved change workflow to close EWS. Record expected loss of archiving, integration, or legacy client functions in `clientImpact`, notify their owners, and test the replacement client. Do not roll back by broadening the list, using `EnforceBlockList`, or re-enabling a retired service.
 
 New mailboxes:
 
@@ -312,10 +333,13 @@ Get-CASMailbox -ResultSize Unlimited |
 **Verify**
 
 ```powershell
-Get-OrganizationConfig | Select-Object EwsEnabled, EwsAllowList
+Get-OrganizationConfig -RetrieveEwsOperationAccessPolicy -ErrorAction Stop | Select-Object EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, EwsAllowedAppIDs
 Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, PopEnabled, ImapEnabled
-Get-CASMailbox -ResultSize Unlimited | Where-Object { $_.PopEnabled -or $_.ImapEnabled } | Measure-Object
+Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop |
+    Select-Object Identity, EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, PopEnabled, ImapEnabled
 ```
+
+Microsoft's [EWSAllowedAppIDs guidance](https://techcommunity.microsoft.com/blog/exchange/introducing-ewsallowedappids-preparing-for-the-final-phase-of-ews-retirement/4529471), reviewed 2026-09-20, requires `-RetrieveEwsOperationAccessPolicy` to retrieve the AppID list. AppID changes replace the full list and can take up to 24 hours to take effect. Configuration readback alone does not prove effective client access: preserve the readback, allow for propagation, and have the exception owner validate approved and denied clients before claiming live readiness.
 
 **Expected**
 
@@ -325,34 +349,28 @@ EwsEnabled EwsAllowList
      False {}
 ```
 
-Every mailbox plan shows `PopEnabled False` and `ImapEnabled False`, and the final count is `0`.
+Every mailbox plan and existing mailbox shows `PopEnabled False` and `ImapEnabled False`. For an enabled exception, require exact organization mode, user-agent and AppID readback plus the complete effective mailbox checks above; a populated list alone is not a pass. Collection failure or missing properties is unresolved evidence, not success. Offline verification does not certify live client compatibility or external readiness.
 
 ---
 
 ### R-EXO-010 Exchange RBAC hygiene
 
-**Portal** — Exchange admin center → Roles → Admin roles. Microsoft Entra admin center → Identity governance → Privileged Identity Management → Microsoft Entra roles.
+Supply the independently approved Exchange administrator/end-user assignment graph, management scopes, effective members and per-mailbox role-policy bindings. Follow the [RBAC contract](EXCHANGE-GOVERNANCE.md#rbac). Do not assume any generic set of privileged members is appropriate or use this runbook to provision PIM. Entra identities, privileged access and linked-partner provenance are RAID-D02/D03 handoffs.
 
-**Set** — There is no single cmdlet. Perform these steps:
-
-1. Remove standing members from `Organization Management`, keeping only break-glass and the messaging platform service principal.
-2. Make Exchange Administrator and Security Administrator eligible-only in PIM, with approval and a maximum activation of eight hours.
-3. Assign day-to-day staff `View-Only Organization Management` or `Security Reader`.
-4. Record the review date and schedule the next review within 90 days.
-
-```powershell
-Remove-RoleGroupMember -Identity 'Organization Management' -Member 'legacy.admin@contoso.com' -Confirm:$false
-```
+The signed `GovernanceMailboxPolicy` scope updates existing mailbox policy bindings only. Other role/group changes need their own reviewed Exchange authorization and current readback. Prohibited end-user add-in roles cannot be approved around the EXO-012 restriction.
 
 **Verify**
 
 ```powershell
 Get-RoleGroup -ResultSize Unlimited | Select-Object Name, @{n='Members';e={$_.Members -join '; '}}
-Get-ManagementRoleAssignment -Role 'Role Management' -GetEffectiveUsers |
+Get-ManagementRoleAssignment -GetEffectiveUsers |
     Select-Object EffectiveUserName, Role, RoleAssigneeName
+Get-ManagementScope
+Get-RoleAssignmentPolicy
+Get-Mailbox -ResultSize Unlimited | Select-Object Identity, PrimarySmtpAddress, RoleAssignmentPolicy
 ```
 
-**Expected** — `Organization Management` contains only the approved break-glass accounts and service principals. No individual daily-use identity appears in `Role Management`. Cross-check the PIM eligible assignment export for Exchange Administrator and Security Administrator.
+**Expected** — The collector compares complete raw properties, not this abbreviated display. Direct/delegating assignments, read/write/custom/exclusive scopes, effective nested users, nondefault policies and mailbox bindings must match approval exactly. Unresolved partner provenance or incomplete collection fails. Exchange success does not certify PIM or external identity readiness.
 
 ---
 
@@ -1205,229 +1223,93 @@ Get-ComplianceSearchAction | Where-Object { $_.SearchName -match 'phish' } |
 
 ---
 
-## Microsoft Purview Governance
+## Exchange Governance and External Handoffs
 
-Connect first:
-
-```powershell
-Connect-IPPSSession -UserPrincipalName admin@contoso.com
-```
+Use the approved [Exchange governance contract](EXCHANGE-GOVERNANCE.md). No Security and Compliance session is opened by the Exchange-only workflow. External legal, identity and preservation readiness remains Unverified.
 
 ### R-GOV-001 Audit retention policy
 
-**Tier: E5 Compliance.** **Portal** — Purview portal → Audit → Audit retention policies.
+External handoff: RAID-I02/D03. The tenant audit owner supplies approved retention and ingestion evidence. Exchange organization auditing and audit-bypass readback are EXO-006; they do not prove tenant audit retention. Do not provision a global audit retention policy from this walkthrough.
 
-**Set**
+**Verify** - Obtain the audit owner's current approved retention and ingestion record.
 
-```powershell
-New-UnifiedAuditLogRetentionPolicy -Name 'Messaging-Admin-1Year' `
-    -RecordTypes ExchangeAdmin, ExchangeItem, ExchangeItemGroup `
-    -RetentionDuration OneYear `
-    -Priority 100
-```
-
-Raise `RetentionDuration` to `TenYears` where the regulatory period demands it.
-
-**Verify**
-
-```powershell
-Get-UnifiedAuditLogRetentionPolicy | Format-List Name, RecordTypes, RetentionDuration, Priority
-```
-
-**Expected**
-
-```text
-Name              : Messaging-Admin-1Year
-RecordTypes       : {ExchangeAdmin, ExchangeItem, ExchangeItemGroup}
-RetentionDuration : OneYear
-Priority          : 100
-```
+**Expected** - Named owner, scope, retention and evidence reference are present; external readiness remains Unverified until independently accepted.
 
 ---
 
 ### R-GOV-002 Exchange DLP policy
 
-**Tier: E3.** **Portal** — Purview portal → Data loss prevention → Policies.
+External handoff: RAID-I02/D03. Data owners approve regulated classes, locations, exceptions and enforcement; the Purview owner supplies policy evidence. DLP provisioning is not an Exchange-only action. The historical example has been removed rather than presented as a universal data policy.
 
-**Set** — Start in simulation, review matches, then enable.
+**Verify** - Obtain the data owner's policy scope and enforcement evidence through the external handoff.
 
-```powershell
-New-DlpCompliancePolicy -Name 'Exchange-Regulated-Data' `
-    -ExchangeLocation All `
-    -Mode TestWithNotifications
-
-New-DlpComplianceRule -Name 'Block-Outbound-Financial-Data' `
-    -Policy 'Exchange-Regulated-Data' `
-    -ContentContainsSensitiveInformation @{ Name = 'Credit Card Number'; minCount = '1' } `
-    -AccessScope NotInOrganization `
-    -BlockAccess $true `
-    -NotifyUser Owner `
-    -GenerateIncidentReport 'secops@contoso.com'
-
-# After reviewing simulation results
-Set-DlpCompliancePolicy -Identity 'Exchange-Regulated-Data' -Mode Enable
-```
-
-Replace the sensitive information type with the classes your regulator actually requires.
-
-**Verify**
-
-```powershell
-Get-DlpCompliancePolicy | Select-Object Name, Mode, ExchangeLocation, Enabled
-Get-DlpComplianceRule -Policy 'Exchange-Regulated-Data' | Select-Object Name, BlockAccess, Disabled
-```
-
-**Expected**
-
-```text
-Name                    Mode   ExchangeLocation Enabled
-----                    ----   ---------------- -------
-Exchange-Regulated-Data Enable {All}               True
-```
+**Expected** - Approved data classes, locations and exceptions are independently recorded; Exchange conformance does not certify DLP.
 
 ---
 
 ### R-GOV-003 Mailbox retention policy
 
-**Tier: E3.** **Portal** — Purview portal → Data lifecycle management → Retention policies.
+Exchange MRM is a lifecycle and archive interface, not Purview preservation. Supply the records owner's exact policy, tag types/actions/ages/enabled states, mailbox scope, archive entitlements and processing-age limit in GOV-003. No deletion period is assumed.
 
-**Set**
+Use the signed `GovernanceMrm` scope for existing tags, policy links and mailbox assignments. Provisioning a new tag or archive and clearing retention holds are not implicit side effects. Readback resolves `Get-RetentionPolicy`, every linked `Get-RetentionPolicyTag`, mailbox processing flags, organization ELC state and the last successful MRM diagnostic timestamp. Wrong semantics, blocked processing or missing archive entitlement fails closed. Rollback restores captured configuration; it cannot recover items already processed or deleted by MRM.
 
-```powershell
-New-RetentionCompliancePolicy -Name 'Mailbox-Retention-7Year' -ExchangeLocation All
+Follow [Exchange governance](EXCHANGE-GOVERNANCE.md) and rerun frozen evidence. Preservation policy remains externally owned under RAID-I02/D03 and separately Unverified.
 
-New-RetentionComplianceRule -Name 'Mailbox-Retention-7Year-Rule' `
-    -Policy 'Mailbox-Retention-7Year' `
-    -RetentionDuration 2555 `
-    -RetentionComplianceAction KeepAndDelete `
-    -ExpirationDateOption ModificationAgeInDays
-```
+**Verify** - Run GOV-003 collection/evaluation with the approved configuration, then the frozen evidence gate.
 
-`2555` days is seven years. Use the period your records schedule requires.
-
-**Verify**
-
-```powershell
-Get-RetentionCompliancePolicy -Identity 'Mailbox-Retention-7Year' |
-    Format-List Name, Enabled, Mode, ExchangeLocation, DistributionStatus
-Get-RetentionComplianceRule -Policy 'Mailbox-Retention-7Year' |
-    Select-Object Name, RetentionDuration, RetentionComplianceAction
-```
-
-**Expected**
-
-```text
-Name               : Mailbox-Retention-7Year
-Enabled            : True
-DistributionStatus : Success
-ExchangeLocation   : {All}
-```
-
-`DistributionStatus Success` is the gate. `Pending` means the policy has not reached every mailbox yet.
+**Expected** - Exact tag semantics, mailbox assignments, archive entitlement and successful processing match approval; preservation remains Unverified.
 
 ---
 
 ### R-GOV-004 Litigation hold
 
-**Tier: E3.** **Portal** — Exchange admin center → Recipients → Mailboxes → select mailbox → Mailbox policies → Litigation hold.
+Supply the legal owner's custodian inventory, exact duration and owner, per-mailbox entitlement, active/inactive/soft-deleted applicability and Recoverable Items capacity threshold in GOV-004. Priority-account membership does not authorize a hold. Missing custodians and unauthorized holds both fail.
 
-**Set** — Run from the Exchange Online session, not Security & Compliance:
+The collector enumerates all three mailbox classes with unlimited results and reads Recoverable Items usage by Exchange GUID. An inactive mailbox also returned in the soft-deleted inventory is counted once; incompatible duplicates fail. Legal hold application or release requires a separately authorized legal procedure, not automatic baseline remediation or rollback. Tenant cases and preservation policy remain RAID-I02/D03 handoffs. See [Exchange governance](EXCHANGE-GOVERNANCE.md).
 
-```powershell
-Get-DistributionGroupMember -Identity 'PriorityUsers@contoso.com' | ForEach-Object {
-    Set-Mailbox -Identity $_.PrimarySmtpAddress `
-        -LitigationHoldEnabled $true `
-        -LitigationHoldDuration 2555 `
-        -LitigationHoldOwner 'legal@contoso.com'
-}
-```
+**Verify** - Run GOV-004 against the approved legal inventory and per-mailbox capacity threshold.
 
-**Verify**
-
-```powershell
-Get-Mailbox -ResultSize Unlimited |
-    Where-Object { $_.LitigationHoldEnabled } |
-    Select-Object PrimarySmtpAddress, LitigationHoldDuration, LitigationHoldDate, LitigationHoldOwner
-```
-
-**Expected** — Every member of `PriorityUsers@contoso.com` and every named custodian appears, each with `LitigationHoldDuration 2555` and a populated `LitigationHoldOwner`.
+**Expected** - Exact custodian, duration, owner, class and entitlement match with sufficient headroom; unauthorized holds and missing custodians fail.
 
 ---
 
 ### R-GOV-005 Information Rights Management
 
-**Tier: E3.** **Portal** — Purview portal → Information protection.
+Supply approved business-message classes, exact rule/header/recipient/template/sender bindings, entitlement, IRM values and explicit transport/journal decryption authorization in GOV-005. Use the signed `GovernanceEncryption` scope for existing Exchange rule settings and IRM configuration. RMS activation, keys and labels remain external prerequisites under RAID-D02/D03/A03.
 
-**Set** — Run from the Exchange Online session:
+Verify rule readback, enabled enforcement, matching recipient scope, protection-removal and precedence conflicts, then run `Test-IRMConfiguration` for each approved sender/recipient pair. Supply current independent recipient observations in `governanceEvidence.recipientFlows`; both authorized decryption and unauthorized-recipient rejection must be evidenced. A self-test alone is insufficient. Offline success does not certify live delivery: EXR-016/017 own that acceptance. Follow [Exchange governance](EXCHANGE-GOVERNANCE.md).
 
-```powershell
-Set-IRMConfiguration -AzureRMSLicensingEnabled $true
-Set-IRMConfiguration -InternalLicensingEnabled $true
-```
+**Verify** - Run GOV-005 collection/evaluation with complete raw rule predicates and independent recipient observations.
 
-**Verify**
-
-```powershell
-Get-IRMConfiguration | Format-List AzureRMSLicensingEnabled, InternalLicensingEnabled, ClientAccessServerEnabled
-Test-IRMConfiguration -Sender admin@contoso.com -Recipient user@contoso.com
-```
-
-**Expected**
-
-```text
-AzureRMSLicensingEnabled : True
-InternalLicensingEnabled : True
-```
-
-`Test-IRMConfiguration` ends with `OVERALL RESULT: PASS`.
+**Expected** - Approved class/recipient/template/IRM/decryption settings and functional evidence match; actual live delivery remains separately unverified.
 
 ---
 
 ### R-GOV-006 Sensitivity labels
 
-**Tier: E5 Compliance.** **Portal** — Purview portal → Information protection → Labels, then Label policies.
+External handoff: RAID-I02/D03. The information-protection owner supplies approved labels and publication evidence. Do not create labels or label policies in the Exchange walkthrough.
 
-**Set** — Create at least one label that applies encryption, and publish a policy scoped to messaging users. Label taxonomy is organization-specific; build it with your data owners rather than copying a template.
+**Verify** - Obtain the information-protection owner's current publication evidence.
 
-**Verify**
-
-```powershell
-Get-Label | Select-Object DisplayName, Priority, ContentType
-Get-LabelPolicy | Select-Object Name, Labels, ExchangeLocation, Enabled
-```
-
-**Expected** — At least one label exists with encryption configured, and a label policy shows `Enabled True` covering the messaging population.
+**Expected** - Approved taxonomy, recipients and publication are documented externally; Exchange success is not label-policy acceptance.
 
 ---
 
 ### R-GOV-007 eDiscovery readiness
 
-**Tier: E5 Compliance.** **Portal** — Purview portal → eDiscovery.
+External handoff: RAID-I02/D03. Legal and Purview case owners supply case access and search-readiness evidence. Exchange mailbox hold readback is not proof of case access or tenant eDiscovery readiness.
 
-**Set** — Add the named case owners to the `eDiscovery Manager` role group and confirm the `eDiscovery Administrator` sub-role is held by a small, reviewed set.
+**Verify** - Obtain independently approved case access and search-readiness records from the named owners.
 
-**Verify**
-
-```powershell
-Get-RoleGroupMember -Identity 'eDiscovery Manager' | Select-Object Name, RecipientType
-Get-ComplianceCase | Select-Object Name, Status, CreatedDateTime
-```
-
-**Expected** — `eDiscovery Manager` membership matches `purviewGovernance.ediscoveryCaseOwners` in the baseline configuration. Run a scoped test search against a pilot mailbox and confirm results return.
+**Expected** - External owners supply scoped evidence; Exchange-only checks leave eDiscovery readiness Unverified.
 
 ---
 
 ## Completion gate
 
-Before declaring the service live, confirm:
+Use the active [Frozen Exchange Evidence Gate](EXCHANGE-GO-LIVE.md): collect once, freeze and review the exact bytes, sign with the externally authorized certificate using `-SignEvidence`, then verify that same file with `-GoLive` and the documented tenant/configuration/hash/age/signer inputs. Do not use a historical-profile collection-only exit as completion evidence.
 
-```powershell
-./scripts/Test-ExchangeOnlineBaseline.ps1 `
-    -ParameterPath ./config/parameters.contoso.json `
-    -ConfigurationPath ./config/exchange-online-secure-baseline.json
-```
-
-exits `0`, that every `Manual` check has a completed runbook and attached evidence, and that every `NotEntitled` check has a recorded risk acceptance with a review date.
+In-scope `Manual`, `NotEntitled`, missing records and unknown statuses fail closed; `Error` is a collection failure. Approved deviations remain `ApprovedException`, never Pass. The gate's distinct exits are documented in the linked workflow. Even exit `0` leaves `ExternalReadiness.Status` Unverified and does not certify tenant security or service launch.
 
 ## Authoritative References
 

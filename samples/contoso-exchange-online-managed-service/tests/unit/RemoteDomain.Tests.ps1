@@ -7,7 +7,7 @@
 $RemoteDomainDecidedMember = @(
     @{ Observed = 'AutoForwardEnabled'; Desired = 'autoForwardEnabled'; Drift = $true; Live = 'True'; Want = 'False' }
     @{ Observed = 'AutoReplyEnabled'; Desired = 'autoReplyEnabled'; Drift = $true; Live = 'True'; Want = 'False' }
-    @{ Observed = 'AllowedOOFType'; Desired = 'allowedOOFType'; Drift = 'External'; Live = 'External'; Want = 'InternalLegacy' }
+    @{ Observed = 'AllowedOOFType'; Desired = 'allowedOOFType'; Drift = 'External'; Live = 'External'; Want = 'None' }
     @{ Observed = 'DeliveryReportEnabled'; Desired = 'deliveryReportEnabled'; Drift = $true; Live = 'True'; Want = 'False' }
     @{ Observed = 'NDREnabled'; Desired = 'nonDeliveryReportEnabled'; Drift = $true; Live = 'True'; Want = 'False' }
 )
@@ -23,7 +23,7 @@ BeforeAll {
 
     # The registry is returned as one read-only collection deliberately protected from pipeline
     # unrolling, so the entry is read by index rather than by piping the collection.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:RemoteDomainRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'EXO-008') { $entry }
         })[0]
@@ -103,7 +103,7 @@ BeforeAll {
         $state = [pscustomobject][ordered]@{
             autoForwardEnabled       = $false
             autoReplyEnabled         = $false
-            allowedOOFType           = 'InternalLegacy'
+            allowedOOFType           = 'None'
             deliveryReportEnabled    = $false
             nonDeliveryReportEnabled = $false
         }
@@ -125,7 +125,7 @@ BeforeAll {
             [string]$Identity = 'Default'
         )
 
-        $argument = @{ Identity = $Identity; AllowedOOFType = 'InternalLegacy' }
+        $argument = @{ Identity = $Identity; AllowedOOFType = 'None' }
         foreach ($name in $Override.Keys) { $argument[$name] = $Override[$name] }
 
         return New-RemoteDomainEvidenceRecord -RemoteDomain @(New-RemoteDomainRecord @argument)
@@ -374,7 +374,7 @@ Describe 'EXO-008-A2 remote-domain evaluator' {
 
         It "decides an observed remote domain carrying no '<Observed>' member as an error" -ForEach $RemoteDomainDecidedMember {
             # Arrange
-            $domain = New-RemoteDomainRecord -Identity 'Default' -AllowedOOFType 'InternalLegacy'
+            $domain = New-RemoteDomainRecord -Identity 'Default' -AllowedOOFType 'None'
             $domain.PSObject.Properties.Remove($Observed)
             $incomplete = New-RemoteDomainEvidenceRecord -RemoteDomain @($domain)
 
@@ -422,8 +422,8 @@ Describe 'EXO-008-A2 remote-domain evaluator' {
         It 'fails a non-default remote domain that differs while the default domain agrees' {
             # Arrange
             $override = New-RemoteDomainEvidenceRecord -RemoteDomain @(
-                New-RemoteDomainRecord -Identity 'Default' -DomainName '*' -AllowedOOFType 'InternalLegacy'
-                New-RemoteDomainRecord -Identity 'Fabrikam' -DomainName 'fabrikam.example' -AllowedOOFType 'InternalLegacy' -AutoForwardEnabled $true
+                New-RemoteDomainRecord -Identity 'Default' -DomainName '*' -AllowedOOFType 'None'
+                New-RemoteDomainRecord -Identity 'Fabrikam' -DomainName 'fabrikam.example' -AllowedOOFType 'None' -AutoForwardEnabled $true
             )
 
             # Act
@@ -431,7 +431,7 @@ Describe 'EXO-008-A2 remote-domain evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=RemoteDomainDrift: remote domain 'Fabrikam' reports 'AutoForwardEnabled' as 'True' where the baseline requires 'False'." `
+                Should -BeExactly "Fail|golive=False|reason=RemoteDomainDrift: remote domain 'Fabrikam' (fabrikam.example) reports 'AutoForwardEnabled' as 'True' where the baseline requires 'False'." `
                     -Because 'a non-default remote domain overrides the default for exactly the addresses it covers, so a control that decided only the default domain would pass a tenant that opened automatic forwarding to the one partner domain somebody created it for'
         }
     }
@@ -457,8 +457,8 @@ Describe 'EXO-008-A2 remote-domain evaluator' {
         It 'passes a tenant whose every remote domain holds all five values the baseline resolved' {
             # Arrange
             $hardened = New-RemoteDomainEvidenceRecord -RemoteDomain @(
-                New-RemoteDomainRecord -Identity 'Default' -DomainName '*' -AllowedOOFType 'InternalLegacy' -TrustedMailOutboundEnabled $true
-                New-RemoteDomainRecord -Identity 'Fabrikam' -DomainName 'fabrikam.example' -AllowedOOFType ' internallegacy ' -TrustedMailOutboundEnabled $false
+                New-RemoteDomainRecord -Identity 'Default' -DomainName '*' -AllowedOOFType 'None' -TrustedMailOutboundEnabled $true
+                New-RemoteDomainRecord -Identity 'Fabrikam' -DomainName 'fabrikam.example' -AllowedOOFType ' none ' -TrustedMailOutboundEnabled $false
             )
             $expected = 'EXO-008|Pass|normalized=True|golive=True|reason=|evidence=Get-RemoteDomain:EXO-008'
 

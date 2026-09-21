@@ -1,0 +1,41 @@
+# Exchange-Only Execution Boundary
+
+EXR-001 defines an execution boundary, not live readiness or a complete administrator walkthrough. Use PowerShell 7.5 or later for the scoped command path. The working directory for the example is `samples/contoso-exchange-online-managed-service`.
+
+Start with the [net-new Exchange administrator journey](EXCHANGE-ADMINISTRATOR-JOURNEY.md) for ordered owner handoffs, module/access admission, accepted-domain and recipient setup, supported portal preset initialization, approved hardening, frozen verification and DNS-gated mail/client validation. It consumes this boundary and the existing change/evidence contracts; it does not provision a tenant or close the independently tracked recommendation gaps.
+
+Both public scripts default to [exchange-only.v1.json](../config/exchange-only.v1.json). The [versioned manifest](../config/exchange-only.manifest.v1.json) retains 25 controls, declares 15 exclusions, and separately identifies 3 externally owned checks. The [schema](../config/exchange-only.schema.v1.json) rejects malformed settings. Unknown settings, excluded controls and missing retained controls are refused before connections or collection.
+
+## Inputs And Preview
+
+The [sample parameters](../config/parameters.exchange-only.sample.json) deliberately contain an unverified licensing handoff. The licensing owner supplies current tenant-bound service-plan names, recipient domains, owner, evidence reference and expiry under [RAID-D02](../../../.github/RAID.md). A tier label is not entitlement. Do not mark a handoff verified without independent evidence. Replace synthetic administrator values with externally approved inputs in a change-controlled parameter file outside source control, and substitute its path in this example.
+
+```powershell
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 -ParameterPath ./config/parameters.exchange-only.sample.json -SkipConnection
+```
+
+The unmodified sample stops with `ExchangeEntitlementUnverified`. With an approved handoff the command returns `ExchangeOnlyPlan`, the resolved configuration hash, manifest version, retained control IDs and permitted Exchange operations. It connects to no service, performs no pre-change reads and makes no changes. This inventory is not a signed approval artifact. Use [Approved Exchange Change](APPROVED-CHANGE.md) for the executable immutable preview, external certificate approval, offline approval validation, scoped apply, pre/post readback and rollback procedure. It explicitly names the supported reversible scope; it does not apply or certify every control in this inventory. Exchange-only apply cannot fall back to the historical untyped rollback path.
+
+## Evidence And Scope
+
+Invoke `scripts/Test-ExchangeOnlineBaseline.ps1` with `-ParameterPath` and `-OutputPath` to collect Exchange evidence. It connects only to Exchange Online unless `-SkipConnection` is supplied for an already established Exchange session or an offline test boundary. `exchange-online-evidence.json` contains exactly one evidence/result record per retained control, the profile version, manifest content hash, configuration hash, tenant, exclusions, external checks and explicitly unverified external readiness. No Graph inventory, PIM/access-review collector, global directory scan, DNS resolver, Purview, SIEM, Safe Documents or SPO/ODB/Teams collector is required, even with Defender service plans present.
+
+EXO-010 observes Exchange role groups, members and role assignments without Graph. GOV-003 observes Exchange MRM `Get-RetentionPolicy` and mailbox policy assignments, not Purview retention. AUTH-001 observes Exchange DKIM state; DNS publication remains externally owned. These narrowed controls do not certify the external portion of the historical control. Other setting correctness and raw-adapter compatibility work remains tracked in EXR-002/003/005/009/010/011.
+
+The [EXR-005 all-25 adapter audit](EXR005-ADAPTER-AUDIT.md) records each retained adapter's raw source, enumeration contract, decision boundary, reviewer-case coverage and remaining compatibility limits. It distinguishes 22 raw Exchange adapters from 3 signed local operational-artifact adapters and does not treat offline passing fixtures as live acceptance.
+
+MON-003, OPS-001 and OPS-002 remain required operational controls. Missing or invalid signed local artifacts produce Error, never Pass or an exclusion. Optional `operationalEvidence` in the parameter file maps each of these IDs to `path`, `signerIdentity`, and `authorizedSigner` records (`Identity`, `Subject`, `Authority` equal to `ExchangeOnlineChangeApproval`). Trust/authority metadata comes from the external change authority, not from the evidence author.
+
+Each operational JSON document carries `ControlId`, `TenantId`, `DeploymentProfile` (`ExchangeOnly`), `ConfigurationHash`, `ManifestHash`, `GeneratedAtUtc`, `Payload`, and `Signature`. The detached CMS signature covers canonical JSON of all members except `Signature`; its descriptor is `{ "Model": "DetachedCms", "Value": "base64 CMS bytes" }`. Binding, age, signature, approved signer, certificate validity, offline chain and revocation checks must succeed. Unknown/offline-unavailable trust fails closed. Signing infrastructure is [RAID-D05](../../../.github/RAID.md), not provisioned by this command.
+
+Operational chain verification disables certificate downloads. An optional externally approved `trustedRoot` object supplies a local certificate `path` and `sha256` pin for custom-root trust without installing certificates in a certificate store. Supplying a root does not bypass binding, signature, validity or signer-authorization checks. This setting applies to the local operational-artifact verifier, not the separate frozen-evidence go-live workflow.
+
+Payloads use the existing retained evaluator contracts: MON-003 scheduled collection, cadence, retention, timestamp, drift and findings; OPS-001 ChangeId, timestamp, and completed/bound preview, pilot, approval, rollback and post-change phases; OPS-002 exercise ID, completion timestamp, exercise types, owners and tracked actions. OPS-002 requires the supplied `THREAT_INTELLIGENCE` entitlement. A `SignatureVerified` field supplied by an artifact is never accepted as proof; it is set only after verification.
+
+Use [Frozen Exchange Evidence Gate](EXCHANGE-GO-LIVE.md) for the supported collect/freeze/`-SignEvidence`/`-GoLive` commands, required independent hashes, authorized signer metadata and distinct exits. A subject string alone is not authorization. Verification measures the exact frozen bytes without collecting again. The gate always uses the shipped Exchange manifest even if an internal caller supplies a smaller catalog. Missing controls, excluded Pass records, unbound manifest contents, forged external dispositions, unresolved results and unverified signatures are refused. Approved deviations remain `ApprovedException`, not Pass. Exchange conformance does not establish tenant security or service-launch readiness; [RAID](../../../.github/RAID.md) remains authoritative for external gaps.
+
+## Historical Regression
+
+The MicrosoftNative and ThirdPartyGateway configurations and their historical Pester tests remain preserved. Historical public execution requires both an explicit historical `-ConfigurationPath` and `-AllowHistoricalProfile`. They are never the default or a fallback for ExchangeOnly. Historical examples in README, IMPLEMENTATION-GUIDE and RUNBOOKS are isolated pending EXR-012; they must not be used as the active scoped procedure.
+
+Offline acceptance runs the actual default public entrypoint through recording Exchange stubs, exercises raw accepted-domain data, checks all 25 records, and denies excluded-service calls. Separate tests cover malformed input, registry admission, mutation readers, operational artifacts, manifest-bound go-live and the preview example above. No offline fixture is live Microsoft compatibility evidence; live acceptance remains EXR-017 with independently confirmed prerequisites.

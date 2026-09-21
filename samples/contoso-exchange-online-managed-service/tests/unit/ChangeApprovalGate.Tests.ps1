@@ -409,9 +409,13 @@ Describe 'SAFE-003-A approved immutable preview gate' {
         It 'permits the apply and names the preview it permits it from, with no refusal collected' {
             # Arrange
             $change = New-ApprovedChange
+            Mock Test-BaselineDetachedCmsSignature -ModuleName ExchangeOnlineBaseline.Common {
+                @{ Verified = $true; SignerSubject = 'CN=Offline Approver'; SigningTimeUtc = '2026-09-18T07:40:00Z'; CertificateNotBeforeUtc = '2026-01-01T00:00:00Z'; CertificateNotAfterUtc = '2027-01-01T00:00:00Z'; ChainTrusted = $true; RevocationStatus = 'Good' }
+            }
+            $authorizedSigner = @(@{ Identity = $script:Approver; Subject = 'CN=Offline Approver'; Authority = $script:Authority })
 
             # Act
-            $decision = Invoke-Gate -Change $change
+            $decision = Invoke-Gate -Change $change -Override @{ AuthorizedSigner = $authorizedSigner }
 
             # Assert
             '{0}|{1}|{2}|{3}' -f $decision['Permitted'], $decision['ChangeId'], $decision['PreviewPath'], @($decision['Finding']).Count |

@@ -1,0 +1,53 @@
+{
+  "Version": "1.0.0",
+  "ReviewedOn": "2026-09-21",
+  "Source": "https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365",
+  "SourceCommit": "379db33154f4d944dbb33fce80576aff5296dfbf",
+  "FileTypesSource": "https://learn.microsoft.com/defender-office-365/anti-malware-protection-about#common-attachments-filter-in-anti-malware-policies",
+  "Excluded": ["EnableATPForSPOTeamsODB","EnableSafeDocs","AllowSafeDocsOpen","EnableSafeLinksForTeams","EnableSafeLinksForOffice","TeamsProtectionPolicy"],
+  "Families": {
+    "MalwareFilter": {
+      "Section": "Anti-malware policy settings", "Plan": "Exchange", "Local": ["EnableInternalSenderAdminNotifications","InternalSenderAdminAddress","EnableExternalSenderAdminNotifications","ExternalSenderAdminAddress","CustomNotifications","CustomFromName","CustomFromAddress","CustomInternalSubject","CustomInternalBody","CustomExternalSubject","CustomExternalBody"],
+      "Standard": {
+        "EnableFileFilter": true, "FileTypeAction": "Reject", "ZapEnabled": true, "QuarantineTag": "AdminOnlyAccessPolicy",
+        "FileTypes": ["ace","ani","apk","app","appx","arj","bat","cab","cmd","com","deb","dex","dll","docm","elf","exe","hta","img","iso","jar","jnlp","kext","lha","lib","library","lnk","lzh","macho","msc","msi","msix","msp","mst","pif","ppa","ppam","reg","rev","scf","scr","sct","sys","uif","vb","vbe","vbs","vxd","wsc","wsf","wsh","xll","xz","z"],
+        "EnableInternalSenderAdminNotifications": false, "InternalSenderAdminAddress": "", "EnableExternalSenderAdminNotifications": false, "ExternalSenderAdminAddress": "", "CustomNotifications": false, "CustomFromName": "", "CustomFromAddress": "", "CustomInternalSubject": "", "CustomInternalBody": "", "CustomExternalSubject": "", "CustomExternalBody": ""
+      }, "Strict": {}
+    },
+    "HostedContentFilter": {
+      "Section": "Anti-spam policy settings / ASF settings in anti-spam policies", "Plan": "Exchange", "Local": ["EnableLanguageBlockList","LanguageBlockList","EnableRegionBlockList","RegionBlockList"],
+      "Standard": {
+        "BulkThreshold": 6, "MarkAsSpamBulkMail": "On", "EnableLanguageBlockList": false, "LanguageBlockList": [], "EnableRegionBlockList": false, "RegionBlockList": [],
+        "SpamAction": "MoveToJmf", "SpamQuarantineTag": "DefaultFullAccessPolicy", "HighConfidenceSpamAction": "Quarantine", "HighConfidenceSpamQuarantineTag": "DefaultFullAccessWithNotificationPolicy",
+        "PhishSpamAction": "Quarantine", "PhishQuarantineTag": "DefaultFullAccessWithNotificationPolicy", "HighConfidencePhishAction": "Quarantine", "HighConfidencePhishQuarantineTag": "AdminOnlyAccessPolicy",
+        "BulkSpamAction": "MoveToJmf", "BulkQuarantineTag": "DefaultFullAccessPolicy", "BulkMovesEnabled": "NotSet", "IntraOrgFilterState": "Default", "QuarantineRetentionPeriod": 30, "InlineSafetyTipsEnabled": true, "PhishZapEnabled": true, "SpamZapEnabled": true,
+        "AllowedSenders": [], "AllowedSenderDomains": [], "BlockedSenders": [], "BlockedSenderDomains": [], "TestModeAction": "None",
+        "IncreaseScoreWithImageLinks": "Off", "IncreaseScoreWithNumericIps": "Off", "IncreaseScoreWithRedirectToOtherPort": "Off", "IncreaseScoreWithBizOrInfoUrls": "Off", "MarkAsSpamEmptyMessages": "Off", "MarkAsSpamEmbedTagsInHtml": "Off", "MarkAsSpamJavaScriptInHtml": "Off", "MarkAsSpamFormTagsInHtml": "Off", "MarkAsSpamFramesInHtml": "Off", "MarkAsSpamWebBugsInHtml": "Off", "MarkAsSpamObjectTagsInHtml": "Off", "MarkAsSpamSensitiveWordList": "Off", "MarkAsSpamSpfRecordHardFail": "Off", "MarkAsSpamFromAddressAuthFail": "Off", "MarkAsSpamNdrBackscatter": "Off"
+      },
+      "Strict": { "BulkThreshold": 5, "SpamAction": "Quarantine", "SpamQuarantineTag": "DefaultFullAccessWithNotificationPolicy", "BulkSpamAction": "Quarantine", "BulkQuarantineTag": "DefaultFullAccessWithNotificationPolicy" }
+    },
+    "HostedOutboundSpamFilter": {
+      "Section": "Outbound spam policy settings", "Plan": "Exchange", "Local": [],
+      "Standard": { "RecipientLimitExternalPerHour": 500, "RecipientLimitInternalPerHour": 1000, "RecipientLimitPerDay": 1000, "ActionWhenThresholdReached": "BlockUser", "AutoForwardingMode": "Off", "BccSuspiciousOutboundMail": false, "BccSuspiciousOutboundAdditionalRecipients": [], "NotifyOutboundSpam": false, "NotifyOutboundSpamRecipients": [] },
+      "Strict": { "RecipientLimitExternalPerHour": 400, "RecipientLimitInternalPerHour": 800, "RecipientLimitPerDay": 800 }
+    },
+    "AntiPhish": {
+      "Section": "Anti-phishing policy settings for all cloud mailboxes / Impersonation settings / Phishing email thresholds", "Plan": "ExchangeAndDefender", "Local": ["TargetedUsersToProtect","TargetedDomainsToProtect","ExcludedSenders","ExcludedDomains"],
+      "DefenderFields": ["PhishThresholdLevel","EnableTargetedUserProtection","EnableOrganizationDomainsProtection","EnableTargetedDomainsProtection","TargetedUsersToProtect","TargetedDomainsToProtect","ExcludedSenders","ExcludedDomains","EnableMailboxIntelligence","EnableMailboxIntelligenceProtection","TargetedUserProtectionAction","TargetedDomainProtectionAction","TargetedUserQuarantineTag","TargetedDomainQuarantineTag","MailboxIntelligenceProtectionAction","MailboxIntelligenceQuarantineTag","EnableSimilarUsersSafetyTips","EnableSimilarDomainsSafetyTips","EnableUnusualCharactersSafetyTips"],
+      "Standard": {
+        "EnableSpoofIntelligence": true, "HonorDmarcPolicy": true, "DmarcQuarantineAction": "Quarantine", "DmarcRejectAction": "Reject", "AuthenticationFailAction": "MoveToJmf", "SpoofQuarantineTag": "DefaultFullAccessPolicy", "EnableFirstContactSafetyTips": true, "EnableUnauthenticatedSender": true, "EnableViaTag": true,
+        "PhishThresholdLevel": 3, "EnableTargetedUserProtection": true, "EnableOrganizationDomainsProtection": true, "EnableTargetedDomainsProtection": true, "TargetedUsersToProtect": [], "TargetedDomainsToProtect": [], "ExcludedSenders": [], "ExcludedDomains": [],
+        "EnableMailboxIntelligence": true, "EnableMailboxIntelligenceProtection": true, "TargetedUserProtectionAction": "Quarantine", "TargetedDomainProtectionAction": "Quarantine", "TargetedUserQuarantineTag": "DefaultFullAccessWithNotificationPolicy", "TargetedDomainQuarantineTag": "DefaultFullAccessWithNotificationPolicy", "MailboxIntelligenceProtectionAction": "MoveToJmf", "MailboxIntelligenceQuarantineTag": "DefaultFullAccessPolicy", "EnableSimilarUsersSafetyTips": true, "EnableSimilarDomainsSafetyTips": true, "EnableUnusualCharactersSafetyTips": true
+      },
+      "Strict": { "PhishThresholdLevel": 4, "AuthenticationFailAction": "Quarantine", "SpoofQuarantineTag": "DefaultFullAccessWithNotificationPolicy", "MailboxIntelligenceProtectionAction": "Quarantine", "MailboxIntelligenceQuarantineTag": "DefaultFullAccessWithNotificationPolicy" }
+    },
+    "SafeAttachment": {
+      "Section": "Safe Attachments policy settings", "Plan": "Defender", "Local": [],
+      "Standard": { "Enable": true, "Action": "Block", "QuarantineTag": "AdminOnlyAccessPolicy", "Redirect": false, "RedirectAddress": "", "EnableBlockingEncryptedAttachments": false, "ExcludedTypesFromBlockingEncryptedAttachments": [], "QuarantineTagForBlockingEncryptedAttachments": "DefaultFullAccessWithNotificationPolicy" }, "Strict": {}
+    },
+    "SafeLinks": {
+      "Section": "Safe Links policy settings (Email and Click protection only)", "Plan": "Defender", "Local": ["DoNotRewriteUrls","EnableOrganizationBranding","CustomNotificationText","UseTranslatedNotificationText"],
+      "Standard": { "EnableSafeLinksForEmail": true, "EnableForInternalSenders": true, "ScanUrls": true, "DeliverMessageAfterScan": true, "DisableURLRewrite": false, "DoNotRewriteUrls": [], "TrackClicks": true, "AllowClickThrough": false, "EnableOrganizationBranding": false, "CustomNotificationText": "", "UseTranslatedNotificationText": false }, "Strict": {}
+    }
+  }
+}

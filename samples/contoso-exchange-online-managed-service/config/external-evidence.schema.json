@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/external-evidence.schema.json",
+  "title": "Exchange Online baseline external evidence",
+  "description": "EVD-008. The closed document contract for versioned, signed external evidence before cryptographic, binding, freshness, uniqueness, replay, or payload-integrity decisions are made.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "SchemaVersion",
+    "EvidenceId",
+    "TenantId",
+    "DeploymentProfile",
+    "ConfigurationHash",
+    "ControlId",
+    "Collector",
+    "GeneratedAtUtc",
+    "PayloadHash",
+    "Payload",
+    "Signature"
+  ],
+  "properties": {
+    "SchemaVersion": {
+      "description": "The version of this external-evidence document contract.",
+      "const": "1.0.0"
+    },
+    "EvidenceId": {
+      "description": "The immutable RFC 4122 identifier used by ingestion to detect duplicates and replay.",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
+    },
+    "TenantId": {
+      "description": "The Microsoft Entra tenant directory identifier the evidence was collected from.",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "DeploymentProfile": {
+      "description": "The shipped deployment profile the evidence is bound to.",
+      "enum": ["MicrosoftNative", "ThirdPartyGateway"]
+    },
+    "ConfigurationHash": {
+      "description": "The lowercase SHA-256 digest of the resolved configuration, optionally carrying its algorithm prefix.",
+      "type": "string",
+      "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+    },
+    "ControlId": {
+      "description": "The catalog control this document supplies external evidence for.",
+      "type": "string",
+      "pattern": "^[A-Z]+-[0-9]{3}$"
+    },
+    "Collector": {
+      "description": "The versioned external implementation that generated the payload.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Identity", "Version"],
+      "properties": {
+        "Identity": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "Version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"
+        }
+      }
+    },
+    "GeneratedAtUtc": {
+      "description": "The UTC instant at which the external collector completed this evidence.",
+      "$ref": "#/$defs/timestampUtc"
+    },
+    "PayloadHash": {
+      "description": "The lowercase SHA-256 digest of the canonical payload bytes, optionally carrying its algorithm prefix.",
+      "type": "string",
+      "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+    },
+    "Payload": {
+      "description": "The structured external observation whose canonical bytes are bound by PayloadHash and Signature.",
+      "type": "object",
+      "minProperties": 1
+    },
+    "Signature": {
+      "description": "Metadata and value for the detached CMS signature. Cryptographic validity and signer authority are decided separately.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Model", "MediaType", "Value"],
+      "properties": {
+        "Model": { "const": "DetachedCms" },
+        "MediaType": { "const": "application/pkcs7-signature" },
+        "Value": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "timestampUtc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    }
+  }
+}

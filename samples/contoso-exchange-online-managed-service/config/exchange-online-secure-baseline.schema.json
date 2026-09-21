@@ -81,7 +81,9 @@
         "exchangeOnline",
         "emailAuthentication",
         "centralMonitoring",
-        "purviewGovernance"
+        "operations",
+        "purviewGovernance",
+        "governance"
       ],
       "properties": {
         "acceptedDomain": { "type": "object" },
@@ -100,8 +102,82 @@
             },
             "enhancedFiltering": {
               "type": "object",
-              "required": ["enabled"],
-              "properties": { "enabled": { "type": "boolean" } }
+              "required": ["enabled", "skipLastIp", "skipIpAddresses", "applyToAllRecipients"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "skipLastIp": { "type": "boolean" },
+                "skipIpAddresses": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "applyToAllRecipients": { "type": "boolean" }
+              }
+            },
+            "gatewayInboundConnector": {
+              "type": "object",
+              "required": [
+                "connectorType",
+                "enabled",
+                "senderDomains",
+                "requireTls",
+                "restrictDomainsToIpAddresses",
+                "restrictDomainsToCertificate",
+                "senderIpAddresses"
+              ],
+              "properties": {
+                "connectorType": { "const": "Partner" },
+                "enabled": { "const": true },
+                "senderDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": { "const": "*" }
+                },
+                "requireTls": { "const": true },
+                "restrictDomainsToIpAddresses": { "const": true },
+                "restrictDomainsToCertificate": { "const": false },
+                "senderIpAddresses": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "gatewayOutboundConnector": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "connectorType",
+                "enabled",
+                "recipientDomains",
+                "routeAllMessagesViaOnPremises",
+                "useMxRecord",
+                "smartHosts",
+                "tlsSettings",
+                "tlsDomain"
+              ],
+              "properties": {
+                "connectorType": { "const": "Partner" },
+                "enabled": { "const": true },
+                "recipientDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": { "const": "*" }
+                },
+                "routeAllMessagesViaOnPremises": { "const": true },
+                "useMxRecord": { "const": false },
+                "smartHosts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "tlsSettings": { "const": "DomainValidation" },
+                "tlsDomain": { "type": "string", "minLength": 1 }
+              }
             },
             "prohibitedBypass": {
               "type": "object",
@@ -119,7 +195,14 @@
               "then": {
                 "required": ["gatewayInboundConnector", "gatewayOutboundConnector"],
                 "properties": {
-                  "enhancedFiltering": { "properties": { "enabled": { "const": true } } }
+                  "enhancedFiltering": {
+                    "properties": {
+                      "enabled": { "const": true },
+                      "skipLastIp": { "const": false },
+                      "skipIpAddresses": { "minItems": 1 },
+                      "applyToAllRecipients": { "const": true }
+                    }
+                  }
                 }
               },
               "else": {
@@ -333,16 +416,303 @@
             "automaticExternalForwarding": { "const": "Off" }
           }
         },
-        "emailAuthentication": { "type": "object" },
-        "abnormalSecurity": { "type": "object" },
-        "centralMonitoring": { "type": "object" },
+        "emailAuthentication": {
+          "type": "object",
+          "required": ["trustedArcSealers"],
+          "properties": {
+            "trustedArcSealers": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "abnormalSecurity": {
+          "type": "object",
+          "required": ["integration", "permissions"],
+          "properties": {
+            "integration": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "smtpConnectorCreated", "journalRuleCreated", "sclBypassCreated", "transportExceptionCreated", "maximumVendorHealthAgeMinutes", "maximumFunctionalTestAgeHours", "requiredFunctionalOutcomes", "requireSignedEvidence", "requireCompleteCollection"],
+              "properties": {
+                "mode": { "const": "Microsoft API post-delivery" },
+                "smtpConnectorCreated": { "const": false },
+                "journalRuleCreated": { "const": false },
+                "sclBypassCreated": { "const": false },
+                "transportExceptionCreated": { "const": false },
+                "maximumVendorHealthAgeMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+                "maximumFunctionalTestAgeHours": { "type": "integer", "minimum": 1, "maximum": 168 },
+                "requiredFunctionalOutcomes": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "uniqueItems": true,
+                  "items": { "enum": ["Detection", "Removal", "Restoration", "AuditAttribution"] },
+                  "allOf": [
+                    { "contains": { "const": "Detection" } },
+                    { "contains": { "const": "Removal" } },
+                    { "contains": { "const": "Restoration" } },
+                    { "contains": { "const": "AuditAttribution" } }
+                  ]
+                },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true }
+              }
+            },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "applicationPermissionAllowList",
+                "delegatedPermissionAllowList",
+                "administratorConsentRequired",
+                "userConsentAllowed",
+                "maximumAccessReviewAgeDays",
+                "maximumEvidenceAgeDays",
+                "requireSignedEvidence"
+              ],
+              "properties": {
+                "applicationPermissionAllowList": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "delegatedPermissionAllowList": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "administratorConsentRequired": { "const": true },
+                "userConsentAllowed": { "const": false },
+                "maximumAccessReviewAgeDays": { "type": "integer", "minimum": 1, "maximum": 90 },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1, "maximum": 7 },
+                "requireSignedEvidence": { "const": true }
+              }
+            }
+          }
+        },
+        "centralMonitoring": {
+          "type": "object",
+          "required": ["siemIntegration", "unifiedAudit", "driftEvidence"],
+          "properties": {
+            "siemIntegration": {
+              "type": "object",
+              "required": ["enabled", "destination", "sources", "minimumRetentionDays", "alertRecipients", "maximumConnectorAgeMinutes", "maximumSyntheticAlertAgeMinutes", "requireSignedEvidence", "requireCompleteCollection"],
+              "properties": {
+                "enabled": { "const": true },
+                "destination": { "type": "string", "minLength": 1 },
+                "sources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "alertRecipients": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "maximumConnectorAgeMinutes": { "type": "integer", "minimum": 1 },
+                "maximumSyntheticAlertAgeMinutes": { "type": "integer", "minimum": 1 },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "unifiedAudit": {
+              "type": "object",
+              "required": ["enabled", "minimumRetentionDays", "maximumEvidenceAgeHours", "requireSignedEvidence", "requireCompleteCollection", "requireSearchResults"],
+              "properties": {
+                "enabled": { "const": true },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true },
+                "requireSearchResults": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "driftEvidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["scheduledCollectionEnabled", "collectionFrequencyHours", "minimumRetentionDays", "maximumEvidenceAgeHours", "requireSignedEvidence"],
+              "properties": {
+                "scheduledCollectionEnabled": { "const": true },
+                "collectionFrequencyHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "requireSignedEvidence": { "const": true }
+              }
+            }
+          }
+        },
+        "operations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["changeSafety", "incidentExercise"],
+          "properties": {
+            "changeSafety": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["maximumEvidenceAgeHours", "requireSignedEvidence", "requirePreview", "requirePilot", "requireApproval", "requireRollback", "requirePostChange"],
+              "properties": {
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "requireSignedEvidence": { "const": true },
+                "requirePreview": { "const": true },
+                "requirePilot": { "const": true },
+                "requireApproval": { "const": true },
+                "requireRollback": { "const": true },
+                "requirePostChange": { "const": true }
+              }
+            },
+            "incidentExercise": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "frequencyDays", "exerciseTypes", "owners", "requireTrackedActions", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "MDO P2" },
+                "frequencyDays": { "type": "integer", "minimum": 1, "maximum": 90 },
+                "exerciseTypes": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": { "enum": ["PhishingSimulation", "RemediationValidation"] }
+                },
+                "owners": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "requireTrackedActions": { "const": true },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1, "maximum": 7 }
+              }
+            }
+          }
+        },
         "purviewGovernance": {
           "type": "object",
-          "required": ["unifiedAuditLogEnabled", "auditRetentionDays"],
+          "required": [
+            "unifiedAuditLogEnabled",
+            "auditRetentionDays",
+            "mailboxRetention",
+            "litigationHold",
+            "informationRightsManagement"
+          ],
           "properties": {
             "unifiedAuditLogEnabled": { "const": true },
-            "auditRetentionDays": { "type": "integer", "minimum": 180 }
+            "auditRetentionDays": { "type": "integer", "minimum": 180 },
+            "mailboxRetention": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "policyName", "requireCompleteMailboxCoverage", "requireSuccessfulDistribution"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "policyName": { "type": "string", "minLength": 1 },
+                "requireCompleteMailboxCoverage": { "const": true },
+                "requireSuccessfulDistribution": { "const": true }
+              }
+            },
+            "litigationHold": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "enabled", "priorityIdentitySources", "custodians"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "enabled": { "const": true },
+                "priorityIdentitySources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "custodians": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+              }
+            },
+            "informationRightsManagement": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "internalLicensingEnabled", "azureRmsLicensingEnabled", "transportDecryptionSetting", "journalReportDecryptionEnabled", "licensingLocation", "omeFunctionalTest"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "internalLicensingEnabled": { "const": true },
+                "azureRmsLicensingEnabled": { "const": true },
+                "transportDecryptionSetting": { "const": "Mandatory" },
+                "journalReportDecryptionEnabled": { "const": true },
+                "licensingLocation": { "type": "string", "minLength": 1 },
+                "omeFunctionalTest": { "const": "EncryptedMessageRoundTrip" }
+              }
+            }
           }
+        },
+        "governance": {
+          "type": "object",
+          "required": ["auditRetention", "dataLossPrevention", "sensitivityLabels", "eDiscovery"],
+          "properties": {
+            "auditRetention": {
+              "type": "object",
+              "required": ["policyName", "requiredServicePlan", "retentionDays", "recordTypes", "maximumEvidenceAgeHours"],
+              "properties": {
+                "policyName": { "type": "string", "minLength": 1 },
+                "requiredServicePlan": { "const": "M365_ADVANCED_AUDITING" },
+                "retentionDays": { "type": "integer", "minimum": 180 },
+                "recordTypes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "dataLossPrevention": {
+              "type": "object",
+              "required": ["policyName", "requiredServicePlan", "mode", "regulatedDataClasses", "maximumEvidenceAgeHours"],
+              "properties": {
+                "policyName": { "type": "string", "minLength": 1 },
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "mode": { "const": "Enforce" },
+                "regulatedDataClasses": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "sensitivityLabels": {
+              "type": "object",
+              "required": ["requiredServicePlan", "encryptionLabelNames", "messagingTargets", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "E5 Compliance" },
+                "encryptionLabelNames": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "messagingTargets": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "eDiscovery": {
+              "type": "object",
+              "required": ["requiredServicePlan", "caseOwners", "roleGroupIdentity", "maximumAccessReviewAgeDays", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "E5 Compliance" },
+                "caseOwners": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "roleGroupIdentity": { "const": "eDiscovery Manager" },
+                "maximumAccessReviewAgeDays": { "type": "integer", "minimum": 1 },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
         }
       }
     },
@@ -358,5 +728,39 @@
         "evidenceOutputDirectory": { "type": "string" }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "metadata": {
+            "properties": { "deploymentProfile": { "const": "ThirdPartyGateway" } },
+            "required": ["deploymentProfile"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "desiredState": {
+            "properties": {
+              "emailAuthentication": {
+                "properties": { "trustedArcSealers": { "minItems": 1 } }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "desiredState": {
+            "properties": {
+              "emailAuthentication": {
+                "properties": { "trustedArcSealers": { "maxItems": 0 } }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

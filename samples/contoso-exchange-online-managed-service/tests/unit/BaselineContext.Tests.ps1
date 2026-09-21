@@ -239,6 +239,31 @@ Describe 'COM-007-A2 deterministic shared baseline context' {
         }
     }
 
+    Context 'Negative: profile resolution must not regress gateway declaration or placeholders' {
+
+        It 'does not report the gateway profile as undeclared after resolving its scalar and array placeholders' {
+            # Arrange
+            $expectedProfile = 'ThirdPartyGateway'
+
+            # Act
+            $context = Get-BaselineContext -ConfigurationPath $script:GatewayProfile.ConfigurationPath -ParameterPath $script:GatewayProfile.ParameterPath -SchemaPath $script:SchemaPath -DeploymentProfile $expectedProfile
+
+            # Assert
+            ('Profile={0};GatewayDeclared={1};Unresolved={2}' -f $context.DeploymentProfile, $context.GatewayDeclared, $context.CanonicalJson.Contains('__ADMIN_REQUIRED:')) | Should -BeExactly 'Profile=ThirdPartyGateway;GatewayDeclared=True;Unresolved=False'
+        }
+
+        It 'does not require gateway-only parameters or declare a gateway for the Microsoft-native profile' {
+            # Arrange
+            $nativeParameters = Get-Content -LiteralPath $script:NativeProfile.ParameterPath -Raw | ConvertFrom-Json -AsHashtable
+
+            # Act
+            $context = Get-BaselineContext -ConfigurationPath $script:NativeProfile.ConfigurationPath -ParameterPath $script:NativeProfile.ParameterPath -SchemaPath $script:SchemaPath -DeploymentProfile 'MicrosoftNative'
+
+            # Assert
+            ('GatewayKeys={0};GatewayDeclared={1};Unresolved={2}' -f @($nativeParameters.Keys | Where-Object { $_ -like 'PROOFPOINT_*' }).Count, $context.GatewayDeclared, $context.CanonicalJson.Contains('__ADMIN_REQUIRED:')) | Should -BeExactly 'GatewayKeys=0;GatewayDeclared=False;Unresolved=False'
+        }
+    }
+
     Context 'Positive: one shared context is deterministic for every shipped profile' {
 
         It 'builds two independent contexts per shipped profile that carry identical canonical text and one identical SHA-256 hash of that text' {

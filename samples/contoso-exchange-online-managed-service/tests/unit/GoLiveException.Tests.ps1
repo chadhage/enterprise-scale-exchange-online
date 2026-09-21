@@ -13,7 +13,7 @@ BeforeAll {
     $script:ConfigurationHash = 'a3f1c9d2b4e6708192a3b4c5d6e7f80912a3b4c5d6e7f80912a3b4c5d6e7f809'
     $script:RequestedBy = 'operator@contoso.example'
     $script:MaximumEvidenceAge = [timespan]::FromDays(7)
-    $script:AsOf = [datetime]::UtcNow
+    $script:AsOf = [datetime]::UtcNow.AddMinutes(1)
     $script:ExcusedControlId = 'EXO-002'
 
     function New-ExceptionCatalog {
@@ -222,6 +222,22 @@ Describe 'GATE-003-A2 the approved exception the go-live decision honours' {
             # Assert
             ('Admitted={0}:Excused={1}:Finding={2}' -f $decision.Admitted, (@($decision.Exception).ControlId -join ','), (Get-ExceptionFinding -Decision $decision)) |
                 Should -BeLike ('Admitted=False:Excused=:Finding=*GoLiveExceptionNotApplicable*{0}*{1}*' -f $script:ExcusedControlId, $_) -Because 'accepting a risk nobody measured is not accepting a risk, it is declining to look'
+        }
+    }
+
+    Context 'Negative: exception authority must be unambiguous' {
+
+        It 'refuses two risk acceptances raised for the same failing control' {
+            # Arrange
+            $envelope = New-ExceptionEnvelope -ExcusedStatus 'Fail'
+            $acceptance = New-ExceptionAcceptance
+
+            # Act
+            $decision = Invoke-ExceptionTest -Envelope $envelope -RiskAcceptance @($acceptance, $acceptance)
+
+            # Assert
+            ('Admitted={0}:Excused={1}:Finding={2}' -f $decision.Admitted, (@($decision.Exception).ControlId -join ','), (Get-ExceptionFinding -Decision $decision)) |
+                Should -BeLike ('Admitted=False:Excused=:Finding=*GoLiveExceptionDuplicated*{0}*' -f $script:ExcusedControlId) -Because 'two approvals for one control make authority depend on input order and let a caller place a weaker document first'
         }
     }
 

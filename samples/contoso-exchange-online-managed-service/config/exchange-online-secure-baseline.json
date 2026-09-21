@@ -220,12 +220,13 @@
       "remoteDomainDefault": {
         "autoForwardEnabled": false,
         "autoReplyEnabled": false,
-        "allowedOOFType": "InternalLegacy",
+        "allowedOOFType": "None",
         "deliveryReportEnabled": false,
         "nonDeliveryReportEnabled": false
       },
       "protocolRestriction": {
         "ewsEnabled": false,
+        "ewsApplicationAccessPolicy": "EnforceAllowList",
         "ewsAllowList": [],
         "popEnabledByDefault": false,
         "imapEnabledByDefault": false,
@@ -275,12 +276,44 @@
       ]
     },
     "abnormalSecurity": {
+      "integration": {
+        "mode": "Microsoft API post-delivery",
+        "smtpConnectorCreated": false,
+        "journalRuleCreated": false,
+        "sclBypassCreated": false,
+        "transportExceptionCreated": false,
+        "maximumVendorHealthAgeMinutes": 60,
+        "maximumFunctionalTestAgeHours": 24,
+        "requiredFunctionalOutcomes": [
+          "Detection",
+          "Removal",
+          "Restoration",
+          "AuditAttribution"
+        ],
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true
+      },
       "integrationMode": "Microsoft API post-delivery",
       "smtpConnectorCreated": false,
       "transportBypassCreated": false,
       "servicePrincipalUsesLeastPrivilege": true,
       "vendorHealthMonitoringEnabled": true,
-      "permissionReviewFrequencyDays": 90
+      "permissionReviewFrequencyDays": 90,
+      "permissions": {
+        "applicationPermissionAllowList": [
+          "Mail.ReadWrite",
+          "User.Read.All"
+        ],
+        "delegatedPermissionAllowList": [
+          "openid",
+          "profile"
+        ],
+        "administratorConsentRequired": true,
+        "userConsentAllowed": false,
+        "maximumAccessReviewAgeDays": 90,
+        "maximumEvidenceAgeDays": 7,
+        "requireSignedEvidence": true
+      }
     },
     "centralMonitoring": {
       "defenderXdrIncidentQueue": true,
@@ -303,12 +336,50 @@
         "minimumRetentionDays": 180,
         "alertRecipients": [
           "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
-        ]
+        ],
+        "maximumConnectorAgeMinutes": 60,
+        "maximumSyntheticAlertAgeMinutes": 60,
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true
+      },
+      "unifiedAudit": {
+        "enabled": true,
+        "minimumRetentionDays": 180,
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true,
+        "requireSearchResults": true
+      },
+      "driftEvidence": {
+        "scheduledCollectionEnabled": true,
+        "collectionFrequencyHours": 24,
+        "minimumRetentionDays": 180,
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true
       },
       "serviceHealthNotifications": true,
       "dailyOperationalReview": true,
       "weeklyControlDriftReview": true,
       "quarterlyAccessReview": true
+    },
+    "operations": {
+      "changeSafety": {
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true,
+        "requirePreview": true,
+        "requirePilot": true,
+        "requireApproval": true,
+        "requireRollback": true,
+        "requirePostChange": true
+      },
+      "incidentExercise": {
+        "requiredServicePlan": "MDO P2",
+        "frequencyDays": 90,
+        "exerciseTypes": ["PhishingSimulation", "RemediationValidation"],
+        "owners": ["Security Operations", "Exchange Online Service Owner"],
+        "requireTrackedActions": true,
+        "maximumEvidenceAgeDays": 7
+      }
     },
     "purviewGovernance": {
       "unifiedAuditLogEnabled": true,
@@ -319,10 +390,68 @@
       "mailboxRetentionPolicyName": "__ADMIN_REQUIRED:MAILBOX_RETENTION_POLICY_NAME__",
       "litigationHoldRequiredForPriorityUsers": true,
       "informationRightsManagementEnabled": true,
+      "mailboxRetention": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "policyName": "__ADMIN_REQUIRED:MAILBOX_RETENTION_POLICY_NAME__",
+        "requireCompleteMailboxCoverage": true,
+        "requireSuccessfulDistribution": true
+      },
+      "litigationHold": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "enabled": true,
+        "priorityIdentitySources": ["__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"],
+        "custodians": ["__ADMIN_REQUIRED:LITIGATION_HOLD_CUSTODIAN_UPN__"]
+      },
+      "informationRightsManagement": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "internalLicensingEnabled": true,
+        "azureRmsLicensingEnabled": true,
+        "transportDecryptionSetting": "Mandatory",
+        "journalReportDecryptionEnabled": true,
+        "licensingLocation": "NorthAmerica",
+        "omeFunctionalTest": "EncryptedMessageRoundTrip"
+      },
       "sensitivityLabelsPublished": true,
       "ediscoveryCaseOwners": [
         "__ADMIN_REQUIRED:EDISCOVERY_CASE_OWNER_UPN__"
       ]
+    },
+    "governance": {
+      "auditRetention": {
+        "policyName": "Regulatory audit retention",
+        "requiredServicePlan": "M365_ADVANCED_AUDITING",
+        "retentionDays": 365,
+        "recordTypes": [
+          "ExchangeAdmin",
+          "ExchangeItem",
+          "SharePointFileOperation",
+          "AzureActiveDirectory"
+        ],
+        "maximumEvidenceAgeHours": 24
+      },
+      "dataLossPrevention": {
+        "policyName": "Regulated data protection",
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "mode": "Enforce",
+        "regulatedDataClasses": [
+          "Credit Card Number",
+          "U.S. Social Security Number (SSN)"
+        ],
+        "maximumEvidenceAgeHours": 24
+      },
+      "sensitivityLabels": {
+        "requiredServicePlan": "E5 Compliance",
+        "encryptionLabelNames": ["Confidential"],
+        "messagingTargets": ["__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"],
+        "maximumEvidenceAgeDays": 7
+      },
+      "eDiscovery": {
+        "requiredServicePlan": "E5 Compliance",
+        "caseOwners": ["__ADMIN_REQUIRED:EDISCOVERY_CASE_OWNER_UPN__"],
+        "roleGroupIdentity": "eDiscovery Manager",
+        "maximumAccessReviewAgeDays": 90,
+        "maximumEvidenceAgeDays": 7
+      }
     }
   },
   "deployment": {

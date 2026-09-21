@@ -1,5 +1,11 @@
 # Exchange Online with Defender: Implementation Guide
 
+**Active entrypoint:** [Exchange-only execution](EXCHANGE-ONLY.md).
+
+**Approved scoped changes:** follow [Approved Exchange Change](APPROVED-CHANGE.md) for executable preview/approval/validation/apply/readback/rollback commands and external signing prerequisites. A console WhatIf transcript is not an approved artifact.
+
+**Historical reference only:** all procedures below describe the former cross-workload journey, not the default Exchange-only profile. They require explicit historical opt-in and are not instructions to provision excluded services. EXR-012 owns the comprehensive rewrite.
+
 Authoritative-source review date: **2026-09-16**.
 
 This guide is the ordered narrative. [RUNBOOKS.md](RUNBOOKS.md) carries the setting-level detail for every control: portal path, exact cmdlet and value, verification command, and expected output. Work through this guide and open the linked runbook at each step.
@@ -69,8 +75,8 @@ Threat policies protect message content. These controls reduce the service's own
 2. Set a monitored external postmaster address. See [R-EXO-005](RUNBOOKS.md#r-exo-005-external-postmaster-address).
 3. Confirm default mailbox auditing is on and remove every audit bypass association. See [R-EXO-006](RUNBOOKS.md#r-exo-006-mailbox-auditing).
 4. Enable external sender identification and keep the allow list empty. See [R-EXO-007](RUNBOOKS.md#r-exo-007-external-sender-identification).
-5. Harden the default remote domain: no auto-forward, no auto-reply, internal-only out-of-office, no NDR to external senders. See [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain).
-6. Restrict the legacy protocol surface: EWS off with an explicit allow list, POP and IMAP off for new and existing mailboxes. See [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction).
+5. Apply the approved local remote-domain policy: the sample blocks external OOF with `AllowedOOFType None`; `External` requires an explicitly approved external-reply policy reference. Verify Default and every specific domain override. Forwarding, client-rule replies and NDR settings are independent business choices, not universal Microsoft defaults. See [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain) for dated Microsoft semantics and override stop conditions.
+6. Restrict the legacy protocol surface: EWS disabled by local default, POP and IMAP off for new and existing mailboxes. A temporary EWS exception requires current retirement support, enforced exact user-agent and application-ID lists, effective mailbox readback, owner, approval, expiry, client impact and disabled rollback. Exceptions are reported separately from disabled-default conformance; no post-April-2027 enablement is offered. See [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction), Microsoft sources reviewed 2026-09-20.
 7. Remove user add-in acquisition from the default role assignment policy and deploy approved add-ins centrally. See [R-EXO-012](RUNBOOKS.md#r-exo-012-outlook-add-in-acquisition).
 8. Publish MTA-STS in `enforce` mode and a TLS-RPT reporting address. See [R-EXO-011](RUNBOOKS.md#r-exo-011-mta-sts-and-tls-rpt).
 
@@ -95,16 +101,15 @@ Treat Abnormal as downstream, API-based post-delivery processing, not an SMTP ho
 
 ## 8. Establish Governance
 
-Entitlement-dependent; confirm your `complianceTier` first.
+Use the [Exchange governance contract](EXCHANGE-GOVERNANCE.md), with independently approved identity, records, legal and per-mailbox licensing inputs. A suite name or planning tier is not entitlement evidence.
 
-1. Confirm the unified audit log is ingesting, and set an audit retention policy covering the regulatory period. See [R-MON-002](RUNBOOKS.md#r-mon-002-unified-audit-log) and [R-GOV-001](RUNBOOKS.md#r-gov-001-audit-retention-policy).
-2. Create an Exchange DLP policy in simulation, review matches, then enable. See [R-GOV-002](RUNBOOKS.md#r-gov-002-exchange-dlp-policy).
-3. Apply a mailbox retention policy to all mailboxes and confirm `DistributionStatus` reaches `Success`. See [R-GOV-003](RUNBOOKS.md#r-gov-003-mailbox-retention-policy).
-4. Enable litigation hold for priority users and named custodians. See [R-GOV-004](RUNBOOKS.md#r-gov-004-litigation-hold).
-5. Enable Information Rights Management and validate with `Test-IRMConfiguration`. See [R-GOV-005](RUNBOOKS.md#r-gov-005-information-rights-management).
-6. Publish sensitivity labels and confirm eDiscovery role membership. See [R-GOV-006](RUNBOOKS.md#r-gov-006-sensitivity-labels) and [R-GOV-007](RUNBOOKS.md#r-gov-007-ediscovery-readiness).
+1. Verify Exchange organization auditing and bypass state (EXO-006), the complete Exchange RBAC graph (EXO-010), and prohibited end-user add-in grants (EXO-012).
+2. Resolve the approved Exchange MRM policy, linked tag semantics, mailbox assignment and successful processing. MRM is not Purview retention or preservation.
+3. Verify the named legal custodian inventory, hold duration/owner, mailbox class, entitlement and Recoverable Items capacity. Do not infer legal scope from priority-user groups.
+4. Apply only explicitly approved existing-object scopes through signed preview and rollback; verify Exchange IRM and approved encryption rules against independent recipient-flow evidence.
+5. Obtain tenant audit retention, DLP, labels, eDiscovery and preservation evidence from external owners under RAID-I02/D03. This walkthrough does not provision them.
 
-Controls your tier does not cover must carry a recorded risk acceptance with a review date, not silence.
+Missing entitlement or approval blocks the affected Exchange control. External readiness remains Unverified even when the Exchange checks pass.
 
 ## 9. Centralize Monitoring
 
@@ -126,7 +131,7 @@ See [R-OPS-001](RUNBOOKS.md#r-ops-001-change-safety) for the change procedure an
 
 ## Go-Live Gate
 
-Do not declare the service live until `Test-ExchangeOnlineBaseline.ps1` exits `0`, every `Manual` control has a completed runbook and attached evidence, and every `NotEntitled` control has a recorded risk acceptance with a review date.
+The active Exchange procedure is [collect, freeze, sign and verify](EXCHANGE-GO-LIVE.md). A collection-only exit `0` is not a go-live decision: use the documented `-SignEvidence` and `-GoLive` invocations with all required hash, age and signer inputs. In-scope `Manual`, `NotEntitled`, missing and unknown evidence cannot be accepted as Pass. Approved deviations remain `ApprovedException`; external readiness remains Unverified even after the signed Exchange gate exits `0`. External owners must independently establish service-launch readiness.
 
 ## Authoritative References
 

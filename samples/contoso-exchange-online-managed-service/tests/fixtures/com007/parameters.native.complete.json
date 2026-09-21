@@ -23,6 +23,9 @@
   "TLS_RPT_REPORTING_ADDRESS": "mailto:tlsrpt@contoso.example",
   "EXCHANGE_DLP_POLICY_NAME": "Contoso Exchange DLP",
   "MAILBOX_RETENTION_POLICY_NAME": "Contoso Mailbox Retention",
+  "LITIGATION_HOLD_CUSTODIAN_UPN": [
+    "custodian@contoso.example"
+  ],
   "EDISCOVERY_CASE_OWNER_UPN": [
     "ediscovery.owner@contoso.example"
   ],

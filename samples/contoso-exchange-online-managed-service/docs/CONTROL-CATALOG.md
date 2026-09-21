@@ -8,6 +8,14 @@
 - **Tier** — the minimum licence that entitles the control. Controls above the declared tier are reported `NotEntitled`, not `Fail`. See [LICENSING-GATE.md](LICENSING-GATE.md).
 - **Runbook** — the step-level procedure in [RUNBOOKS.md](RUNBOOKS.md).
 
+## Versioned Evidence Sources
+
+Microsoft Configuration Analyzer is a supplemental correlation source. Its signed, sanitized results can corroborate or contradict a known applicable control, but cannot create or replace that control's authoritative evidence.
+
+| Identity | Version | Evidence role | Control scope | Authoritative control evidence |
+| --- | --- | --- | --- | --- |
+| MicrosoftConfigurationAnalyzer | 1.0.0 | Supplemental | ApplicableKnownControls | Required |
+
 ## Exchange Online Service Hardening
 
 | ID | Priority | Profile | Tier | Setting or practice | Required state | Evidence | Runbook |
@@ -19,9 +27,9 @@
 | EXO-005 | SHOULD | Both | EOP | External postmaster | Monitored business address | `Get-TransportConfig` | [R-EXO-005](RUNBOOKS.md#r-exo-005-external-postmaster-address) |
 | EXO-006 | MUST | Both | EOP | Mailbox auditing | On by default; no audit bypass associations | `Get-OrganizationConfig`, `Get-MailboxAuditBypassAssociation` | [R-EXO-006](RUNBOOKS.md#r-exo-006-mailbox-auditing) |
 | EXO-007 | MUST | Both | EOP | External sender identification | Enabled; allow list empty or ticketed | `Get-ExternalInOutlook` | [R-EXO-007](RUNBOOKS.md#r-exo-007-external-sender-identification) |
-| EXO-008 | MUST | Both | EOP | Default remote domain | Auto-forward, auto-reply, and NDR off; OOF `InternalLegacy` | `Get-RemoteDomain -Identity Default` | [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain) |
-| EXO-009 | MUST | Both | EOP | Legacy protocol surface | EWS off with explicit allow list; POP and IMAP off for new mailboxes | `Get-OrganizationConfig`, `Get-CASMailboxPlan` | [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction) |
-| EXO-010 | MUST | Both | EOP | Exchange RBAC hygiene | No standing Global Administrator for messaging; role groups reviewed every 90 days | `Get-RoleGroup`, `Get-ManagementRoleAssignment`, PIM export | [R-EXO-010](RUNBOOKS.md#r-exo-010-exchange-rbac-hygiene) |
+| EXO-008 | MUST | Both | EOP | Default and effective specific remote domains | Local block-external-OOF policy: `None`; `External` only with explicit external-reply approval. Forwarding, client-rule replies and reports retain approved business choices, sample off. Not universal Microsoft defaults. Microsoft semantics reviewed 2026-09-20. | `Get-RemoteDomain` | [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain) |
+| EXO-009 | MUST | Both | EOP | Legacy protocol surface | EWS disabled by local default; supported temporary exceptions require enforced exact user-agent and AppID lists, effective mailbox checks, owner and expiry; POP/IMAP off for new and existing mailboxes | `Get-OrganizationConfig`, `Get-CASMailboxPlan`, `Get-CASMailbox` | [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction) |
+| EXO-010 | MUST | ExchangeOnly | Supplied Exchange entitlement | Exchange RBAC hygiene | Approved effective admin/end-user graph, scopes and mailbox policy bindings; external provenance unresolved fails | Role groups/members, direct/effective assignments, management scopes, mailbox policies | [Contract](EXCHANGE-GOVERNANCE.md#rbac) |
 | EXO-011 | SHOULD | Both | EOP | MTA-STS and TLS-RPT | `mode: enforce` policy published; TLS reports delivered to a monitored address | DNS query plus HTTPS policy fetch | [R-EXO-011](RUNBOOKS.md#r-exo-011-mta-sts-and-tls-rpt) |
 | EXO-012 | SHOULD | Both | EOP | Outlook add-in acquisition | User-installed add-ins disabled in the default role assignment policy | `Get-RoleAssignmentPolicy`, `Get-ManagementRoleAssignment` | [R-EXO-012](RUNBOOKS.md#r-exo-012-outlook-add-in-acquisition) |
 
@@ -76,19 +84,21 @@ Every control below is `NotApplicable` in the Microsoft-native profile. `Assert-
 | OPS-001 | MUST | Both | EOP | Change safety | WhatIf, pilot, approval, rollback, validation | Change record | [R-OPS-001](RUNBOOKS.md#r-ops-001-change-safety) |
 | OPS-002 | SHOULD | Both | MDO P2 | Incident exercise | Quarterly phish/remediation tabletop or simulation | Exercise record and actions | [R-OPS-002](RUNBOOKS.md#r-ops-002-incident-exercise) |
 
-## Microsoft Purview Governance
+## Exchange Governance and External Handoffs
 
 | ID | Priority | Profile | Tier | Setting or practice | Required state | Evidence | Runbook |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | GOV-001 | MUST | Both | E5 Compliance | Audit retention | Retention policy covering the regulatory period | `Get-UnifiedAuditLogRetentionPolicy` | [R-GOV-001](RUNBOOKS.md#r-gov-001-audit-retention-policy) |
 | GOV-002 | MUST | Both | E3 | Exchange DLP | At least one enforced policy covering the regulated data classes | `Get-DlpCompliancePolicy`, `Get-DlpComplianceRule` | [R-GOV-002](RUNBOOKS.md#r-gov-002-exchange-dlp-policy) |
-| GOV-003 | MUST | Both | E3 | Mailbox retention | Retention policy applied to all mailboxes | `Get-RetentionCompliancePolicy` | [R-GOV-003](RUNBOOKS.md#r-gov-003-mailbox-retention-policy) |
-| GOV-004 | MUST | Both | E3 | Litigation hold | Enabled for priority users and named custodians | `Get-Mailbox` filtered on `LitigationHoldEnabled` | [R-GOV-004](RUNBOOKS.md#r-gov-004-litigation-hold) |
-| GOV-005 | SHOULD | Both | E3 | Information Rights Management | Enabled for Office 365 Message Encryption | `Get-IRMConfiguration` | [R-GOV-005](RUNBOOKS.md#r-gov-005-information-rights-management) |
+| GOV-003 | MUST | ExchangeOnly | Per-mailbox MRM/archive entitlement | Exchange MRM | Approved tags, assignment and successful processing; preservation separately Unverified | Policy/tag/mailbox/ELC/diagnostic readback | [Contract](EXCHANGE-GOVERNANCE.md#mrm) |
+| GOV-004 | MUST | ExchangeOnly | Per-mailbox hold entitlement | Litigation hold | Legal custodian/duration/owner/class and capacity; no automatic priority-user holds | All mailbox classes and Recoverable Items statistics | [Contract](EXCHANGE-GOVERNANCE.md#holds) |
+| GOV-005 | SHOULD | ExchangeOnly | Supplied Message Encryption/RMS entitlement | Exchange encryption | Approved business classes, rule scope, recipient flow and explicit decryption authorization | IRM, transport rules, functional and independent recipient observations | [Contract](EXCHANGE-GOVERNANCE.md#encryption) |
 | GOV-006 | SHOULD | Both | E5 Compliance | Sensitivity labels | Published to messaging users with an encryption label | `Get-Label`, `Get-LabelPolicy` | [R-GOV-006](RUNBOOKS.md#r-gov-006-sensitivity-labels) |
 | GOV-007 | SHOULD | Both | E5 Compliance | eDiscovery readiness | Named case owners; role group membership reviewed | `Get-ComplianceCase`, `Get-RoleGroupMember` | [R-GOV-007](RUNBOOKS.md#r-gov-007-ediscovery-readiness) |
 
 ## Practices to Avoid
+
+GOV-001/002/006/007 above are external handoff references only under RAID-I02/D03, excluded from the ExchangeOnly manifest. They are not provisioning tasks or Exchange conformance claims.
 
 | ID | AVOID | Why |
 | --- | --- | --- |

@@ -142,7 +142,7 @@ Describe 'Exchange Online hardening' {
             $remote = $item.Config.desiredState.exchangeOnline.remoteDomainDefault
             $remote.autoForwardEnabled | Should -BeFalse
             $remote.autoReplyEnabled | Should -BeFalse
-            $remote.allowedOOFType | Should -Be 'InternalLegacy'
+            $remote.allowedOOFType | Should -Be 'None'
             $remote.nonDeliveryReportEnabled | Should -BeFalse
         }
     }
