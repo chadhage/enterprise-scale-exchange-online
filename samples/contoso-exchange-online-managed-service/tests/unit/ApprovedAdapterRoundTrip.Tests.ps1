@@ -8,7 +8,7 @@ BeforeDiscovery {
         @{ Scope = 'OutboundSpam'; Noun = 'HostedOutboundSpamFilterPolicy'; Field = 'AutoForwardingMode'; Mutator = 'Set-HostedOutboundSpamFilterPolicy' },
         @{ Scope = 'AcceptedDomains'; Noun = 'AcceptedDomain'; Field = 'DomainType'; Mutator = 'Set-AcceptedDomain' },
         @{ Scope = 'ReportSubmission'; Noun = 'ReportSubmissionPolicy'; Field = 'EnableThirdPartyAddress'; Mutator = 'Set-ReportSubmissionPolicy' },
-        @{ Scope = 'SecOpsOverride'; Noun = 'SecOpsOverridePolicy'; Field = 'Mode'; Mutator = 'Set-SecOpsOverridePolicy' },
+        @{ Scope = 'SecOpsOverride'; Noun = 'SecOpsOverridePolicy'; Field = 'SentTo'; Mutator = 'Set-SecOpsOverridePolicy' },
         @{ Scope = 'Impersonation'; Noun = 'AntiPhishPolicy'; Field = 'EnableTargetedUserProtection'; Mutator = 'Set-AntiPhishPolicy' },
         @{ Scope = 'EopPresets'; Noun = 'EOPProtectionPolicyRule'; Field = 'RecipientDomainIs'; Mutator = 'Set-EOPProtectionPolicyRule' },
         @{ Scope = 'AtpPresets'; Noun = 'ATPProtectionPolicyRule'; Field = 'RecipientDomainIs'; Mutator = 'Set-ATPProtectionPolicyRule' },
@@ -137,8 +137,6 @@ Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
 }
 Context 'Creation recovery for <Scope>' -ForEach @(
     @{ Scope = 'AcceptedDomains'; Noun = 'AcceptedDomain'; Identity = 'contoso.example' },
-    @{ Scope = 'ReportSubmission'; Noun = 'ReportSubmissionPolicy'; Identity = 'DefaultReportSubmissionPolicy' },
-    @{ Scope = 'SecOpsOverride'; Noun = 'SecOpsOverridePolicy'; Identity = 'SecOpsOverridePolicy' },
     @{ Scope = 'Impersonation'; Noun = 'AntiPhishPolicy'; Identity = 'Contoso Impersonation Protection' },
     @{ Scope = 'Quarantine'; Noun = 'QuarantinePolicy'; Identity = 'Baseline-AdminOnlyAccess' },
     @{ Scope = 'Dkim'; Noun = 'DkimSigningConfig'; Identity = 'contoso.example' },
@@ -183,6 +181,18 @@ Context 'Creation recovery for <Scope>' -ForEach @(
         $result.RepeatedWrites | Should -Be 0
         $receipt = Get-Content (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') -Raw | ConvertFrom-Json -AsHashtable
         @($receipt.Operation | Where-Object { $_['ObjectFingerprint'] -match '^[0-9a-f]{64}$' }).Count | Should -BeGreaterThan 0
+    }
+}
+Context 'Existing reporting prerequisite <Scope>' -ForEach @(
+    @{ Scope = 'ReportSubmission'; Noun = 'ReportSubmissionPolicy' },
+    @{ Scope = 'ReportSubmission'; Noun = 'ReportSubmissionRule' },
+    @{ Scope = 'SecOpsOverride'; Noun = 'SecOpsOverridePolicy' },
+    @{ Scope = 'SecOpsOverride'; Noun = 'ExoSecOpsOverrideRule' }
+) {
+    It 'refuses an absent initialized object without writes' {
+        $global:adapterState[$Noun] = @()
+        { New-StatefulAdapterFixture -Scope $Scope -Approved } | Should -Throw
+        $global:adapterCalls.Count | Should -Be 0
     }
 }
 Context 'Partial apply recovery' {

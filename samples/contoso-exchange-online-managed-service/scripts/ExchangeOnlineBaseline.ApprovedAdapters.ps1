@@ -147,10 +147,27 @@ function Get-ApprovedAdapterDefinitions {
             }
             ReportSubmission {
                 $settings = $controls['MDO-006']
-                $custom = $settings.reportingDestination -cin @('CustomMailboxOnly','MicrosoftAndCustomMailbox')
-                & $fixed ReportSubmission ReportSubmissionPolicy @{ Identity = 'DefaultReportSubmissionPolicy' } @{ EnableThirdPartyAddress = -not $settings.microsoftReportMessageButton; EnableReportToMicrosoft = $settings.reportingDestination -cne 'CustomMailboxOnly'; ReportJunkToCustomizedAddress = $custom; ReportNotJunkToCustomizedAddress = $custom; ReportPhishToCustomizedAddress = $custom; ReportJunkAddresses = @($(if ($custom) { $settings.reportingMailbox })) } @{ EnableThirdPartyAddress = 'Boolean'; EnableReportToMicrosoft = 'Boolean'; ReportJunkToCustomizedAddress = 'Boolean'; ReportNotJunkToCustomizedAddress = 'Boolean'; ReportPhishToCustomizedAddress = 'Boolean'; ReportJunkAddresses = 'Strings' } $true @{ Name = 'DefaultReportSubmissionPolicy' }
+                Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $settings approval) ([datetimeoffset]::UtcNow)
+                if ($settings.reportingMailbox -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $settings.reportingDestination -cne 'MicrosoftAndCustomMailbox' -or -not $settings.microsoftReportMessageButton -or -not $settings.sendCopyToSecOpsMailbox -or -not $settings.sendReportedMessagesToMicrosoft) { throw 'ChangeReportingContract: the supported workflow requires built-in email reporting to Microsoft and one exact Exchange mailbox.' }
+                $desired = @{ EnableThirdPartyAddress = $false; EnableReportToMicrosoft = $true; ReportJunkToCustomizedAddress = $true; ReportNotJunkToCustomizedAddress = $true; ReportPhishToCustomizedAddress = $true; PreSubmitMessageEnabled = $settings.preSubmitMessageEnabled; PostSubmitMessageEnabled = $settings.postSubmitMessageEnabled }
+                $types = @{}; foreach ($field in $desired.Keys) { $types[$field] = 'Boolean' }
+                foreach ($field in @('ReportJunkAddresses','ReportNotJunkAddresses','ReportPhishAddresses')) { $desired[$field] = @($settings.reportingMailbox); $types[$field] = 'Strings' }
+                & $fixed ReportSubmission ReportSubmissionPolicy @{ Identity = 'DefaultReportSubmissionPolicy' } $desired $types
+                $definition = & $fixed ReportSubmissionRule ReportSubmissionRule @{ Identity = 'DefaultReportSubmissionRule' } @{ SentTo = @($settings.reportingMailbox) } @{ SentTo = 'Strings' }
+                $definition.Guard = @{ ReportSubmissionPolicy = 'DefaultReportSubmissionPolicy' }
+                $definition
+                New-ApprovedAdapterDefinition ReportSubmissionRuleState ReportSubmissionRule @{ Identity = 'DefaultReportSubmissionRule' } @{ Enabled = $true } @{ Enabled = 'Boolean' } -Toggle
             }
-            SecOpsOverride { & $fixed SecOpsOverride SecOpsOverridePolicy @{ Identity = 'SecOpsOverridePolicy' } @{ SentTo = @($parameters.SECURITY_OPERATIONS_MAILBOX); Mode = 'Enforce' } @{ SentTo = 'Strings'; Mode = 'String' } $true @{ Name = 'SecOpsOverridePolicy' } }
+            SecOpsOverride {
+                $settings = $controls['MDO-006']
+                Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $settings approval) ([datetimeoffset]::UtcNow)
+                if ($settings.reportingMailbox -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $settings.reportingMailbox -ine $parameters.SECURITY_OPERATIONS_MAILBOX) { throw 'ChangeReportingContract: SecOps scope must be the exact approved reporting mailbox.' }
+                if (-not $DesiredOnly) {
+                    $rules = Get-ApprovedAdapterCollection Get-ExoSecOpsOverrideRule @{ Policy = 'SecOpsOverridePolicy' } @('Identity','Mode')
+                    if ($rules.Count -ne 1 -or $rules[0].Mode -cne 'Enforce') { throw 'ChangeReportingPrerequisite: initialize and enforce the SecOps override rule in Advanced Delivery before preview.' }
+                }
+                & $fixed SecOpsOverride SecOpsOverridePolicy @{ Identity = 'SecOpsOverridePolicy' } @{ SentTo = @($settings.reportingMailbox) } @{ SentTo = 'Strings' }
+            }
             Impersonation {
                 if ('ATP_ENTERPRISE' -cnotin @($Context.Entitlement.servicePlans)) { throw 'ChangeScopeNotEntitled: Impersonation requires ATP_ENTERPRISE.' }
                 $settings = $controls['MDO-009']
@@ -350,7 +367,10 @@ function Assert-ApprovedAdapterCommands {
         if ($definition.Toggle) {
             foreach ($verb in @('Enable','Disable')) { $contracts += @{ Command = "$verb-$($definition.Noun)"; Fields = @($definition.Target.Keys) } }
         } else {
-            if (-not $definition.Delete -and $definition.Adapter -cne 'TenantAllowBlockList') { $contracts += @{ Command = $definition.Set; Fields = @($definition.Target.Keys) + @($definition.Desired.Keys) } }
+            if (-not $definition.Delete -and $definition.Adapter -cne 'TenantAllowBlockList') {
+                $fields = if ($definition.Adapter -ceq 'SecOpsOverride') { @('Identity','AddSentTo','RemoveSentTo') } else { @($definition.Target.Keys) + @($definition.Desired.Keys) }
+                $contracts += @{ Command = $definition.Set; Fields = $fields }
+            }
             if ($definition.New) {
                 $fields = if ($definition.Delete) { @('Name','Role','Policy') } elseif ($definition.Adapter -ceq 'TenantAllowBlockList') { @('Entries','ListType','ExpirationDate','Notes','Allow','Block') } else { @($definition.CreateTarget.Keys) + @($definition.Desired.Keys) }
                 $contracts += @{ Command = $definition.New; Fields = $fields }
@@ -370,6 +390,16 @@ function Assert-ApprovedAdapterCommands {
 function Invoke-BaselineConcreteOperation {
     param($Definition, $Current, $Desired, $Journal)
     if ((ConvertTo-CanonicalJson $Current) -ceq (ConvertTo-CanonicalJson $Desired)) { return }
+    if ($Definition.Adapter -ceq 'SecOpsOverride') {
+        if (-not $Current.Exists -or -not $Desired.Exists) { throw 'ChangeReportingPrerequisite: SecOps policy creation and removal are not supported by this scoped adapter.' }
+        $arguments = $Definition.Target.Clone()
+        $add = @($Desired.Value.SentTo | Where-Object { $_ -notin $Current.Value.SentTo })
+        $remove = @($Current.Value.SentTo | Where-Object { $_ -notin $Desired.Value.SentTo })
+        if ($add.Count) { $arguments.AddSentTo = $add }
+        if ($remove.Count) { $arguments.RemoveSentTo = $remove }
+        $null = Set-SecOpsOverridePolicy @arguments -Confirm:$false -ErrorAction Stop
+        return
+    }
     if ($Definition.Adapter -ceq 'TenantAllowBlockList') {
         $target = $Definition.Target
         if ($Current.Exists) {

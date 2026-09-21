@@ -46,6 +46,69 @@ function Get-ProtectionReferenceValues {
     $values
 }
 
+function Add-ProtectionGovernanceFixture {
+    param($Fixture, $Parameters)
+    $raw = $Fixture.Raw
+    $configuration = $Fixture.Configuration
+    $domain = $Parameters.PRIMARY_SMTP_DOMAIN
+    $secops = $Parameters.SECURITY_OPERATIONS_MAILBOX
+    $addresses = @("user@$domain", $secops)
+    $approval = @{ reference = 'SYNTHETIC-OFFLINE-010'; owner = $secops; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+    $standard = Get-ProtectionReferenceValues Standard
+    $strict = Get-ProtectionReferenceValues Strict
+    foreach ($values in @($standard.AntiPhish,$strict.AntiPhish)) {
+        $values.TargetedUsersToProtect = @("SecOps;$secops")
+        $values.TargetedDomainsToProtect = @($domain)
+    }
+    foreach ($family in $standard.Keys) {
+        $policies = @()
+        foreach ($name in @('Default','Standard Preset Security Policy','Strict Preset Security Policy')) {
+            if ($family -eq 'HostedOutboundSpamFilter' -and $name -ne 'Default') { continue }
+            $values = if ($name -eq 'Strict Preset Security Policy') { $strict[$family].Clone() } else { $standard[$family].Clone() }
+            $values.Name = $name; $values.Identity = $name; $values.IsDefault = $name -eq 'Default'
+            if ($family -in @('SafeLinks','SafeAttachment') -and $name -eq 'Default') { $values.Name = 'Built-In Protection Policy'; $values.Identity = $values.Name }
+            $policies += $values
+        }
+        $raw["Get-${family}Policy"] = @{ Items = $policies }
+        if ($family -ne 'AntiPhish') { $raw["Get-${family}Rule"] = @{ Items = @() } }
+    }
+    $custom = $standard.AntiPhish.Clone(); $custom.Name = 'Contoso Impersonation'; $custom.Identity = $custom.Name; $custom.IsDefault = $false
+    $raw['Get-AntiPhishPolicy'].Items += $custom
+    $raw['Get-AntiPhishRule'].Items[0].Priority = 0
+    foreach ($kind in @('EOP','ATP')) {
+        foreach ($level in @('Standard','Strict')) {
+            $rule = $raw["Get-${kind}ProtectionPolicyRule"].ByIdentity["$level Preset Security Policy"][0]
+            foreach ($field in @('SentTo','SentToMemberOf','RecipientDomainIs','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs')) { if (-not $rule.ContainsKey($field)) { $rule[$field] = @() } }
+            if ($level -eq 'Standard') { $rule.ExceptIfSentTo = @() }
+        }
+    }
+    $raw['Get-Recipient'] = @{ Items = @($addresses | ForEach-Object { @{ Identity = $_; PrimarySmtpAddress = $_; RecipientTypeDetails = 'UserMailbox' } }) }
+    $raw['Get-DistributionGroupMember'] = @{ Items = @() }
+    $configuration.controls['MDO-001'].approval = $approval.Clone()
+    $configuration.controls['MDO-001'].recipientMatrix = @($addresses | ForEach-Object { @{ address = $_; defender = $true; level = 'Standard'; expectedPolicy = 'Standard Preset Security Policy' } })
+    $configuration.controls['MDO-001'].excludedSecOpsMailbox = @()
+    $configuration.controls['MDO-006'].approval = $approval.Clone()
+    $Parameters.entitlement.recipients = @($addresses | ForEach-Object { @{ address = $_; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') } })
+    $raw['Get-Mailbox'].ByIdentity = @{
+        $secops = @(@{ Identity = $secops; PrimarySmtpAddress = $secops; RecipientTypeDetails = 'SharedMailbox'; ForwardingAddress = $null; ForwardingSmtpAddress = $null; DeliverToMailboxAndForward = $false })
+        "user@$domain" = @($raw['Get-Mailbox'].Items[0])
+        'Mailbox One' = @($raw['Get-Mailbox'].Items[0])
+    }
+    $raw['Get-ReportSubmissionPolicy'].Items[0].PreSubmitMessageEnabled = $true
+    $raw['Get-ReportSubmissionPolicy'].Items[0].PostSubmitMessageEnabled = $true
+    $Parameters.reportingEvidence = @{
+        mailbox = $secops; approval = $approval.Clone(); dlp = @{ mailbox = $secops; status = 'NotApplicable'; approval = $approval.Clone() }
+        deliveries = @(foreach ($category in @('Junk','NotJunk','Phish')) {
+            @{ category = $category; recipient = $secops; reporter = "user@$domain"; messageId = "$category-message"; microsoftSubmissionId = "$category-submission"; feedbackMessageId = "$category-feedback"; receivedAt = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o'); originalMessagePreserved = $true }
+        })
+    }
+    foreach ($category in $configuration.controls['MDO-008'].categoryPermissions) { if ($category.accessLevel -ne 'AdminOnlyAccess') { $category.accessLevel = 'FullAccess' } }
+    $raw['Get-QuarantinePolicy'].ByType.QuarantinePolicy += @(
+        @{ Name = 'DefaultFullAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 236 }
+        @{ Name = 'DefaultFullAccessWithNotificationPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 236 }
+    )
+}
+
 function New-ProtectionFixture {
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $parameters = Get-Content (Join-Path $sampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable
@@ -88,6 +151,11 @@ function New-ProtectionFixture {
             $policies += $values
         }
         if ($family -in @('SafeLinks','SafeAttachment')) { $policies[-1].Name = 'Built-In Protection Policy'; $policies[-1].Identity = 'Built-In Protection Policy' }
+        if ($family -eq 'SafeLinks') {
+            $policies[-1].EnableForInternalSenders = $false
+            $policies[-1].DisableURLRewrite = $true
+            $policies[-1].AllowClickThrough = $true
+        }
         if ($family -eq 'HostedOutboundSpamFilter') { $policy = $strict[$family].Clone(); $policy.Name = 'Strict outbound'; $policy.Identity = 'Strict outbound'; $policy.IsDefault = $false; $policies += $policy }
         $raw["Get-${family}Policy"] = @{ Items = $policies }
         $rule = @{ Name = 'Custom email rule'; Identity = 'Custom email rule'; State = 'Enabled'; Priority = 1; SentTo = @($addresses[2]); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
@@ -97,10 +165,6 @@ function New-ProtectionFixture {
         }
         $raw["Get-${family}Rule"] = @{ Items = @($rule) }
     }
-    $raw['Get-QuarantinePolicy'].ByType.QuarantinePolicy += @(
-        @{ Name = 'DefaultFullAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 236 }
-        @{ Name = 'DefaultFullAccessWithNotificationPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 236 }
-    )
     @{ Context = @{ Configuration = $configuration; Parameters = $parameters; Entitlement = $parameters.entitlement }; Raw = $raw }
 }
 

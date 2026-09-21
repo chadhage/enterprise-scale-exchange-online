@@ -59,11 +59,10 @@ Validate with messages from external SPF-pass, SPF-fail, DKIM-pass, and DMARC-fa
 2. Assign Standard to the accepted domain, excluding priority users and the SecOps mailbox. See [R-MDO-001](RUNBOOKS.md#r-mdo-001-standard-preset-assignment).
 3. Assign Strict to the mail-enabled priority-users group. Strict has higher precedence than Standard. See [R-MDO-002](RUNBOOKS.md#r-mdo-002-strict-preset-assignment).
 4. Keep Built-in protection enabled with no broad exceptions. It remains fallback Safe Links and Safe Attachments coverage. See [R-MDO-003](RUNBOOKS.md#r-mdo-003-built-in-protection).
-5. Enable Safe Attachments for SharePoint, OneDrive, and Teams. Block infected-file download in SharePoint administration. See [R-MDO-004](RUNBOOKS.md#r-mdo-004-safe-attachments-for-sharepoint-onedrive-and-teams).
-6. Enable Safe Documents when licensed and keep user bypass disabled. See [R-MDO-005](RUNBOOKS.md#r-mdo-005-safe-documents).
-7. Deploy the Microsoft Report Message/Report Phishing experience. Send reports to Microsoft and a copy to SecOps. See [R-MDO-006](RUNBOOKS.md#r-mdo-006-user-submissions).
-8. Configure the global quarantine notification cadence. Leave the preset-assigned quarantine policies alone: they already place malware and high-confidence phish under admin-only access. See [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications).
-9. Use Tenant Allow/Block List submissions for temporary, investigated exceptions. Avoid permanent sender/domain allows and security-policy bypass rules. See [R-MDO-007](RUNBOOKS.md#r-mdo-007-tenant-allowblock-list).
+5. Approve and verify the effective recipient matrix, including all applicable Standard/Strict settings and user/domain impersonation targets. See [Exchange email protection](EXCHANGE-EMAIL-PROTECTION.md). Safe Documents and SharePoint/OneDrive/Teams configuration are excluded and owned externally in RAID-I04.
+6. Configure the built-in Outlook reporting experience, Microsoft submission and the approved SecOps mailbox. Verify all three report categories and feedback, not just rule readback. See [R-MDO-006](RUNBOOKS.md#r-mdo-006-user-submissions).
+7. Configure the approved global quarantine notification cadence. Leave Microsoft preset assignments alone; stricter local permissions require an approved effective custom policy. See [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications).
+8. Use Tenant Allow/Block List submissions for temporary, investigated exceptions. Avoid permanent sender/domain allows and security-policy bypass rules. See [R-MDO-007](RUNBOOKS.md#r-mdo-007-tenant-allowblock-list).
 
 Preset values are Microsoft-managed and can change as threats evolve. Use the current [recommended settings tables](https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365) as the authority, not a frozen transcription.
 

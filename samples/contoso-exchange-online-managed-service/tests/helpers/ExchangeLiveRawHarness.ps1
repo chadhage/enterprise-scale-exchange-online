@@ -27,7 +27,7 @@ foreach ($name in $global:ExchangeLiveRaw.Keys) {
         'Get-TransportRule' { '$Identity, $ResultSize' }
         'Get-QuarantinePolicy' { '$Identity, $QuarantinePolicyType' }
         'Get-ExoSecOpsOverrideRule' { '$Identity, $Policy' }
-        { $_ -in @('Get-CASMailbox','Get-CASMailboxPlan','Get-MailboxAuditBypassAssociation','Get-RemoteDomain','Get-RoleGroup','Get-RoleGroupMember','Get-DistributionGroup') } { '$Identity, $ResultSize' }
+        { $_ -in @('Get-CASMailbox','Get-CASMailboxPlan','Get-MailboxAuditBypassAssociation','Get-RemoteDomain','Get-RoleGroup','Get-RoleGroupMember','Get-DistributionGroup','Get-Recipient','Get-DistributionGroupMember') } { '$Identity, $ResultSize' }
         default { '$Identity' }
     }
     $body = @'

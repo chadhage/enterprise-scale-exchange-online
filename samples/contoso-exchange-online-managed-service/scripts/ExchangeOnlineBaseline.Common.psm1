@@ -6750,7 +6750,7 @@ function Invoke-BaselineExchangeRegistry {
             $group = Invoke-BaselineExchangeRawCollection -Command Get-DistributionGroup -Arguments @{ Identity = $Identity } -RequiredProperty PrimarySmtpAddress -IdentityProperty PrimarySmtpAddress -MinimumCount 1 -MaximumCount 1 -Observation $observations
             [string]$group.PrimarySmtpAddress
         }
-        $requiredPlan = if ($controlId -ceq 'OPS-002') { 'THREAT_INTELLIGENCE' } elseif ($controlId -in @('MDO-001','MDO-002','MDO-003','MDO-009')) { 'ATP_ENTERPRISE' } else { 'EXCHANGE_S_ENTERPRISE' }
+        $requiredPlan = if ($controlId -in @('MDO-003','MDO-009')) { 'ATP_ENTERPRISE' } else { 'EXCHANGE_S_ENTERPRISE' }
         try {
             if ($requiredPlan -cnotin @($Context.Entitlement.servicePlans)) {
                 $evidence = New-BaselineEvidence -ControlId $controlId -Source 'SuppliedExternalEntitlement' -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason "ExchangeNotEntitled: '$requiredPlan' is not confirmed for this recipient scope."
@@ -6785,7 +6785,7 @@ function Invoke-BaselineExchangeRegistry {
                     'MDO-006' {
                         $collectorArguments = @{
                             ReportSubmissionPolicyCollection = {
-                                $policy = Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionPolicy -RequiredProperty Identity,EnableThirdPartyAddress,EnableReportToMicrosoft,ReportJunkToCustomizedAddress,ReportJunkAddresses,ReportNotJunkToCustomizedAddress,ReportNotJunkAddresses,ReportPhishToCustomizedAddress,ReportPhishAddresses -IdentityProperty Identity -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                $policy = Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionPolicy -RequiredProperty Identity,EnableThirdPartyAddress,EnableReportToMicrosoft,ReportJunkToCustomizedAddress,ReportJunkAddresses,ReportNotJunkToCustomizedAddress,ReportNotJunkAddresses,ReportPhishToCustomizedAddress,ReportPhishAddresses,PreSubmitMessageEnabled,PostSubmitMessageEnabled -IdentityProperty Identity -MinimumCount 1 -MaximumCount 1 -Observation $observations
                                 $rule = Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionRule -RequiredProperty Identity,State,ReportSubmissionPolicy,SentTo -IdentityProperty Identity -MinimumCount 1 -MaximumCount 1 -Observation $observations
                                 if ($rule.State -ne 'Enabled' -or [string]$rule.ReportSubmissionPolicy -ine [string]$policy.Identity) { throw 'ExchangeReportRuleInactiveOrMisbound: an enabled rule bound to the reporting policy is required.' }
                                 if (-not (Compare-NormalizedCollection -Desired @($settings.reportingMailbox) -Actual @($rule.SentTo) -Kind SmtpAddress).Equal) { throw 'ExchangeReportRuleMisroute: rule recipients do not match the reporting mailbox.' }
@@ -6861,7 +6861,11 @@ function Invoke-BaselineExchangeRegistry {
                 $collector = [string]$entry.Collector
                 $evaluator = [string]$entry.Evaluator
                 if ($evaluatorArguments.ContainsKey('GroupResolver')) { $evaluatorArguments.GroupResolver = $groupResolver }
-                if ($controlId -eq 'MDO-001') {
+                if ($controlId -eq 'MDO-002' -and 'ATP_ENTERPRISE' -notin @($Context.Entitlement.servicePlans)) {
+                    $collectorArguments.AtpRuleCollection = { @() }
+                    $evaluatorArguments.EopOnly = $true
+                }
+                if ($controlId -in @('MDO-001','MDO-006')) {
                     $collectorArguments.ExchangeContext = $Context
                     $collectorArguments.Observation = $observations
                     $evaluatorArguments.ExchangeContext = $Context
@@ -6887,6 +6891,57 @@ function Invoke-BaselineExchangeRegistry {
         $record.Observation = $observations.ToArray()
         [pscustomobject]@{ ControlId = $controlId; Evidence = (ConvertTo-ImmutableBaselineNode -Node $record); Result = $result }
     }
+}
+
+function Test-BaselineReportingState {
+    param($State, $Context)
+    try {
+        $desired = $Context.Configuration.controls['MDO-006']
+        $now = [datetimeoffset]::UtcNow
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $desired approval) $now
+        $address = [string]$desired.reportingMailbox
+        $mailbox = Get-BaselineRecordMember $State Mailbox
+        foreach ($field in @('PrimarySmtpAddress','RecipientTypeDetails','ForwardingAddress','ForwardingSmtpAddress','DeliverToMailboxAndForward')) {
+            if (-not (Test-BaselineNodeMember $mailbox $field)) { throw "ReportingMailboxIncomplete: missing '$field'." }
+        }
+        if ($address -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $mailbox.PrimarySmtpAddress -ine $address -or
+            $mailbox.RecipientTypeDetails -notin @('UserMailbox','SharedMailbox') -or $mailbox.ForwardingAddress -or $mailbox.ForwardingSmtpAddress -or
+            $mailbox.DeliverToMailboxAndForward -isnot [bool] -or $mailbox.DeliverToMailboxAndForward) { throw 'ReportingMailboxInvalid: one local Exchange mailbox without forwarding is required.' }
+        try { Assert-ExchangeGovernanceSet @($State.SecOps.SentTo) @($address) 'SecOps mailbox' }
+        catch { throw "ReportingSecOpsScope: $($_.Exception.Message)" }
+        foreach ($field in @('PreSubmitMessageEnabled','PostSubmitMessageEnabled')) {
+            $configuredField = $field.Substring(0, 1).ToLowerInvariant() + $field.Substring(1)
+            $expected = Get-BaselineRecordMember $desired $configuredField
+            $actual = Get-BaselineRecordMember $State.Policy $field
+            if ($expected -isnot [bool] -or $actual -isnot [bool] -or $actual -ne $expected) { throw "ReportingFeedbackDrift: '$field' does not match the approved email feedback setting." }
+        }
+        $proof = Get-BaselineRecordMember $Context.Parameters reportingEvidence
+        if (-not $proof -or [string](Get-BaselineRecordMember $proof mailbox) -ine $address) { throw 'ReportingEvidenceMissing: independently supplied mailbox-bound delivery evidence is required.' }
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $proof approval) $now
+        $dlp = Get-BaselineRecordMember $proof dlp
+        if (-not $dlp -or [string](Get-BaselineRecordMember $dlp mailbox) -ine $address -or (Get-BaselineRecordMember $dlp status) -notin @('Excluded','NotApplicable')) { throw 'ReportingDlpUnverified: an exact mailbox-bound DLP-owner handoff is required; no Purview changes are made.' }
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $dlp approval) $now
+        $deliveries = @(Get-BaselineRecordMember $proof deliveries)
+        if ($deliveries.Count -ne 3) { throw 'ReportingDeliveryIncomplete: exactly three independently evidenced report categories are required.' }
+        $identities = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($category in @('Junk','NotJunk','Phish')) {
+            $rows = @($deliveries | Where-Object { (Get-BaselineRecordMember $_ category) -ceq $category })
+            if ($rows.Count -ne 1) { throw "ReportingDeliveryIncomplete: '$category' requires one report." }
+            $delivery = $rows[0]
+            foreach ($field in @('messageId','microsoftSubmissionId','feedbackMessageId','reporter')) {
+                $value = [string](Get-BaselineRecordMember $delivery $field)
+                if ([string]::IsNullOrWhiteSpace($value) -or ($field -ne 'reporter' -and -not $identities.Add("$field/$value"))) { throw "ReportingDeliveryIncomplete: '$category/$field' must identify an independent receipt." }
+            }
+            $preserved = Get-BaselineRecordMember $delivery originalMessagePreserved
+            $received = [datetimeoffset]::MinValue
+            if ([string](Get-BaselineRecordMember $delivery recipient) -ine $address -or
+                [string](Get-BaselineRecordMember $delivery reporter) -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or
+                $preserved -isnot [bool] -or -not $preserved -or
+                -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $delivery receivedAt), [ref]$received) -or
+                $received -gt $now -or $received -lt $now.AddDays(-30)) { throw "ReportingDeliveryInvalid: '$category' needs a recent, correctly routed receipt preserving the original message." }
+        }
+        @{ Status = 'Pass'; Reason = 'ReportingVerified: approved Exchange mailbox, feedback and independent delivery records reconciled; not a live delivery test.'; ExternalReadiness = 'Unverified' }
+    } catch { @{ Status = 'Fail'; Reason = $_.Exception.Message; ExternalReadiness = 'Unverified' } }
 }
 
 function Get-BaselineEmailSettingCatalog {
@@ -6946,7 +7001,7 @@ function Get-BaselineEmailProtectionState {
 
 function Test-BaselineEmailGroupMembership {
     param([string]$Address, [string]$Group, $Groups, [string[]]$Visited = @())
-    if ($Group -in $Visited -or -not $Groups.ContainsKey($Group)) { throw 'EmailProtectionGroupUnresolved: cyclic or unresolved membership.' }
+    if ($Group -in $Visited -or -not (Test-BaselineNodeMember $Groups $Group)) { throw 'EmailProtectionGroupUnresolved: cyclic or unresolved membership.' }
     foreach ($member in $Groups[$Group]) {
         if ($member.RecipientType -match 'Group') {
             if (Test-BaselineEmailGroupMembership $Address ([string]$member.PrimarySmtpAddress) $Groups ($Visited + $Group)) { return $true }
@@ -6961,6 +7016,7 @@ function Test-BaselineEmailRuleScope {
     if ($Rule.State -eq 'Disabled') { return $false }
     $fields = if ($Outbound) { @('From','FromMemberOf','SenderDomainIs') } else { @('SentTo','SentToMemberOf','RecipientDomainIs') }
     foreach ($exception in @($false,$true)) {
+        if ($BuiltIn -and -not $exception) { continue }
         $matches = @()
         for ($index = 0; $index -lt $fields.Count; $index++) {
             $field = $(if ($exception) { 'ExceptIf' }) + $fields[$index]
@@ -7035,7 +7091,7 @@ function Test-BaselineEmailProtectionState {
         $exceptions = @($desired.settingExceptions)
         $used = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
         foreach ($exception in $exceptions) {
-            if ($exception.recipient -notin @($desired.recipientMatrix.address) -or -not $catalog.Families.ContainsKey($exception.family) -or -not $catalog.Families[$exception.family].Standard.ContainsKey($exception.setting)) { throw 'EmailProtectionException: exception target must be one declared recipient and known email setting.' }
+            if ($exception.recipient -notin @($desired.recipientMatrix | ForEach-Object { $_.address }) -or -not $catalog.Families.ContainsKey($exception.family) -or -not $catalog.Families[$exception.family].Standard.ContainsKey($exception.setting)) { throw 'EmailProtectionException: exception target must be one declared recipient and known email setting.' }
             try { Assert-ExchangeGovernanceApproval $exception.approval ([datetimeoffset]::UtcNow) } catch { throw "EmailProtectionException: $($_.Exception.Message)" }
             if (@($exception.value | Where-Object { [string]$_ -match '\*|/0$' }).Count) { throw 'EmailProtectionException: broad exception values are prohibited.' }
             if (-not $used.Add("$($exception.recipient)/$($exception.family)/$($exception.setting)")) { throw 'EmailProtectionException: duplicate setting authorization.' }
@@ -7043,11 +7099,17 @@ function Test-BaselineEmailProtectionState {
         $applied = 0
         foreach ($recipient in $desired.recipientMatrix) {
             $licenses = @(Get-BaselineRecordMember $Context.Entitlement recipients | Where-Object address -eq $recipient.address)
-            if ($licenses.Count -ne 1 -or 'EXCHANGE_S_ENTERPRISE' -notin @($licenses[0].servicePlans) -or ($recipient.defender -and 'ATP_ENTERPRISE' -notin @($licenses[0].servicePlans))) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            if ($licenses.Count -ne 1 -or 'EXCHANGE_S_ENTERPRISE' -notin @($licenses[0].servicePlans) -or ($recipient.defender -and ('ATP_ENTERPRISE' -notin @($licenses[0].servicePlans) -or 'ATP_ENTERPRISE' -notin @($Context.Entitlement.servicePlans)))) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            if (-not $recipient.defender -and 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)) {
+                foreach ($rule in @($State.Presets.ATP)) {
+                    if (Test-BaselineEmailRuleScope $rule $recipient.address $State.Groups) { throw "EmailProtectionNotEntitled: '$($recipient.address)' is inside Defender preset scope without approved recipient capability." }
+                }
+            }
             foreach ($family in $catalog.Families.Keys) {
                 $definition = $catalog.Families[$family]
                 if ($definition.Plan -eq 'Defender' -and -not $recipient.defender) { continue }
                 $policy = Resolve-BaselineEmailPolicy $State $family $recipient.address $recipient.defender
+                if (($policy.Name -like '*Preset Security Policy' -or $policy.Name -eq 'Built-In Protection Policy') -and @($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $_.family -eq $family }).Count) { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
                 $expectedName = if ($family -in @('SafeLinks','SafeAttachment') -and $recipient.expectedPolicy -eq 'Default') { 'Built-In Protection Policy' } else { $recipient.expectedPolicy }
                 if ($family -ne 'HostedOutboundSpamFilter' -and $policy.Name -ine $expectedName) { throw "EmailProtectionPrecedence: '$($recipient.address)/$family' resolves to '$($policy.Name)', not '$expectedName'." }
                 $settings = $definition.Standard.Clone()
@@ -7069,7 +7131,7 @@ function Test-BaselineEmailProtectionState {
                     $expected = $settings[$field]
                     $bound = @($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $_.family -eq $family -and $_.setting -eq $field })
                     if ($bound.Count) {
-                        if ($policy.Name -like '*Preset Security Policy') { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
+                        if ($policy.Name -like '*Preset Security Policy' -or $policy.Name -eq 'Built-In Protection Policy') { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
                         $expected = $bound[0].value; $applied++
                     }
                     $actual = Get-BaselineRecordMember $policy $field
@@ -12387,7 +12449,9 @@ function Test-StrictPresetControl {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$GroupResolver
+        [scriptblock]$GroupResolver,
+
+        [switch]$EopOnly
     )
 
     if ($null -eq $DesiredState) {
@@ -12404,7 +12468,7 @@ function Test-StrictPresetControl {
     }
 
     $ruleName = $script:StrictPresetRuleName
-    $observationName = $script:StrictPresetObservation
+    $observationName = if ($EopOnly) { @('EOPProtectionPolicyRule') } else { $script:StrictPresetObservation }
     $decidedMember = $script:StrictPresetDecidedMember
     $comparison = $script:StrictPresetTargetComparison
     $resolver = $GroupResolver
@@ -13212,7 +13276,10 @@ function Get-ReportSubmissionEvidence {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$SecOpsOverridePolicyCollection
+        [scriptblock]$SecOpsOverridePolicyCollection,
+
+        $ExchangeContext,
+        [AllowEmptyCollection()][System.Collections.Generic.List[object]]$Observation
     )
 
     if ($null -eq $ReportSubmissionPolicyCollection) {
@@ -13224,11 +13291,17 @@ function Get-ReportSubmissionEvidence {
     }
 
     $collection = {
-        [ordered]@{
+        $payload = [ordered]@{
             ReportSubmissionPolicy = @(& $ReportSubmissionPolicyCollection)
             SecOpsOverridePolicy   = @(& $SecOpsOverridePolicyCollection)
         }
-    }.GetNewClosure()
+        if ($null -ne $ExchangeContext) {
+            $mailbox = Invoke-BaselineExchangeRawCollection -Command Get-Mailbox -Arguments @{ Identity = $ExchangeContext.Configuration.controls['MDO-006'].reportingMailbox } -RequiredProperty PrimarySmtpAddress,RecipientTypeDetails,ForwardingAddress,ForwardingSmtpAddress,DeliverToMailboxAndForward -IdentityProperty PrimarySmtpAddress -MinimumCount 1 -MaximumCount 1 -Observation $Observation
+            $payload.ReportingState = @{ Mailbox = $mailbox; Policy = $payload.ReportSubmissionPolicy[0]; SecOps = $payload.SecOpsOverridePolicy[0] }
+            $payload.ReportingEvidence = Get-BaselineRecordMember $ExchangeContext.Parameters reportingEvidence
+        }
+        $payload
+    }
 
     return Get-BaselineEvidence -ControlId 'MDO-006' -Source 'ExchangeOnline' `
         -Command (@($script:ReportSubmissionObservation.Values) -join '; ') -Collection $collection
@@ -13275,7 +13348,9 @@ function Test-ReportSubmissionControl {
         [Parameter(Mandatory)]
         [AllowNull()]
         [AllowEmptyCollection()]
-        [string[]]$SecOpsMailbox
+        [string[]]$SecOpsMailbox,
+
+        $ExchangeContext
     )
 
     if ($null -eq $DesiredState) {
@@ -13424,6 +13499,10 @@ function Test-ReportSubmissionControl {
         )
 
         if ($finding.Count -eq 0) {
+            if ($null -ne $ExchangeContext) {
+                $reportContext = @{ Configuration = $ExchangeContext.Configuration; Parameters = @{ reportingEvidence = Get-BaselineRecordMember $payload ReportingEvidence } }
+                return Test-BaselineReportingState (Get-BaselineRecordMember $payload ReportingState) $reportContext
+            }
             return [pscustomobject]@{ Status = 'Pass' }
         }
 

@@ -1,6 +1,6 @@
 # Exchange Online Hardening Kanban
 
-Board updated: 2026-09-21 (EXR-010 started with one Coworker instance only).
+Board updated: 2026-09-21 (EXR-010 resumed directly by root; Coworker excluded).
 Source: repository acceptance assessment and scope decision, 2026-09-19.
 
 ## Scope And Authority
@@ -15,7 +15,7 @@ Source: repository acceptance assessment and scope decision, 2026-09-19.
 ## Execution Rules
 
 - Force rank is unique and binding: select the lowest-numbered eligible card. Dependencies must be Done with evidence; no fan-out heuristic may override this explicit user ranking.
-- WIP limit: one implementation card and one Coworker at a time, per the user's 2026-09-21 instruction. No parallel Coworkers or child delegation; this overrides the earlier four-worker recommendation. Root owns serialized board updates. The current authorization is exactly one Coworker instance on EXR-010 only; no subsequent card may start in this pass.
+- WIP limit: one implementation card. The latest 2026-09-21 instruction excludes Coworker and authorizes direct root work on EXR-010 only, with progress updates at least every 120 seconds while tools permit. This supersedes prior worker authorizations. Root owns implementation and serialized board updates; no subsequent card or live tenant operation may start in this pass.
 - Named Coworker invocation succeeded for the EXR-008 completion pass after earlier registration failures. Any fallback must retain the same single-worker limit, scope, ownership, review and no-tenant-operation constraints.
 - Missing external prerequisites remain in RAID with an accountable role and verification condition. Leave affected Exchange work To Do and select the next eligible rank; do not invent a Blocked bucket or assign tenant work to the swarm.
 - Every card uses negative-first Arrange-Act-Assert checks and one positive per behavioral unit. Add assertions within the card, including documentation and design cards.
@@ -37,7 +37,7 @@ Historical completions: 193, preserved with their original evidence in [the froz
 | Rank | Card | Workstream | Dependencies | Owner | Updated |
 | ---: | --- | --- | --- | --- | --- |
 
-| 10 | [EXR-010 Align Exchange email-protection guidance](backlog.md#exr-010) | Email protection | EXR-005, EXR-007 (both Done) | One Coworker; root coordinates | 2026-09-21 |
+| 10 | [EXR-010 Align Exchange email-protection guidance](backlog.md#exr-010) | Email protection | EXR-005, EXR-007 (both Done) | Root directly; Coworker excluded | 2026-09-21 |
 
 ## To Do
 
@@ -82,6 +82,7 @@ Historical completions: 193, preserved with their original evidence in [the froz
 
 ## Activity Log
 
+- 2026-09-21: User excluded Coworker and authorized work on the next card only. Root described resuming the sole In Progress card EXR-010, including matrix repairs, reporting/delivery contracts, integration, guidance and full offline verification. Prior checkpoint 481aec5 remains WIP, not acceptance evidence. No subsequent card, live tenant operation or new commit/push is authorized. Counts unchanged: To Do 16, In Progress 1, Done 9.
 - 2026-09-21: User authorized exactly one Coworker instance on the next card only and requested 120-second progress updates. Root described EXR-010 acceptance and synchronous-call update limitations before starting. EXR-010 is the sole In Progress card; dependencies EXR-005/007 are Done. Offline implementation and testing only; no subsequent card or live tenant action authorized. Counts: To Do 16, In Progress 1, Done 9.
 - 2026-09-21: Completed EXR-009 using exactly one Coworker instance and direct root integration, without additional delegation. Root-executed fresh-process full suite: 3,856/3,856, zero failed/skipped/not-run/failed containers. Governance semantic/raw/journey slice: 157/157; signed adapter admission/round trips: 20/20; governance documentation: 10/10; source inventory: 51/51. Added effective RBAC, MRM semantics/processing, legal hold/capacity and encryption recipient contracts; three existing-object signed scopes with typed rollback and drift refusal; removed active tenant-governance provisioning and fixed legal defaults. Recorded source/evidence/runbook mappings. No live tenant operation, commit, external-readiness claim or subsequent card start. Counts: To Do 17, In Progress 0, Done 9.
 

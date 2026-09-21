@@ -12,9 +12,11 @@ function Initialize-AdapterDoubles {
         CASMailbox = @(@{ Identity = 'user@example.test'; PopEnabled = $true; ImapEnabled = $true })
         CASMailboxPlan = @(@{ Identity = 'PlanA'; PopEnabled = $true; ImapEnabled = $true })
         AcceptedDomain = @(@{ Identity = 'contoso.example'; Name = 'contoso.example'; DomainName = 'contoso.example'; DomainType = 'InternalRelay' })
-        ReportSubmissionPolicy = @(@{ Identity = 'DefaultReportSubmissionPolicy'; EnableThirdPartyAddress = $true; EnableReportToMicrosoft = $false; ReportJunkToCustomizedAddress = $false; ReportNotJunkToCustomizedAddress = $false; ReportPhishToCustomizedAddress = $false; ReportJunkAddresses = @('old@example.test') })
-        SecOpsOverridePolicy = @(@{ Identity = 'SecOpsOverridePolicy'; Mode = 'Audit'; SentTo = @('old@example.test') })
-        AntiPhishPolicy = @(@{ Identity = 'Contoso Impersonation Protection'; EnableTargetedUserProtection = $false; EnableTargetedDomainsProtection = $false; TargetedUsersToProtect = @(); TargetedDomainsToProtect = @(); ExcludedSenders = @('old@example.test'); ExcludedDomains = @('old.example') })
+        ReportSubmissionPolicy = @(@{ Identity = 'DefaultReportSubmissionPolicy'; EnableThirdPartyAddress = $true; EnableReportToMicrosoft = $false; ReportJunkToCustomizedAddress = $false; ReportNotJunkToCustomizedAddress = $false; ReportPhishToCustomizedAddress = $false; ReportJunkAddresses = @('old@example.test'); ReportNotJunkAddresses = @('old@example.test'); ReportPhishAddresses = @('old@example.test'); PreSubmitMessageEnabled = $false; PostSubmitMessageEnabled = $false })
+        ReportSubmissionRule = @(@{ Identity = 'DefaultReportSubmissionRule'; ReportSubmissionPolicy = 'DefaultReportSubmissionPolicy'; State = 'Disabled'; SentTo = @('old@example.test') })
+        SecOpsOverridePolicy = @(@{ Identity = 'SecOpsOverridePolicy'; SentTo = @('old@example.test') })
+        ExoSecOpsOverrideRule = @(@{ Identity = 'SecOpsRule'; Mode = 'Enforce' })
+        AntiPhishPolicy = @(@{ Identity = 'Contoso Impersonation Protection'; EnableTargetedUserProtection = $false; EnableTargetedDomainsProtection = $false; TargetedUsersToProtect = @(); TargetedDomainsToProtect = @(); ExcludedSenders = @('old@example.test'); ExcludedDomains = @('old.example'); SpoofQuarantineTag = 'Old' })
         EOPProtectionPolicyRule = @(@{ Identity = 'Standard Preset Security Policy'; State = 'Disabled'; RecipientDomainIs = @('old.example'); ExceptIfSentToMemberOf = @(); ExceptIfSentTo = @() }, @{ Identity = 'Strict Preset Security Policy'; State = 'Disabled'; SentToMemberOf = @('old@example.test') })
         ATPProtectionPolicyRule = @(@{ Identity = 'Standard Preset Security Policy'; State = 'Disabled'; RecipientDomainIs = @('old.example'); ExceptIfSentToMemberOf = @(); ExceptIfSentTo = @() }, @{ Identity = 'Strict Preset Security Policy'; State = 'Disabled'; SentToMemberOf = @('old@example.test') })
         ATPBuiltInProtectionRule = @(@{ Identity = 'ATP Built-In Protection Rule'; ExceptIfRecipientDomainIs = @('old.example'); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @() })
@@ -37,9 +39,11 @@ function Initialize-AdapterDoubles {
         @{ Noun = 'CASMailbox'; Read = '[string]$Identity,[string]$ResultSize'; Fields = '[bool]$PopEnabled,[bool]$ImapEnabled'; Target = '[Parameter(Mandatory)][string]$Identity' },
         @{ Noun = 'CASMailboxPlan'; Read = '[string]$Identity,[string]$ResultSize'; Fields = '[bool]$PopEnabled,[bool]$ImapEnabled'; Target = '[Parameter(Mandatory)][string]$Identity' },
         @{ Noun = 'AcceptedDomain'; Read = '[string]$Identity,[string]$ResultSize'; Fields = '[string]$DomainType'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$DomainName' },
-        @{ Noun = 'ReportSubmissionPolicy'; Read = '[string]$Identity'; Fields = '[bool]$EnableThirdPartyAddress,[bool]$EnableReportToMicrosoft,[bool]$ReportJunkToCustomizedAddress,[bool]$ReportNotJunkToCustomizedAddress,[bool]$ReportPhishToCustomizedAddress,[string[]]$ReportJunkAddresses'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
-        @{ Noun = 'SecOpsOverridePolicy'; Read = '[string]$Identity'; Fields = '[string[]]$SentTo,[string]$Mode'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
-        @{ Noun = 'AntiPhishPolicy'; Read = '[string]$Identity'; Fields = '[bool]$EnableTargetedUserProtection,[bool]$EnableTargetedDomainsProtection,[string[]]$TargetedUsersToProtect,[string[]]$TargetedDomainsToProtect,[string[]]$ExcludedSenders,[string[]]$ExcludedDomains'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
+        @{ Noun = 'ReportSubmissionPolicy'; Read = '[string]$Identity'; Fields = '[bool]$EnableThirdPartyAddress,[bool]$EnableReportToMicrosoft,[bool]$ReportJunkToCustomizedAddress,[bool]$ReportNotJunkToCustomizedAddress,[bool]$ReportPhishToCustomizedAddress,[string[]]$ReportJunkAddresses,[string[]]$ReportNotJunkAddresses,[string[]]$ReportPhishAddresses,[bool]$PreSubmitMessageEnabled,[bool]$PostSubmitMessageEnabled'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
+        @{ Noun = 'ReportSubmissionRule'; Read = '[string]$Identity'; Fields = '[string[]]$SentTo'; Target = '[Parameter(Mandatory)][string]$Identity'; Toggle = $true },
+        @{ Noun = 'SecOpsOverridePolicy'; Read = '[string]$Identity'; Fields = '[string[]]$AddSentTo,[string[]]$RemoveSentTo'; Target = '[Parameter(Mandatory)][string]$Identity' },
+        @{ Noun = 'ExoSecOpsOverrideRule'; Read = '[string]$Identity,[string]$Policy'; ReadOnly = $true },
+        @{ Noun = 'AntiPhishPolicy'; Read = '[string]$Identity'; Fields = '[bool]$EnableTargetedUserProtection,[bool]$EnableTargetedDomainsProtection,[string[]]$TargetedUsersToProtect,[string[]]$TargetedDomainsToProtect,[string[]]$ExcludedSenders,[string[]]$ExcludedDomains,[string]$SpoofQuarantineTag'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
         @{ Noun = 'EOPProtectionPolicyRule'; Read = '[string]$Identity'; Fields = '[string[]]$RecipientDomainIs,[string[]]$ExceptIfSentToMemberOf,[string[]]$ExceptIfSentTo,[string[]]$SentToMemberOf'; Target = '[Parameter(Mandatory)][string]$Identity'; Toggle = $true },
         @{ Noun = 'ATPProtectionPolicyRule'; Read = '[string]$Identity'; Fields = '[string[]]$RecipientDomainIs,[string[]]$ExceptIfSentToMemberOf,[string[]]$ExceptIfSentTo,[string[]]$SentToMemberOf'; Target = '[Parameter(Mandatory)][string]$Identity'; Toggle = $true },
         @{ Noun = 'ATPBuiltInProtectionRule'; Read = '[string]$Identity'; Fields = '[string[]]$ExceptIfRecipientDomainIs,[string[]]$ExceptIfSentTo,[string[]]$ExceptIfSentToMemberOf'; Target = '[Parameter(Mandatory)][string]$Identity' },
@@ -103,6 +107,10 @@ function global:Invoke-OfflineAdapterCommand {
         return
     }
     if ($selected.Count -ne 1) { throw "Offline target not unique: $Verb-$Noun ($($selected.Count))." }
+    if ($Noun -eq 'SecOpsOverridePolicy' -and $Verb -eq 'Set') {
+        $selected[0].SentTo = @(@($selected[0].SentTo | Where-Object { $_ -notin $Bound.RemoveSentTo }) + @($Bound.AddSentTo) | Where-Object { $_ } | Sort-Object -Unique)
+        return
+    }
     if ($Verb -eq 'Remove') { $global:adapterState[$Noun] = @($rows | Where-Object { $_ -ne $selected[0] }); return }
     if ($Verb -in @('Enable','Disable')) {
         if ($Noun -eq 'InboxRule') { $selected[0].Enabled = $Verb -eq 'Enable' } else { $selected[0].State = if ($Verb -eq 'Enable') { 'Enabled' } else { 'Disabled' } }
@@ -128,6 +136,10 @@ function New-StatefulAdapterFixture {
     $authorityPath = Join-Path $directory 'authority.json'
     @(@{ Identity = 'reviewer@example.test'; Subject = 'CN=Offline Adapter'; Authority = 'ExchangeOnlineChangeApproval' }) | ConvertTo-Json -AsArray | Set-Content $authorityPath
     $arguments = @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:adapterRoot 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; PreviewPath = (Join-Path $directory 'preview-ADAPTER004.json'); ApprovalPath = (Join-Path $directory 'approval-ADAPTER004.json'); AuthorizedSignerPath = $authorityPath }
+    $configuration = Get-Content $arguments.ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable
+    $configuration.controls['MDO-006'].approval = @{ reference = 'OFFLINE-010'; owner = 'security'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+    $arguments.ConfigurationPath = Join-Path $directory 'configuration.json'
+    $configuration | ConvertTo-Json -Depth 60 | Set-Content $arguments.ConfigurationPath
     if ($Approved) {
         & $script:adapterCommand -Stage Preview @arguments -Scope $Scope -Confirm:$false | Out-Null
         & $script:adapterCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:adapterCertificate -Confirm:$false | Out-Null

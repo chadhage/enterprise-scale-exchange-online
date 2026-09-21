@@ -40,12 +40,12 @@ Microsoft Configuration Analyzer is a supplemental correlation source. Its signe
 | MDO-001 | MUST | Both | EOP | Standard preset | Enabled for all normal recipients | EOP and ATP policy-rule exports | [R-MDO-001](RUNBOOKS.md#r-mdo-001-standard-preset-assignment) |
 | MDO-002 | MUST | Both | EOP | Strict preset | Enabled for priority users | Group membership plus policy-rule exports | [R-MDO-002](RUNBOOKS.md#r-mdo-002-strict-preset-assignment) |
 | MDO-003 | MUST | Both | MDO P1 | Built-in protection | Enabled; no broad exclusions | `Get-ATPBuiltInProtectionRule` | [R-MDO-003](RUNBOOKS.md#r-mdo-003-built-in-protection) |
-| MDO-004 | MUST | Both | MDO P1 | Safe Attachments for SPO/ODB/Teams | Enabled | `Get-AtpPolicyForO365` | [R-MDO-004](RUNBOOKS.md#r-mdo-004-safe-attachments-for-sharepoint-onedrive-and-teams) |
-| MDO-005 | SHOULD | Both | MDO P2 | Safe Documents | Enabled when licensed; no click-through | `Get-AtpPolicyForO365` | [R-MDO-005](RUNBOOKS.md#r-mdo-005-safe-documents) |
+| MDO-004 | External | Excluded | External owner | Collaboration protection | RAID-I04 handoff, not an Exchange deployment step | External owner evidence | [R-MDO-004](RUNBOOKS.md#r-mdo-004-safe-attachments-for-sharepoint-onedrive-and-teams) |
+| MDO-005 | External | Excluded | External owner | Safe Documents | RAID-I04 handoff, not an Exchange deployment step | External owner evidence | [R-MDO-005](RUNBOOKS.md#r-mdo-005-safe-documents) |
 | MDO-006 | MUST | Both | EOP | User submissions | Microsoft reporting enabled; SecOps receives copy | Defender portal export and functional test | [R-MDO-006](RUNBOOKS.md#r-mdo-006-user-submissions) |
 | MDO-007 | MUST | Both | EOP | Tenant allow/block entries | Investigated, scoped, owner and expiry | TABL export plus ticket | [R-MDO-007](RUNBOOKS.md#r-mdo-007-tenant-allowblock-list) |
-| MDO-008 | MUST | Both | EOP | Quarantine policies | End users get limited access; malware and high-confidence phish are admin-only; notifications daily | `Get-QuarantinePolicy` | [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications) |
-| MDO-009 | SHOULD | Both | MDO P2 | Priority account protection | Priority accounts tagged; premium mitigations applied | Defender portal user-tag export | [R-MDO-009](RUNBOOKS.md#r-mdo-009-priority-account-protection) |
+| MDO-008 | MUST | ExchangeOnly | EOP | Quarantine policies | Effective Microsoft preset tags or approved local custom permissions; admin-only high-risk categories | `Get-QuarantinePolicy` plus effective policy bindings | [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications) |
+| MDO-009 | SHOULD | ExchangeOnly | MDO P1 or P2 | User/domain impersonation | Approved targets protected by the effective policy; separate from P2 priority-account capabilities | Anti-phishing policies, rules and recipient matrix | [R-MDO-009](RUNBOOKS.md#r-mdo-009-priority-account-protection) |
 
 ## Mail Gateway (third-party SMTP gateway profile only)
 
@@ -82,7 +82,7 @@ Every control below is `NotApplicable` in the Microsoft-native profile. `Assert-
 | MON-002 | MUST | Both | EOP | Unified audit | Enabled and retained | Purview audit search/export | [R-MON-002](RUNBOOKS.md#r-mon-002-unified-audit-log) |
 | MON-003 | MUST | Both | EOP | Drift evidence | Scheduled collection; minimum 180-day retention | Timestamped evidence JSON | [R-MON-003](RUNBOOKS.md#r-mon-003-drift-evidence) |
 | OPS-001 | MUST | Both | EOP | Change safety | WhatIf, pilot, approval, rollback, validation | Change record | [R-OPS-001](RUNBOOKS.md#r-ops-001-change-safety) |
-| OPS-002 | SHOULD | Both | MDO P2 | Incident exercise | Quarterly phish/remediation tabletop or simulation | Exercise record and actions | [R-OPS-002](RUNBOOKS.md#r-ops-002-incident-exercise) |
+| OPS-002 | SHOULD | ExchangeOnly | Exchange | Incident exercise | Approved tabletop cadence, sample 90 days is local policy; no P2 mandate | Exercise record and tracked actions | [R-OPS-002](RUNBOOKS.md#r-ops-002-incident-exercise) |
 
 ## Exchange Governance and External Handoffs
 

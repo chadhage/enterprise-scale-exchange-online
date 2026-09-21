@@ -15,7 +15,7 @@ Authoritative-source review date: **2026-09-16**.
 | Install the module | `Install-Module ExchangeOnlineManagement -MinimumVersion 3.0.0 -Scope CurrentUser` |
 | Connect to Exchange Online | `Connect-ExchangeOnline -UserPrincipalName admin@contoso.com` |
 | Connect to Security & Compliance (GOV-* runbooks) | `Connect-IPPSSession -UserPrincipalName admin@contoso.com` |
-| Connect to Graph (EXO-003, ABN-*, licensing) | `Connect-MgGraph -Scopes 'Policy.Read.All','Organization.Read.All','Application.Read.All'` |
+| External identity and licensing prerequisites | Obtain approved owner evidence through RAID; no Graph session is opened by ExchangeOnly. |
 
 Replace `contoso.com`, `secops@contoso.com`, and `PriorityUsers@contoso.com` with your values. Confirm your entitlement in [LICENSING-GATE.md](LICENSING-GATE.md) before running a runbook marked with a tier above `EOP`.
 
@@ -568,106 +568,21 @@ ExceptIfSentToMemberOf    :
 
 ### R-MDO-004 Safe Attachments for SharePoint, OneDrive, and Teams
 
-**Tier: MDO P1.** **Portal** — `https://security.microsoft.com/safeattachmentv2` → Global settings.
-
-**Set**
-
-```powershell
-Set-AtpPolicyForO365 -EnableATPForSPOTeamsODB $true
-```
-
-Block download of files that detonation has flagged:
-
-```powershell
-# SharePoint Online Management Shell
-Set-SPOTenant -DisallowInfectedFileDownload $true
-```
-
-**Verify**
-
-```powershell
-Get-AtpPolicyForO365 | Format-List Name, EnableATPForSPOTeamsODB
-Get-SPOTenant | Select-Object DisallowInfectedFileDownload
-```
-
-**Expected**
-
-```text
-Name                    : Default
-EnableATPForSPOTeamsODB : True
-```
+Excluded from ExchangeOnly. The collaboration workload owner handles this independently through RAID-I04. No collaboration-workload setup or write is part of this walkthrough.
 
 ---
 
 ### R-MDO-005 Safe Documents
 
-**Tier: MDO P2.** **Portal** — `https://security.microsoft.com/safeattachmentv2` → Global settings → Safe Documents.
-
-**Set**
-
-```powershell
-Set-AtpPolicyForO365 -EnableSafeDocs $true -AllowSafeDocsOpen $false
-```
-
-`AllowSafeDocsOpen $false` stops a user from leaving Protected View on a file that Safe Documents flagged as malicious. Leaving it `$true` makes the control advisory only.
-
-**Verify**
-
-```powershell
-Get-AtpPolicyForO365 | Format-List EnableSafeDocs, AllowSafeDocsOpen
-```
-
-**Expected**
-
-```text
-EnableSafeDocs    : True
-AllowSafeDocsOpen : False
-```
-
-If the cmdlet returns a licensing error, your tier is below `MDO_P2`. Record the gap and set `messagingTier` accordingly so the control reports `NotEntitled` instead of failing.
+Excluded from ExchangeOnly, not an unlicensed Exchange control. The endpoint/productivity owner handles this independently through RAID-I04. Defender Plan 2 alone does not establish Safe Documents entitlement.
 
 ---
 
 ### R-MDO-006 User submissions
 
-**Portal** — `https://security.microsoft.com/securitysettings/userSubmission`.
+Use the [reporting contract](EXCHANGE-EMAIL-PROTECTION.md#reporting) for the approved mailbox, policy/rule binding, three category routes, feedback and independent delivery observations. Initialize the single reporting policy and rule in the Defender portal user-reported settings before previewing changes. The signed `ReportSubmission` adapter changes existing objects only; `SecOpsOverride` registers only the exact approved mailbox.
 
-**Set**
-
-```powershell
-Set-ReportSubmissionPolicy -Identity DefaultReportSubmissionPolicy `
-    -EnableReportToMicrosoft $true `
-    -ReportJunkToCustomizedAddress $true `
-    -ReportNotJunkToCustomizedAddress $true `
-    -ReportPhishToCustomizedAddress $true
-
-New-ReportSubmissionRule -Name DefaultReportSubmissionRule `
-    -ReportSubmissionPolicy DefaultReportSubmissionPolicy `
-    -SentTo 'secops@contoso.com'
-```
-
-If the rule already exists, use `Set-ReportSubmissionRule` instead of `New-ReportSubmissionRule`.
-
-**Verify**
-
-```powershell
-Get-ReportSubmissionPolicy | Format-List EnableReportToMicrosoft, ReportJunkToCustomizedAddress, ReportPhishToCustomizedAddress
-Get-ReportSubmissionRule | Format-List Name, State, SentTo
-```
-
-**Expected**
-
-```text
-EnableReportToMicrosoft        : True
-ReportJunkToCustomizedAddress  : True
-ReportPhishToCustomizedAddress : True
-
-Name   : DefaultReportSubmissionRule
-State  : Enabled
-SentTo : {secops@contoso.com}
-```
-
-Finish with a functional test: send a benign test message, report it from Outlook, and confirm it lands in `secops@contoso.com` and in Defender portal → Submissions.
+Policy readback alone does not prove delivery. Missing mailbox prerequisites, DLP-owner evidence, Junk/NotJunk/Phish delivery observations or feedback fail the contract. Actual authorized report-delivery acceptance belongs to EXR-016/017; synthetic evidence is offline test evidence only.
 
 ---
 
@@ -706,7 +621,7 @@ Get-TenantAllowBlockListItems -ListType Sender -Allow |
 
 **Portal** — `https://security.microsoft.com/quarantinePolicies` → Global settings.
 
-The Standard and Strict presets already assign Microsoft-managed quarantine policies: `AdminOnlyAccessPolicy` for malware and high-confidence phish, and a limited-access policy for spam and bulk. Do not replace those assignments; doing so recreates `BAD-010` and `BAD-014`. Configure only the global notification settings.
+The Standard and Strict presets assign Microsoft-managed quarantine policies. Malware and high-confidence phish use `AdminOnlyAccessPolicy`; other categories use the full-access policies specified in the current recommendation tables, with notification differences between Standard and Strict. Do not replace preset assignments. A locally approved limited-access policy requires a custom policy outside preset precedence and is not the Microsoft preset recommendation. Configure the approved global notification settings separately.
 
 **Set**
 
@@ -739,17 +654,9 @@ The second command lists `AdminOnlyAccessPolicy` among the policies. Confirm in 
 
 ### R-MDO-009 Priority account protection
 
-**Tier: MDO P2.** **Portal** — Microsoft 365 admin center → Setup → **Priority accounts**, and Defender portal → Settings → Email & collaboration → **User tags**.
+The retained Exchange control checks targeted user/domain impersonation protection, available with Defender for Office 365 P1 or P2. P2 priority-account capabilities and tags are separate and are not proof of impersonation coverage.
 
-**Set** — Tag the same identities that `PriorityUsers@contoso.com` contains. There is no supported Exchange Online cmdlet for user tags; this control is portal-managed.
-
-**Verify** — Export the user tag membership from Defender portal → Settings → Email & collaboration → User tags, and reconcile it against the distribution group:
-
-```powershell
-Get-DistributionGroupMember -Identity 'PriorityUsers@contoso.com' | Select-Object PrimarySmtpAddress
-```
-
-**Expected** — The portal user tag membership and the group membership match exactly. A mismatch means a priority user receives Strict preset protection but no priority-account telemetry, or the reverse.
+Supply approved users and domains in MDO-009. Configure preset impersonation targets through the supported preset wizard, then verify the effective anti-phishing policy for every intended recipient using the [recipient matrix](EXCHANGE-EMAIL-PROTECTION.md#effective-settings). An enabled custom rule cannot override a matching Strict or Standard preset. The `Impersonation` adapter targets the named custom policy; it does not establish effective rule scope or replace preset impersonation configuration. Verify rule binding and scope separately before claiming coverage.
 
 ---
 
@@ -1208,18 +1115,9 @@ Search-UnifiedAuditLog -StartDate (Get-Date).AddDays(-7) -EndDate (Get-Date) `
 
 ### R-OPS-002 Incident exercise
 
-**Tier: MDO P2.** **Portal** — `https://security.microsoft.com/attacksimulator`.
+Run an approved Exchange incident-response tabletop covering detection, triage, authorized containment and communication. The sample 90-day cadence is local policy, not a Microsoft licensing requirement. Tabletop frequency does not require Defender P2.
 
-**Set** — Run a quarterly credential-harvest or attachment simulation against a representative population, or a tabletop covering detection, triage, purge, and communication.
-
-**Verify** — Export the simulation report and confirm: users reported the message, SecOps received the submission, the purge action succeeded, and any action items have owners and due dates.
-
-```powershell
-Get-ComplianceSearchAction | Where-Object { $_.SearchName -match 'phish' } |
-    Select-Object Name, Status, JobEndTime
-```
-
-**Expected** — A completed purge action exists for the exercise, and the exercise record lists closed or scheduled follow-ups.
+Record date, scope, owners, outcomes and tracked actions with owners/due dates. Supply the current approved exercise evidence through the external evidence contract. Attack Simulation Training and AIR require separately verified P2 entitlement and separate authorization; neither is provisioned or inferred from the tabletop record. Do not execute a purge merely to satisfy an offline exercise check.
 
 ---
 

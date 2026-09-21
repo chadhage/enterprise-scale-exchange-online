@@ -13,7 +13,7 @@ Describe 'EXR-010 effective email setting matrix' {
         # Arrange
         $fixture = New-ProtectionFixture
         $target = @($fixture.Raw["Get-${Family}Policy"].Items | Where-Object Name -eq $(if ($Family -eq 'HostedOutboundSpamFilter') { 'Default' } else { 'Standard Preset Security Policy' }))[0]
-        $target[$Field] = 'DRIFT'
+        $target[$Field] = if ($target[$Field] -is [bool]) { -not $target[$Field] } else { 'DRIFT' }
         # Act
         $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
         # Assert
@@ -59,6 +59,12 @@ Describe 'EXR-010 effective email setting matrix' {
     It 'records a licensed effective matrix with a separately approved custom exception' {
         # Arrange
         $fixture = New-ProtectionFixture
+        foreach ($recipient in $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix) {
+            if ($recipient.expectedPolicy -eq 'Default') { $recipient.expectedPolicy = 'Standard Preset Security Policy' }
+        }
+        foreach ($kind in @('EOP','ATP')) {
+            $fixture.Raw["Get-${kind}ProtectionPolicyRule"].ByIdentity['Standard Preset Security Policy'][0].ExceptIfSentTo = @('custom@contoso.example')
+        }
         $fixture.Raw['Get-SafeLinksPolicy'].Items[2].DisableURLRewrite = $true
         $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'custom@contoso.example'; family = 'SafeLinks'; setting = 'DisableURLRewrite'; value = $true
@@ -69,8 +75,8 @@ Describe 'EXR-010 effective email setting matrix' {
         # Assert
         $result.Result.Status | Should -BeExactly ApprovedException
         @($result.Evidence.Value.Matrix).Count | Should -Be 30
-        @($result.Evidence.Value.Matrix | Where-Object { $_.Recipient -eq 'strict@contoso.example' -and $_.Family -ne 'HostedOutboundSpamFilter' } | Select-Object -ExpandProperty Policy -Unique) | Should -Be @('Strict Preset Security Policy')
+        @($result.Evidence.Value.Matrix | Where-Object { $_.Recipient -eq 'strict@contoso.example' -and $_.Family -ne 'HostedOutboundSpamFilter' } | ForEach-Object { $_['Policy'] } | Select-Object -Unique) | Should -Be @('Strict Preset Security Policy')
         @($result.Evidence.Observation | Where-Object Command -eq Get-Recipient).Arguments.ResultSize | Should -BeExactly Unlimited
-        @($result.Evidence.Observation.Command | Where-Object { $_ -match 'Graph|AtpPolicyForO365|Teams|SPO|License' }).Count | Should -Be 0
+        @($result.Evidence.Observation.Command | Where-Object { $_ -match '^[^-]+-(Mg|SPO|Teams)|Graph|AtpPolicyForO365|License' }).Count | Should -Be 0
     }
 }

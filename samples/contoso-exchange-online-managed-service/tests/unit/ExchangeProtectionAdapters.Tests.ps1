@@ -51,6 +51,6 @@ Describe 'EXR-010 supported quarantine mutation surfaces' {
         $phishing.Count | Should -Be 1
         @($content[0].Desired.Keys).Count | Should -Be 5
         $malware[0].Desired.QuarantineTag | Should -BeExactly 'Baseline-AdminOnlyAccess'
-        $phishing[0].Desired.SpoofQuarantineTag | Should -BeExactly 'Baseline-LimitedAccess'
+        $phishing[0].Desired.SpoofQuarantineTag | Should -BeExactly 'Baseline-FullAccess'
     }
 }

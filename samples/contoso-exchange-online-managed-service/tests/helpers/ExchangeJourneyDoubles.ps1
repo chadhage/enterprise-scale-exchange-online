@@ -2,6 +2,7 @@ function Initialize-JourneyDoubles {
     param([hashtable]$InputData, [string]$Fault, [string]$Directory)
     . (Join-Path $script:sampleRoot 'tests/helpers/ApprovedAdapterDoubles.ps1')
     . (Join-Path $script:sampleRoot 'tests/helpers/ExchangeGovernanceRawFixture.ps1')
+    . (Join-Path $script:sampleRoot 'tests/helpers/ExchangeProtectionFixture.ps1')
     Initialize-AdapterDoubles
     $global:journeyState = @{
         Fault = $Fault; Calls = [Collections.Generic.List[string]]::new(); Writes = [Collections.Generic.List[string]]::new()
@@ -27,6 +28,16 @@ function Initialize-JourneyDoubles {
     $shared = $InputData.OperationsMailbox
     $governance.Raw['Get-Mailbox'].Items[0].Identity = $pilot
     $governance.Raw['Get-Mailbox'].Items[0].PrimarySmtpAddress = $pilot
+    $governance.Raw['Get-Mailbox'].Items[0].DeliverToMailboxAndForward = $false
+    $governance.Configuration.controls['MDO-001'].recipientMatrix = @(
+        @{ address = $pilot; defender = $true; level = 'Strict'; expectedPolicy = 'Strict Preset Security Policy' }
+        @{ address = $shared; defender = $true; level = 'Standard'; expectedPolicy = 'Standard Preset Security Policy' }
+    )
+    $parameters.entitlement.recipients = @($pilot,$shared | ForEach-Object { @{ address = $_; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') } })
+    $strictOutbound = (Get-ProtectionReferenceValues Strict).HostedOutboundSpamFilter.Clone()
+    $strictOutbound.Identity = 'Strict outbound'; $strictOutbound.Name = 'Strict outbound'; $strictOutbound.IsDefault = $false
+    $governance.Raw['Get-HostedOutboundSpamFilterPolicy'].Items += $strictOutbound
+    $governance.Raw['Get-HostedOutboundSpamFilterRule'].Items = @(@{ Name = 'Strict outbound'; State = 'Enabled'; Priority = 0; HostedOutboundSpamFilterPolicy = 'Strict outbound'; From = @(); FromMemberOf = @($InputData.PriorityGroup); SenderDomainIs = @(); ExceptIfFrom = @(); ExceptIfFromMemberOf = @(); ExceptIfSenderDomainIs = @() })
     $governance.Configuration.controls['EXO-010'].mailboxPolicies = @(
         @{ mailbox = $pilot; policy = 'Default Role Assignment Policy' }
         @{ mailbox = $shared; policy = 'Default Role Assignment Policy' }
@@ -63,7 +74,8 @@ function Initialize-JourneyDoubles {
     }
     $global:adapterState.OrganizationConfig[0].EwsAllowedAppIDs = @()
     $global:adapterState.OrganizationConfig[0].ElcProcessingDisabled = $false
-    $global:adapterState.HostedOutboundSpamFilterPolicy[0].Name = 'Default'
+    $global:adapterState.HostedOutboundSpamFilterPolicy = @($governance.Raw['Get-HostedOutboundSpamFilterPolicy'].Items | ForEach-Object { $_.Clone() })
+    $global:adapterState.HostedOutboundSpamFilterPolicy[0].AutoForwardingMode = 'On'
     $global:adapterState.CASMailbox[0].Identity = $InputData.Mailboxes[0]
     $global:adapterState.CASMailbox[0].PrimarySmtpAddress = $InputData.Mailboxes[0]
     $global:adapterState.CASMailbox[0].SmtpClientAuthenticationDisabled = $null
@@ -272,6 +284,10 @@ function global:Invoke-JourneyDouble {
             return
         }
         'Get-Recipient' {
+            $pilot = $state.Raw['Get-Mailbox'].Items[0].Clone()
+            $pilot.RecipientTypeDetails = 'UserMailbox'
+            $pilot.EmailAddresses = @('smtp:' + $pilot.PrimarySmtpAddress)
+            [pscustomobject]$pilot
             if ($state.Shared) { [pscustomobject]($state.Shared + @{ EmailAddresses = @('smtp:' + $state.Shared.PrimarySmtpAddress) }) }
             if ($state.Group) { [pscustomobject]($state.Group + @{ EmailAddresses = @('smtp:' + $state.Group.PrimarySmtpAddress) }) }
             if ($state.Fault -eq 'SharedCollision') { [pscustomobject]@{ PrimarySmtpAddress = $state.InputData.OperationsMailbox; RecipientTypeDetails = 'MailContact'; EmailAddresses = @() } }
@@ -282,6 +298,7 @@ function global:Invoke-JourneyDouble {
             if ($state.Shared -or $Bound.PrimarySmtpAddress -ne $state.InputData.OperationsMailbox) { throw 'Offline unexpected mailbox create' }
             $state.Writes.Add($Name)
             $state.Shared = @{ Identity = $Bound.PrimarySmtpAddress; PrimarySmtpAddress = $Bound.PrimarySmtpAddress; RecipientTypeDetails = $(if ($state.Fault -eq 'SharedReadback') { 'UserMailbox' } else { 'SharedMailbox' }); ForwardingAddress = $null; ForwardingSmtpAddress = $null; RetentionPolicy = $state.Raw['Get-Mailbox'].Items[0].RetentionPolicy; LitigationHoldEnabled = $false }
+            $state.Shared.DeliverToMailboxAndForward = $false
             foreach ($property in @('RoleAssignmentPolicy','RetentionHoldEnabled','ElcProcessingDisabled','ArchiveStatus','RecoverableItemsQuota')) {
                 $state.Shared[$property] = $state.Raw['Get-Mailbox'].Items[0][$property]
             }
@@ -302,8 +319,8 @@ function global:Invoke-JourneyDouble {
         }
         'Get-DistributionGroup' { if ($state.Group) { [pscustomobject]$state.Group.Clone() }; return }
         'Get-DistributionGroupMember' {
-            foreach ($member in $state.Members) { [pscustomobject]@{ PrimarySmtpAddress = $member } }
-            if ($state.Fault -eq 'ExtraMember') { [pscustomobject]@{ PrimarySmtpAddress = 'surplus@contoso.example' } }
+            foreach ($member in $state.Members) { [pscustomobject]@{ PrimarySmtpAddress = $member; RecipientType = 'UserMailbox' } }
+            if ($state.Fault -eq 'ExtraMember') { [pscustomobject]@{ PrimarySmtpAddress = 'surplus@contoso.example'; RecipientType = 'UserMailbox' } }
             return
         }
         'Add-DistributionGroupMember' {
@@ -363,8 +380,8 @@ function Invoke-JourneyPortalInitialization {
     if ($state.Fault -eq 'PresetMissing') { return }
     foreach ($noun in 'EOPProtectionPolicyRule','ATPProtectionPolicyRule') {
         $global:adapterState[$noun] = @(
-            @{ Identity = 'Standard Preset Security Policy'; State = $(if ($state.Fault -eq 'PresetDisabled') { 'Disabled' } else { 'Enabled' }); SentTo = @(); RecipientDomainIs = @($state.InputData.Domain); ExceptIfSentToMemberOf = @(); ExceptIfSentTo = @() }
-            @{ Identity = 'Strict Preset Security Policy'; State = 'Enabled'; SentToMemberOf = @($state.InputData.PriorityGroup); SentTo = @(); RecipientDomainIs = @() }
+            @{ Identity = 'Standard Preset Security Policy'; State = $(if ($state.Fault -eq 'PresetDisabled') { 'Disabled' } else { 'Enabled' }); SentTo = @(); SentToMemberOf = @(); RecipientDomainIs = @($state.InputData.Domain); ExceptIfSentToMemberOf = @(); ExceptIfSentTo = @(); ExceptIfRecipientDomainIs = @() }
+            @{ Identity = 'Strict Preset Security Policy'; State = 'Enabled'; SentToMemberOf = @($state.InputData.PriorityGroup); SentTo = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
         )
     }
     $state.PortalInitialized = $true

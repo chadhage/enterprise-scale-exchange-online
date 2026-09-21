@@ -57,5 +57,8 @@ function New-ExchangeGovernanceRawFixture {
     $flows = @(@{ Class = 'LegalAdvice'; Recipient = $mailbox; Protected = $true; AuthorizedDecryption = $true; UnauthorizedRejected = $true; EvidenceReference = 'SYNTHETIC-OFFLINE-RECIPIENT-FLOW'; ObservedAtUtc = [datetimeoffset]::UtcNow.AddHours(-1).ToString('o') })
     $raw['Get-TransportRule'].Items[0].Conditions = @(@{ Name = 'HeaderContains' },@{ Name = 'SentTo' })
     $raw['Get-TransportRule'].Items[0].Exceptions = @()
-    @{ Raw = $raw; Configuration = $configuration; RecipientFlows = $flows }
+    $fixture = @{ Raw = $raw; Configuration = $configuration; RecipientFlows = $flows }
+    . (Join-Path $PSScriptRoot 'ExchangeProtectionFixture.ps1')
+    Add-ProtectionGovernanceFixture $fixture $Parameters
+    $fixture
 }
