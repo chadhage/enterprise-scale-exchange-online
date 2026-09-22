@@ -1402,7 +1402,7 @@ $runtimeMutationPlan = @($MutationPlan | ForEach-Object {
     $entry
 })
 if ($selectedProfile -ceq 'ExchangeOnly') {
-    $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -ForActionPlanning
     $runtimeMutationPlan = @($runtimeMutationPlan | Where-Object { $_.OperationId -notlike 'pp-*' -and $_.OperationId -cne 'mdo-atp-policy-o365' })
     $null = Assert-BaselineExchangeMutationPlan -Operation $runtimeMutationPlan
     if (-not $Apply) {

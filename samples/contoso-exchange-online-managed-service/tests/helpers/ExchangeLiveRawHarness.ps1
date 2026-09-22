@@ -25,6 +25,7 @@ foreach ($name in $global:ExchangeLiveRaw.Keys) {
         'Get-MailboxStatistics' { '$Identity, [switch]$IncludeSoftDeletedRecipients' }
         'Export-MailboxDiagnosticLogs' { '$Identity, [switch]$ExtendedProperties, $ResultSize' }
         'Get-TransportRule' { '$Identity, $ResultSize' }
+        'Get-AcceptedDomain' { '$Identity, $ResultSize' }
         'Get-QuarantinePolicy' { '$Identity, $QuarantinePolicyType' }
         'Get-ExoSecOpsOverrideRule' { '$Identity, $Policy' }
         { $_ -in @('Get-CASMailbox','Get-CASMailboxPlan','Get-MailboxAuditBypassAssociation','Get-RemoteDomain','Get-RoleGroup','Get-RoleGroupMember','Get-DistributionGroup','Get-Recipient','Get-DistributionGroupMember') } { '$Identity, $ResultSize' }

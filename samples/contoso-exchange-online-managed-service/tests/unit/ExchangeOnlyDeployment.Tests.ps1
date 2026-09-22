@@ -10,6 +10,69 @@ BeforeAll {
 }
 
 Describe 'EXR-001 Exchange-only deployment boundary' {
+    It 'refuses actionable preview for conflicting primary InternalRelay without <MissingField>' -TestCases @(
+        @{ MissingField = 'source' }
+        @{ MissingField = 'topologyApproval' }
+    ) {
+        param($MissingField)
+
+        # Arrange
+        $conflictingParameters = $parameters | ConvertTo-Json -Depth 30 | ConvertFrom-Json -AsHashtable -DateKind String
+        $primary = @($conflictingParameters.domainInventory.domains | Where-Object domainName -EQ $conflictingParameters.PRIMARY_SMTP_DOMAIN)[0]
+        $primary.domainType = 'InternalRelay'
+        $primary.topologyApproval = @{ owner = 'Synthetic routing owner'; reference = 'fixture:split-routing'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+        $conflictingParameters.domainInventory.source.suppliedAtUtc = [datetimeoffset]::UtcNow.AddMinutes(-5).ToString('o')
+        if ($MissingField -eq 'source') { $conflictingParameters.domainInventory.Remove('source') }
+        else { $primary.Remove('topologyApproval') }
+        $conflictPath = Join-Path $TestDrive "conflicting-topology-without-$MissingField.json"
+        $conflictingParameters | ConvertTo-Json -Depth 30 | Set-Content $conflictPath
+        $configurationPath = Join-Path $sampleRoot 'config/exchange-only.v1.json'
+        $harness = Join-Path $sampleRoot 'tests/helpers/ExchangeOnlyPublicHarness.ps1'
+        $calls = Join-Path $TestDrive "conflicting-topology-without-$MissingField.calls"
+        $outputPath = Join-Path $TestDrive "conflicting-topology-without-$MissingField-output"
+
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $conflictPath $outputPath $calls -ConfigurationPath $configurationPath -Deployment 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+
+        # Assert
+        Test-Path $calls | Should -BeFalse
+        $output | Should -Not -Match 'ParameterBinding|parameter cannot be found|ExchangeSchemaInvalid'
+        ($output -match '"Status"\s*:\s*"Planned"') | Should -BeFalse -Because "conflicting inventory without $MissingField must be refused before actionable preview (observed exit $exitCode)"
+        $exitCode | Should -Not -Be 0 -Because 'invalid inventory must not bypass the topology conflict refusal'
+        $output | Should -Match 'DomainInventory'
+        $output | Should -Not -Match 'ExchangeOnlyPlan'
+        Test-Path $outputPath | Should -BeFalse
+    }
+
+    It 'refuses actionable preview when approved primary InternalRelay conflicts with configured Authoritative' {
+        # Arrange
+        $conflictingParameters = $parameters | ConvertTo-Json -Depth 30 | ConvertFrom-Json -AsHashtable -DateKind String
+        $primary = @($conflictingParameters.domainInventory.domains | Where-Object domainName -EQ $conflictingParameters.PRIMARY_SMTP_DOMAIN)[0]
+        $primary.domainType = 'InternalRelay'
+        $primary.topologyApproval = @{ owner = 'Synthetic routing owner'; reference = 'fixture:split-routing'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+        $conflictingParameters.domainInventory.source.suppliedAtUtc = [datetimeoffset]::UtcNow.AddMinutes(-5).ToString('o')
+        $conflictPath = Join-Path $TestDrive 'conflicting-topology.json'
+        $conflictingParameters | ConvertTo-Json -Depth 30 | Set-Content $conflictPath
+        $configurationPath = Join-Path $sampleRoot 'config/exchange-only.v1.json'
+        $harness = Join-Path $sampleRoot 'tests/helpers/ExchangeOnlyPublicHarness.ps1'
+        $calls = Join-Path $TestDrive 'conflicting-topology.calls'
+        $outputPath = Join-Path $TestDrive 'conflicting-topology-output'
+
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $conflictPath $outputPath $calls -ConfigurationPath $configurationPath -Deployment 2>&1 | Out-String
+        $exitCode = $LASTEXITCODE
+
+        # Assert
+        Test-Path $calls | Should -BeFalse
+        $output | Should -Not -Match 'ParameterBinding|parameter cannot be found|ExchangeSchemaInvalid'
+        ($output -match '"Status"\s*:\s*"Planned"') | Should -BeFalse -Because 'a conflicting inventory must not yield an actionable public preview'
+        $exitCode | Should -Not -Be 0 -Because 'contradictory approved and configured topology must be refused before planning'
+        $output | Should -Match 'DomainInventory.*(conflict|topology)|topology.*(conflict|configur)'
+        $output | Should -Not -Match '"Status"\s*:\s*"Planned"'
+        Test-Path $outputPath | Should -BeFalse
+    }
+
     It 'refuses schema-invalid resolved parameters before any connection, collection or plan' {
         # Arrange
         $invalidParameters = $parameters.Clone()

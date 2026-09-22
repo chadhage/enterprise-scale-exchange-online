@@ -5,7 +5,10 @@ function New-ExchangeLiveRawFixture {
     $priority = $Parameters.MAIL_ENABLED_PRIORITY_USERS_GROUP
     $retention = $Parameters.MAILBOX_RETENTION_POLICY_NAME
     @{
-        'Get-AcceptedDomain' = @{ Items = @(@{ Identity = $domain; Name = $domain; DomainName = $domain; DomainType = 'Authoritative' }) }
+        'Get-AcceptedDomain' = @{ Items = @(
+            @{ Identity = $domain; Name = $domain; DomainName = $domain; DomainType = 'Authoritative' }
+            @{ Identity = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; Name = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; DomainName = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; DomainType = 'Authoritative' }
+        ) }
         'Get-TransportConfig' = @{ Items = @(@{ Identity = 'Transport Settings'; SmtpClientAuthenticationDisabled = $true; ExternalPostmasterAddress = $Parameters.EXTERNAL_POSTMASTER_SMTP_ADDRESS }) }
         'Get-CASMailbox' = @{ Items = @(@{ Identity = 'Mailbox One'; PrimarySmtpAddress = "user@$domain"; SmtpClientAuthenticationDisabled = $null; PopEnabled = $false; ImapEnabled = $false; EwsEnabled = $null; EwsApplicationAccessPolicy = $null; EwsAllowList = @() }) }
         'Get-HostedOutboundSpamFilterPolicy' = @{ Items = @(@{ Identity = 'Default'; Name = 'Default'; AutoForwardingMode = 'Off' }) }

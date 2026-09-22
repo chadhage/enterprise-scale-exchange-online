@@ -8,17 +8,22 @@ function global:Import-Module {
     Microsoft.PowerShell.Core\Import-Module $Name -Force:$Force -DisableNameChecking:$DisableNameChecking
 }
 function global:Connect-ExchangeOnline { param($ShowBanner) Add-Content $global:ExchangeOnlyCallPath 'Connect-ExchangeOnline' }
-foreach ($name in @('Connect-MgGraph','Invoke-MgGraphRequest','Get-AtpPolicyForO365','Set-AtpPolicyForO365','Get-DlpCompliancePolicy','Get-DlpComplianceRule','Get-RetentionCompliancePolicy','Get-UnifiedAuditLogRetentionPolicy','Get-AdminAuditLogConfig','Search-UnifiedAuditLog','Get-Label','Get-LabelPolicy','Get-ComplianceCase','Get-Recipient','Resolve-DnsName','Connect-IPPSSession','Get-MgRoleManagementDirectoryRoleEligibilityScheduleInstance','Get-MgIdentityGovernanceAccessReviewDefinition')) {
+foreach ($name in @('Connect-MgGraph','Invoke-MgGraphRequest','Get-AtpPolicyForO365','Set-AtpPolicyForO365','Get-DlpCompliancePolicy','Get-DlpComplianceRule','Get-RetentionCompliancePolicy','Get-UnifiedAuditLogRetentionPolicy','Get-AdminAuditLogConfig','Search-UnifiedAuditLog','Get-Label','Get-LabelPolicy','Get-ComplianceCase','Resolve-DnsName','Connect-IPPSSession','Get-MgRoleManagementDirectoryRoleEligibilityScheduleInstance','Get-MgIdentityGovernanceAccessReviewDefinition')) {
     Set-Item "function:global:$name" ([scriptblock]::Create("Add-Content `$global:ExchangeOnlyCallPath 'EXCLUDED:$name'; throw 'ExcludedServiceCalled:$name'"))
 }
-foreach ($name in @('Get-AcceptedDomain','Get-TransportConfig','Get-CASMailbox','Get-HostedOutboundSpamFilterPolicy','Get-Mailbox','Get-InboxRule','Get-OrganizationConfig','Get-MailboxAuditBypassAssociation','Get-ExternalInOutlook','Get-RemoteDomain','Get-CASMailboxPlan','Get-RoleGroup','Get-RoleGroupMember','Get-ManagementRoleAssignment','Get-RoleAssignmentPolicy','Get-EOPProtectionPolicyRule','Get-ATPProtectionPolicyRule','Get-ATPBuiltInProtectionRule','Get-ReportSubmissionPolicy','Get-SecOpsOverridePolicy','Get-TenantAllowBlockListItems','Get-QuarantinePolicy','Get-HostedContentFilterPolicy','Get-MalwareFilterPolicy','Get-AntiPhishPolicy','Get-InboundConnector','Get-DkimSigningConfig','Get-RetentionPolicy','Get-IRMConfiguration','Test-IRMConfiguration','Get-DistributionGroup')) {
+foreach ($name in @('Get-AcceptedDomain','Get-TransportConfig','Get-CASMailbox','Get-HostedOutboundSpamFilterPolicy','Get-Mailbox','Get-InboxRule','Get-OrganizationConfig','Get-MailboxAuditBypassAssociation','Get-ExternalInOutlook','Get-RemoteDomain','Get-CASMailboxPlan','Get-RoleGroup','Get-RoleGroupMember','Get-ManagementRoleAssignment','Get-RoleAssignmentPolicy','Get-EOPProtectionPolicyRule','Get-ATPProtectionPolicyRule','Get-ATPBuiltInProtectionRule','Get-ReportSubmissionPolicy','Get-SecOpsOverridePolicy','Get-TenantAllowBlockListItems','Get-QuarantinePolicy','Get-HostedContentFilterPolicy','Get-MalwareFilterPolicy','Get-AntiPhishPolicy','Get-InboundConnector','Get-DkimSigningConfig','Get-RetentionPolicy','Get-IRMConfiguration','Test-IRMConfiguration','Get-DistributionGroup','Get-Recipient')) {
     Set-Item "function:global:$name" ([scriptblock]::Create("Add-Content `$global:ExchangeOnlyCallPath '$name'; throw 'SyntheticCollectionUnavailable:$name'"))
 }
 if ($RawExchange) {
+    $global:ExchangeOnlyRawParameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json
     function global:Get-AcceptedDomain {
-        param($Identity, $ErrorAction)
+        param($Identity, $ResultSize, $ErrorAction)
         Add-Content $global:ExchangeOnlyCallPath 'Get-AcceptedDomain'
-        [pscustomobject]@{ Name = $Identity; DomainName = $Identity; DomainType = 'Authoritative' }
+        foreach ($domain in @($global:ExchangeOnlyRawParameters.PRIMARY_SMTP_DOMAIN, $global:ExchangeOnlyRawParameters.INITIAL_ONMICROSOFT_DOMAIN)) {
+            if (-not $Identity -or $domain -eq $Identity) {
+                [pscustomobject]@{ Name = $domain; DomainName = $domain; DomainType = 'Authoritative' }
+            }
+        }
     }
 }
 $arguments = @{ ParameterPath = $ParameterPath }

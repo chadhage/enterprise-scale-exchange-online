@@ -4280,7 +4280,7 @@ function Invoke-BaselineApprovedChange {
     )
     $ErrorActionPreference = 'Stop'
     $ArtifactRoot = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($ArtifactRoot)
-    $context = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    $context = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -ForActionPlanning
     if ('EXCHANGE_S_ENTERPRISE' -cnotin @($context.Entitlement.servicePlans)) { throw 'ExchangeApplyNotEntitled: Exchange entitlement is required.' }
     $tenant = [string]$context.Parameters.MICROSOFT_ENTRA_TENANT_GUID
     $paths = @{}
@@ -6697,6 +6697,10 @@ function Invoke-BaselineExchangeRawCollection {
             }
             if ($IdentityProperty) {
                 $identity = [string](Get-BaselineRecordMember -Node $item -Name $IdentityProperty)
+                if ($Command -eq 'Get-AcceptedDomain' -and $IdentityProperty -eq 'DomainName') {
+                    try { $identity = ConvertTo-BaselineInventoryDomainName -Value $identity }
+                    catch { throw "ExchangeRawIdentityInvalid: '$Command.DomainName': $($_.Exception.Message)" }
+                }
                 if ([string]::IsNullOrWhiteSpace($identity) -or -not $identities.Add($identity.Trim())) { throw "ExchangeRawIdentityInvalid: '$Command' returned an absent or duplicate '$IdentityProperty'." }
             }
         }
@@ -6758,7 +6762,12 @@ function Invoke-BaselineExchangeRegistry {
             }
             else {
                 switch ($controlId) {
-                    'EXO-001' { $collectorArguments = @{ Collection = { Invoke-BaselineExchangeRawCollection -Command Get-AcceptedDomain -Arguments @{ Identity = $domain } -RequiredProperty Name,DomainName,DomainType -IdentityProperty DomainName -MinimumCount 1 -MaximumCount 1 -Observation $observations } }; $evaluatorArguments = @{ ExpectedDomain = @($domain) } }
+                    'EXO-001' {
+                        $inventoryError = Get-BaselineRecordMember -Node $Context -Name DomainInventoryValidationError
+                        if ($inventoryError) { throw $inventoryError }
+                        $collectorArguments = @{ Collection = { Invoke-BaselineExchangeRawCollection -Command Get-AcceptedDomain -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty Name,DomainName,DomainType -IdentityProperty DomainName -Observation $observations } }
+                        $evaluatorArguments = @{ DomainInventory = (Get-BaselineRecordMember -Node $parameters -Name domainInventory); TenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID; InitialDomain = (Get-BaselineRecordMember -Node $parameters -Name INITIAL_ONMICROSOFT_DOMAIN); PrimaryDomain = $domain }
+                    }
                     'EXO-002' { $collectorArguments = @{ TransportConfigCollection = { Invoke-BaselineExchangeRawCollection -Command Get-TransportConfig -RequiredProperty SmtpClientAuthenticationDisabled -MinimumCount 1 -MaximumCount 1 -Observation $observations }; CasMailboxCollection = { Invoke-BaselineExchangeRawCollection -Command Get-CASMailbox -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty Identity,SmtpClientAuthenticationDisabled -IdentityProperty Identity -MinimumCount 1 -Observation $observations } } }
                     'EXO-004' {
                         $collectorArguments = @{
@@ -6873,6 +6882,7 @@ function Invoke-BaselineExchangeRegistry {
                 $evidence = & $collector @collectorArguments
                 $evaluatorArguments.Evidence = $evidence
                 $result = & $evaluator @evaluatorArguments
+                if ($controlId -eq 'EXO-001' -and $null -ne $result.Evidence) { $evidence = $result.Evidence }
                 if ($null -eq $result -or [string]$result.ControlId -cne $controlId -or [string]$result.Status -cnotin @('Pass','Fail','Error','NotEntitled','Unverified','ApprovedException')) {
                     throw "ExchangeEvaluatorContractInvalid: '$controlId' returned an invalid result."
                 }
@@ -6944,8 +6954,174 @@ function Test-BaselineReportingState {
     } catch { @{ Status = 'Fail'; Reason = $_.Exception.Message; ExternalReadiness = 'Unverified' } }
 }
 
+function Assert-BaselineEmailCatalogJsonKeys {
+    param([System.Text.Json.JsonElement]$Element)
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($property in $Element.EnumerateObject()) {
+            if (-not $names.Add($property.Name)) { throw "EmailCatalogDuplicate: '$($property.Name)' occurs more than once." }
+            Assert-BaselineEmailCatalogJsonKeys $property.Value
+        }
+    } elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        foreach ($item in $Element.EnumerateArray()) { Assert-BaselineEmailCatalogJsonKeys $item }
+    }
+}
+
+function Get-BaselineEmailCatalogContract {
+    $families = @{
+        MalwareFilter = @{
+            Section = 'Anti-malware policy settings'; Plan = 'Exchange'
+            Local = @{ EnableInternalSenderAdminNotifications = [bool]; InternalSenderAdminAddress = [string]; EnableExternalSenderAdminNotifications = [bool]; ExternalSenderAdminAddress = [string]; CustomNotifications = [bool]; CustomFromName = [string]; CustomFromAddress = [string]; CustomInternalSubject = [string]; CustomInternalBody = [string]; CustomExternalSubject = [string]; CustomExternalBody = [string] }
+            Standard = @{
+                EnableFileFilter = $true; FileTypeAction = 'Reject'; ZapEnabled = $true; QuarantineTag = 'AdminOnlyAccessPolicy'
+                FileTypes = @('ace','ani','apk','app','appx','arj','bat','cab','cmd','com','deb','dex','dll','docm','elf','exe','hta','img','iso','jar','jnlp','kext','lha','lib','library','lnk','lzh','macho','msc','msi','msix','msp','mst','pif','ppa','ppam','reg','rev','scf','scr','sct','sys','uif','vb','vbe','vbs','vxd','wsc','wsf','wsh','xll','xz','z')
+            }
+            Strict = @{}
+        }
+        HostedContentFilter = @{
+            Section = 'Anti-spam policy settings / ASF settings in anti-spam policies'; Plan = 'Exchange'
+            Local = @{ EnableLanguageBlockList = [bool]; LanguageBlockList = [array]; EnableRegionBlockList = [bool]; RegionBlockList = [array] }
+            Standard = @{
+                BulkThreshold = 6; MarkAsSpamBulkMail = 'On'; SpamAction = 'MoveToJmf'; SpamQuarantineTag = 'DefaultFullAccessPolicy'
+                HighConfidenceSpamAction = 'Quarantine'; HighConfidenceSpamQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                PhishSpamAction = 'Quarantine'; PhishQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                HighConfidencePhishAction = 'Quarantine'; HighConfidencePhishQuarantineTag = 'AdminOnlyAccessPolicy'
+                BulkSpamAction = 'MoveToJmf'; BulkQuarantineTag = 'DefaultFullAccessPolicy'; BulkMovesEnabled = 'NotSet'; IntraOrgFilterState = 'Default'
+                QuarantineRetentionPeriod = 30; InlineSafetyTipsEnabled = $true; PhishZapEnabled = $true; SpamZapEnabled = $true
+                AllowedSenders = @(); AllowedSenderDomains = @(); BlockedSenders = @(); BlockedSenderDomains = @(); TestModeAction = 'None'
+                IncreaseScoreWithImageLinks = 'Off'; IncreaseScoreWithNumericIps = 'Off'; IncreaseScoreWithRedirectToOtherPort = 'Off'; IncreaseScoreWithBizOrInfoUrls = 'Off'
+                MarkAsSpamEmptyMessages = 'Off'; MarkAsSpamEmbedTagsInHtml = 'Off'; MarkAsSpamJavaScriptInHtml = 'Off'; MarkAsSpamFormTagsInHtml = 'Off'; MarkAsSpamFramesInHtml = 'Off'
+                MarkAsSpamWebBugsInHtml = 'Off'; MarkAsSpamObjectTagsInHtml = 'Off'; MarkAsSpamSensitiveWordList = 'Off'; MarkAsSpamSpfRecordHardFail = 'Off'; MarkAsSpamFromAddressAuthFail = 'Off'; MarkAsSpamNdrBackscatter = 'Off'
+            }
+            Strict = @{ BulkThreshold = 5; SpamAction = 'Quarantine'; SpamQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; BulkSpamAction = 'Quarantine'; BulkQuarantineTag = 'DefaultFullAccessWithNotificationPolicy' }
+        }
+        HostedOutboundSpamFilter = @{
+            Section = 'Outbound spam policy settings'; Plan = 'Exchange'; Local = @{}
+            Standard = @{ RecipientLimitExternalPerHour = 500; RecipientLimitInternalPerHour = 1000; RecipientLimitPerDay = 1000; ActionWhenThresholdReached = 'BlockUser'; AutoForwardingMode = 'Off'; BccSuspiciousOutboundMail = $false; BccSuspiciousOutboundAdditionalRecipients = @(); NotifyOutboundSpam = $false; NotifyOutboundSpamRecipients = @() }
+            Strict = @{ RecipientLimitExternalPerHour = 400; RecipientLimitInternalPerHour = 800; RecipientLimitPerDay = 800 }
+        }
+        AntiPhish = @{
+            Section = 'Anti-phishing policy settings for all cloud mailboxes / Impersonation settings / Phishing email thresholds'; Plan = 'ExchangeAndDefender'
+            Local = @{ TargetedUsersToProtect = [array]; TargetedDomainsToProtect = [array]; ExcludedSenders = [array]; ExcludedDomains = [array] }
+            DefenderFields = @('PhishThresholdLevel','EnableTargetedUserProtection','EnableOrganizationDomainsProtection','EnableTargetedDomainsProtection','TargetedUsersToProtect','TargetedDomainsToProtect','ExcludedSenders','ExcludedDomains','EnableMailboxIntelligence','EnableMailboxIntelligenceProtection','TargetedUserProtectionAction','TargetedDomainProtectionAction','TargetedUserQuarantineTag','TargetedDomainQuarantineTag','MailboxIntelligenceProtectionAction','MailboxIntelligenceQuarantineTag','EnableSimilarUsersSafetyTips','EnableSimilarDomainsSafetyTips','EnableUnusualCharactersSafetyTips')
+            Standard = @{
+                EnableSpoofIntelligence = $true; HonorDmarcPolicy = $true; DmarcQuarantineAction = 'Quarantine'; DmarcRejectAction = 'Reject'
+                AuthenticationFailAction = 'MoveToJmf'; SpoofQuarantineTag = 'DefaultFullAccessPolicy'; EnableFirstContactSafetyTips = $true; EnableUnauthenticatedSender = $true; EnableViaTag = $true
+                PhishThresholdLevel = 3; EnableTargetedUserProtection = $true; EnableOrganizationDomainsProtection = $true; EnableTargetedDomainsProtection = $true
+                EnableMailboxIntelligence = $true; EnableMailboxIntelligenceProtection = $true; TargetedUserProtectionAction = 'Quarantine'; TargetedDomainProtectionAction = 'Quarantine'
+                TargetedUserQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; TargetedDomainQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                MailboxIntelligenceProtectionAction = 'MoveToJmf'; MailboxIntelligenceQuarantineTag = 'DefaultFullAccessPolicy'
+                EnableSimilarUsersSafetyTips = $true; EnableSimilarDomainsSafetyTips = $true; EnableUnusualCharactersSafetyTips = $true
+            }
+            Strict = @{ PhishThresholdLevel = 4; AuthenticationFailAction = 'Quarantine'; SpoofQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; MailboxIntelligenceProtectionAction = 'Quarantine'; MailboxIntelligenceQuarantineTag = 'DefaultFullAccessWithNotificationPolicy' }
+        }
+        SafeAttachment = @{
+            Section = 'Safe Attachments policy settings'; Plan = 'Defender'; Local = @{}
+            Standard = @{ Enable = $true; Action = 'Block'; QuarantineTag = 'AdminOnlyAccessPolicy'; Redirect = $false; RedirectAddress = ''; EnableBlockingEncryptedAttachments = $false; ExcludedTypesFromBlockingEncryptedAttachments = @(); QuarantineTagForBlockingEncryptedAttachments = 'DefaultFullAccessWithNotificationPolicy' }
+            Strict = @{}; BuiltIn = @{}
+        }
+        SafeLinks = @{
+            Section = 'Safe Links policy settings (Email and Click protection only)'; Plan = 'Defender'
+            Local = @{ DoNotRewriteUrls = [array]; EnableOrganizationBranding = [bool]; CustomNotificationText = [string]; UseTranslatedNotificationText = [bool] }
+            Standard = @{ EnableSafeLinksForEmail = $true; EnableForInternalSenders = $true; ScanUrls = $true; DeliverMessageAfterScan = $true; DisableURLRewrite = $false; TrackClicks = $true; AllowClickThrough = $false }
+            Strict = @{}; BuiltIn = @{ EnableForInternalSenders = $false; DisableURLRewrite = $true; AllowClickThrough = $true }
+        }
+    }
+    @{
+        Metadata = @{
+            Version = '1.0.0'
+            Source = 'https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365'
+            SourceCommit = '379db33154f4d944dbb33fce80576aff5296dfbf'
+            FileTypesSource = 'https://learn.microsoft.com/defender-office-365/anti-malware-protection-about#common-attachments-filter-in-anti-malware-policies'
+            FileTypesSourceCommit = 'a303cf1b405a37ff173ff70117802d92b98ccc05'
+            FileTypesSourceSha256 = '95D86CFB11658B9058F3ADDD54300F33D0764F1FCE4B938A8FA67085792FFCC8'
+        }
+        Excluded = @('EnableATPForSPOTeamsODB','EnableSafeDocs','AllowSafeDocsOpen','EnableSafeLinksForTeams','EnableSafeLinksForOffice','TeamsProtectionPolicy')
+        Families = $families
+    }
+}
+
+function Assert-BaselineEmailCatalogMembers {
+    param($Value, [string[]]$Required, [string[]]$Allowed, [string]$Path)
+    if ($Value -isnot [Collections.IDictionary]) { throw "EmailCatalogShape: '$Path' requires an object." }
+    foreach ($name in $Required) {
+        if ($name -cnotin @($Value.Keys)) { throw "EmailCatalogMissing: '$Path/$name' is required." }
+    }
+    foreach ($name in $Value.Keys) {
+        if ($name -cnotin $Allowed) { throw "EmailCatalogUnsupported: '$Path/$name' is unsupported." }
+    }
+}
+
+function Assert-BaselineEmailCatalogSet {
+    param($Value, [string[]]$Expected, [string]$Path)
+    if ($Value -isnot [array]) { throw "EmailCatalogType: '$Path' requires a string array." }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($item in $Value) {
+        if ($item -isnot [string] -or -not $seen.Add($item) -or $item -cnotin $Expected) { throw "EmailCatalogSet: '$Path/$item' is duplicated or unsupported." }
+    }
+    foreach ($item in $Expected) {
+        if ($item -cnotin $Value) { throw "EmailCatalogMissing: '$Path/$item' is required." }
+    }
+}
+
+function Assert-BaselineEmailCatalog {
+    param($Catalog)
+    $contract = Get-BaselineEmailCatalogContract
+    $rootKeys = @($contract.Metadata.Keys) + @('ReviewedOn','Excluded','Families')
+    Assert-BaselineEmailCatalogMembers $Catalog $rootKeys $rootKeys 'Catalogue'
+    foreach ($name in $contract.Metadata.Keys) {
+        if ($Catalog[$name] -isnot [string] -or $Catalog[$name] -cne $contract.Metadata[$name]) { throw "EmailCatalogSource: '$name' is not bound to the reviewed snapshot." }
+    }
+    $reviewed = [datetime]::MinValue
+    if ($Catalog.ReviewedOn -isnot [string] -or
+        -not [datetime]::TryParseExact($Catalog.ReviewedOn, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$reviewed) -or
+        $reviewed -lt [datetime]'2026-08-10' -or $reviewed -gt [datetime]::UtcNow.Date) { throw 'EmailCatalogSource: ReviewedOn must date the pinned snapshot review, not predate it or be in the future.' }
+    Assert-BaselineEmailCatalogSet $Catalog.Excluded $contract.Excluded 'Excluded'
+    Assert-BaselineEmailCatalogMembers $Catalog.Families @($contract.Families.Keys) @($contract.Families.Keys) 'Families'
+    foreach ($family in $contract.Families.Keys) {
+        $reference = $contract.Families[$family]
+        $definition = $Catalog.Families[$family]
+        Assert-BaselineEmailCatalogMembers $definition @($reference.Keys) @($reference.Keys) $family
+        foreach ($name in @('Section','Plan')) {
+            if ($definition[$name] -isnot [string] -or $definition[$name] -cne $reference[$name]) { throw "EmailCatalogApplicability: '$family/$name' is not source-bound." }
+        }
+        Assert-BaselineEmailCatalogSet $definition.Local @($reference.Local.Keys) "$family/Local"
+        if ($reference.ContainsKey('DefenderFields')) { Assert-BaselineEmailCatalogSet $definition.DefenderFields $reference.DefenderFields "$family/DefenderFields" }
+        $fields = @($reference.Standard.Keys) + @($reference.Local.Keys)
+        $profiles = @('Standard','Strict')
+        if ($reference.ContainsKey('BuiltIn')) { $profiles += 'BuiltIn' }
+        foreach ($profile in $profiles) {
+            $required = if ($profile -eq 'Standard') { $fields } else { @($reference[$profile].Keys) }
+            $values = $definition[$profile]
+            Assert-BaselineEmailCatalogMembers $values @($required) $fields "$family/$profile"
+            foreach ($field in $values.Keys) {
+                $local = $reference.Local.ContainsKey($field)
+                $expected = $reference.Standard[$field]
+                if ($profile -ne 'Standard' -and $reference[$profile].ContainsKey($field)) { $expected = $reference[$profile][$field] }
+                $type = if ($local) { $reference.Local[$field] } elseif ($expected -is [array]) { [array] } else { $expected.GetType() }
+                $actual = $values[$field]
+                $valid = if ($type -eq [int]) { $actual -is [int] -or $actual -is [long] } else { $type.IsInstanceOfType($actual) }
+                if ($valid -and $type -eq [array]) {
+                    foreach ($item in $actual) { if ($item -isnot [string]) { $valid = $false; break } }
+                }
+                if (-not $valid) { throw "EmailCatalogType: '$family/$profile/$field' requires $($type.Name) (string members for arrays)." }
+                if (-not $local) {
+                    if ($type -eq [array]) { Assert-BaselineEmailCatalogSet $actual $expected "$family/$profile/$field" }
+                    elseif ($actual -cne $expected) { throw "EmailCatalogRecommendation: '$family/$profile/$field' does not match the pinned recommendation." }
+                }
+            }
+        }
+    }
+}
+
 function Get-BaselineEmailSettingCatalog {
-    Get-Content -LiteralPath (Join-Path $PSScriptRoot '../config/exchange-email-settings.v1.json') -Raw | ConvertFrom-Json -AsHashtable
+    $json = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../config/exchange-email-settings.v1.json') -Raw
+    $document = [System.Text.Json.JsonDocument]::Parse([string]$json)
+    try { Assert-BaselineEmailCatalogJsonKeys $document.RootElement }
+    finally { $document.Dispose() }
+    $catalog = $json | ConvertFrom-Json -AsHashtable
+    Assert-BaselineEmailCatalog $catalog
+    $catalog
 }
 
 function Get-BaselineEmailProtectionState {
@@ -7714,7 +7890,7 @@ function Get-BaselineDeploymentProfile {
 
 function Get-BaselineExchangeContext {
     [CmdletBinding()]
-    param([Parameter(Mandatory)][string]$ConfigurationPath, [Parameter(Mandatory)][string]$ParameterPath)
+    param([Parameter(Mandatory)][string]$ConfigurationPath, [Parameter(Mandatory)][string]$ParameterPath, [switch]$ForActionPlanning)
     $configuration = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
     $manifest = Assert-BaselineExchangeScope -Configuration $configuration
     $parameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
@@ -7733,6 +7909,22 @@ function Get-BaselineExchangeContext {
     $null = Assert-BaselineExchangeScope -Configuration $resolved
     $hash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))).ToLowerInvariant()
     $controls = $resolved.controls
+    $inventory = $null
+    $inventoryValidationError = $null
+    try {
+        $inventory = ConvertTo-BaselineDomainInventory -Inventory (Get-BaselineRecordMember -Node $parameters -Name domainInventory) -TenantId $parameters.MICROSOFT_ENTRA_TENANT_GUID
+    }
+    catch {
+        if ($ForActionPlanning) { throw }
+        $inventoryValidationError = $_.Exception.Message
+    }
+    if ($null -ne $inventory) {
+        $primaryDomain = ConvertTo-BaselineInventoryDomainName -Value $parameters.PRIMARY_SMTP_DOMAIN
+        $primaryInventory = @($inventory.domains | Where-Object { $_.accepted -and $_.domainName -ceq $primaryDomain })
+        if ($primaryInventory.Count -eq 1 -and $primaryInventory[0].domainType -cne $controls['EXO-001'].domainType) {
+            throw "DomainInventoryTopologyConflict: primary '$primaryDomain' approved type '$($primaryInventory[0].domainType)' conflicts with configured EXO-001 type '$($controls['EXO-001'].domainType)'."
+        }
+    }
     $deploymentConfiguration = [ordered]@{
         metadata = @{ deploymentProfile = 'ExchangeOnly'; configurationOwner = $parameters.SECURITY_OPERATIONS_MAILBOX }
         administratorInputs = @{ tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID; primaryDomain = $parameters.PRIMARY_SMTP_DOMAIN; initialDomain = $parameters.INITIAL_ONMICROSOFT_DOMAIN; priorityUsersGroup = $parameters.MAIL_ENABLED_PRIORITY_USERS_GROUP; securityOperationsMailbox = $parameters.SECURITY_OPERATIONS_MAILBOX }
@@ -7758,7 +7950,7 @@ function Get-BaselineExchangeContext {
         Capability = @([pscustomobject]@{ Name = 'AtpPresets'; Entitled = ('ATP_ENTERPRISE' -cin @($entitlement.servicePlans)); Reason = 'Externally supplied recipient-bound licensing handoff.' })
         NotEntitled = @(); DeclaredMessagingTier = 'ExternalHandoff'; DeclaredComplianceTier = 'Excluded'
     }
-    [pscustomobject]@{ Configuration = $resolved; Manifest = $manifest; Parameters = $parameters; DeploymentProfile = 'ExchangeOnly'; Hash = $hash; Entitlement = $entitlement; DeploymentConfiguration = $deploymentConfiguration; DeploymentEntitlement = $deploymentEntitlement; Algorithm = 'SHA256'; GatewayDeclared = $false }
+    [pscustomobject]@{ Configuration = $resolved; Manifest = $manifest; Parameters = $parameters; DomainInventoryValidationError = $inventoryValidationError; DeploymentProfile = 'ExchangeOnly'; Hash = $hash; Entitlement = $entitlement; DeploymentConfiguration = $deploymentConfiguration; DeploymentEntitlement = $deploymentEntitlement; Algorithm = 'SHA256'; GatewayDeclared = $false }
 }
 
 # EVD-006: EVD-002 refuses an entry that names no collector or evaluator; this refuses an entry
@@ -8935,23 +9127,182 @@ function Get-AcceptedDomainEvidence {
     return Get-BaselineEvidence -ControlId 'EXO-001' -Source 'ExchangeOnline' -Command 'Get-AcceptedDomain' -Collection $Collection
 }
 
-# EXO-001: every domain the baseline expects must be accepted, and accepted on exactly one set of
-# terms. Domain names are compared through the canonical Domain rules, so casing, surrounding
-# whitespace and a trailing root dot never read as drift. The domain type is compared ordinally,
-# because the card requires exactly `Authoritative` and any other value - including a relay - lets
-# Exchange Online accept mail for recipients it cannot verify.
+function ConvertTo-BaselineInventoryDomainName {
+    param([AllowNull()][object]$Value)
+    if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace($Value)) { throw 'DomainInventoryNameInvalid: a domain name string is required.' }
+    $name = $Value.Trim().TrimEnd('.')
+    try { $name = [Globalization.IdnMapping]::new().GetAscii($name).ToLowerInvariant() }
+    catch { throw 'DomainInventoryNameInvalid: the domain name is not valid IDNA.' }
+    $labels = $name.Split('.')
+    if ($name.Length -gt 253 -or $labels.Count -lt 2 -or [Uri]::CheckHostName($name) -ne [UriHostNameType]::Dns) { throw "DomainInventoryNameInvalid: '$Value' is not a DNS domain name." }
+    foreach ($label in $labels) {
+        if ($label.Length -gt 63 -or $label -notmatch '^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$') { throw "DomainInventoryNameInvalid: '$Value' has an invalid domain label." }
+    }
+    return $name
+}
+
+function Assert-BaselineDomainInventoryDate {
+    param([AllowNull()][object]$Value, [string]$Field, [datetimeoffset]$Now, [switch]$Expiry)
+    $parsed = [datetimeoffset]::MinValue
+    $formats = [string[]]@("yyyy-MM-dd'T'HH:mm:ss'Z'", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFF'Z'", "yyyy-MM-dd'T'HH:mm:sszzz", "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFzzz")
+    if ($Value -isnot [string] -or -not [datetimeoffset]::TryParseExact($Value, $formats, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) { throw "DomainInventoryDateInvalid: '$Field' requires an ISO 8601 timestamp with timezone." }
+    if ($Expiry) {
+        if ($parsed -le $Now) { throw "DomainInventoryExpired: '$Field' approval or attestation has expired." }
+    }
+    elseif ($parsed -gt $Now) { throw "DomainInventoryFutureTimestamp: '$Field' supplied timestamp is in the future." }
+}
+
+function Assert-BaselineDomainInventoryProvenance {
+    param([AllowNull()][object]$Value, [string]$Field, [datetimeoffset]$Now, [switch]$Approval, [switch]$Attestation)
+    if ($Value -isnot [System.Collections.IDictionary] -and $Value -isnot [pscustomobject]) { throw "DomainInventoryProvenanceInvalid: '$Field' must be a supplied object." }
+    $required = if ($Attestation) { @('reference') } else { @('owner','reference') }
+    foreach ($member in $required) {
+        $text = Get-BaselineRecordMember -Node $Value -Name $member
+        if ($text -isnot [string] -or [string]::IsNullOrWhiteSpace($text)) { throw "DomainInventoryProvenanceInvalid: '$Field.$member' must be a nonblank string." }
+    }
+    if (-not $Approval) { Assert-BaselineDomainInventoryDate -Value (Get-BaselineRecordMember -Node $Value -Name suppliedAtUtc) -Field "$Field.suppliedAtUtc" -Now $Now }
+    if ($Approval -or $Attestation) { Assert-BaselineDomainInventoryDate -Value (Get-BaselineRecordMember -Node $Value -Name expiresOn) -Field "$Field.expiresOn" -Now $Now -Expiry }
+}
+
+function ConvertTo-BaselineDomainInventory {
+    param([AllowNull()][object]$Inventory, [string]$TenantId)
+    if ($Inventory -isnot [System.Collections.IDictionary] -and $Inventory -isnot [pscustomobject]) { throw 'DomainInventoryRequired: supply an explicit domain inventory object.' }
+    $version = Get-BaselineRecordMember -Node $Inventory -Name schemaVersion
+    if (($version -isnot [int] -and $version -isnot [long]) -or $version -ne 1) { throw 'DomainInventoryVersionInvalid: schemaVersion must be integer 1.' }
+    $complete = Get-BaselineRecordMember -Node $Inventory -Name complete
+    if ($complete -isnot [bool] -or -not $complete) { throw 'DomainInventoryIncomplete: complete must be Boolean true.' }
+    $boundTenant = Get-BaselineRecordMember -Node $Inventory -Name tenantId
+    $inventoryTenant = [guid]::Empty
+    $activeTenant = [guid]::Empty
+    if ($boundTenant -isnot [string] -or -not [guid]::TryParseExact($boundTenant, 'D', [ref]$inventoryTenant) -or -not [guid]::TryParseExact($TenantId, 'D', [ref]$activeTenant) -or $inventoryTenant -ne $activeTenant) { throw 'DomainInventoryTenantInvalid: tenantId must match the active tenant GUID.' }
+    $now = [datetimeoffset]::UtcNow
+    $source = Get-BaselineRecordMember -Node $Inventory -Name source
+    Assert-BaselineDomainInventoryProvenance -Value $source -Field source -Now $now
+    $domains = $null
+    if ('domains' -cin @(Get-BaselineRecordMemberName -Node $Inventory)) {
+        if ($Inventory -is [System.Collections.IDictionary]) { $domains = $Inventory['domains'] }
+        else { $domains = $Inventory.PSObject.Properties['domains'].Value }
+    }
+    if ($domains -isnot [System.Collections.IList] -or $domains.Count -eq 0) { throw 'DomainInventoryDomainsInvalid: domains must be a nonempty array.' }
+    $entries = [ordered]@{}
+    foreach ($entry in $domains) {
+        if ($entry -isnot [System.Collections.IDictionary] -and $entry -isnot [pscustomobject]) { throw 'DomainInventoryEntryInvalid: each domain entry must be an object.' }
+        $name = ConvertTo-BaselineInventoryDomainName -Value (Get-BaselineRecordMember -Node $entry -Name domainName)
+        if ($entries.Contains($name)) { throw "DomainInventoryDuplicate: '$name' has ambiguous duplicate entries." }
+        $normalized = [ordered]@{ domainName = $name }
+        foreach ($classification in @('accepted','sending','parked')) {
+            $value = Get-BaselineRecordMember -Node $entry -Name $classification
+            if ($value -isnot [bool]) { throw "DomainInventoryClassificationInvalid: '$name.$classification' must be Boolean." }
+            $normalized[$classification] = $value
+        }
+        if (($normalized.parked -and $normalized.sending) -or -not ($normalized.accepted -or $normalized.sending -or $normalized.parked)) { throw "DomainInventoryClassificationInvalid: '$name' has contradictory or missing accepted/sending/parked classification." }
+        $owner = Get-BaselineRecordMember -Node $entry -Name owner
+        if ($owner -isnot [string] -or [string]::IsNullOrWhiteSpace($owner)) { throw "DomainInventoryOwnerRequired: '$name' must name its independent owner." }
+        $normalized.owner = $owner
+        $normalized.ownerReadiness = 'Unverified'
+        $members = @(Get-BaselineRecordMemberName -Node $entry)
+        if ('parentDomain' -notin $members) { throw "DomainInventoryParentRequired: '$name' must explicitly declare parentDomain or null." }
+        $parent = Get-BaselineRecordMember -Node $entry -Name parentDomain
+        $normalized.parentDomain = if ($null -eq $parent) { $null } else { ConvertTo-BaselineInventoryDomainName -Value $parent }
+        $type = Get-BaselineRecordMember -Node $entry -Name domainType
+        if ($normalized.accepted) {
+            if ($type -isnot [string] -or $type -cnotin @('Authoritative','InternalRelay')) { throw "DomainInventoryTopologyInvalid: '$name.domainType' must be Authoritative or approved InternalRelay." }
+            if ($type -ceq 'InternalRelay' -or 'topologyApproval' -in $members) {
+                $approval = Get-BaselineRecordMember -Node $entry -Name topologyApproval
+                Assert-BaselineDomainInventoryProvenance -Value $approval -Field "$name.topologyApproval" -Now $now -Approval
+                $normalized.topologyApproval = $approval
+            }
+        }
+        elseif ($null -ne $type) { throw "DomainInventoryTopologyInvalid: '$name' is not accepted and cannot declare an Exchange domainType." }
+        $normalized.domainType = $type
+        if ($normalized.sending) {
+            $system = Get-BaselineRecordMember -Node $entry -Name sendingSystem
+            if ($system -isnot [string] -or $system -cnotin @('ExchangeOnline','External')) { throw "DomainInventorySendingSystemInvalid: '$name' must declare ExchangeOnline or External." }
+            if ($system -ceq 'ExchangeOnline' -and -not $normalized.accepted) { throw "DomainInventorySendingSystemInvalid: ExchangeOnline sending domain '$name' must be accepted." }
+            $senderSource = Get-BaselineRecordMember -Node $entry -Name senderSource
+            Assert-BaselineDomainInventoryProvenance -Value $senderSource -Field "$name.senderSource" -Now $now
+            $normalized.sendingSystem = $system
+            $normalized.senderSource = $senderSource
+        }
+        if ('ownerAttestation' -in $members) {
+            $attestation = Get-BaselineRecordMember -Node $entry -Name ownerAttestation
+            Assert-BaselineDomainInventoryProvenance -Value $attestation -Field "$name.ownerAttestation" -Now $now -Attestation
+            $normalized.ownerAttestation = $attestation
+        }
+        $entries[$name] = $normalized
+    }
+    foreach ($entry in $entries.Values) {
+        $parent = $entry.parentDomain
+        if ($null -ne $parent) {
+            if (-not $entries.Contains($parent) -or -not $entry.domainName.EndsWith(".$parent", [StringComparison]::Ordinal)) { throw "DomainInventoryParentInvalid: '$($entry.domainName)' must be a subdomain of its declared inventory parent '$parent'." }
+        }
+        elseif (@($entries.Keys | Where-Object { $entry.domainName.EndsWith(".$_", [StringComparison]::Ordinal) }).Count -gt 0) { throw "DomainInventoryParentMissing: subdomain '$($entry.domainName)' hides a known inventory parent." }
+    }
+    return [ordered]@{ schemaVersion = 1; tenantId = $boundTenant; complete = $true; source = $source; domains = @($entries.Values) }
+}
+
 function Test-AcceptedDomainControl {
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName = 'Legacy')]
     param(
         [Parameter(Mandatory)]
         [AllowNull()]
         [object]$Evidence,
 
-        [Parameter(Mandatory)]
+        [Parameter(Mandatory, ParameterSetName = 'Legacy')]
         [AllowNull()]
         [AllowEmptyCollection()]
-        [string[]]$ExpectedDomain
+        [string[]]$ExpectedDomain,
+
+        [Parameter(Mandatory, ParameterSetName = 'Inventory')]
+        [AllowNull()]
+        [object]$DomainInventory,
+
+        [Parameter(ParameterSetName = 'Inventory')]
+        [string]$TenantId,
+
+        [Parameter(ParameterSetName = 'Inventory')]
+        [string]$InitialDomain,
+
+        [Parameter(ParameterSetName = 'Inventory')]
+        [string]$PrimaryDomain
     )
+
+    if ($PSCmdlet.ParameterSetName -eq 'Inventory') {
+        $inventory = ConvertTo-BaselineDomainInventory -Inventory $DomainInventory -TenantId $TenantId
+        try { $initial = ConvertTo-BaselineInventoryDomainName -Value $InitialDomain }
+        catch { throw "DomainInventoryInitialInvalid: INITIAL_ONMICROSOFT_DOMAIN is required: $($_.Exception.Message)" }
+        if (-not $initial.EndsWith('.onmicrosoft.com', [StringComparison]::Ordinal) -or $initial.Split('.').Count -ne 3) { throw 'DomainInventoryInitialInvalid: supply the tenant initial onmicrosoft.com domain explicitly.' }
+        $primary = ConvertTo-BaselineInventoryDomainName -Value $PrimaryDomain
+        $enriched = [ordered]@{}
+        foreach ($member in @(Get-BaselineRecordMemberName -Node $Evidence)) { $enriched[$member] = Get-BaselineRecordMember -Node $Evidence -Name $member }
+        $enriched.DomainInventory = $inventory
+        $Evidence = ConvertTo-ImmutableBaselineNode -Node $enriched
+        return Test-BaselineControl -ControlId 'EXO-001' -Evidence $Evidence -Evaluator {
+            param($Record)
+            $accepted = @($inventory.domains | Where-Object accepted)
+            $observed = @{}
+            foreach ($entry in @(Get-BaselineRecordMember -Node $Record -Name Value)) {
+                if ($null -eq $entry) { continue }
+                $name = ConvertTo-BaselineInventoryDomainName -Value (Get-BaselineRecordMember -Node $entry -Name DomainName)
+                if ($observed.ContainsKey($name)) { throw "DomainInventoryObservedIdentityAmbiguous: duplicate '$name'." }
+                $observed[$name] = Get-BaselineRecordMember -Node $entry -Name DomainType
+            }
+            $findings = @(
+                foreach ($required in @($primary, $initial)) {
+                    if ($required -notin @($accepted.domainName)) { "initial/primary domain '$required' is missing from the accepted inventory" }
+                }
+                foreach ($entry in $accepted) {
+                    if (-not $observed.ContainsKey($entry.domainName)) { "no accepted domain observed for '$($entry.domainName)'" }
+                    elseif ($observed[$entry.domainName] -cne $entry.domainType) { "topology drift for '$($entry.domainName)': observed '$($observed[$entry.domainName])', approved '$($entry.domainType)'" }
+                }
+                foreach ($name in $observed.Keys) {
+                    if ($name -notin @($accepted.domainName)) { "undeclared accepted domain '$name' is absent from the supplied accepted inventory" }
+                }
+            )
+            if ($findings.Count) { return [pscustomobject]@{ Status = 'Fail'; Reason = 'DomainInventoryDrift: ' + ($findings -join '; ') } }
+            return [pscustomobject]@{ Status = 'Pass' }
+        }
+    }
 
     $expectedDomain = @(foreach ($name in @($ExpectedDomain)) { if (-not [string]::IsNullOrWhiteSpace($name)) { $name } })
     if ($expectedDomain.Count -eq 0) {

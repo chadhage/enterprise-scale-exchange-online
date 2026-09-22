@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Supplied Exchange domain applicability inventory v1",
+  "description": "Input structure only. Runtime additionally binds the tenant, normalizes IDNA domain identities, validates dates and parent topology, and reconciles full Exchange collection. Supplied assertions do not certify external readiness.",
+  "type": "object",
+  "required": ["schemaVersion", "tenantId", "complete", "source", "domains"],
+  "properties": {
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "tenantId": { "type": "string", "format": "uuid" },
+    "complete": { "type": "boolean", "const": true },
+    "source": { "$ref": "#/$defs/source" },
+    "domains": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/domain" } }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "pattern": "\\S" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "object",
+      "required": ["owner", "reference", "suppliedAtUtc"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/text" },
+        "reference": { "$ref": "#/$defs/text" },
+        "suppliedAtUtc": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "required": ["owner", "reference", "expiresOn"],
+      "properties": {
+        "owner": { "$ref": "#/$defs/text" },
+        "reference": { "$ref": "#/$defs/text" },
+        "expiresOn": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "required": ["reference", "suppliedAtUtc", "expiresOn"],
+      "properties": {
+        "reference": { "$ref": "#/$defs/text" },
+        "suppliedAtUtc": { "$ref": "#/$defs/timestamp" },
+        "expiresOn": { "$ref": "#/$defs/timestamp" }
+      }
+    },
+    "domain": {
+      "type": "object",
+      "required": ["domainName", "accepted", "sending", "parked", "parentDomain", "owner"],
+      "properties": {
+        "domainName": { "$ref": "#/$defs/text" },
+        "accepted": { "type": "boolean" },
+        "sending": { "type": "boolean" },
+        "parked": { "type": "boolean" },
+        "parentDomain": { "type": ["string", "null"], "minLength": 1 },
+        "domainType": { "enum": ["Authoritative", "InternalRelay", null] },
+        "owner": { "$ref": "#/$defs/text" },
+        "sendingSystem": { "enum": ["ExchangeOnline", "External"] },
+        "senderSource": { "$ref": "#/$defs/source" },
+        "topologyApproval": { "$ref": "#/$defs/approval" },
+        "ownerAttestation": { "$ref": "#/$defs/attestation" }
+      },
+      "anyOf": [
+        { "properties": { "accepted": { "const": true } } },
+        { "properties": { "sending": { "const": true } } },
+        { "properties": { "parked": { "const": true } } }
+      ],
+      "allOf": [
+        {
+          "if": { "properties": { "accepted": { "const": true } } },
+          "then": { "required": ["domainType"], "properties": { "domainType": { "enum": ["Authoritative", "InternalRelay"] } } },
+          "else": { "properties": { "domainType": { "type": "null" } } }
+        },
+        {
+          "if": { "required": ["domainType"], "properties": { "domainType": { "const": "InternalRelay" } } },
+          "then": { "required": ["topologyApproval"] }
+        },
+        {
+          "if": { "properties": { "sending": { "const": true } } },
+          "then": { "required": ["sendingSystem", "senderSource"], "properties": { "parked": { "const": false } } }
+        },
+        {
+          "if": { "required": ["sendingSystem"], "properties": { "sending": { "const": true }, "sendingSystem": { "const": "ExchangeOnline" } } },
+          "then": { "properties": { "accepted": { "const": true } } }
+        }
+      ]
+    }
+  }
+}

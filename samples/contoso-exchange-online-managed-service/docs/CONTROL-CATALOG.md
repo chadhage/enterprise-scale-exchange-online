@@ -20,7 +20,7 @@ Microsoft Configuration Analyzer is a supplemental correlation source. Its signe
 
 | ID | Priority | Profile | Tier | Setting or practice | Required state | Evidence | Runbook |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| EXO-001 | MUST | Both | EOP | Accepted domain | `Authoritative` for cloud-only recipients | `Get-AcceptedDomain` | [R-EXO-001](RUNBOOKS.md#r-exo-001-accepted-domain-type) |
+| EXO-001 | MUST | Both | EOP | Complete supplied domain inventory | ExchangeOnly: `domainInventory` v1 matches full accepted membership and approved `Authoritative` or `InternalRelay` topology; external ownership remains Unverified. Historical direct calls retain Authoritative expectations. | `Get-AcceptedDomain -ResultSize Unlimited`, independent inventory/sender provenance | [Domain Inventory](EXCHANGE-ONLY.md#domain-inventory) |
 | EXO-002 | MUST | Both | EOP | SMTP AUTH | Disabled tenant-wide | `Get-TransportConfig` | [R-EXO-002](RUNBOOKS.md#r-exo-002-disable-smtp-auth-tenant-wide) |
 | EXO-003 | MUST | Both | EOP | Legacy authentication | Blocked by Conditional Access | Entra policy export and sign-in test | [R-EXO-003](RUNBOOKS.md#r-exo-003-block-legacy-authentication) |
 | EXO-004 | MUST | Both | EOP | Automatic external forwarding | `Off` | `Get-HostedOutboundSpamFilterPolicy` | [R-EXO-004](RUNBOOKS.md#r-exo-004-disable-automatic-external-forwarding) |
@@ -46,6 +46,14 @@ Microsoft Configuration Analyzer is a supplemental correlation source. Its signe
 | MDO-007 | MUST | Both | EOP | Tenant allow/block entries | Investigated, scoped, owner and expiry | TABL export plus ticket | [R-MDO-007](RUNBOOKS.md#r-mdo-007-tenant-allowblock-list) |
 | MDO-008 | MUST | ExchangeOnly | EOP | Quarantine policies | Effective Microsoft preset tags or approved local custom permissions; admin-only high-risk categories | `Get-QuarantinePolicy` plus effective policy bindings | [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications) |
 | MDO-009 | SHOULD | ExchangeOnly | MDO P1 or P2 | User/domain impersonation | Approved targets protected by the effective policy; separate from P2 priority-account capabilities | Anti-phishing policies, rules and recipient matrix | [R-MDO-009](RUNBOOKS.md#r-mdo-009-priority-account-protection) |
+
+## Email Catalogue Boundary
+
+EXR-010-A01 supplies bounded offline catalogue admission, pending independent acceptance, not completion of EXR-010 or EXR-010-A02 effective recipient evaluation. Source S14 / assessment A08 in [the recommendation inventory](../config/exchange-recommendations.v1.json) remains Partial. The [dated field/source map](EMAIL-SETTINGS-SOURCES.md) binds 114 fields and 247 profile-field assertions to recommendation revisions, captured digests, sections and per-field capability. MicrosoftRecommendation, LocalPolicy and ApprovedException remain distinct; the 23 local settings are not frozen Microsoft defaults.
+
+MDO-001/002 use the Standard/Strict catalogue, MDO-003 its explicit SafeLinks/SafeAttachment BuiltIn maps, MDO-008 the conditional quarantine recommendations, MDO-009 the mixed Exchange/Defender AntiPhish classification, and EXO-004 the outbound forwarding recommendation. Existing evidence keys such as `defender.standardPreset`, `defender.strictPreset`, `defender.builtInProtection`, `defender.quarantinePolicy`, `defender.priorityAccount` and `exchangeOnline.outboundSpamFilterPolicy` are not populated or certified by catalogue admission.
+
+Offline admission evidence is `ExchangeEmailSettingCatalog.Tests.ps1`; unchanged per-field drift/missing regression evidence is `ExchangeProtectionMatrix.Tests.ps1`. Use [Email Catalogue Review](EXCHANGE-ONLY.md#email-catalogue-review) for the bounded procedure. Outbound spam is outside presets and outbound BCC is default-policy-only. Encrypted-attachment recommendations are conditional on the blocking path; three recommendation-table fields are absent from captured New/Set-SafeAttachmentPolicy parameter references. Classification/capability does not establish mutation support, raw getter shape or live compatibility. See the source map for exact qualifications; no service changes are part of A01.
 
 ## Mail Gateway (third-party SMTP gateway profile only)
 

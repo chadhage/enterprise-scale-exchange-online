@@ -13,7 +13,11 @@ Describe 'EXR-001 registry admission before collection' {
         BeforeAll {
             $originalRegistry = Get-BaselineControlRegistry
             $configuration = Get-Content (Join-Path (Get-Module ExchangeOnlineBaseline.Common).ModuleBase '../config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
-            $context = @{ Configuration = $configuration; Manifest = Get-BaselineExchangeManifest; Parameters = @{ PRIMARY_SMTP_DOMAIN = 'example.test' }; Entitlement = @{ servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE') } }
+            $parameters = Get-Content (Join-Path (Get-Module ExchangeOnlineBaseline.Common).ModuleBase '../config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+            $parameters.entitlement.verified = $true
+            $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
+            $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
+            $context = @{ Configuration = $configuration; Manifest = Get-BaselineExchangeManifest; Parameters = $parameters; Entitlement = $parameters.entitlement }
         }
         BeforeEach {
             $script:guardRegistry = @($originalRegistry | ConvertTo-Json -Depth 30 | ConvertFrom-Json)

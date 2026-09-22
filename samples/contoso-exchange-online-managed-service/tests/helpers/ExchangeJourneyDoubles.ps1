@@ -20,6 +20,11 @@ function Initialize-JourneyDoubles {
     $parameters = Get-Content (Join-Path $script:sampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable
     $parameters.MICROSOFT_ENTRA_TENANT_GUID = $InputData.TenantId
     $parameters.entitlement.tenantId = $InputData.TenantId
+    $parameters.domainInventory.tenantId = $InputData.TenantId
+    $global:adapterState.AcceptedDomain += @{
+        Identity = $parameters.INITIAL_ONMICROSOFT_DOMAIN; Name = $parameters.INITIAL_ONMICROSOFT_DOMAIN
+        DomainName = $parameters.INITIAL_ONMICROSOFT_DOMAIN; DomainType = 'Authoritative'
+    }
     $parameters.entitlement.verified = $true
     $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
     $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
@@ -138,7 +143,7 @@ function Initialize-JourneyDoubles {
         'Connect-ExchangeOnline' = '[Parameter(Mandatory)][string]$UserPrincipalName,[Parameter(Mandatory)][ValidateSet("O365Default")][string]$ExchangeEnvironmentName,[bool]$ShowBanner'
         'Get-ConnectionInformation' = ''
         'Get-Command' = '[Parameter(Position=0)][string]$Name'
-        'Get-AcceptedDomain' = '[string]$Identity'
+        'Get-AcceptedDomain' = '[string]$Identity,[string]$ResultSize'
         'Get-RemoteDomain' = '[string]$Identity,[string]$ResultSize'
         'Set-AcceptedDomain' = '[Parameter(Mandatory)][string]$Identity,[Parameter(Mandatory)][ValidateSet("Authoritative")][string]$DomainType'
         'Get-Mailbox' = '[string]$Identity,[string]$ResultSize,[switch]$InactiveMailboxOnly,[switch]$SoftDeletedMailbox'
@@ -262,7 +267,11 @@ function global:Invoke-JourneyDouble {
         'Get-AcceptedDomain' {
             if ($state.Fault -eq 'DomainReadDenied') { throw 'OfflineAccessDenied' }
             if ($state.Fault -eq 'DomainMissing') { return }
-            [pscustomobject]$global:adapterState.AcceptedDomain[0].Clone()
+            foreach ($domain in $global:adapterState.AcceptedDomain) {
+                if (-not $Bound['Identity'] -or $domain.Identity -eq $Bound['Identity']) {
+                    [pscustomobject]$domain.Clone()
+                }
+            }
             if ($state.Fault -eq 'DomainDuplicate') { [pscustomobject]$global:adapterState.AcceptedDomain[0].Clone() }
             return
         }

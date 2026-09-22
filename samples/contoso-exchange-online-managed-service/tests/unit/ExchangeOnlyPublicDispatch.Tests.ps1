@@ -11,6 +11,54 @@ BeforeAll {
 }
 
 Describe 'EXR-001 default public Exchange dispatch' {
+    It 'blocks the genuine excluded harness operation <Operation>' -ForEach @(
+        @{ Operation = 'Connect-MgGraph' }
+        @{ Operation = 'Invoke-MgGraphRequest' }
+        @{ Operation = 'Get-AtpPolicyForO365' }
+        @{ Operation = 'Set-AtpPolicyForO365' }
+        @{ Operation = 'Get-DlpCompliancePolicy' }
+        @{ Operation = 'Get-DlpComplianceRule' }
+        @{ Operation = 'Get-RetentionCompliancePolicy' }
+        @{ Operation = 'Get-UnifiedAuditLogRetentionPolicy' }
+        @{ Operation = 'Get-AdminAuditLogConfig' }
+        @{ Operation = 'Search-UnifiedAuditLog' }
+        @{ Operation = 'Get-Label' }
+        @{ Operation = 'Get-LabelPolicy' }
+        @{ Operation = 'Get-ComplianceCase' }
+        @{ Operation = 'Resolve-DnsName' }
+        @{ Operation = 'Connect-IPPSSession' }
+        @{ Operation = 'Get-MgRoleManagementDirectoryRoleEligibilityScheduleInstance' }
+        @{ Operation = 'Get-MgIdentityGovernanceAccessReviewDefinition' }
+        @{ Operation = 'GraphImport' }
+    ) {
+        # Arrange
+        $probePath = Join-Path $TestDrive "$Operation.ps1"
+        $calls = Join-Path $TestDrive "$Operation.calls"
+        $outputPath = Join-Path $TestDrive "$Operation-output"
+        $probe = @'
+param($ParameterPath, $OutputPath)
+$PSModuleAutoLoadingPreference = 'None'
+$operation = '__OPERATION__'
+$commandName = if ($operation -eq 'GraphImport') { 'Import-Module' } else { $operation }
+$guard = Get-Command $commandName -CommandType Function -ErrorAction SilentlyContinue
+if (-not $guard -or $guard.Definition -notmatch 'ExcludedServiceCalled') {
+    throw "ExcludedGuardMissing:$operation"
+}
+if ($operation -eq 'GraphImport') { & $guard 'Microsoft.Graph.Authentication' }
+else { & $guard }
+throw "ExcludedGuardDidNotStop:$operation"
+'@
+        $probe.Replace('__OPERATION__', $Operation) | Set-Content $probePath
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $probePath $parameterPath $outputPath $calls 2>&1 | Out-String
+        # Assert
+        $LASTEXITCODE | Should -Not -Be 0
+        $output | Should -Match 'ExcludedServiceCalled'
+        $output | Should -Not -Match 'ExcludedGuardMissing|ExcludedGuardDidNotStop'
+        @(Get-Content $calls) | Should -Be @("EXCLUDED:$Operation")
+        Test-Path $outputPath | Should -BeFalse
+    }
+
     It 'refuses schema-invalid resolved parameters before any connection, collection or evidence' {
         # Arrange
         $invalidParameters = $parameters.Clone()
@@ -93,7 +141,11 @@ Describe 'EXR-001 default public Exchange dispatch' {
         @($envelope.Exclusion.ControlId).Count | Should -Be 15
         $envelope.Exclusion.Count | Should -Be $manifest.Exclusion.Count
         ($envelope.Check | Where-Object ControlId -EQ 'EXO-001').Status | Should -BeExactly 'Pass'
-        ($envelope.Evidence | Where-Object ControlId -EQ 'EXO-001').Value.DomainType | Should -BeExactly 'Authoritative'
+        $acceptedDomains = @(($envelope.Evidence | Where-Object ControlId -EQ 'EXO-001').Value)
+        $acceptedDomains.Count | Should -Be 2
+        @($acceptedDomains.DomainName | Sort-Object) | Should -BeExactly @($parameters.PRIMARY_SMTP_DOMAIN, $parameters.INITIAL_ONMICROSOFT_DOMAIN | Sort-Object)
+        ($acceptedDomains | Where-Object DomainName -EQ $parameters.PRIMARY_SMTP_DOMAIN).DomainType | Should -BeExactly 'Authoritative'
+        ($acceptedDomains | Where-Object DomainName -EQ $parameters.INITIAL_ONMICROSOFT_DOMAIN).DomainType | Should -BeExactly 'Authoritative'
         foreach ($controlId in @('MON-003','OPS-001','OPS-002')) {
             $result = $envelope.Check | Where-Object ControlId -EQ $controlId
             $result.Status | Should -BeExactly 'Error'

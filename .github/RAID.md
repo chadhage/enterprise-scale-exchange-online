@@ -1,6 +1,6 @@
 # Exchange Online Service RAID Register
 
-Updated: 2026-09-21 (EXR-007 external handoffs clarified; none confirmed). Owner: Exchange service owner (coordination only). Related: [Kanban](kanban.md), [backlog](backlog.md), [historical board](kanban-history-2026-09-19.md).
+Updated: 2026-09-21 (remaining-parent child routing recorded; no external status or owner changed or confirmed). Owner: Exchange service owner (coordination only). Related: [Kanban](kanban.md), [backlog](backlog.md), [historical board](kanban-history-2026-09-19.md).
 
 Purpose: record tenant-level assumptions, risks, issues and dependencies without turning them into Exchange implementation cards. Proposed owner roles below are routing responsibilities, not claims that a named person has accepted work. No external assumption is confirmed by this planning update. No credentials or tenant identifiers belong here.
 
@@ -50,6 +50,26 @@ These are acceptance handoffs, not authorizations or Exchange backlog tasks. At 
 | RAID-D05 | Trusted enterprise signing identities/certificates, approver authority, trust chain/revocation availability and change-management approval channel. | Enterprise PKI and change authority | Unconfirmed | Approved public trust/role metadata and accessible signing process; no private key in repo; needed before signed apply/go-live validation. Exchange tooling consumes the capability but does not provision enterprise PKI. | EXR-004, EXR-006, EXR-016, EXR-017 |
 
 ## Review And Escalation
+
+### Remaining-Parent Child Routing
+
+The twelve newly decomposed parents are scope references only, not active cards or external obligations. Their original register rows, owners and statuses remain unchanged; [backlog allocations](backlog.md#remaining-board-decomposition-review) identify executable child acceptance. None of this confirms readiness, grants permission or repairs the 13 known product regressions.
+
+- [EXR-011](backlog.md#exr-011): D04 routes denominator/ownership to A01, supplied exact selectors to A02, DNS/MX/Autodiscover/SPF/DMARC/MTA-STS/TLS-RPT publication/reporting/cutover proof to A03 and bound message evidence to A04. No DNS/HTTPS writes or external-service certification.
+- [EXR-007-A02](backlog.md#exr-007-a02): D01/D02/D04 retain external identity/routing ownership for T01 transport rules, T02 organization allows, T03 Safe Senders and T04 connector trust; no vendor setup. [EXR-007-A03](backlog.md#exr-007-a03): D02/D03 additive grants/consent evidence feeds T01 authorization and T02 Exchange-only assignment/scope lifecycle, with no app registration/consent mutation.
+- [EXR-007-A04](backlog.md#exr-007-a04): D02/D03 disclosure and partner attestations feed T01 sharing/bindings and T02 calendar publication; partner readiness stays Unverified. [EXR-007-A05](backlog.md#exr-007-a05): D02/D03 identity/ownership evidence feeds separate T01 FullAccess, T02 SendAs and T03 SendOnBehalf outcomes, no directory provisioning. [EXR-007-A08](backlog.md#exr-007-a08): D02/D03 client/device approvals feed T01 mailbox/plan flags, T02 mobile policy and T03 OWA policy, not MDM or Conditional Access work.
+- [EXR-012](backlog.md#exr-012) A01-A04 consume I03/I04/R02 and existing licensing/signing handoffs for entry inputs, runbooks, recovery and status wording. [EXR-013](backlog.md#exr-013) A01/A02 inventory then execute those documented contracts offline; [EXR-014](backlog.md#exr-014) A01/A02 reconcile raw fixtures then whole-service evidence under R01. Neither creates new external deliverables or duplicate email regression repairs.
+- [EXR-015](backlog.md#exr-015) routes repository-maintainer coverage approval to A01, enforcement to A02 and discovery/isolation to A03 under R01/R04; real maintainer approval is not assumed. [EXR-016](backlog.md#exr-016) routes D01-D05 consumption to offline A01 opt-in/target/artifact safety, A02 change/recovery/owned-object ledger and A03 delivery/client probes. No live call or external provisioning while authoring.
+- [EXR-017](backlog.md#exr-017): applicable D01-D05 must be independently confirmed with explicit live permission before A01's first walkthrough and A02's consecutive repeat/recovery; A03 requires actual independent review of both retained sanitized packets and raw-proof references. Code/docs changes invalidate the pair and restart A01 evidence. External owners retain tenant/infrastructure teardown; Exchange teardown touches only ledger-owned Exchange objects. No fabricated approval or offline stand-in closes live acceptance.
+
+### EXR-010 Child Routing
+
+EXR-010 is now a non-executable parent; its twelve [child contracts](backlog.md#acceptance-allocation) replace the former delivery card without creating new tenant obligations. Existing references to EXR-010 in this register denote that parent scope, not another active card. All external statuses and accountable roles above remain unchanged and unconfirmed.
+
+- RAID-D02 supplies applicable recipient/capability inputs to A01-A10; A03 owns the Exchange entitlement decision contract, not license assignment or Graph consent.
+- RAID-D03 supplies the reporting mailbox's DLP-owner handoff to A09/A10; neither child provisions Purview or treats unverified external state as Pass. Pre-write prerequisites are distinct from post-change delivery receipts.
+- RAID-I04 routes excluded Safe Documents/collaboration guidance through A11; exclusion does not repair or certify the external workload. AIR capability remains separate from the Exchange reporting contract.
+- RAID-D05 remains the existing signing prerequisite for reversible changes and A12 evidence integration. Synthetic offline signing is not enterprise PKI readiness. Actual report delivery and live compatibility remain EXR-016/017 under D01-D05, not child authoring work.
 
 ### EXR-007 External Handoffs
 

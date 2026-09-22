@@ -1,6 +1,6 @@
 # Exchange Online Remediation Backlog
 
-Updated: 2026-09-21 (EXR-007 Done; EXR-008 sole In Progress; 26 total: To Do 18, In Progress 1, Done 7). Status, completion evidence and unique force rank are owned by [Kanban](kanban.md); the ordered entries below use the same sequence. Offline completion does not establish live acceptance or external readiness. User authorization is dated 2026-09-20; the EXR-007 source review and observed verification are dated 2026-09-21 in the supplied artifacts, not backdated to the authorization.
+Updated: 2026-09-22 (generation 16; Silver EXR-010-A01 accepted Done, bounded offline only; 60 executable cards: To Do 50, In Progress 0, Done 10; 13 summary parents excluded). Status, completion evidence and unique force rank are owned by [Kanban](kanban.md); the ordered entries below use the same sequence. Offline completion does not establish live acceptance or external readiness. Original user authorization is dated 2026-09-20; all three Cohorts were explicitly authorized under the same serialized root on 2026-09-21. Source/execution dates remain those in supplied artifacts, not backdated to authorization. All cohort file/output reservations, including Silver's six implementation paths, are released after confirmed quiescence. Purple/Gold/Silver and all worker roles are waiting until next invocation, no new card claimed. Root is finishing the current execution batch, not labeled stopped; no autonomous background work or scheduled messages are promised.
 
 ## Acceptance Boundary
 
@@ -10,13 +10,59 @@ Tenant-level dependencies are excluded and tracked in [RAID](RAID.md), including
 
 Each card inherits the board's test-first, ownership, WIP, evidence, and no-live-action-without-authorization rules. Dependencies below are delivery dependencies, not tenant provisioning tasks. Each acceptance clause requires an executable check; documentation checks must exercise the documented examples, not merely search for keywords.
 
+The [current-code audit](#current-code-audit-2026-09-21) preserves evidence and reopening decisions; the subsequent [EXR-010 decomposition](#exr-010) and [remaining-board decomposition](#remaining-board-decomposition-review) supersede its parent statuses, counts and rank references. Reopened prerequisites prevent new dependent implementation or release acceptance; independently passing completed contracts are not automatically erased. Current buckets are authoritative in Kanban. No implementation was started by these planning updates.
+
+## Remaining-Board Decomposition Review
+
+Review dated 2026-09-21: split unfinished cards only when they contain independently verifiable delivery outcomes. A setting's collection, evaluation, approved change, readback, rollback and tests stay together where they form one usable contract. Do not split by coding activity or manufacture Done credit from existing scaffolding. Every replacement parent retains its original acceptance and evidence outside executable buckets; its allocation identifies all delivery owners. Child closure requires its own scoped checks, not completion of a later integration card.
+
+| Reviewed cards | Decision and reason |
+| --- | --- |
+| EXR-001, EXR-004 | Retain: remaining work is a bounded verification repair; historical broad delivery is already evidenced. |
+| EXR-002, EXR-003, EXR-005, EXR-006, EXR-007, EXR-008, EXR-009 | Retain Done and original evidence; no retrospective child completion credit. |
+| EXR-010-A01 through EXR-010-A12 | Retain the previous decomposition; each has an explicit outcome and bounded closure contract. |
+| EXR-011 | Split domain denominator, DKIM lifecycle, external DNS handoff validation and authentication-message evidence. |
+| EXR-007-A01, EXR-007-A06, EXR-007-A07 | Retain: one consumer-reconciliation, organization-relationship or mailbox-audit-action contract respectively. |
+| EXR-007-A02 | Split transport bypass/tag rules, organization allow lists, mailbox Safe Senders and connector trust. TABL remains EXR-010-A08. |
+| EXR-007-A03 | Split effective application authorization assessment from approved Exchange assignment/scope changes. |
+| EXR-007-A04 | Split sharing policy/bindings from calendar publication. |
+| EXR-007-A05 | Split FullAccess, SendAs and SendOnBehalf permission contracts; each must keep access and send semantics distinct. |
+| EXR-007-A08 | Split mailbox/plan client flags, mobile-device mailbox policy and OWA mailbox policy contracts. |
+| EXR-012 | Split operator entry/input guidance, configuration runbooks, approval/go-live recovery guidance and evidence/status presentation. |
+| EXR-013 | Split executable-block discovery/input inventory from exhaustive command execution. |
+| EXR-014 | Split raw fixture/manifest reconciliation from whole-service offline workflow proof. |
+| EXR-015 | Split approved coverage contract, branch-coverage enforcement and discovery/isolation guards. |
+| EXR-016 | Split opt-in target/sanitization safety, live change/recovery harness and mail-flow/client probes; authoring remains offline. |
+| EXR-017 | Split authorized first walkthrough, consecutive repeat/recovery proof and independent acceptance review; none can close on synthetic proof. |
+| EXR-018 | Retain: one machine-checkable release decision consuming all evidence; it must not absorb missing upstream implementation. |
+
+At decomposition, this review allocated existing scope only: twelve remaining To Do cards were replaced with 35 To Do children, giving 37 - 12 + 35 = 60 executable cards and 30 - 12 + 35 = 53 To Do; zero In Progress and seven Done were unchanged at that point. Current generation-16 counts are 50 To Do / 0 In Progress / 10 Done. Thirteen non-counted parents include the retained EXR-010 parent and twelve retired executable parents. EXR-010's twelve children/ranks 10-21 stay intact; ranks 22-60 below are the agreed replacement sequence. EXR-010-A11 retains nine historically known regressions and EXR-004 two; EXR-001's two are cleared, and Silver/Gold owned negatives are resolved by their accepted scoped evidence. Eleven unrelated failures remain owned/unwaived, not an asserted current full-suite count: the last full run predates Gold/Silver fixes. Silver's affected slice reproduces six exact historical A11 name/message pairs. No full-green claim. Cross-document integration must not duplicate those repairs. External prerequisites remain independently owned in RAID, not new provisioning tasks. Current allocation/ranks supersede prior scheduling prose; dated snapshots remain provenance. Decomposition itself added no completion credit.
+
+### Shared Atomic Completion Contract
+
+All 35 new children below inherit this contract in addition to their explicit Acceptance and Verification. Each closes on its own scoped acceptance and affected regression, recording commands, counts and revision; known unrelated failures stay tracked, and only named integration gates require the combined/full suite. No standalone test task receives missing implementation acceptance. Author negative-first Arrange-Act-Assert checks plus one positive per behavior, including documentation/approval contracts. Retain raw completeness, errors, paging and identity checks and actual public collector/evaluator/evidence integration for the touched surface; do not use pre-evaluated Pass wrappers or hidden injection. Every child has explicit source/control/evidence/runbook mapping, with non-applicability justified for planning-only inputs. Where the original scope changes configuration, retain approved exact-byte binding, independent readback, no-op repeat, drift refusal and typed scoped rollback; this does not authorize generic writers or expanded rights. External entitlement, approvals and readiness remain independently supplied, never fabricated or silently Pass. Offline authoring cannot close a live-execution child.
+
+Every replacement parent preserves its original finding, acceptance, verification and provenance below. Its allocation table assigns every clause to executable children, with actual live outcomes explicitly routed onward. No parent is Done, ranked or counted; parent acceptance is satisfied only after all allocated child evidence exists. Original prerequisites resolve to executable leaves or terminal aggregators. Decomposition itself started no work. Generation 16 retains Purple EXR-001 and Gold EXR-011-A01 Done and accepts Silver EXR-010-A01 Done. All file/output reservations are released; all three worker roles in each cohort are quiescent/waiting until next invocation, no new claim. Roles are logical invocations, not background processes. Purple, Silver and Gold each have 0 reserved To Do / 0 In Progress / 1 Done this run. All 50 To Do are unreserved. EXR-004 rank 4 remains lowest dependency-safe unclaimed card; EXR-010-A02/A03 ranks 11/12 are newly eligible, EXR-011-A02/A03 ranks 23/24 and EXR-007-A01 rank 26 remain eligible for offline work. Six eligible / 44 awaiting delivery dependencies; none is claimed. ALL terminal commands serialize, no parallel agent execution tools; no autonomous scheduled messages.
+
 ## Force-Ranked Work
 
 ### EXR-001
 
 Rank 1 - Enforce the Exchange-only execution boundary.
 
-- Dependencies: none. Owner: Coworker swarm, root coordinated. Workstream: Scope. Updated: 2026-09-20. Status: Done; verification in Kanban.
+- Dependencies: none. Owner: Cohort Purple / f587f950-d93e-44ac-afcc-20bfb37576b9/Purple at completion. Workstream: Scope. Updated: 2026-09-22. Status: Done (bounded offline re-close, not green full-suite acceptance).
+- Re-close condition (satisfied below): repair offline command classification without weakening the actual excluded-service guard; rerun all boundary checks and reconcile the full regression. At reopening, unchanged dispatch tests passed 3/5 because the harness labeled Exchange `Get-Recipient` as excluded. That invalidated verification, not proof of excluded-service product contact. Fresh dispatch now passes 23/23, including 18 added guards.
+- Start (2026-09-21): lowest eligible rank 1, no delivery dependencies, accepted by Purple/Kanban under explicit root-serialized authorization after registry/board rereads found no active competing claim. Generation-1 acknowledgment: `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g1/start-EXR-001`. Only `tests/unit/ExchangeOnlyPublicDispatch.Tests.ps1` (Purple/Coworker-1, test author) and `tests/helpers/ExchangeOnlyPublicHarness.ps1` (Purple/Coworker-2, implementation owner), relative to `samples/contoso-exchange-online-managed-service/`, are reserved. Purple/Coworker-3 is read-only reviewer. All await root invocation; no two writable phases. Additional tests/output paths require a new acknowledged reservation. Starting global counts 53/0/7 become 52/1/7; no other card reserved or Done accepted.
+- Re-close evidence requirements unchanged: negative-first AAA and a positive per behavioral unit, all boundary acceptance checks passing, independent review and exact tested working-tree identity (including dirty files). Run and record the complete offline regression, not just the five dispatch cases, with exact commands and total/passed/failed/skipped/not-run/failed-container counts. Reconcile every failure against the baseline (two EXR-001, two EXR-004, nine EXR-010-A11); a still-red full run is not green/full-suite acceptance. Known unrelated failures retain their owners, with no silent discovery loss or unowned regression. Do not automatically re-close on focused success or assume the new-child scoped-only contract supersedes this card's full-regression requirement; submit actual full results and acceptance coverage for steward review. No closure decision or test execution occurs at startup.
+- Historical coordination (2026-09-21, g2): root relayed g1 acknowledgment, retained two writable files and per-worker unique temp outputs; Coworker-2 awaited quiescent test-author handoff, Coworker-3 was read-only. Superseded by g3 handoff and g4 closure in [registry](cohorts.md#registry), not deleted acceptance history.
+- Completion decision (g4, evidence dated 2026-09-22): canonical Purple/Kanban accepts independent Purple/Coworker-3's bounded offline re-close recommendation after inspecting reconciliation, actual scoped/full result JSON and recorder. The contract requires passing boundary acceptance plus full reconciliation, not erasing unrelated owned failures. Acknowledgment `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g4/reclose-EXR-001-quiescent`. Root confirms all workers/test processes quiescent; Purple helper/test/output write reservations released, no next-card claim. Product files and history are preserved.
+- Acceptance coverage: versioned profile/schema/manifest and historical-profile isolation; registry admission and all 25 public dispatch controls; default deployment/mutation refusal; 17 genuine excluded-command traps plus Graph import; unavailable Exchange collection produces 25 Error and zero Pass; 15 explicit exclusions and three external checks with readiness Unverified; operational artifacts, go-live denominator and documented default preview. Independent review found no blocking defect in the two-file repair. Get-Recipient is logged as Exchange and throws SyntheticCollectionUnavailable; no production module change. Scoped file counts: Deployment 3, Documentation 4, GoLive 15, MutationBoundary 6, OperationalArtifact 10, PublicDispatch 23, RegistryGuard 7, Scope 8, Validation 10 = 86, all also passing within the full run.
+- Test discipline: 18 added negative instances preserve the five original dispatch tests (four negative contracts and one complete-registry positive), plus existing profile-case/positive coverage. Root/g3 supplies prior red-proof chronology (18/18 intended mutation failures); independent reviewer verified current behavior, not historical authoring order. No assertions weakened or discovery removed; no new exported function.
+- Commands: `pwsh -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-purple-review-9218c0bb-b724-4254-9dfb-3c53d368528b\verify.ps1' -Mode Scoped` and the same command with `-Mode Full`. Recorder invokes `Invoke-Pester -Path $paths -PassThru -Output None`; Scoped resolves every `ExchangeOnly*.Tests.ps1` recursively under `samples/contoso-exchange-online-managed-service/tests` (nine files), Full resolves that entire tests directory. Exact absolute paths are in result JSON. PowerShell 7.6.6, Pester 5.7.1. These were executed by independent reviewer, not rerun by steward.
+- Observed results: Scoped 2026-09-22T03:35:40.2398176Z to 03:36:29.2272507Z, total/passed 86/86, failed/skipped/not-run/failed-containers 0/0/0/0, InvocationError null, exit 0. Full 2026-09-22T03:37:05.0524283Z to 03:56:35.0183425Z, total 4,180, passed 4,167, failed 13, skipped/not-run/failed-containers 0/0/0, InvocationError null, exit 1. Reconciliation UTC 2026-09-22T03:58:06.5884456Z; this is artifact time, not an invented stewardship/relay timestamp.
+- Full reconciliation: 4,160 baseline + 18 Purple guards + 1 Silver type negative + 1 Gold missing-initial negative = 4,180. Both original Purple dispatch failures cleared. Eleven baseline failures remain: EXR-004 two ReportSubmission/SecOpsOverride approval fixtures and EXR-010-A11 nine legacy/documentation contracts. Two added failures are owned by Silver/EXR-010-A01 (string accepted for boolean, null rejection) and Gold/EXR-011-A01 (missing initial-domain observation returns Pass rather than Fail). No unowned new failure or unexplained count loss. Still-red full regression is neither whole-suite acceptance nor release/live approval.
+- Tested identity: HEAD `02698622b3fb493cba3cd038ea39fbef9885b3eb`; reviewer records stable HEAD, status and all tracked/untracked file hashes before Scoped, after Scoped, after Full and final review. Common unchanged from HEAD. Full dirty-file manifest is in reconciliation and before/after snapshots; product hashes: helper `4225600B4A8FE0042B9E954B29A5A67A3A0AE0E9E7D6CA23CD2A526855791427`, dispatch tests `98E17D1FF0B924A1BC65400962D9A58C12F3030A18F20068B2F83C2617918E99`, live-adapter tests `6A0963F357FCDF1AB616AA3DB36F42D4D759D603488CA74B6CF7CC4CDDA31621`, Silver catalogue tests `C9CE1530D9E367552CC3DFC3C1A1F5AC6F1B3D72D15FFF909B83236CF39D14F9`. This subsequent status-only edit changes planning hashes, not the tested product identity.
+- Evidence directory: `C:\Users\chhage\AppData\Local\Temp\cohort-purple-review-9218c0bb-b724-4254-9dfb-3c53d368528b`. Root-supplied reconciliation.json SHA-256 `1345407B98D084F4CC9E1A4DB5582E239C3AAB8BB9425C0253DD5D703717D674`; Full-result.json `BD4E35CD0775A1271EB83E9D87CE0BA623B00D1D622AD3F1A89A1E0137289231`; Scoped-result.json `61DB15D60B5F33E3BB0922516BFE16136E969C885F570AC782AEFB286EA30C35`. Result hashes also appear in reviewer reconciliation. Steward inspected contents but did not independently recompute hashes or run product tests. Local temp evidence is not a committed CI/live packet; retain without reuse. RAID-I01/A01/D02/D03 external ownership/readiness remains unchanged.
 - Finding: the native profile and complete-catalog gate require other workloads and tenant governance.
 - Acceptance: define a versioned Exchange-only profile/control manifest and migrate sample configuration, registry dispatch, deployment, evidence, and go-live to it. Keep Exchange/EOP/Defender email controls for Exchange recipients; exclude Safe Documents, SPO/ODB/Teams settings, tenant-wide Purview, SIEM, Entra provisioning, and vendor/gateway setup from this journey. Existing historical profiles may remain isolated, but cannot be the default or an undocumented fallback. Retain explicit scope exclusions and external-readiness references, never fabricated Pass results. Do not require global directory scans, tenant admin consent, or externally owned collection to establish Exchange-only conformance.
 - Verification: profile/schema/dispatch tests refuse out-of-scope mutations and accidental historical defaults, assert zero excluded-service calls, and prove one complete Exchange-only registry run. Preserve historical regressions separately with documented scope.
@@ -26,7 +72,7 @@ Rank 1 - Enforce the Exchange-only execution boundary.
 
 Rank 2 - Correct remote-domain OOF hardening.
 
-- Dependencies: EXR-001 (Done). Owner: Coworker swarm, root coordinated. Workstream: Security correctness. Updated: 2026-09-20. Status: Done; user-accepted completion evidence below.
+- Dependencies: EXR-001 (reclosed Done; own completion evidence retained). Owner: Coworker swarm, root coordinated at completion. Workstream: Security correctness. Updated: 2026-09-22. Status: Done; user-accepted completion evidence below.
 - Finding: R-EXO-008 and the baseline interpret InternalLegacy as preventing internal OOF disclosure.
 - Acceptance: use current Microsoft remote-domain semantics to define the approved default (None when blocking external OOF; External only for an explicitly approved external-reply policy). Remove the reversed InternalLegacy explanation from all active config/catalog/runbooks/evaluators. Account for specific remote-domain overrides, and preserve intended forwarding/NDR choices without claiming universal Microsoft defaults.
 - Verification: negative tests detect InternalLegacy and conflicting effective overrides for the selected policy; positive proves correct effective values and matching deployment/readback/runbook semantics. Include Microsoft source and review date.
@@ -38,7 +84,7 @@ Rank 2 - Correct remote-domain OOF hardening.
 
 Rank 3 - Correct EWS exception enforcement.
 
-- Dependencies: EXR-001 (Done). Owner: Coworker swarm (implementation + read-only review); root coordinates. Workstream: Security correctness. Updated: 2026-09-20. Status: Done; user-supplied completion evidence below.
+- Dependencies: EXR-001 (reclosed Done; own completion evidence retained). Owner: Coworker swarm (implementation + read-only review), root coordinated at completion. Workstream: Security correctness. Updated: 2026-09-22. Status: Done; user-supplied completion evidence below.
 - Finding: R-EXO-009 enables EWS and populates EwsAllowList without enforcing that list.
 - Acceptance: retain the approved disabled default; for supported exceptions explicitly configure and verify EwsApplicationAccessPolicy and the exact allow list, with mailbox override/effective-state checks. Validate current Microsoft EWS retirement behavior before offering an exception, distinguish application identity controls from user-agent filtering, and document owner/expiry/rollback and client impact. Do not add tenant app-registration work.
 - Verification: missing enforcement mode, surplus entries, contradictory overrides, expired exceptions, and unsupported retirement-era combinations fail for named reasons; one approved supported exception passes readback.
@@ -51,7 +97,8 @@ Rank 3 - Correct EWS exception enforcement.
 
 Rank 4 - Deliver the usable approval and apply workflow.
 
-- Dependencies: EXR-001 (Done). Owner: fallback Coworker swarm (implementation + read-only review); root coordinates. Workstream: Change safety. Updated: 2026-09-20. Status: Done; user-supplied completion evidence below.
+- Dependencies: EXR-001 (reclosed Done). Owner: unassigned for repair; allocation pending. Workstream: Change safety. Updated: 2026-09-22. Status: To Do (reopened; historical completion evidence below). Lowest dependency-safe unclaimed card, not reserved or started at g4.
+- Re-close condition: provide valid reporting approval prerequisites in the incomplete-capture scenarios so both reporting scopes reach the intended raw-read refusal; preserve separate missing-approval refusal tests, then verify signed preview/apply/rollback and the full regression. Current unchanged admission tests pass 17/19: ReportSubmission and SecOpsOverride throw ApprovalMissing before ChangeReadIncomplete. No unsafe write was observed.
 - Finding: the documented -Apply invocation omits required preview, approval, artifact root, and change identity.
 - Acceptance: supply a supported operator path to generate the immutable Exchange preview, obtain approval using externally supplied signing capability, validate it, apply with every required argument, record pre/post state, and execute scoped rollback. Document working directory, explicit profile paths, file formats, and actionable failure recovery. A console WhatIf transcript is not substituted for the approved artifact. Missing enterprise signing prerequisites stop clearly without provisioning PKI or weakening the gate.
 - Verification: run documented preview/approval/apply/rollback commands against offline Exchange boundaries; prove refusal of missing/mismatched/expired approval and one complete artifact round trip. Verify byte binding and matching ChangeId.
@@ -64,7 +111,7 @@ Rank 4 - Deliver the usable approval and apply workflow.
 
 Rank 5 - Repair Exchange live collector contracts.
 
-- Dependencies: EXR-001 (Done). Owner: fallback Coworker swarm (implementation + read-only review); root coordinates. Workstream: Evidence. Updated: 2026-09-20. Status: Done; user-supplied completion evidence below.
+- Dependencies: EXR-001 (reclosed Done; own completion evidence retained). Owner: fallback Coworker swarm, root coordinated at completion. Workstream: Evidence. Updated: 2026-09-22. Status: Done; user-supplied completion evidence below.
 - Finding: the raw DLP output probe exposes a collector/evaluator contract mismatch; fabricated complete fixtures cannot validate live adapters.
 - Acceptance: audit every retained Exchange live adapter against actual documented cmdlet response shapes and required properties. Normalize completeness, paging, errors, identity, and timestamps at explicit boundaries; preserve raw observations for diagnosis. Remove the out-of-scope DLP/Purview live path from the Exchange command instead of repairing tenant Purview here; retain its defect in RAID-I02 for the external owner. No hidden test-only variable injection may be required for ordinary operator execution.
 - Verification: default public-command paths use realistic raw Exchange objects, including missing properties, empty success, throttling, paging, and access denial; no mock returns already-evaluated success or invented Complete wrappers at the live boundary. One retained-control raw collection round trip passes.
@@ -77,7 +124,7 @@ Rank 5 - Repair Exchange live collector contracts.
 
 Rank 6 - Repair scoped go-live and evidence signing.
 
-- Dependencies: EXR-004, EXR-005 (both Done). Owner: fallback Coworker swarm (implementation + read-only review); root coordinates. Workstream: Go-live. Updated: 2026-09-20. Status: Done; user-supplied completion evidence below.
+- Dependencies: EXR-004 (reopened), EXR-005 (Done); own completion evidence retained. Owner: fallback Coworker swarm, root coordinated at completion. Workstream: Go-live. Updated: 2026-09-21. Status: Done; user-supplied completion evidence below.
 - Finding: completion instructions omit -GoLive inputs and contradict unresolved-status exits.
 - Acceptance: provide a reproducible collect/freeze/sign/verify flow over the exact Exchange evidence bytes; do not require a signature over a freshly regenerated timestamped envelope. Document and enforce hash/age/tenant/signer binding and distinct error exits. In-scope missing or unentitled evidence cannot silently pass; approved deviations remain ApprovedException. Out-of-scope controls are explicitly excluded from the manifest, while unresolved tenant dependencies are reported separately as unverified external readiness, not as a tenant-wide go-live certification.
 - Verification: end-to-end public-command negatives for tampering, age, binding, authority, missing records, unknown status, and NotEntitled; one signed immutable Exchange run succeeds without global tenant collectors. Prove external readiness is not inferred from Exchange exit 0.
@@ -90,7 +137,7 @@ Rank 6 - Repair scoped go-live and evidence signing.
 
 Rank 7 - Establish dated Microsoft recommendation coverage.
 
-- Dependencies: EXR-001 (Done). Owner: fallback Coworker swarm (implementation + read-only review); root coordinates. Workstream: Traceability. Updated: 2026-09-21. Status: Done; inventory and planning admission complete, not gap implementation or release approval.
+- Dependencies: EXR-001 (reclosed Done; own completion evidence retained). Owner: fallback Coworker swarm, root coordinated at completion. Workstream: Traceability. Updated: 2026-09-22. Status: Done; inventory and planning admission complete, not gap implementation or release approval.
 - Finding: the repository's catalog is not a demonstrated denominator for 100% Microsoft alignment.
 - Acceptance: publish an enumerated Exchange recommendation inventory mapping source URL/section, review date, applicability, license prerequisite, desired setting, command, evaluator, evidence, and runbook. Distinguish Microsoft recommendations from local hardening/business choices. Explicitly assess sharing/delegation, protocols, mailbox access, domains, protection, auditing, and Exchange governance; every uncovered applicable recommendation receives an independently ranked child card before release. Tenant recommendations map to RAID, not new tenant implementation cards. Define stale-reference review cadence.
 - Verification: executable traceability checks reject missing/duplicate/stale/dangling mappings and unsupported universal-compliance claims; approved exclusions carry reasons and external ownership. A positive covers the declared Exchange manifest, not all Microsoft 365.
@@ -103,35 +150,35 @@ Rank 7 - Establish dated Microsoft recommendation coverage.
 
 #### Proposal Admission Ledger
 
-Each source ID and assessment ID below resolves to the exact URL, section, review date, applicability, license and current Gap/Partial status in the linked inventory. Merged means delivery acceptance is owned by an existing To Do card, not that the gap is fixed. Children cover surfaces absent from existing exact acceptance; existing governance, threat-policy and domain surfaces are refined in place to avoid duplicate implementation cards.
+Each source ID and assessment ID below resolves to the exact URL, section, review date, applicability, license and dated Gap/Partial assessment in the linked inventory. Merged identifies the delivery owner; statuses and ranks below are current, not the original proposal snapshot. EXR-009 merges are complete for offline acceptance; EXR-010/011 and split EXR-007 proposals resolve to named executable leaves through non-executable parents. EXR-010-A01 and EXR-011-A01 are Done for bounded offline acceptance; their remaining siblings are To Do, neither parent is Done. Proposal count remains fifteen. Decomposition redistributes existing acceptance, not newly discovered recommendations; proposal statuses/ranks in the product inventory remain the dated snapshot, not delivery status.
 
 | Proposal | Assessment / sources | Delivery disposition | Reason and acceptance owner |
 | --- | --- | --- | --- |
-| EXR007-C01 | A14 / S26, S08 | Admitted: [EXR-007-A01](#exr-007-a01), rank 12, To Do | New consumer/migration readiness reconciliation; EXR-003 enforcement remains Done and is not duplicated or reopened. |
-| EXR007-C02 | A09 / S27, S06, S15 | Admitted: [EXR-007-A02](#exr-007-a02), rank 13, To Do | Non-TABL lists, SCL rules, connector trust and redundant tagging are additional collection/enforcement surfaces, not satisfied by EXR-010's broad-bypass wording. |
-| EXR007-C03 | A05 / S25 | Admitted: [EXR-007-A03](#exr-007-a03), rank 14, To Do | Application resource scopes and additive Entra grants differ from EXR-009 administrator/end-user RBAC. |
-| EXR007-C04 | A01 / S28, S22 | Admitted: [EXR-007-A04](#exr-007-a04), rank 15, To Do | New sharing-policy bindings and calendar publication; education guidance is contextual, not a universal enterprise rule. |
-| EXR007-C05 | A03 / S24 | Admitted: [EXR-007-A05](#exr-007-a05), rank 16, To Do | Recipient permissions are not role-group membership or EXR-008 mailbox creation. |
-| EXR007-C06 | A02 / S23 | Admitted: [EXR-007-A06](#exr-007-a06), rank 17, To Do | Organization-relationship disclosure is not remote-domain OOF enforcement. |
-| EXR007-C07 | A10 / S05 | Admitted: [EXR-007-A07](#exr-007-a07), rank 18, To Do | Per-mailbox action sets are additional evidence beyond EXR-009's organization auditing/bypass checks. |
-| EXR007-C08 | A06 / S09 | Merged: [EXR-009](#exr-009), rank 9, To Do | Effective administrator/end-user rights, scopes, membership and assignment-policy checks refine the existing Exchange RBAC acceptance. Application RBAC belongs only to A03. |
-| EXR007-C09 | A07 / S16, S29, S01 | Merged: [EXR-011](#exr-011), rank 11, To Do | Complete sending/accepted/initial-domain coverage, selectors, MX provenance and external DNS evidence already belong to this exact domain-authentication scope. |
-| EXR007-C10 | A08 / S14, S10, S13 | Merged: [EXR-010](#exr-010), rank 10, To Do | Expand existing effective protection, precedence, recipient scope and entitlement acceptance into individual setting assertions. |
-| EXR007-C11 | A04 / S30, S08 | Admitted: [EXR-007-A08](#exr-007-a08), rank 19, To Do | ActiveSync/MAPI/OWA and client dependencies are absent from EXO-009's EWS/POP/IMAP scope. |
-| EXR007-C12 | A11 / S19 | Merged: [EXR-009](#exr-009), rank 9, To Do | Tag semantics, assignment, holds and processing make the existing Exchange MRM acceptance executable. |
-| EXR007-C13 | A12 / S20 | Merged: [EXR-009](#exr-009), rank 9, To Do | Duration, capacity, mailbox classes and entitlement refine the existing legally approved mailbox hold/custodian scope. |
-| EXR007-C14 | A13 / S21 | Merged: [EXR-009](#exr-009), rank 9, To Do | Approved Exchange encryption rules and recipient behavior complete existing IRM functional verification, not tenant RMS provisioning. |
-| EXR007-C15 | A15 / S11 | Merged: [EXR-010](#exr-010), rank 10, To Do | Mailbox prerequisites, routing and delivery complete the existing reporting mailbox/Advanced Delivery contract. |
+| EXR007-C01 | A14 / S26, S08 | Admitted: [EXR-007-A01](#exr-007-a01), rank 26, To Do | New consumer/migration readiness reconciliation; EXR-003 enforcement remains Done and is not duplicated or reopened. |
+| EXR007-C02 | A09 / S27, S06, S15 | Decomposed: [EXR-007-A02-T01](#exr-007-a02-t01), [EXR-007-A02-T02](#exr-007-a02-t02), [EXR-007-A02-T03](#exr-007-a02-t03), [EXR-007-A02-T04](#exr-007-a02-t04), ranks 27-30, To Do | Transport bypass/tag rules, organization allows, mailbox Safe Senders and connector trust respectively; TABL stays EXR-010-A08. Parent allocation preserves C02 scope. |
+| EXR007-C03 | A05 / S25 | Decomposed: [EXR-007-A03-T01](#exr-007-a03-t01), [EXR-007-A03-T02](#exr-007-a03-t02), ranks 31-32, To Do | Effective application authorization including additive Entra evidence, then approved Exchange assignment/scope lifecycle; not EXR-009 administrator RBAC or Graph consent work. |
+| EXR007-C04 | A01 / S28, S22 | Decomposed: [EXR-007-A04-T01](#exr-007-a04-t01), [EXR-007-A04-T02](#exr-007-a04-t02), ranks 33-34, To Do | Sharing policies/bindings then separate calendar publication; contextual education applicability and external partner boundary retained. |
+| EXR007-C05 | A03 / S24 | Decomposed: [EXR-007-A05-T01](#exr-007-a05-t01), [EXR-007-A05-T02](#exr-007-a05-t02), [EXR-007-A05-T03](#exr-007-a05-t03), ranks 35-37, To Do | Independent FullAccess, SendAs and SendOnBehalf outcomes, not role groups or mailbox creation; access never implies send permission. |
+| EXR007-C06 | A02 / S23 | Admitted: [EXR-007-A06](#exr-007-a06), rank 38, To Do | Organization-relationship disclosure is not remote-domain OOF enforcement. |
+| EXR007-C07 | A10 / S05 | Admitted: [EXR-007-A07](#exr-007-a07), rank 39, To Do | Per-mailbox action sets are additional evidence beyond EXR-009's organization auditing/bypass checks. |
+| EXR007-C08 | A06 / S09 | Merged: [EXR-009](#exr-009), rank 9, Done (offline) | Effective administrator/end-user rights, scopes, membership and assignment-policy checks refine the existing Exchange RBAC acceptance. Application RBAC belongs only to A03. |
+| EXR007-C09 | A07 / S16, S29, S01 | Decomposed: [EXR-011-A01](#exr-011-a01), [EXR-011-A02](#exr-011-a02), [EXR-011-A03](#exr-011-a03), [EXR-011-A04](#exr-011-a04), ranks 22-25; A01 Done (bounded offline), A02-A04 To Do | Domain denominator, DKIM lifecycle, DNS-owner handoff and bound message proof respectively; exact existing scope, no DNS writes or synthetic live certification. |
+| EXR007-C10 | A08 / S14, S10, S13 | Decomposed through [EXR-010](#acceptance-allocation): A01-A07 (ranks 10-16), A11-A12 (ranks 20-21); A01 Done (bounded offline), others To Do | Catalogue, effective scope, entitlement and supported changes have distinct child owners; parent is not executable or counted. |
+| EXR007-C11 | A04 / S30, S08 | Decomposed: [EXR-007-A08-T01](#exr-007-a08-t01), [EXR-007-A08-T02](#exr-007-a08-t02), [EXR-007-A08-T03](#exr-007-a08-t03), ranks 40-42, To Do | Mailbox/plan flags, mobile-device mailbox policies and OWA policies respectively; true enables MAPI, new Outlook impact explicit, no MDM/Conditional Access setup. |
+| EXR007-C12 | A11 / S19 | Merged: [EXR-009](#exr-009), rank 9, Done (offline) | Tag semantics, assignment, holds and processing make the existing Exchange MRM acceptance executable. |
+| EXR007-C13 | A12 / S20 | Merged: [EXR-009](#exr-009), rank 9, Done (offline) | Duration, capacity, mailbox classes and entitlement refine the existing legally approved mailbox hold/custodian scope. |
+| EXR007-C14 | A13 / S21 | Merged: [EXR-009](#exr-009), rank 9, Done (offline) | Approved Exchange encryption rules and recipient behavior complete existing IRM functional verification, not tenant RMS provisioning. |
+| EXR007-C15 | A15 / S11 | Decomposed through [EXR-010](#acceptance-allocation): A09-A12 (ranks 18-21), To Do | Input/readback validation, guarded change lifecycle, documentation and integration are separately closable; actual report delivery stays EXR-016/017. |
 
 - Reviewer-extra disposition: SMTP AUTH true/false/null mailbox overrides are already implemented under EXO-002/S02, not a sixteenth gap. Inspected [Test-SmtpAuthenticationControl](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1#L10236), the Exchange raw collector with `Get-CASMailbox -ResultSize Unlimited`, and [SMTP authentication tests](../samples/contoso-exchange-online-managed-service/tests/unit/SmtpAuthentication.Tests.ps1#L397): organization enabled and explicit mailbox false fail; true disables and null inherits; missing properties error. This is static corroboration of existing acceptance, not a newly executed test or external sign-in/Conditional Access assurance.
-- Sequencing: preserve EXR-008 through EXR-018 relative order. Insert eight children at ranks 12-19 before EXR-012, not after EXR-016: every child adds a documented Exchange readback, decision or operation contract needed by EXR-012/013 and the subsequent offline/live harness. Children depend on completed parent/boundary contracts, not on one another or downstream documentation, avoiding blocker cycles. EXR-012 waits for all eight; EXR-013/014/015/016/017/018 inherit the dependency transitively.
+- Sequencing: preserve original remaining-card relative order. EXR-010 children retain ranks 10-21; domain children take 22-25; the retained/split EXR-007 leaves take 26-42; documentation 43-46, command verification 47-48, offline workflow 49-50, coverage 51-53, harness 54-56, live acceptance 57-59 and release 60. Every EXR-012 child depends on all implementation prerequisites, including all domain and EXR-007 leaves and EXR-010-A12 (which explicitly requires every email child). Later consumers inherit all leaves through explicit aggregators. All edges point to lower ranks, never a summary parent or downstream documentation.
 - Child delivery contract: each child implements its declared Exchange surface through actual public collection/evaluation/evidence and, where configuration is needed, the approved preview/apply/readback/rollback path. Bind sources, applicability, current entitlement and local-policy choices; reconcile inventory/control mappings and document exact commands/outputs in that implementation, without falsely enlarging the original 25-control evidence denominator. Author negative-first executable checks and a positive per behavioral unit using raw synthetic observations, complete paging/error/identity handling and named refusal reasons. Supplied external attestations remain separate from Exchange Pass. EXR-012 integrates these procedures, EXR-013 executes them, EXR-016 authors opt-in checks and EXR-017 owns separately authorized live execution. No product/configuration changes or tests are performed by this planning admission.
 
 ### EXR-008
 
 Rank 8 - Author the net-new Exchange administrator journey.
 
-- Dependencies: EXR-004, EXR-007 (both Done). Owner: one root-coordinated Coworker. Workstream: Onboarding. Updated: 2026-09-21. Status: Done (offline authoring and walkthrough).
+- Dependencies: EXR-004 (reopened), EXR-007 (Done); own completion evidence retained. Owner: one root-coordinated Coworker at completion. Workstream: Onboarding. Updated: 2026-09-21. Status: Done (offline authoring and walkthrough).
 - Finding: foundational Exchange setup is implied rather than an executable ordered procedure.
 - Acceptance: begin from independently provisioned tenant, verified domain, approved identities/licenses/roles, and owner attestations. Provide exact Exchange portal/PowerShell steps for accepted-domain type, checking provisioned mailboxes, creating Exchange shared/operations mailboxes and mail-enabled priority groups, approved membership, preset initialization, hardening, preview/apply, and Exchange mail-flow/client validation. Provide parameter provenance/examples and stop conditions. Identity creation, license assignment, domain verification, and DNS publishing are linked handoffs, not embedded implementation instructions. Do not move MX before the DNS owner's readiness approval.
 - Verification: a sanitized walkthrough checks ordering, all required inputs, role/module prerequisites, representative Exchange recipients and outcomes; missing tenant inputs produce a named prerequisite response without provisioning them.
@@ -143,7 +190,7 @@ Rank 8 - Author the net-new Exchange administrator journey.
 
 Rank 9 - Reconcile Exchange governance settings.
 
-- Dependencies: EXR-005, EXR-007 (both Done). Owner: one Coworker instance, followed by direct root integration and verification. Workstream: Governance. Updated: 2026-09-21. Status: Done. No subsequent card started.
+- Dependencies: EXR-005, EXR-007 (both Done). Owner: one Coworker instance, followed by direct root integration and verification at completion. Workstream: Governance. Updated: 2026-09-21. Status: Done (offline).
 - Finding: governance examples disagree with desired state and present local legal choices as universal defaults.
 - Acceptance: align Exchange mailbox auditing/bypass checks, Exchange RBAC, mailbox hold/custodian scope, mailbox retention interfaces and IRM settings with externally approved records/legal policy. Distinguish Exchange MRM from Purview retention; do not compare them as the same policy. No automatic seven-year KeepAndDelete or VIP litigation-hold assumption. Tenant DLP, Purview labels/eDiscovery/global audit-retention provisioning and the conflicting DLP sample are removed from the Exchange walkthrough and assigned to RAID-I02/D03. Document observable Exchange-side verification and externally owned outcomes separately.
 - Verification: matching configured names/values across retained commands, missing custodian membership, unauthorized hold, retention-type confusion, audit bypass, and failed IRM functional checks; positive proves approved Exchange-only state without Purview collector calls.
@@ -165,9 +212,14 @@ Completion evidence (2026-09-21, offline only):
 
 ### EXR-010
 
-Rank 10 - Align Exchange email-protection guidance.
+Parent summary - Align Exchange email-protection guidance (former rank 10; not an executable card).
 
-- Dependencies: EXR-005, EXR-007 (both Done). Owner: one Coworker instance, root coordinated. Workstream: Email protection. Updated: 2026-09-21. Status: In Progress; sole active card.
+- Owner: root for traceability; current child authorization is generation-bound in the cohort registry, superseding the former parent-level Coworker exclusion. Workstream: Email protection. Updated: 2026-09-21. Disposition: decomposed into EXR-010-A01 through EXR-010-A12; excluded from To Do, In Progress, Done and executable rank counts. No parent completion is claimed. All children must close with evidence before this summary can report its acceptance satisfied.
+- Decomposition (2026-09-21): replaces one oversized In Progress card with twelve independently verifiable To Do tasks, ranks 10-21. Existing implementation/evidence is retained below, not discarded or automatically certified. No implementation is started by this planning change. EXR-001/004 repair their own four verification failures; A11 owns the other nine email-change regressions. No duplicate repair cards are created.
+- Scope guard: this is redistribution of the original acceptance, not twelve new features. Validate Microsoft-managed preset settings without creating individual preset-setting writers. Only the approved Exchange operator workflow needs supported reversible changes; no generic writer for every one of the 114 catalogue fields is required. Non-TABL bypass expansion stays EXR-007-A02. Actual delivery and service compatibility remain EXR-016/017; external ownership remains RAID-D02/D03/I04.
+
+Original acceptance retained for traceability; the allocation below is the executable ownership contract:
+
 - Finding: preset guidance, licensing explanations, and cross-workload protection are mixed.
 - Acceptance: document and verify EOP and externally licensed Defender email presets, precedence, recipient/group scope, impersonation targets, reporting mailbox, Advanced Delivery, quarantine behavior, and narrow allow/block exceptions for Exchange. Use Microsoft-supported preset modification surfaces. Remove Safe Documents and SPO/ODB/Teams setup from active guidance, not merely relabel their licensing. Consume supplied entitlement inputs without assigning licenses or assuming a suite label proves entitlement.
 - Verification: scope/precedence, unsupported preset mutation, unlicensed capability, broad bypass and recipient exclusion negatives; one licensed Exchange-recipient workflow; zero non-Exchange workload writes.
@@ -176,20 +228,252 @@ Rank 10 - Align Exchange email-protection guidance.
 - Integration verification: real public collection/evaluation/evidence and approved change paths must exercise these setting and reporting contracts over raw synthetic inputs, with exact source/control/runbook mappings updated during implementation. Use named negative failures and positive behavioral units; EXR-012/013 integrate and execute the documented contracts. This merge does not claim the gaps fixed.
 - RAID: RAID-D02, RAID-I04.
 
+#### Acceptance Allocation
+
+| Original clause | Sole delivery owner(s), by distinct outcome |
+| --- | --- |
+| C10: enumerate Standard/Strict email settings; label Microsoft versus local values and sources | A01 catalogue contract |
+| C10: raw collection, recipient/group scope, precedence, holes and per-setting approved deviations | A02 effective matrix |
+| Supplied feature/recipient entitlement; P1/P2 impersonation, AIR/priority distinction; no P2 tabletop mandate | A03 entitlement contract |
+| Supported Standard/Strict/built-in assignment changes; refuse individual managed-setting mutation | A04 preset assignment lifecycle |
+| C10: outbound limits/actions outside presets | A05 outbound lifecycle |
+| Impersonation targets and narrowly approved exceptions with effective scope | A06 impersonation lifecycle |
+| Quarantine permissions/tags and managed-preset preservation | A07 quarantine lifecycle |
+| Narrow tenant allow/block exceptions (not the additional non-TABL surfaces) | A08 TABL lifecycle |
+| C15: mailbox prerequisites, three routes, binding, feedback and independently supplied receipt/DLP evidence validation | A09 reporting input/readback contract |
+| C15: enforce pre-write mailbox prerequisites, configure routes/feedback and exact SecOps Advanced Delivery exception | A10 reporting change lifecycle |
+| Remove active excluded-workload setup; correct operator instructions, mappings and nine documentation/legacy regressions | A11 email documentation reconciliation |
+| Licensed public collection/evaluation/evidence plus approved-change walkthrough; zero excluded writes and full regression | A12 bounded email integration |
+
+EXR007-C10/A08/S14,S10,S13 traces through A01-A07, A11-A12; EXR007-C15/A15/S11 traces through A09-A12. A08 preserves the original TABL clause. EXR-012 consumes these completed procedures for whole-guide reconciliation; EXR-013 executes the wider command set. Neither receives unfinished child acceptance.
+
+#### Child Completion Rules
+
+Each child below has one deliverable and owns its negative-first Arrange-Act-Assert checks plus one positive per behavioral unit. Close it on complete scoped acceptance and relevant affected regression tests with recorded commands/counts/revision. Unrelated already-recorded failures do not force every child to wait for A12, but no new unowned regression may be introduced. A12 alone owns the final combined email workflow and full-suite gate; it does not substitute for missing child assertions. For change tasks, the lifecycle is one outcome: approved preview, exact-byte approval binding, apply, independent raw readback, no-op repeat, drift refusal and typed scoped rollback. Required external inputs are synthetic in offline tests, never fabricated production approval.
+
+All children: parent EXR-010; scope Exchange recipients only; source/control/evidence/runbook mapping must be updated for the touched contract before closure. A01 is owned by Cohort Silver at generation 2; A02-A12 remain unassigned To Do. Named worker invocation is authorized only within the registry's precise phases and paths, not for this parent or all children. Existing tests are starting evidence at checkpoint 0269862, not a child acceptance sign-off.
+
+### EXR-010-A01
+
+Rank 10 - Verify the email recommendation catalogue.
+
+- Dependencies: EXR-007 (Done; bounded offline evidence retained). Owner: Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver at completion. Workstream: Email protection. Updated: 2026-09-22. Status: Done (bounded offline catalogue acceptance, not A02, parent or full-suite acceptance).
+- Completion decision (g16): Purple/Kanban accepts independent Silver/Coworker-3's recommendation after inspecting actual acceptance, independent review, manifest, source/writer verification and stable final identity. ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g16/accept-Silver-A01-all-waiting`. Root confirms quiescence at `2026-09-22T13:17:30.8600976Z`; all six Silver implementation reservations and output writes released, tests remain read-only. All three Silver roles complete/quiescent and waiting until next invocation, as are Purple/Gold; no new claim.
+- Historical phase (g13, superseded by g14/g15 and g16 closure): Gold completion released Common from Gold. Silver-1 alone was authorized to author the broader typed/source/built-in catalogue contract in `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEmailSettingCatalog.Tests.ps1`; Silver-2 Common pending/inactive until observed test evidence, quiescence and a new ACK; Silver-3 waiting. g14 refined source/customization tests; g15 activated six implementation paths. Their full snapshots remain in the registry, without current write authority.
+- Historical evidence/phase (g5, superseded by g13 allocation and g16 acceptance): corrected string-versus-boolean test serially run by root, 0 passed / 1 failed with intended null rejection; independent Purple full result corroborates the same owned red at ExchangeEmailSettingCatalog.Tests.ps1:30. No catalogue completion was claimed then. Silver remained quiescent, implementation WAIT on Gold-2's Common reservation; Silver-2 had not been invoked for implementation. The owned negative is now resolved in the accepted catalogue slice, not waived.
+- Start (2026-09-21, g2): accepted same-root claim at rank 10 by Purple/Kanban, acknowledgment `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g2/join-Silver-Gold`. EXR-007 completion evidence inspected; offline review does not require confirmed live RAID-D02 readiness. Three logical roles, not invoked: Coworker-1 initially reads `tests/unit/ExchangeProtectionMatrix.Tests.ps1` and `config/exchange-email-settings.v1.json`; Coworker-2 WAIT, no `scripts/ExchangeOnlineBaseline.Common.psm1` write authorization; Coworker-3 read-only review. Paths relative to `samples/contoso-exchange-online-managed-service/`. No repository write reservations; per-worker unique OS-temp outputs only per registry. Shared-module implementation requires explicit next acknowledgment; scoped closure contract unchanged, no tests run or Done claimed.
+- Deliverable: a dated, typed, complete applicable Standard/Strict email-setting catalogue, with applicability, source section and Microsoft/local/approved-exception distinctions.
+- Acceptance: reconcile anti-malware/file filters/ZAP, spam/BCL/actions, outbound limits, spoof/DMARC, impersonation/safety tips, Safe Links email and Safe Attachments email; exclude collaboration/Safe Documents fields. Record real built-in differences, not synthetic Standard defaults. No setting mutation is part of this task.
+- Verification: reject missing/duplicate/unsupported fields, wrong types, stale/unbound sources and fabricated recommendation labels; one complete catalogue maps every applicable field to its intended assertion. Existing per-field matrix drift/missing tests remain intact.
+- Accepted coverage: [catalogue](../samples/contoso-exchange-online-managed-service/config/exchange-email-settings.v1.json) has 114 fields (91 MicrosoftRecommendation, 23 LocalPolicy), reconciled independently to 247 applicable profile-field assertions. Fixed metadata, families/profiles, sections, capabilities, types, required Microsoft values and exclusions are independently constrained; recursive duplicate/case-colliding JSON keys fail before conversion. Complete Standard/sparse Strict semantics preserved. All 23 valid nondefault local fields across 50 explicit entries survive admission without relabeling; ApprovedException remains distinct runtime evidence in the retained matrix, not a catalogue label. No setting mutation, new public API or A02 runtime repair is accepted here.
+- BuiltIn/source coverage: explicit SafeLinks BuiltIn differences are EnableForInternalSenders=false, DisableURLRewrite=true, AllowClickThrough=true; explicit SafeAttachment BuiltIn empty overlay reflects eight source values agreeing with Standard, not fabricated disabled defaults. Reviewer independently verifies all ten source SHA-256 digests and exact 53 default file types (not the longer detection list). [Durable source evidence](../samples/contoso-exchange-online-managed-service/docs/EMAIL-SETTINGS-SOURCES.md) distinguishes captured representations/revisions/digests, including rendered versus pinned Markdown. Outbound is outside presets; BCC default-policy-only; three encrypted-attachment recommendations are conditional and absent from captured New/Set parameter references. No getter/mutation/live support is inferred. S14/A08 and control/evidence/runbook mappings remain bounded, A08 Partial, A02 and parent unfinished.
+- Test discipline: independent review inspected historical g13 933 selected negatives red and g14 12 added selected/intended failures before final positive parameterization; g14 final catalogue 947 discovered, 1 passed / 946 failed. Current protected catalogue is 945 negatives plus one positive behavioral unit with two cases (shipped artifact and independently validated local customization); matrix retains 241 negatives and one positive. Independent 13 probes are all negative, with named rejection/one-read assertions for coercion, shapes, nulls and escaped/case collisions. No weakened assertion or discovery loss observed; overlapping runs are not additive unique-test counts.
+- Exact independent commands, executed serially from repository root via `verify-independent.ps1` in fresh `pwsh -NoProfile -NonInteractive` processes: `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEmailSettingCatalog.Tests.ps1' -PassThru -Output None`; same invocation for `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionMatrix.Tests.ps1`; `Invoke-Pester -Path '<evidence directory>/IndependentAdmission.Tests.ps1' -PassThru -Output None`. Catalogue **947 total/selected/passed** (13:09:15.5684954Z to 13:09:49.7004720Z), matrix **242/242** (13:09:58.8231408Z to 13:12:23.2185464Z), probes **13/13** (13:13:38.9144702Z to 13:13:42.3369845Z), all 2026-09-22, zero failed/skipped/not-run/failed containers, InvocationError null. A temporary runner parse typo was corrected before Pester ran; not a product/test failure. Steward did not execute these commands.
+- Writer affected command: `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionLicensing.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionSafety.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/StandardPreset.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeLiveContract.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeOnlyScope.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeOnlyPublicDispatch.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeRecommendationInventory.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeOnlyDocumentation.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionDocumentation.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/CatalogParity.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/CompliantOfflineCatalogReconciliation.Tests.ps1','samples/contoso-exchange-online-managed-service/tests/unit/DomainInventory.Tests.ps1' -PassThru -Output None`. **355 total/selected, 349 passed, 6 failed**, zero skipped/not-run/failed containers, InvocationError null; report SHA-256 `9D0A10CBFD35F7BF0EE8177DCF8C913858EDB92217C16018E318298C7E5A3FDA`. Inspected/reconciled by independent reviewer, not independently rerun. Writer evidence directory: `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-0de42bd7-a72d-4850-a267-d9070e64dbab`.
+- Failure reconciliation: EVD-003-A1 shipped identifiers (one), EVD-003-A3 missing/unknown/extra control and exact parity (four), TST-006 emitted catalogue/binding reconciliation (one). All six ExpandedPath and Message pairs exactly match historical `exr010-regression-result.json`, SHA-256 `5A82AD175B60D9EAC41A5B0B195E41AF367E3214F1E317C57400948C4E70C6AE`, per inspected Source-and-writer-verification.json. All remain EXR-010-A11-owned and unwaived; no new unowned failure observed in reviewed slices. Only EMAIL-SETTINGS-SOURCES.md differs from writer affected-phase inputs; its final bytes are covered by fresh independent 947-case catalogue execution. Historical eleven unrelated full-suite failures (EXR-004 two, A11 nine) remain tracked, not a current full-suite count. Last full run predates Gold/Silver fixes; no new full run or full-green claim.
+- Independent evidence directory: `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-0ba5c5d2-49d2-45ad-b591-71436b6200e7\cohort-Silver-ce679332-16f5-488d-8bbd-b640275120c5`. Inspected exact files: `Independent-review-g15.md`, `Evidence-manifest.json`, `Source-and-writer-verification.json`, `Final-identity.json`. Review has no unresolved bounded findings. Manifest-recorded SHA-256: review `1FB21213DE68405E25912B1640F0DAFCA838D8CB52FD58042CCC8B54D50EA728`; catalogue result `271442294E27687C142DD9F35A74FFE4B246FB97ECB0F3EBBB5DA2D325ABF806`; matrix `505E228B440F79D7FFE6FABAB4A82126866A3AB955CB73C03C05B9E7B2D28070`; probes `AE54B4A954AF463C5113B6551C7E1152D4EA5FED1A7427CC645CC405C89369E2`; final identity `583A83EBE37889A71A0CF579BAC772C2053A03E95E47318A67EC0BECA3ACFCB0`. Steward inspected records, not recomputed hashes or re-fetched sources. Retain temporary evidence read-only; it is not committed CI or live proof.
+- Tested identity/quiescence: HEAD `02698622b3fb493cba3cd038ea39fbef9885b3eb`, final **291 inputs**, InputChanges empty, Success true at `2026-09-22T13:17:30.8600976Z`; all independent phases have stable before/after identities. Root confirms Silver-3 quiescence at the same UTC; current relay UTC unavailable. Protected test SHA-256 `B94C9CD162DDE7E0AA71FDB74E300BC1B32EF15F343DD5CDD842AAF354689B49` retained. Six reviewed implementation paths are Common, email catalogue, recommendation inventory, source document, CONTROL-CATALOG and EXCHANGE-ONLY; no new scope. Subsequent g16 stewardship edits affect planning documents only, not tested product inputs. EXR-010-A02/A03 now delivery-safe for offline allocation, but unclaimed; EXR-004 remains lowest eligible.
+- RAID: RAID-D02 for supplied capability applicability; no license provisioning.
+
+### EXR-010-A02
+
+Rank 11 - Verify effective recipient protection.
+
+- Dependencies: EXR-001, EXR-005, EXR-010-A01. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: an independently collected recipient-by-family effective setting matrix.
+- Acceptance: complete recipient inventory and recursive group resolution; Strict/Standard/custom/default/built-in precedence, inclusion/exception semantics, outbound sender scope, missing coverage and mixed EOP/ATP applicability. Evaluate the A01 fields, preserve ApprovedException separately, and reject unsupported individual managed-policy exceptions. Reconcile the mixed anti-phishing path and empty custom-rule conditions; do not assume built-in equals Standard.
+- Verification: named negatives for holes, ambiguous priority, incomplete/error/paged raw inputs, cycles, unsupported rule scope, setting drift and invalid/unused exceptions; one realistic mixed-recipient public readback proves the complete matrix and exact observed identities. No new policy writer here.
+- Existing evidence / remaining: Get-BaselineEmailProtectionState, Resolve-BaselineEmailPolicy and Test-BaselineEmailProtectionState plus [matrix](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionMatrix.Tests.ps1) and [safety](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionSafety.Tests.ps1) tests exist. Review the unresolved scope cases and execute the bounded acceptance.
+- RAID: RAID-D02; supplied entitlement authority remains external.
+
+### EXR-010-A03
+
+Rank 12 - Verify email capability entitlement.
+
+- Dependencies: EXR-001, EXR-005, EXR-010-A01. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: one explicit tenant/recipient capability decision contract consumed by collection, evaluation and change admission.
+- Acceptance: EOP remains evaluable without Defender; licensed email features require current matching tenant and recipient evidence, including custom/built-in scope. State supported Exchange plan applicability and refuse unsupported/unknown inputs explicitly. Separate P1/P2 impersonation from P2 priority/AIR capabilities; tabletop cadence is local policy, not a P2 mandate. Never infer entitlement from suite labels or assign licenses.
+- Verification: missing/stale/mismatched evidence, unlicensed recipient scope and capability use fail for named reasons; one valid capability fixture proves EOP-only and licensed paths without Graph calls, with NotEntitled distinct from Pass.
+- Existing evidence / remaining: [licensing tests](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionLicensing.Tests.ps1) pass in the recorded run; tenant/recipient checks exist in the matrix. Reconcile all policy types and document the supported-plan boundary, not merely the existing ATP-preset guard.
+- RAID: RAID-D02; independent licensing handoff, no tenant changes.
+
+### EXR-010-A04
+
+Rank 13 - Apply exact preset assignments safely.
+
+- Dependencies: EXR-004, EXR-010-A02, EXR-010-A03. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: supported reversible Standard/Strict/built-in assignment changes with exact recipient scope.
+- Acceptance: preset initialization is an explicit prerequisite; capture and reconcile all relevant inclusion/exclusion fields and enabled state so residual conditions cannot leave holes. Use supported assignment surfaces only; refuse individual Microsoft-managed policy-setting changes. Verify changed coverage with A02.
+- Verification: missing preset, unmanaged scope residue, wrong group, unauthorized exclusion and unlicensed ATP assignment refuse before writes; one approved assignment round-trip proves coverage, no-op, drift refusal and exact rollback. Assert zero collaboration writes.
+- Existing evidence / remaining: EopPresets, AtpPresets and BuiltInProtection adapters exist in [ApprovedAdapters](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1). Current Standard/Strict desired fields cover only a subset of possible scope conditions; reconcile complete scope and independent readback.
+- RAID: RAID-D02; no provisioning of identities or licenses.
+
+### EXR-010-A05
+
+Rank 14 - Apply outbound spam settings safely.
+
+- Dependencies: EXR-004, EXR-010-A02, EXR-010-A03. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: approved outbound policy limits/actions and sender scope with recoverable state.
+- Acceptance: reconcile all nine outbound catalogue fields, Standard/Strict limits and selected policy/sender coverage; outbound policy is independent of presets. Use exact approved identities and explicit prerequisites for policy/rule availability, not an unapproved global overwrite. Preserve local notification choices as labeled choices.
+- Verification: missing approval/readback, unapproved identity/scope, wrong threshold/action/type and recipient coverage mismatch fail; one signed policy/scope lifecycle passes matrix readback, no-op and exact rollback.
+- Existing evidence / remaining: [OutboundSpam adapter](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1#L128) writes only AutoForwardingMode; A01 already defines the remaining limits/actions. Add only the operator-required outbound path, not a generic 114-setting writer.
+- RAID: RAID-D02 for approved recipient/capability inputs.
+
+### EXR-010-A06
+
+Rank 15 - Reconcile effective impersonation targets.
+
+- Dependencies: EXR-004, EXR-010-A02, EXR-010-A03. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: one approved effective user/domain impersonation-target contract and supported reversible change path.
+- Acceptance: bind targets and narrow sender/domain exceptions to the policy that actually protects recipients. Do not require a redundant custom rule merely because the old evaluator assumed one when a supported preset supplies protection. Where a custom policy is needed, prove its rule binding, state and scope. Preserve P1/P2 distinctions from A03 and never modify unsupported individual preset settings.
+- Verification: missing/misbound rule, shadowed custom policy, excess/missing targets, broad/expired exceptions and unlicensed recipients fail; one approved effective target set passes public raw evaluation and supported apply/readback/rollback.
+- Existing evidence / remaining: MDO-009 evaluator and Impersonation adapter exist; reconcile the named custom-policy assumption with A02 effective precedence. Existing matrix tests are not proof that the adapter changes the effective policy.
+- RAID: RAID-D02; priority-account administration outside this contract is not added.
+
+### EXR-010-A07
+
+Rank 16 - Reconcile quarantine permissions safely.
+
+- Dependencies: EXR-004, EXR-010-A02, EXR-010-A03. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: consistent effective quarantine tags/permissions and a supported custom-policy change lifecycle.
+- Acceptance: preserve Microsoft-managed preset/built-in policies; verify applicable recommended tags and high-risk restrictions. Label local custom permission/notification choices. Ensure Baseline custom tags written by the adapter are either accepted through exact approved mapping/exception or refused, rather than contradicted by the matrix's expected Microsoft tag names.
+- Verification: unsupported managed mutation, excessive permission, incorrect category/tag binding and unapproved custom deviation fail; one approved custom-policy permission lifecycle passes independent matrix readback and exact rollback without changing managed policies.
+- Existing evidence / remaining: FullAccess default correction and [protection adapter tests](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeProtectionAdapters.Tests.ps1) exist; reconcile custom Baseline tag output with effective evaluation before closure.
+- RAID: RAID-D02; local policy approval is explicit, not a universal Microsoft prescription.
+
+### EXR-010-A08
+
+Rank 17 - Verify narrow TABL exception lifecycle.
+
+- Dependencies: EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: verified narrow tenant allow/block exceptions bound to the supplied governance register.
+- Acceptance: exact identity/type/value/action, owner, ticket, justification, approval and expiry for supported entries; complete raw collection and reversible approved changes with retry/drift safety. Preserve existing narrow behavior; transport SCL rules, connection-filter allows, Safe Senders and connector trust expansion belong only to EXR-007-A02.
+- Verification: wildcard/broad, stale, unowned, mismatched or incompletely collected entries fail; one narrowly approved entry passes public collection and signed apply/readback/rollback with retry evidence. Prove existing behavior before adding code.
+- Existing evidence / remaining: MDO-007 raw register binding, TenantAllowBlockList adapter and rollback tests already exist. Record a child-specific acceptance review and rerun the retained cases; no automatic Done credit and no new bypass feature implied.
+- RAID: RAID-D02; external exception owner supplies approval.
+
+### EXR-010-A09
+
+Rank 18 - Validate reporting inputs and receipts.
+
+- Dependencies: EXR-001, EXR-005, EXR-010-A03. Owner: unassigned. Workstream: Email reporting. Updated: 2026-09-21. Status: To Do.
+- Deliverable: documented, machine-validated reporting prerequisite and readback/evidence input contract.
+- Acceptance: exact local user/shared mailbox without forwarding; Junk/NotJunk/Phish destinations, enabled rule/policy binding, feedback and narrow SecOps state; current mailbox-bound DLP-owner handoff. Provide an operator parameter contract/sample without fake production approvals. Independently supplied category receipts must be recent, correctly routed, distinct and preserve the original; validate structure/binding without claiming their independent truth or actual delivery.
+- Verification: missing/wrong mailbox class, forwarding, disabled/misbound rule or SecOps state, misroutes, feedback drift, absent/stale/duplicate receipts and missing DLP proof fail; one complete supplied reporting contract passes through raw public evaluation. No tenant DLP changes and no live delivery in this card.
+- Existing evidence / remaining: [reporting contract tests](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeReportingContract.Tests.ps1) and Test-BaselineReportingState exist; reconcile enabled-state checks and operator input/schema/sample before closure.
+- RAID: RAID-D02/D03/I04; AIR remains a separate capability, Teams excluded; actual delivery EXR-016/017.
+
+### EXR-010-A10
+
+Rank 19 - Apply reporting routes with prerequisites.
+
+- Dependencies: EXR-004, EXR-010-A09. Owner: unassigned. Workstream: Email reporting. Updated: 2026-09-21. Status: To Do.
+- Deliverable: reversible approved reporting-route and exact SecOps Advanced Delivery changes, guarded before writes.
+- Acceptance: check mailbox identity/type/forwarding and current DLP-owner prerequisite before preview/apply; use existing portal-initialized reporting objects. Bind all three policy destinations, rule state/binding and feedback. Scope SecOps to the exact approved mailbox using supported delta APIs and enforce its active state. Do not demand new post-change delivery receipts before initial configuration: pre-write prerequisites and post-change A09 delivery validation are distinct stages. Do not add simulation/global bypass provisioning.
+- Verification: absent prerequisites, broad/wrong mailbox, missing/misbound objects, inactive SecOps, stale approval and drift refuse before writes; one signed change lifecycle reconciles routes, feedback and SecOps readback, then A09 receipts, no-op and exact rollback. Keep EXR-004 fixture-repair ownership separate.
+- Existing evidence / remaining: [reporting adapter tests](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeReportingAdapters.Tests.ps1) and signed round trips cover route/delta changes. Add the missing pre-write mailbox/DLP validation and joined raw readback proof.
+- RAID: RAID-D02/D03/I04; no Purview provisioning, no actual delivery claim.
+
+### EXR-010-A11
+
+Rank 20 - Reconcile email operator guidance and legacy contracts.
+
+- Dependencies: EXR-007, EXR-010-A01, EXR-010-A02, EXR-010-A03, EXR-010-A04, EXR-010-A05, EXR-010-A06, EXR-010-A07, EXR-010-A08, EXR-010-A09, EXR-010-A10. Owner: unassigned. Workstream: Email documentation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: one consistent email-protection operator contract across active guidance, source/control mappings and explicitly separated legacy profiles.
+- Acceptance: exact inputs/set/verify/expected-output/recovery steps for the completed child contracts, Microsoft versus local values, supplied entitlement and external handoffs. No Safe Documents/SPO/ODB/Teams setup or mandatory Graph consent in the active Exchange path. Reconcile the nine known documentation/legacy failures: one runbook Verify, five catalog/parity, two TST-006 downstream and one Graph-permission expectation. Preserve historical opt-in coverage without silently dropping assertions or restoring excluded defaults.
+- Verification: execute the touched email command examples and input contracts, not keyword-only checks; all nine named failures and affected documentation/source tests pass with explicit profile denominators. EXR-001/004 own the other four failures; EXR-012/013 retain whole-guide integration, not unfinished email examples.
+- Existing evidence / remaining: [email contract](../samples/contoso-exchange-online-managed-service/docs/EXCHANGE-EMAIL-PROTECTION.md) and scoped documentation tests exist; latest full run is still 4,147/4,160. Repair only these email-driven contracts, preserving independent historical evidence.
+- RAID: RAID-I04/D02/D03; remove excluded prescriptions without certifying external services.
+
+### EXR-010-A12
+
+Rank 21 - Prove the integrated email workflow.
+
+- Dependencies: EXR-001, EXR-004, EXR-006, EXR-008, EXR-010-A01, EXR-010-A02, EXR-010-A03, EXR-010-A04, EXR-010-A05, EXR-010-A06, EXR-010-A07, EXR-010-A08, EXR-010-A09, EXR-010-A10, EXR-010-A11. Owner: unassigned. Workstream: Email verification. Updated: 2026-09-21. Status: To Do.
+- Deliverable: one reproducible offline email-protection workflow acceptance packet using the shipped commands and raw synthetic boundaries.
+- Acceptance: consume documented inputs; run approved email changes, raw effective matrix/reporting collection, frozen evidence/signature verification and rollback. Preserve ApprovedException and Unverified external readiness; assert zero excluded writes. Reconcile every parent clause and both C10/C15 proposals to completed child evidence. Do not substitute precomputed Pass objects, new generic writers or tenant operations.
+- Verification: named integration refusals for tampering, recipient/scope drift, missing reporting proof and unsupported capability; one licensed mixed-recipient approved workflow passes. Run a fresh full offline suite on final frozen files with zero unexplained failures/skips/discovery loss and record exact counts/revision. Child-specific defects return to their owning child; this task is not an unbounded implementation catch-all.
+- Existing evidence / remaining: matrix, reporting, signed-adapter and journey fixtures exist separately; no complete green final acceptance packet exists. Reference 4,160-test discovery and all 13 known failures; explain any legitimate discovery change. EXR-014 remains the later whole-service offline workflow, EXR-016/017 actual delivery/live compatibility.
+- RAID: RAID-D01 through D05 remain external and unconfirmed; no live action authorized.
+
 ### EXR-011
 
-Rank 11 - Correct domain authentication and DNS handoffs.
+Parent summary - Correct domain authentication and DNS handoffs.
 
-- Dependencies: EXR-007, EXR-008. Owner: unassigned. Workstream: Domain protection. Updated: 2026-09-21. Status: To Do.
+- Owner: unassigned for traceability. Workstream: Domain protection. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-007/008 are inherited by every child. Acceptance is satisfied only when all four children have scoped completion evidence.
 - Finding: primary-domain examples omit complete domain applicability and incorrectly explain DMARC inheritance and MX provenance.
 - Acceptance: enumerate Exchange sending/accepted/initial domains and distinguish externally owned parked-domain inventory. Configure Exchange DKIM and retrieve exact selectors. Define DNS-owner input/output handoffs for MX, Autodiscover, SPF/DMARC, MTA-STS/TLS-RPT and reporting; correct parent/subdomain DMARC inheritance and do not claim Get-AcceptedDomain provides the tenant's MX target. Explain staging, propagation, alignment, and Exchange send/receive verification. No DNS/HTTPS/reporting-service provisioning is added to the board or deployer.
 - Verification: domain classification and selector fidelity tests plus read-only/synthetic handoff checks; missing or stale external confirmation is a prerequisite issue, not a fabricated DNS pass. Include initial onmicrosoft domain and parked-domain owner handoff.
-- EXR007-C09 / A07 / S16, S29, S01 acceptance merge: reject omitted accepted/sending/initial domains, wrong selector/key/signing state, invented MX provenance and stale DNS-owner attestations; classify subdomain and parked-domain responsibility without false NotApplicable. One complete approved Exchange domain denominator binds exact DKIM selectors/signing state and received-message authentication/alignment proof to independent SPF/DMARC/cutover evidence. Use synthetic message/header and owner records offline, with actual send/receive proof in EXR-016/017. Preserve approved domain-type topology and DMARC inheritance semantics, no DNS writes. Exercise the actual domain collection/evaluator and handoff contract with named negative and positive cases, updating source/control/evidence/runbook mappings in implementation; existing exact domain acceptance is not duplicated into a child.
+- EXR007-C09 / A07 / S16, S29, S01 acceptance merge: reject omitted accepted/sending/initial domains, wrong selector/key/signing state, invented MX provenance and stale DNS-owner attestations; classify subdomain and parked-domain responsibility without false NotApplicable. One complete approved Exchange domain denominator binds exact DKIM selectors/signing state and received-message authentication/alignment proof to independent SPF/DMARC/cutover evidence. Use synthetic message/header and owner records offline, with actual send/receive proof in EXR-016/017. Preserve approved domain-type topology and DMARC inheritance semantics, no DNS writes. Exercise the actual domain collection/evaluator and handoff contract with named negative and positive cases, updating source/control/evidence/runbook mappings in implementation. The earlier no-child allocation is explicitly superseded by the four distinct outcomes below; scope is redistributed, not duplicated.
 - RAID: RAID-D04.
+
+#### EXR-011 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Complete accepted/sending/initial onmicrosoft denominator; domain-type topology; subdomain and parked ownership, no false NotApplicable | [EXR-011-A01](#exr-011-a01) |
+| Exchange DKIM configuration, exact selectors/key/signing state and fidelity | [EXR-011-A02](#exr-011-a02) |
+| Authoritative MX provenance, Autodiscover, SPF/DMARC inheritance, MTA-STS/TLS-RPT/reporting; staging/propagation/cutover; stale/missing owner proof, no DNS writes | [EXR-011-A03](#exr-011-a03) |
+| Bind complete denominator, selectors and independent DNS proof to received-message authentication/alignment; offline public integration and source/control/runbook mapping | [EXR-011-A04](#exr-011-a04); each contributing child owns its own mappings and checks |
+| Actual send/receive verification, never substituted by synthetic headers | [EXR-016-A03](#exr-016-a03) authors probes; [EXR-017-A01](#exr-017-a01)/[EXR-017-A02](#exr-017-a02) execute with authorization |
+
+### EXR-011-A01
+
+Rank 22 - Domain applicability denominator.
+
+- Dependencies: EXR-007, EXR-008 (Done; bounded offline evidence retained). Owner: Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold. Workstream: Domain protection. Updated: 2026-09-22. Status: Done (bounded offline acceptance, g13).
+- Canonical acceptance (2026-09-22, g13): inspected Gold-3 independent review, final identity and writer-artifact verification plus Gold-2 result headers/commands against the unchanged scoped closure contract. No unresolved bounded A01 issue remains. Root confirms all 290 inputs stable and all Gold workers/test processes quiescent at 07:06:41Z; final identity timestamp is `2026-09-22T07:06:41.2989037+00:00`, StableInputs true. ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g13/accept-Gold-A01-Silver-tests-first`. Release Gold's reservations including Common; no new Gold claim. This is not parent EXR-011 acceptance, live/DNS readiness, a full-suite-green claim or release approval. Eleven unrelated failures (EXR-004 two, EXR-010-A11 nine) plus Silver red remain owned/unwaived.
+- Acceptance coverage: complete accepted/sending/initial/primary/additional-domain reconciliation; approved InternalRelay topology and conflict refusal without universal Authoritative conversion; subdomain/parked external ownership without false NotApplicable; independent sender/owner/source/time provenance; unfiltered `Get-AcceptedDomain -ResultSize Unlimited`, incomplete/error/paged/ambiguous raw refusal and legacy ExpectedDomain compatibility. Independent 102-case inventory slice includes 100 negative/contract cases and two explicit behavior positives; five executable source/control/evidence/runbook mapping checks pass. S01 / EXO-001 / Test-AcceptedDomainControl / exchangeOnline.acceptedDomain mapping, schema/runtime checks and parseable synthetic example are covered; external ownerReadiness stays Unverified. Historical negative-first barriers are retained in registry, including the g10 two public-preview failures; protected assertions were not weakened.
+- Planning repair: `ForActionPlanning` makes inventory validation fail closed before actionable planning/service calls in both the Common-owned approved-change caller and the single Deploy context call; default assessment keeps structured non-Pass evidence. Gold-3 verified the exact bounded two-file/four-change delta by in-memory reversal against both pre-edit hashes. Five independent synthetic public probes (approved conflict, missing source, missing topology approval, missing inventory, unsupported schema) all refuse with exit 1, expected reason, no Planned preview and zero recorded service calls.
+- Writer evidence directory: `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-6648946d-3487-4dbd-8da7-d7d5d6656dcc\cohort-Gold-5675f951-7106-43c2-bf43-c8f4d8c17b5b`. Inspected `Handoff-g12.json`, `Scoped-result.json`, `Regressions-result.json` and `Journey-result.json`; each result retains exact Command, PesterArguments, RunnerDefinition, cases and before/after identity. Scoped **131/131**, affected **197/197**, journey **79/79**, all zero failed/skipped/not-run/failed containers, InvocationError null and StableInputs true. Gold-3 independently recomputed all five writer report hashes, verified complete 290-file handoff identity and counters, including deployment **6/6** and focused **2/2 selected** (6 discovered, 4 intentionally not run); these are verified writer executions, not Gold-3 reruns of full scoped/affected/journey slices.
+- Reproduction from repository root: writer runner invokes `Invoke-Pester -Path <recorded explicit Path array> -PassThru -Output Normal`, no filter for scoped/affected/journey. Scoped array: `tests/unit/AcceptedDomain.Tests.ps1`, `DomainInventory.Tests.ps1`, `ExchangeLiveAdapters.Tests.ps1`, `ExchangeOnlyDeployment.Tests.ps1`; affected array: all nine `ExchangeOnly` unit files (Deployment, Documentation, GoLive, MutationBoundary, OperationalArtifact, PublicDispatch, RegistryGuard, Scope, Validation), plus `ExchangeLiveContract.Tests.ps1`, `CanonicalComparisonContract.Tests.ps1`, `ControlRegistry.Tests.ps1`; journey: `ExchangeAdministratorJourney.Tests.ps1`. All test paths use `samples/contoso-exchange-online-managed-service/tests/unit/`; exact expanded arrays/launch commands are preserved in the named result artifacts. Scoped 129 -> 131 and affected 195 -> 197 reconcile the two g10 negatives; journey remains 79. Slices overlap and must not be summed as unique tests.
+- Independent evidence directory: `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-31285ffa-d787-430b-ac2a-89b0cd60135e`. Inspected `Independent-review-g12.md`, `Writer-artifact-verification.json` and `Final-identity.json`. Exact serial command: `& 'C:\Users\chhage\AppData\Local\Temp\cohort-Gold-31285ffa-d787-430b-ac2a-89b0cd60135e\verify-g12-independent.ps1' -Phase Deployment`, then `-Phase Probe`, `-Phase Inventory`, `-Phase Final`. Deployment invokes `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeOnlyDeployment.Tests.ps1' -PassThru -Output Detailed`; Inventory uses the same invocation with `DomainInventory.Tests.ps1`, neither filtered. Independent results: **6/6 deployment**, **102/102 inventory**, zero failed/skipped/not-run/failed containers and null invocation errors; **5/5 non-Pester public-preview probes**. All executed phases stable; PowerShell 7.6.6, Pester 5.7.1.
+- Tested identity: HEAD `02698622b3fb493cba3cd038ea39fbef9885b3eb`; Gold-3 records all 290 tracked/untracked nonignored inputs plus status and working/staged binary diffs stable through final verification. SHA-256: Common `95FA990D1853CA676DD8CD6F627F1DE409C08F344CE506D01C2B972686441D98`; Deploy `4F5F1CF8A1CE4C822CB9F981BFE8174B2D7559A14FD6FEA6C09D8C4ECE351F67`; protected deployment negative test `1C88BF6E3C79706E36C617B9C3FAEF233978EC27BA143454EAC7D5C4296340F4`. Stability/hashes are inspected artifact and root-confirmed evidence, not steward recomputation. Steward changes only board/backlog/registry after that tested identity; product inputs untouched, no shell or tests rerun.
+- Historical evidence/phase (g5, superseded by g13 acceptance): all three Gold roles reviewed read-only and Gold-2 supplied a complete proposal; test authors quiescent, no product implementation yet. Gold-1 tests first; Gold-2 gated exclusive Common/schema/sample/recommendation/docs phase; Gold-3 independent verifier. Missing-initial negative was 0 passed / 1 failed (actual Pass versus expected Fail), corroborated at ExchangeLiveAdapters.Tests.ps1:68. Those reviews and the single red were partial evidence only; no completion was claimed.
+- Historical contract direction (g5): supplied `domainInventory` carries schemaVersion, tenantId, complete, owner/reference/suppliedAtUtc and classified domain entries; independent provenance, complete unlimited collection, approved topology and legacy compatibility required. Historical outstanding checks were malformed/incomplete/unbound inventories, omitted classes, ambiguous/unapproved topology, raw error/paging/incompleteness, public evidence and executable mappings. These were pending then; their executed coverage and closure are recorded above, without certifying external readiness.
+- Start (2026-09-21, g2): accepted same-root claim at rank 22 by Purple/Kanban, acknowledgment `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g2/join-Silver-Gold`. EXR-007/008 completion evidence inspected; lower unstarted ranks are dependency-ineligible. Offline authoring does not confirm RAID-D04 or permit DNS/live operations. Three logical roles, not invoked: Coworker-1 initially reads `tests/unit/AcceptedDomain.Tests.ps1` and `tests/unit/ExchangeLiveAdapters.Tests.ps1`; Coworker-2 WAIT, no `scripts/ExchangeOnlineBaseline.Common.psm1` write authorization; Coworker-3 read-only review. Paths relative to `samples/contoso-exchange-online-managed-service/`. No repository write reservations; per-worker unique OS-temp outputs only per registry. Shared-module implementation requires explicit next acknowledgment; scoped closure contract unchanged, no tests run or Done claimed.
+- Deliverable: complete domain applicability inventory feeding DKIM, DNS and message proof.
+- Acceptance: reconcile accepted, sending and initial onmicrosoft domains with approved domain-type topology; distinguish subdomain and externally owned parked-domain handoffs without false NotApplicable. Preserve independently supplied sender/owner provenance.
+- Verification: negative-first Arrange-Act-Assert for omitted classes, ambiguous identity/topology and incomplete/error/paged raw collection; one positive per behavior through public collector/evaluator/evidence and explicit source/control/runbook mapping. Scoped acceptance and affected regression close this child; unrelated known failures remain tracked.
+- Existing evidence / remaining: retained audit's denominator gap is resolved by the bounded g13 evidence above. DKIM lifecycle, DNS handoff and message proof remain A02/A03/A04, not implicitly completed; A02/A03 delivery prerequisites are now satisfied for offline work, A04 still awaits both. No domain verification or DNS provisioning is authorized.
+- RAID: RAID-D04; external confirmation remains Unverified.
+
+### EXR-011-A02
+
+Rank 23 - Exchange DKIM lifecycle.
+
+- Dependencies: EXR-007, EXR-008, EXR-011-A01. Owner: unassigned. Workstream: Domain protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: supported Exchange DKIM signed change and independent readback/rollback over the approved denominator.
+- Acceptance: retrieve exact service selectors, key and signing state for every applicable domain; reject fabricated selectors and unsupported changes. Bind approved exact bytes, readback, no-op repeat, drift refusal and typed rollback to the supported Exchange lifecycle; DNS CNAME publication remains external.
+- Verification: negative-first Arrange-Act-Assert for wrong/missing selectors/key/signing, unsupported or unapproved changes and incomplete/error/paged/ambiguous raw identity; one positive per behavior through public collection/evaluation/evidence. Reconcile source/control/runbook mapping and affected regression before scoped closure.
+- Existing evidence / remaining: existing DKIM tests are partial evidence, not a complete denominator or signed lifecycle acceptance packet. No generic writer expansion is implied.
+- RAID: RAID-D04, RAID-D05; supplied publication/signing capability is not provisioned here.
+
+### EXR-011-A03
+
+Rank 24 - DNS-owner handoff validation.
+
+- Dependencies: EXR-007, EXR-008, EXR-011-A01. Owner: unassigned. Workstream: Domain protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: read-only validated DNS-owner input/output contract with authoritative provenance.
+- Acceptance: bind Microsoft-provided MX provenance, not Get-AcceptedDomain, Autodiscover, SPF and parent/subdomain DMARC inheritance, MTA-STS/TLS-RPT/reporting ownership to the denominator. Require dated staging, propagation, cutover and rollback attestations; missing/stale proof is a prerequisite issue, not DNS Pass. No DNS/HTTPS/report-service writes.
+- Verification: negative-first Arrange-Act-Assert for invented MX, wrong inheritance, missing/stale/unbound owner proof and incomplete/error/paged/ambiguous raw identity; one positive per behavior using synthetic handoffs through public collector/evaluator/evidence. Explicit source/control/runbook mappings and affected regression are closure requirements.
+- Existing evidence / remaining: primary-domain examples do not establish complete independent DNS provenance; externally supplied records require validation, not certification of external readiness.
+- RAID: RAID-D04; all external statuses unchanged.
+
+### EXR-011-A04
+
+Rank 25 - Message authentication/alignment evidence.
+
+- Dependencies: EXR-007, EXR-008, EXR-011-A01, EXR-011-A02, EXR-011-A03. Owner: unassigned. Workstream: Domain protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: offline received-header proof bound to complete domain, DKIM and DNS evidence.
+- Acceptance: reconcile authentication and alignment results with exact selectors/signing, authorized sender scope and independent SPF/DMARC/cutover proof. Synthetic headers prove only the offline contract; actual mail delivery belongs to EXR-017-A01/A02 using EXR-016-A03 probes.
+- Verification: negative-first Arrange-Act-Assert for mismatched domains/selectors, missing or stale message proof, failed alignment and incomplete/error/paged/ambiguous inputs; one positive per behavior through real public collection/evaluation/evidence. Verify all domain mappings and affected regression without transferring missing assertions from siblings.
+- Existing evidence / remaining: existing authentication fixtures do not prove complete bound message evidence or actual send/receive. Record scoped offline commands/counts/revision before closure.
+- RAID: RAID-D01, RAID-D04; no live operation or DNS write in authoring.
 
 ### EXR-007-A01
 
-Rank 12 - Reconcile EWS consumer and migration readiness.
+Rank 26 - Reconcile EWS consumer and migration readiness.
 
 - Dependencies: EXR-007, EXR-003. Owner: unassigned. Workstream: Protocol readiness. Updated: 2026-09-21. Status: To Do.
 - Provenance: EXR007-C01, assessment A14, sources S26/S08 reviewed 2026-09-21; see the EXR-007 admission ledger and child delivery contract. This is new dependency evidence, not a reproduced EXR-003 enforcement regression.
@@ -199,47 +483,205 @@ Rank 12 - Reconcile EWS consumer and migration readiness.
 
 ### EXR-007-A02
 
-Rank 13 - Enforce non-TABL filtering bypass boundaries.
+Parent summary - Enforce non-TABL filtering bypass boundaries.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
-- Provenance: EXR007-C02, A09, S27/S06/S15 reviewed 2026-09-21; child delivery contract applies. EXR-010 retains preset/TABL/protection acceptance; this child owns additional bypass surfaces.
+- Owner: unassigned for traceability. Workstream: Email protection. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. All four children inherit EXR-007/004/005; parent acceptance awaits all child evidence.
+- Provenance: EXR007-C02, A09, S27/S06/S15 reviewed 2026-09-21; child delivery contract applies. EXR-010-A08 owns the original TABL lifecycle; this child owns the distinct additional non-TABL bypass surfaces. No duplicate acceptance.
 - Acceptance: inventory transport SCL rules, connection-filter IP allows, anti-spam sender/domain allows, mailbox Safe Senders, inbound/outbound connector trust and redundant external subject-prefix rules. Bind each exception to authenticated narrow conditions, owner, approval and expiry, with complete paging/error handling and independent raw evidence.
 - Verification: reject sender-domain-only unauthenticated SCL bypass, broad/shared IP ranges, unowned/expired allows, undeclared connector trust, incomplete lists and duplicate external-tag rules. One narrow authenticated approved exception passes raw rule/connector/mailbox-list collection, approved apply/readback and scoped rollback. No vendor/gateway provisioning; external routing ownership stays a handoff.
 - RAID: RAID-D01, RAID-D02, RAID-D04.
 
+#### EXR-007-A02 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Authenticated narrow transport SCL exceptions and redundant external subject-prefix rules | [EXR-007-A02-T01](#exr-007-a02-t01) |
+| Connection-filter IP and anti-spam sender/domain allows; broad/shared IP risk | [EXR-007-A02-T02](#exr-007-a02-t02) |
+| Mailbox Safe Senders and complete per-mailbox list evidence | [EXR-007-A02-T03](#exr-007-a02-t03) |
+| Inbound/outbound connector trust, declared routing ownership, no vendor/gateway provisioning | [EXR-007-A02-T04](#exr-007-a02-t04) |
+| Owner/approval/expiry, complete raw paging/errors/identity, named refusals and narrow positive, approved change/readback/rollback, source mappings | T01-T04 each for its own surface under the shared atomic contract; TABL remains EXR-010-A08 |
+
+### EXR-007-A02-T01
+
+Rank 27 - Transport bypass and external-tag rules.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: authenticated narrow SCL exceptions and nonduplicated external-tag rule contract.
+- Acceptance: inventory effective transport conditions, actions and subject-prefix rules; bind exception owner, approval and expiry to authenticated scope. Preserve TABL ownership in EXR-010-A08 and implement only the original approved transport change lifecycle.
+- Verification: shared atomic contract; reject sender-domain-only unauthenticated SCL bypass, broad/unowned/expired rules, duplicate prefixes and incomplete raw rules; positive authenticated narrow rule and tag cases prove independent readback and rollback.
+- Existing evidence / remaining: audit found TABL/reporting neighbors, not this transport contract; complete public integration and scoped regression remain unproved. Provenance C02/A09/S27,S06,S15 is retained on the parent.
+- RAID: RAID-D01, RAID-D02, RAID-D04; no vendor setup.
+
+### EXR-007-A02-T02
+
+Rank 28 - Organization filtering allow lists.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: complete connection-filter IP and spam sender/domain allow inventory with narrow approved lifecycle.
+- Acceptance: evaluate all applicable organization lists against owner, authentication context, approval, expiry and shared-IP risk; reject broad trust that bypasses intended protection. Keep mailbox lists and TABL separate.
+- Verification: shared atomic contract; reject broad/shared IP ranges, unowned/expired sender/domain allows and incomplete/paged/error lists; positive narrow independently approved list cases prove exact apply/readback/no-op/drift refusal/rollback.
+- Existing evidence / remaining: neighboring anti-spam and TABL readers do not close these list semantics or lifecycle; C02/A09 sources and explicit control/runbook mappings require implementation evidence.
+- RAID: RAID-D01, RAID-D02, RAID-D04; external routing is a handoff.
+
+### EXR-007-A02-T03
+
+Rank 29 - Mailbox Safe Senders.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: per-mailbox Safe Senders collection, evaluation and approved narrow change contract.
+- Acceptance: cover applicable mailboxes and complete sender/domain entries with approved identity, owner and expiry; do not infer mailbox-list safety from organization filtering or TABL. Use independent raw readback and scoped recovery.
+- Verification: shared atomic contract; reject omitted mailboxes, broad/unapproved/expired entries and incomplete or ambiguous lists; one positive per behavior proves narrow approved changes and typed rollback without changing other mailboxes.
+- Existing evidence / remaining: audit found no complete Safe Senders outcome; parent C02/A09 provenance remains the source baseline, not completion evidence.
+- RAID: RAID-D01, RAID-D02, RAID-D04; identities supplied externally.
+
+### EXR-007-A02-T04
+
+Rank 30 - Connector trust boundaries.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
+- Deliverable: approved inbound/outbound Exchange connector trust assessment and bounded change lifecycle.
+- Acceptance: inventory authenticated trust conditions, routing scope, owner, approval and expiry on both directions; independently reconcile declared external routing handoffs. No vendor/gateway onboarding or infrastructure provisioning.
+- Verification: shared atomic contract; reject undeclared/broad/unauthenticated trust, missing outbound coverage and incomplete raw identities; positive narrow connector cases prove approved change, readback and scoped rollback.
+- Existing evidence / remaining: inbound connector checks exist but do not establish both-direction trust inventory/lifecycle; C02/A09 mappings and affected regression remain required.
+- RAID: RAID-D01, RAID-D02, RAID-D04; external owner retains routing infrastructure.
+
 ### EXR-007-A03
 
-Rank 14 - Bound Exchange application mailbox access.
+Parent summary - Bound Exchange application mailbox access.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Authorization. Updated: 2026-09-21. Status: To Do.
+- Owner: unassigned for traceability. Workstream: Authorization. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Both children inherit EXR-007/004/005; parent acceptance awaits both child evidence packets.
 - Provenance: EXR007-C03, A05, S25 reviewed 2026-09-21; child delivery contract applies. EXR-009 administrator/end-user rights and EWS user-agent filters do not prove application resource scope.
 - Acceptance: enumerate Exchange application roles, service-principal references, assignments and management/resource scopes; consume independently supplied current additive-Entra-grant and consent evidence. Verify allowed and denied mailbox authorization and report propagation limits. Limit changes to Exchange assignments/scopes with approved readback/rollback; never register apps or mutate Graph consent.
 - Verification: reject missing app/scope evidence, overprivileged or unscoped assignments, unintended mailbox authorization, absent/stale additive-grant attestations and incomplete inventories. One approved scoped application passes both allowed- and denied-mailbox tests and rollback with an external handoff; local authorization tests alone cannot certify absence of tenant-wide Entra access.
 - RAID: RAID-D02, RAID-D03.
 
+#### EXR-007-A03 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Exchange application roles, service-principal references, assignments and management/resource scopes; complete raw inventory | [EXR-007-A03-T01](#exr-007-a03-t01) |
+| Current additive Entra/consent evidence; allowed AND denied mailbox authorization; propagation limits and named negative/positive assessment | [EXR-007-A03-T01](#exr-007-a03-t01) |
+| Approved Exchange-only assignment/scope changes, independent readback and rollback, no registration or Graph consent writes | [EXR-007-A03-T02](#exr-007-a03-t02) |
+| Public integration, source/control/runbook mapping and external-readiness separation | Both children for their own outcome under the shared atomic contract |
+
+### EXR-007-A03-T01
+
+Rank 31 - Effective application authorization.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Authorization. Updated: 2026-09-21. Status: To Do.
+- Deliverable: effective Exchange application authorization assessment with independent additive-Entra evidence.
+- Acceptance: enumerate roles, service-principal references, assignments and management/resource scopes. Consume current independent additive grants/consent provenance; prove allowed AND denied mailbox probes and state propagation limits. Exchange probes alone cannot prove absence of tenant-wide grants.
+- Verification: shared atomic contract; reject missing/stale app/grant evidence, excessive/unscoped access, unintended authorization and incomplete raw inventory; positive scoped application requires both allowed and denied results bound to current inputs.
+- Existing evidence / remaining: EXR-009 administrator RBAC and EWS user-agent filters are not application authorization; C03/A05/S25 remains unimplemented acceptance, not an existing Pass.
+- RAID: RAID-D02, RAID-D03; no app registration, consent or tenant grant changes.
+
+### EXR-007-A03-T02
+
+Rank 32 - Approved application assignment/scope lifecycle.
+
+- Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A03-T01. Owner: unassigned. Workstream: Authorization. Updated: 2026-09-21. Status: To Do.
+- Deliverable: supported approved Exchange assignment/scope change and recovery contract consuming T01 assessment.
+- Acceptance: bind exact authorized assignments/scopes to signed preview/apply, independent raw readback, allowed/denied re-probes and propagation reporting, repeat no-op, drift refusal and typed rollback. Do not expand rights beyond original approved scope; no app registration or Graph consent.
+- Verification: shared atomic contract; reject approval/scope mismatch, unbound additive evidence, unintended mailbox access and stale readback; positive approved lifecycle restores the prior typed scope and preserves external Unverified state.
+- Existing evidence / remaining: generic approval infrastructure exists; no application-specific lifecycle packet was found. C03/A05/S25 mappings and scoped regression must be recorded independently.
+- RAID: RAID-D02, RAID-D03, RAID-D05; consume externally supplied capability only.
+
 ### EXR-007-A04
 
-Rank 15 - Bound sharing policies and calendar publication.
+Parent summary - Bound sharing policies and calendar publication.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
+- Owner: unassigned for traceability. Workstream: Sharing. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Both children inherit EXR-007/004/005; parent acceptance awaits both child evidence packets.
 - Provenance: EXR007-C04, A01, S28/S22 reviewed 2026-09-21; child delivery contract applies. Education no-all-domain guidance requires a declared enterprise applicability decision.
 - Acceptance: inventory sharing policies, default/explicit mailbox bindings and calendar publication state. Configure only approved partner, anonymous/wildcard and detail scopes; default to neither universal education restrictions nor unreviewed existing sharing. Preserve independent partner readiness.
 - Verification: reject unapproved wildcard/anonymous sharing, excess detail, missing mailbox bindings and incomplete calendar publication evidence. One approved partner-only policy and mailbox/calendar state round-trips approved set/readback/rollback without external-tenant changes.
 - RAID: RAID-D02, RAID-D03 for external partner/identity and disclosure approval handoffs.
 
+#### EXR-007-A04 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Enterprise applicability versus contextual education guidance; sharing policies, default/explicit mailbox bindings; partner/wildcard/anonymous/detail scopes | [EXR-007-A04-T01](#exr-007-a04-t01) |
+| Separate calendar publication state and completeness; approved disclosure and independent partner readiness | [EXR-007-A04-T02](#exr-007-a04-t02) |
+| Named refusals, partner-only positive, approved set/readback/rollback; no remote tenant changes, source mappings | Both children for their own surface under the shared atomic contract |
+
+### EXR-007-A04-T01
+
+Rank 33 - Sharing policies and mailbox bindings.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
+- Deliverable: approved sharing policy and default/explicit mailbox binding contract.
+- Acceptance: decide enterprise applicability explicitly; education guidance is contextual, neither a universal restriction nor permission to accept existing sharing. Inventory and bound approved partner, wildcard, anonymous and detail scope with independent disclosure approval.
+- Verification: shared atomic contract; reject unapproved wildcard/anonymous scope, excess detail, missing bindings and incomplete policy inventory; positive partner-only policy/bindings prove signed set/readback/no-op/drift refusal/typed rollback.
+- Existing evidence / remaining: C04/A01/S28,S22 found no complete policy/binding implementation; source and public evidence mapping remain required. Calendar state is T02, not inferred from this policy.
+- RAID: RAID-D02, RAID-D03; partner readiness stays external Unverified.
+
+### EXR-007-A04-T02
+
+Rank 34 - Calendar publication.
+
+- Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A04-T01. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
+- Deliverable: separate calendar publication state assessment and approved disclosure lifecycle.
+- Acceptance: consume T01 policy/binding inputs but independently collect applicable mailbox calendar publication state and approved detail/disclosure scope. Require independent partner readiness; local readback never certifies the external partner.
+- Verification: shared atomic contract; reject missing calendars, incomplete publication evidence or unauthorized disclosure; positive approved calendar state proves independent set/readback/rollback while external partner remains Unverified absent attestation.
+- Existing evidence / remaining: no complete calendar publication contract was found under C04; policy existence is not calendar proof. Record scoped commands, source/control/runbook mapping and affected regression.
+- RAID: RAID-D02, RAID-D03; no external-tenant changes.
+
 ### EXR-007-A05
 
-Rank 16 - Verify recipient delegation independently.
+Parent summary - Verify recipient delegation independently.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-21. Status: To Do.
+- Owner: unassigned for traceability. Workstream: Recipient permissions. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. All three children inherit EXR-007/004/005; parent acceptance awaits all child evidence.
 - Provenance: EXR007-C05, A03, S24 reviewed 2026-09-21; child delivery contract applies. EXR-008 creation/membership and EXR-009 role groups do not inventory mailbox delegation.
 - Acceptance: enumerate FullAccess, SendAs and SendOnBehalf independently for applicable user/shared mailboxes and recipients. Distinguish inherited/system entries and nested principals from explicit approved delegates; consume external identity/ownership evidence without a global directory provisioning workflow.
 - Verification: reject any unauthorized access/send grant, missing shared mailbox, incomplete collection or unresolved nested-principal ownership. One least-privilege approved delegation set passes independent permission readback and scoped rollback, proving mailbox access is not silently treated as send permission.
 - RAID: RAID-D02, RAID-D03.
 
+#### EXR-007-A05 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| FullAccess inventory, access-only semantics and least-privilege lifecycle | [EXR-007-A05-T01](#exr-007-a05-t01) |
+| SendAs independent send permission inventory/lifecycle | [EXR-007-A05-T02](#exr-007-a05-t02) |
+| SendOnBehalf independent send permission inventory/lifecycle | [EXR-007-A05-T03](#exr-007-a05-t03) |
+| Applicable user/shared mailboxes and recipients; inherited/system/nested principals; external identity/ownership, no global provisioning | T01-T03 each for its permission type |
+| Unauthorized grants, missing classes, incomplete collection and unresolved ownership negatives; least-privilege positive, independent readback/rollback and mappings | T01-T03 each under the shared atomic contract; no access-to-send equivalence |
+
+### EXR-007-A05-T01
+
+Rank 35 - FullAccess delegation.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-21. Status: To Do.
+- Deliverable: independent FullAccess inventory and least-privilege approved lifecycle.
+- Acceptance: cover applicable user/shared mailboxes and recipients; distinguish inherited/system entries and nested principals from explicit approved delegates. Consume independent identity/ownership evidence; access is not SendAs or SendOnBehalf.
+- Verification: shared atomic contract; reject unauthorized access, omitted shared mailboxes, unresolved nested ownership and incomplete permission reads; positive least-privilege FullAccess proves independent readback, no-op/drift refusal and scoped typed rollback without granting send rights.
+- Existing evidence / remaining: mailbox creation, forwarding and role membership do not prove C05/A03/S24 delegation; no complete FullAccess acceptance packet exists in the audit.
+- RAID: RAID-D02, RAID-D03; no global directory provisioning.
+
+### EXR-007-A05-T02
+
+Rank 36 - SendAs delegation.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-21. Status: To Do.
+- Deliverable: independent SendAs inventory and least-privilege approved lifecycle.
+- Acceptance: evaluate SendAs on applicable user/shared mailboxes and recipients, inherited/system entries, nested principals and independently supplied owner/identity approval. Neither FullAccess nor SendOnBehalf is evidence of SendAs authorization.
+- Verification: shared atomic contract; reject unauthorized send grants, missing shared recipients, unresolved nested ownership and incomplete raw reads; positive approved SendAs proves exact change/readback/no-op/drift refusal/typed rollback with other permission types preserved.
+- Existing evidence / remaining: C05/A03/S24 has no complete independent SendAs implementation evidence; adjacent recipient and role tests do not close this child.
+- RAID: RAID-D02, RAID-D03; no external identity provisioning.
+
+### EXR-007-A05-T03
+
+Rank 37 - SendOnBehalf delegation.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-21. Status: To Do.
+- Deliverable: independent SendOnBehalf inventory and least-privilege approved lifecycle.
+- Acceptance: reconcile applicable user/shared mailboxes and recipients, inherited/system entries and nested principals with supplied ownership/identity approval. Preserve SendOnBehalf semantics separately from SendAs and mailbox access.
+- Verification: shared atomic contract; reject unapproved delegates, omitted shared recipients, unresolved nested ownership and incomplete evidence; positive approved delegate set proves signed exact change, independent readback and typed scoped rollback without modifying other permission types.
+- Existing evidence / remaining: no complete C05/A03/S24 SendOnBehalf evidence packet was found; source/control/runbook mapping and affected regression are required before closure.
+- RAID: RAID-D02, RAID-D03; no tenant directory provisioning.
+
 ### EXR-007-A06
 
-Rank 17 - Bound organization-relationship disclosure.
+Rank 38 - Bound organization-relationship disclosure.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
 - Provenance: EXR007-C06, A02, S23 reviewed 2026-09-21; child delivery contract applies. EXR-002 remote-domain OOF correctness does not cover organization relationships.
@@ -249,7 +691,7 @@ Rank 17 - Bound organization-relationship disclosure.
 
 ### EXR-007-A07
 
-Rank 18 - Verify per-mailbox audit action coverage.
+Rank 39 - Verify per-mailbox audit action coverage.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Auditing. Updated: 2026-09-21. Status: To Do.
 - Provenance: EXR007-C07, A10, S05 reviewed 2026-09-21; child delivery contract applies. EXR-009 retains organization auditing/bypass reconciliation; no duplicate ownership of those fixes.
@@ -259,78 +701,431 @@ Rank 18 - Verify per-mailbox audit action coverage.
 
 ### EXR-007-A08
 
-Rank 19 - Verify mailbox client access applicability.
+Parent summary - Verify mailbox client access applicability.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
+- Owner: unassigned for traceability. Workstream: Client access. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. All three children inherit EXR-007/004/005; parent acceptance awaits all child evidence.
 - Provenance: EXR007-C11, A04, S30/S08 reviewed 2026-09-21; child delivery contract applies. Extend ActiveSync/MAPI/OWA applicability, not EXR-003 EWS or EXO-002 SMTP override work.
 - Acceptance: define approved client/protocol values by mailbox class, CAS mailbox/plan, mobile-device mailbox policy and OWA mailbox policy. Check new Outlook's OWA dependency and other client impacts. Resolve the contradictory MAPI disable example with S08 true-enables semantics, not copied prose; do not blanket-disable clients without approval.
 - Verification: reject unapproved ActiveSync/MAPI/OWA enablement, missing mailbox/plan/policy evidence, incomplete collection and disabling OWA without dependency assessment. One approved mailbox-class client policy passes set/readback/rollback and explicit offline client-impact contracts; authorized real client behavior is exercised under EXR-017. No device management or Conditional Access provisioning.
 - RAID: RAID-D02, RAID-D03 for supplied identity/device policy and client-owner readiness.
 
+#### EXR-007-A08 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Mailbox-class CAS mailbox/plan ActiveSync/MAPI/OWA flags; MAPI true-enables correction; new Outlook/OWA and other client impacts | [EXR-007-A08-T01](#exr-007-a08-t01) |
+| Mobile-device mailbox policy settings and bindings | [EXR-007-A08-T02](#exr-007-a08-t02) |
+| OWA mailbox policy settings and bindings | [EXR-007-A08-T03](#exr-007-a08-t03) |
+| Unapproved enablement, missing/paged/error evidence and disabling without impact assessment; positive approved set/readback/rollback and mappings | T01-T03 each under the shared atomic contract; no blanket disable, MDM or Conditional Access provisioning |
+| Actual client behavior, not synthetic proof | [EXR-016-A03](#exr-016-a03) probe authoring; [EXR-017-A01](#exr-017-a01)/[EXR-017-A02](#exr-017-a02) authorized execution |
+
+### EXR-007-A08-T01
+
+Rank 40 - Mailbox/plan client flags.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
+- Deliverable: approved mailbox-class ActiveSync/MAPI/OWA CAS mailbox/plan flag contract.
+- Acceptance: reconcile mailbox and plan flags with approved client dependencies; explicitly assess new Outlook's OWA dependency and other impacts. Correct MAPI semantics: true enables MAPI. No blanket client disable without approval or duplicate EWS/SMTP scope.
+- Verification: shared atomic contract; reject unauthorized enablement, omitted class/plan, incomplete evidence and OWA disable without impact assessment; positive approved class cases prove exact set/readback/rollback and offline impact contract.
+- Existing evidence / remaining: EWS/POP/IMAP neighbors do not prove C11/A04/S30,S08 ActiveSync/MAPI/OWA applicability. Actual client behavior remains authorized EXR-017 execution.
+- RAID: RAID-D02, RAID-D03; supplied client/identity owners, no Conditional Access changes.
+
+### EXR-007-A08-T02
+
+Rank 41 - Mobile-device mailbox policy bindings/settings.
+
+- Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A08-T01. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
+- Deliverable: Exchange mobile-device mailbox policy settings/bindings reconciled with T01 class/client decisions.
+- Acceptance: independently inventory applicable mailbox bindings and approved policy settings, preserving declared client impact and external device-owner evidence. Exchange policy readback is not MDM posture; no device-management provisioning.
+- Verification: shared atomic contract; reject missing/wrong bindings, unapproved settings, incomplete policy reads and unsupported class/impact decisions; positive approved Exchange policy proves set/readback/no-op/drift refusal/typed rollback.
+- Existing evidence / remaining: no complete C11 mobile policy contract was found; T01 flags are prerequisite inputs, not proof of policy state or real device behavior.
+- RAID: RAID-D02, RAID-D03; external device management remains Unverified.
+
+### EXR-007-A08-T03
+
+Rank 42 - OWA mailbox policy bindings/settings.
+
+- Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A08-T01. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
+- Deliverable: Exchange OWA mailbox policy settings/bindings reconciled with T01 client impact decisions.
+- Acceptance: independently collect default/explicit applicable mailbox bindings and approved OWA policy settings; account for OWA/new Outlook dependency without inferring policy safety from flags. No Conditional Access provisioning.
+- Verification: shared atomic contract; reject missing or unauthorized bindings/settings, incomplete raw reads and absent dependency assessment; positive approved OWA policy proves exact set/readback/no-op/drift refusal/typed rollback and explicit impact mapping.
+- Existing evidence / remaining: C11 OWA policy acceptance is not established by EWS/POP/IMAP or T01 flags; authorized real client results remain EXR-017, not this offline child.
+- RAID: RAID-D02, RAID-D03; external identity/client readiness remains independently owned.
+
 ### EXR-012
 
-Rank 20 - Reconcile all Exchange operator documentation.
+Parent summary - Reconcile all Exchange operator documentation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010, EXR-011, EXR-007-A01, EXR-007-A02, EXR-007-A03, EXR-007-A04, EXR-007-A05, EXR-007-A06, EXR-007-A07, EXR-007-A08. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21.
+- Owner: unassigned for traceability. Workstream: Documentation. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-006/008/009, EXR-010-A12, EXR-011 and all eight admitted EXR-007 children are expanded to executable leaves on every child below. Parent acceptance awaits all four child evidence packets.
 - Acceptance: reconcile README, solution summary, implementation guide, runbooks, license-prerequisite guidance, control catalog, sample inputs, and evidence-viewer wording with the Exchange profile. Publish exact set/verify/expected-output steps, complete approval and go-live examples, current status/exit meanings, and recovery instructions. Every non-Exchange dependency points to RAID. Explain which values are Microsoft recommendations, administrator input, or approved business policy; remove universal 100% and accepted-exception-equals-Pass claims.
 - Verification: sanitized examples resolve every input and link; operator outputs match actual status/exit contracts; no active procedure configures excluded services. Do not mark this Done on keyword checks alone; EXR-013 provides full executable walkthrough regression.
 - RAID: RAID-R02, RAID-I03, RAID-I04.
 
+#### EXR-012 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| README, solution summary, implementation guide, sample input provenance and licensing/prerequisite entry points; resolve inputs/links | [EXR-012-A01](#exr-012-a01) |
+| Runbooks/control catalog, exact set/verify/expected outputs, Microsoft versus administrator/business values | [EXR-012-A02](#exr-012-a02) |
+| Complete approval/go-live examples, arguments/paths/artifacts, status/exits and recovery instructions | [EXR-012-A03](#exr-012-a03) |
+| Evidence viewer/operator wording, distinct exceptions and external readiness, no universal 100% or exception-as-Pass claims | [EXR-012-A04](#exr-012-a04) |
+| Every non-Exchange dependency to RAID, no excluded setup, actual scoped example execution not keywords | A01-A04 each for its documents under the shared atomic contract; exhaustive execution is [EXR-013-A02](#exr-013-a02), not deferred missing scoped checks |
+
+### EXR-012-A01
+
+Rank 43 - Operator entry points and input provenance.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: reconciled Exchange operator entry and input provenance across README, solution summary, implementation guide and samples.
+- Acceptance: resolve working directories, explicit Exchange profile/config paths, complete administrator inputs and their authorities, supplied license prerequisites and external handoffs to RAID. Distinguish Microsoft recommendations, administrator input and approved business policy without excluded-service setup.
+- Verification: shared atomic contract; reject unresolved inputs/links, stale defaults, suite-label entitlement assumptions and embedded tenant provisioning; positive sanitized entry examples execute with documented inputs and actual prerequisite responses, not keyword checks.
+- Existing evidence / remaining: EXR-008 journey is bounded; upstream contracts and whole-guide entry points still need reconciliation. EXR-010-A11 alone owns the nine email-driven repairs; this child consumes their result without duplicating them.
+- RAID: RAID-R02, RAID-I03, RAID-I04, RAID-D02; no license assignment or consent.
+
+### EXR-012-A02
+
+Rank 44 - Configuration runbook reconciliation.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: consistent configuration runbooks and control catalog for the completed Exchange contracts.
+- Acceptance: exact set/verify/expected-output steps, current source sections and dates, parameter/config names and declared Microsoft versus local/business choices. Label external handoffs explicitly; do not reintroduce excluded workload procedures or enlarge writer permissions.
+- Verification: shared atomic contract; reject missing verify steps, mismatched names/values and unbound sources; positive scoped examples execute actual documented commands through raw offline boundaries and match outputs. Every touched control maps to source/evidence/runbook.
+- Existing evidence / remaining: current runbooks/catalog exist but whole-guide consistency is unproved. The nine email documentation/legacy regressions remain EXR-010-A11 ownership, not a second repair task here.
+- RAID: RAID-R02, RAID-I03, RAID-I04; tenant controls remain handoffs.
+
+### EXR-012-A03
+
+Rank 45 - Approval/go-live recovery procedures.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: exact operator approval, frozen go-live and scoped recovery procedures.
+- Acceptance: publish complete arguments, working directory, paths, artifact formats/bindings, status and exit meanings for preview/approval/apply/readback/no-op/drift refusal/typed rollback and collect/freeze/sign/verify. Consume external signing capability; never substitute WhatIf or newly regenerated evidence bytes.
+- Verification: shared atomic contract; execute touched examples against raw offline boundaries, rejecting missing/mismatched/expired inputs and stale exit/recovery directions; positive exact-byte round trip proves documented recovery without hidden prerequisites.
+- Existing evidence / remaining: EXR-004/006 infrastructure exists; EXR-004 retains its two repair failures. This child reconciles procedures after upstream completion, not expanded change rights or new PKI work.
+- RAID: RAID-R02, RAID-I03, RAID-I04, RAID-D05; enterprise signing is external.
+
+### EXR-012-A04
+
+Rank 46 - Evidence/status presentation.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: evidence viewer and operator wording faithful to actual Exchange status/exit semantics.
+- Acceptance: keep ApprovedException separate from Pass and external readiness Unverified unless independently evidenced; show explicit exclusions and scoped denominator. Remove universal 100%/tenant-certification claims; map every external prerequisite to RAID and sources/local choices to the right authority.
+- Verification: shared atomic contract; feed real public evidence/status outputs into presentation checks, rejecting unknown/missing/NotEntitled status laundering, exception-as-Pass and unsupported compliance claims; positive per status demonstrates actual output, not keyword presence alone.
+- Existing evidence / remaining: signing/inventory status semantics exist; integrated viewer/operator reconciliation is not complete. No new conformance or external readiness is asserted by presentation work.
+- RAID: RAID-R02, RAID-I03, RAID-I04; unresolved dependencies remain visible.
+
 ### EXR-013
 
-Rank 21 - Execute documented command contracts.
+Parent summary - Execute documented command contracts.
 
-- Dependencies: EXR-012. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21.
+- Owner: unassigned for traceability. Workstream: Verification. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. EXR-012 prerequisites expand to A01-A04; parent acceptance awaits both children.
 - Acceptance: parse and exercise every executable command block in the active Exchange journey using documented inputs, working directory, artifacts, and cmdlet signatures. Do not silently inject missing prerequisites or substitute a hand-built desired-state result. Label non-executable illustrations explicitly.
 - Verification: missing approval arguments, wrong default profile, stale cmdlet/parameter, runbook/config name mismatch, stale exit semantics, and hidden prerequisite cases fail for their exact reasons; the sanitized documented Exchange workflow passes end to end.
 
+#### EXR-013 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Parse every active executable command block; inputs, working directory, artifacts/signatures; explicit non-executable illustrations, no omissions | [EXR-013-A01](#exr-013-a01) |
+| Execute every discovered command using documented inputs and actual shipped/raw boundaries, no hidden injection or hand-built desired-state success | [EXR-013-A02](#exr-013-a02) |
+| Exact missing-approval/default-profile/stale-signature/name/exit/hidden-prerequisite failures; positive complete sanitized workflow | [EXR-013-A02](#exr-013-a02); inventory refusal tests stay A01 |
+
+### EXR-013-A01
+
+Rank 47 - Executable command inventory.
+
+- Dependencies: EXR-012-A01, EXR-012-A02, EXR-012-A03, EXR-012-A04. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Deliverable: exhaustive executable-block discovery and input contract inventory for active Exchange guidance.
+- Acceptance: discover every active block with source location, inputs/provenance, working directory, artifacts and command/parameter signatures; explicitly classify non-executable illustrations with reasons. Reconcile discovery against active documentation so unmarked or newly added commands cannot vanish.
+- Verification: shared atomic contract; reject omitted/duplicate blocks, unresolved inputs/paths/signatures and unsupported illustration exclusions; positive complete inventory accounts for every block and maps its source/control/runbook and intended raw execution boundary.
+- Existing evidence / remaining: EXR-008's 12 marked blocks are not an exhaustive denominator. This task discovers/contracts inputs; A02 executes all commands without excusing missing A01 checks.
+- RAID: RAID-R01, RAID-I03; no tenant operations or fabricated prerequisite authority.
+
+### EXR-013-A02
+
+Rank 48 - Exhaustive documented command execution.
+
+- Dependencies: EXR-013-A01. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Deliverable: execution evidence for every command in A01's complete inventory and the combined documented workflow.
+- Acceptance: run actual shipped commands using only documented inputs, cwd, signatures and artifacts through raw synthetic Exchange boundaries. No hidden variable/prerequisite injection, precomputed desired-state result or silent omitted block; preserve public collector/evaluator/evidence integration.
+- Verification: shared atomic contract; missing approval arguments, wrong profile, stale cmdlet/parameter, runbook/config mismatch, stale exits and hidden prerequisites fail for exact reasons. One complete sanitized workflow plus per-behavior positives proves exhaustive execution and affected regression with accountable discovery.
+- Existing evidence / remaining: bounded journey tests exist, but full command coverage is unproved; A01 supplies all EXR-012 leaf inputs transitively. No live contact or later gate substitutes for a failed command contract.
+- RAID: RAID-R01, RAID-I03; external services remain supplied offline handoffs.
+
 ### EXR-014
 
-Rank 22 - Prove Exchange-only offline workflow.
+Parent summary - Prove Exchange-only offline workflow.
 
-- Dependencies: EXR-002, EXR-003, EXR-013. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21.
+- Owner: unassigned for traceability. Workstream: Verification. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original EXR-002/003 plus EXR-013 terminal A02 are inherited through A01; parent acceptance awaits both children.
 - Acceptance: adapt retained TST-006 assets to the new manifest and exercise shipped commands through actual adapters over synthetic raw Exchange observations. Assert one result/evidence record per in-scope control and correct tenant/profile/hash/time binding. Negative cases assert named reasons, not just nonzero exits. No live contact, credentials or service mutations. Synthetic success is labeled offline evidence only.
 - Verification: focused fixture/public-command/reconciliation suites and full offline regression pass. Reference baseline evidence is 3,072 passing tests from the assessment, not a requirement to retain out-of-scope feature tests in the Exchange release denominator. Every removal/reclassification must be accounted for.
 - RAID: RAID-R01.
 
+#### EXR-014 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Retained TST-006 raw fixtures, new manifest denominator, one record per control and tenant/profile/hash/time binding, legacy separation | [EXR-014-A01](#exr-014-a01) |
+| Shipped public commands/actual adapters, raw synthetic observations and evidence, exact negative reasons, no live/credentials/mutations | [EXR-014-A02](#exr-014-a02) |
+| Focused fixture/public reconciliation plus full offline regression, baseline 3,072 historical only, accounted removals/reclassification | A01 owns fixture checks; [EXR-014-A02](#exr-014-a02) owns combined/full gate against current discovery; nine known repairs remain EXR-010-A11 |
+
+### EXR-014-A01
+
+Rank 49 - Raw fixture/manifest reconciliation.
+
+- Dependencies: EXR-002, EXR-003, EXR-013-A02. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Deliverable: retained TST-006 raw fixtures and manifest reconciliation for the declared Exchange profile.
+- Acceptance: define explicit profile denominator and one result/evidence record per in-scope control, with tenant/profile/hash/time binding; separate legacy coverage without silently dropping assertions. Use raw observations, not evaluated success wrappers, preserving completeness/errors/paging/identity semantics.
+- Verification: shared atomic contract; reject missing/duplicate/out-of-profile records, wrong bindings and hidden legacy defaults; positive focused fixture/reconciliation cases cover the complete current Exchange manifest with source/control/runbook mappings.
+- Existing evidence / remaining: TST-006 assets exist; EXR-010-A11 retains all nine known email-driven repairs including two downstream TST-006 failures. Consume those fixes without duplicate repair credit; 3,072 is historical assessment evidence, not a current mandatory denominator.
+- RAID: RAID-R01; synthetic acceptance only, no live credentials or calls.
+
+### EXR-014-A02
+
+Rank 50 - Whole-service offline workflow.
+
+- Dependencies: EXR-014-A01. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Deliverable: complete shipped-command offline Exchange workflow and accountable full regression packet.
+- Acceptance: consume reconciled raw fixtures through actual public adapters, evaluator and evidence, exact manifest/binding and documented approval/go-live/recovery steps. No live contact, credentials or service mutations; identify synthetic success as offline only. Child-specific defects return to their owners, not a catchall implementation scope.
+- Verification: shared atomic contract; assert named workflow failures rather than nonzero-only exits, one complete positive workflow and fresh full offline regression on frozen files. Account for every discovery addition/removal/reclassification against current 4,160-test audit and preserved historical baselines; no unexplained failure/skip/loss.
+- Existing evidence / remaining: separate signed/raw/journey fixtures do not close whole-service acceptance. The recorded 13 failures remain two EXR-001, two EXR-004 and nine EXR-010-A11 until those owners provide repair evidence.
+- RAID: RAID-R01; no inference of live adapter compatibility or external readiness.
+
 ### EXR-015
 
-Rank 23 - Enforce scoped coverage and regression guards.
+Parent summary - Enforce scoped coverage and regression guards.
 
-- Dependencies: EXR-014. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21.
+- Owner: unassigned for traceability. Workstream: Test quality. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original EXR-014 prerequisite resolves through terminal A02; parent acceptance awaits all three children.
 - Acceptance: repository maintainer approves the branch-capable tool/version, numeric threshold, Exchange code scope, and justified exclusions; implement the corresponding local/CI guard. Establish a reviewed Exchange-only discovery baseline, preserving legacy tests separately where needed rather than silently deleting or inflating assertions.
 - Verification: below-threshold branches, line-only reports, discovery loss, and attempted external-service contact fail; one conforming report passes. A coverage percentage is not evidence of Microsoft semantic correctness or live compatibility.
 
+#### EXR-015 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Repository maintainer approval of branch-capable tool/version, numeric threshold, Exchange code scope and justified exclusions | [EXR-015-A01](#exr-015-a01) |
+| Corresponding local/CI enforcement, below-threshold and line-only refusal, conforming positive | [EXR-015-A02](#exr-015-a02) |
+| Reviewed Exchange discovery baseline, preserved legacy separation, no silent deletions/assertion inflation; discovery loss/external-call refusal | [EXR-015-A03](#exr-015-a03) |
+| Coverage is not semantic correctness or live proof; explicit evidence/mappings | All three children under the shared atomic contract |
+
+### EXR-015-A01
+
+Rank 51 - Maintainer-approved coverage contract.
+
+- Dependencies: EXR-014-A02. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
+- Deliverable: independently maintainer-approved branch coverage contract, not enforcement yet.
+- Acceptance: record actual approver identity/reference/date for branch-capable tool and version, numeric threshold, Exchange code scope and justified exclusions. Do not invent a threshold, tool capability or approval; define accountable discovery/legacy classification inputs for A03.
+- Verification: shared atomic contract; reject absent/unauthorized approval, unsupported branch tooling, nonnumeric threshold and unexplained exclusions; positive contract validation binds the real approval to exact policy bytes. Synthetic validation tests do not substitute for maintainer approval at closure.
+- Existing evidence / remaining: registry/discovery guards exist, not an approved branch contract. Coverage remains distinct from Microsoft correctness and live compatibility; maps to release/test-quality evidence and runbook policy.
+- RAID: RAID-R01, RAID-R04; repository maintainer approval is required, not tenant provisioning.
+
+### EXR-015-A02
+
+Rank 52 - Branch coverage enforcement.
+
+- Dependencies: EXR-015-A01. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
+- Deliverable: local and CI enforcement of the exact approved branch coverage contract.
+- Acceptance: use A01's tool/version, threshold, scope and exclusions; preserve branch evidence and refuse unsupported/line-only reports. Bind report completeness/identity to the tested code revision and approved policy, without inventing alternate thresholds.
+- Verification: shared atomic contract; below-threshold branches, line-only/incomplete/mismatched reports and changed exclusions fail explicitly in both local and CI paths; one conforming report passes. Scoped enforcement tests and affected regression close this child, not a percentage claim of semantic/live correctness.
+- Existing evidence / remaining: no complete approved-and-enforced packet exists; A01 provides independent policy authority, A03 separately guards discovery/isolation.
+- RAID: RAID-R01, RAID-R04; no external service calls needed.
+
+### EXR-015-A03
+
+Rank 53 - Discovery and isolation guards.
+
+- Dependencies: EXR-015-A01. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
+- Deliverable: reviewed Exchange discovery baseline and external-call isolation guards with accountable legacy classification.
+- Acceptance: bind reviewed current test/code scope to A01's approved contract; preserve legacy tests separately as appropriate. Account for changes without assertion inflation, silent deletion, discovery loss or weakening genuine excluded-service traps.
+- Verification: shared atomic contract; refuse missing discovery, unexplained reclassification/inflation and attempted external calls; positive reviewed discovery with zero external calls passes local/CI guards. Reconcile scoped affected tests without replacing EXR-014-A02's full workflow gate.
+- Existing evidence / remaining: historical 2,082/3,072 floors are not an approved current denominator; audit reference is 4,160 with 13 tracked failures. This does not duplicate EXR-001's Get-Recipient classification repair.
+- RAID: RAID-R04, RAID-R01; legacy success is not new-scope evidence.
+
 ### EXR-016
 
-Rank 24 - Author opt-in Exchange live acceptance harness.
+Parent summary - Author opt-in Exchange live acceptance harness.
 
-- Dependencies: EXR-014. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21.
+- Owner: unassigned for traceability. Workstream: Live validation. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original EXR-014 prerequisite resolves through terminal A02; parent acceptance awaits all three offline-authoring children.
 - Acceptance: implement an explicitly opt-in Exchange-only harness using an externally supplied isolated environment. Cover documented preview/apply, idempotency, raw collection, signed go-live, drift, partial failure/rollback, mail-flow/client checks, and artifact sanitization. Never provision a tenant, identities/licenses, DNS, Purview, SIEM, vendor gateway or signing infrastructure. Teardown restores only the Exchange objects this test created or changed.
 - Verification: offline CI explicitly skips live execution; opt-in without named external prerequisites fails clearly. Test no production target, no accidental live call, raw response compatibility, and secret/identifier sanitization with synthetic fixtures. No live execution occurs while authoring this card.
 - RAID: RAID-D01 through RAID-D05.
 
+#### EXR-016 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Explicit opt-in, externally supplied isolated target, production refusal, named prerequisites, offline-CI skip/no accidental live calls, secret/identifier sanitization | [EXR-016-A01](#exr-016-a01) |
+| Preview/apply/idempotency, raw compatibility, frozen signed go-live, drift/partial failure/rollback; only owned Exchange object teardown | [EXR-016-A02](#exr-016-a02) |
+| Domain mail flow, report delivery, encryption recipient and client checks | [EXR-016-A03](#exr-016-a03) |
+| Synthetic verification while authoring, no actual live execution; no tenant/identity/license/DNS/Purview/SIEM/vendor/PKI provisioning | All three children under the shared atomic contract; actual execution stays EXR-017 children |
+
+### EXR-016-A01
+
+Rank 54 - Live opt-in target and artifact safety.
+
+- Dependencies: EXR-014-A02. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: offline-authored opt-in, isolated-target and sanitized-artifact admission contract.
+- Acceptance: require explicit opt-in, supplied disposable-target isolation and named D01-D05 prerequisites; refuse production and missing/ambiguous target evidence before calls. Offline CI skips live execution explicitly. Sanitize identifiers/secrets while retaining protected raw-proof references. No tenant, identities/licenses, DNS, Purview, SIEM, vendor or PKI provisioning.
+- Verification: shared atomic contract with synthetic fixtures only; no opt-in, production/unknown target, missing prerequisites, accidental external calls and leaking artifacts fail for named reasons. Positive authorized synthetic target/admission and sanitization cases prove control flow without contacting a tenant.
+- Existing evidence / remaining: ExchangeLiveRawHarness is an offline double, not this opt-in harness; no actual live authorization or readiness is created by authoring safety checks.
+- RAID: RAID-D01 through RAID-D05 remain independently owned and unconfirmed.
+
+### EXR-016-A02
+
+Rank 55 - Live change and recovery harness.
+
+- Dependencies: EXR-016-A01. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: offline-authored live change/recovery harness behind A01's admission and artifact safety.
+- Acceptance: drive documented preview/apply, no-op idempotency, raw response compatibility, exact frozen signed go-live, drift/partial-failure recovery and typed rollback. Maintain an owned-object ledger of created/changed Exchange objects and their before/after identities; teardown restores/removes only those owned Exchange objects, never unrelated or externally provisioned resources.
+- Verification: shared atomic contract using synthetic boundaries only; reject unapproved/tampered bytes, drift, partial/incomplete raw observations, unknown ownership and attempted unrelated cleanup. Positive change/repeat/recovery cases verify readback, receipts and ledger-bound teardown; actual live calls remain disabled during authoring.
+- Existing evidence / remaining: approval/raw adapters are partial building blocks; no complete opt-in recovery harness or live compatibility packet exists. Do not expand writer rights or duplicate product repairs to close this harness.
+- RAID: RAID-D01 through RAID-D05; environment/PKI teardown stays with external owners.
+
+### EXR-016-A03
+
+Rank 56 - Mail-flow and client probes.
+
+- Dependencies: EXR-016-A01. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: real mail-flow/client probe implementation authored and verified offline behind A01 safety.
+- Acceptance: author actual domain send/receive/authentication-alignment, report-delivery, encryption recipient/decryption and client-behavior probes consuming approved source/control/runbook inputs. Retain raw observations and sanitized evidence with identity/time/config binding; readback alone is not delivery or client proof.
+- Verification: shared atomic contract using synthetic probe boundaries; reject missing receipts, wrong domain/recipient/alignment, failed encryption/client behavior and incomplete evidence; positive per probe proves real probe invocation and parsing without actual live contact. Actual outcomes belong to EXR-017-A01/A02.
+- Existing evidence / remaining: domain/reporting/IRM/client fixtures are starting inputs, not live delivery evidence. No DNS/report-service hosting, remote partner setup, MDM or Conditional Access provisioning.
+- RAID: RAID-D01 through RAID-D05; external ownership and explicit live authorization remain prerequisites.
+
 ### EXR-017
 
-Rank 25 - Verify the documented Exchange service journey.
+Parent summary - Verify the documented Exchange service journey.
 
-- Dependencies: EXR-016. External eligibility: RAID-D01 through RAID-D05 independently confirmed as applicable. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21.
+- Owner: Exchange service owner for traceability; not started. Workstream: Live validation. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original EXR-016 prerequisite expands to all three children. External eligibility remains independently confirmed applicable RAID-D01 through RAID-D05 and explicit permission; parent acceptance awaits all three live child packets.
 - Acceptance: with explicit authorization, an Exchange administrator follows the published instructions in the supplied disposable environment without undocumented repair. Produce two consecutive sanitized Exchange runs proving approved apply, no-op second apply, effective security settings, mail flow, evidence/go-live, and scoped rollback. No tenant provisioning is a deliverable. Record any missing external prerequisite in RAID and do not claim success.
 - Verification: execute the EXR-016 opt-in command and checklist, retain raw-output adapter proof and sanitized run artifacts, and have an independent reviewer attest the walkthrough. Offline fixtures alone cannot close this card.
 - RAID: RAID-R01, RAID-D01 through RAID-D05.
 
+#### EXR-017 Allocation
+
+| Original clause | Executable owner |
+| --- | --- |
+| Explicit permission and applicable D01-D05, published administrator instructions in supplied disposable target, no undocumented repair/provisioning | [EXR-017-A01](#exr-017-a01) |
+| First actual approved configuration/apply, effective settings, mail flow, evidence/go-live and client proof; raw adapter evidence | [EXR-017-A01](#exr-017-a01) |
+| Second consecutive pass, no-op second apply, drift/partial failure/rollback/owned cleanup; same frozen revision/config/target | [EXR-017-A02](#exr-017-a02) |
+| Two retained sanitized run packets plus raw-proof references, independent reviewer attestation, no offline stand-in | [EXR-017-A03](#exr-017-a03); A01/A02 produce the actual packets |
+| Missing prerequisites recorded in RAID without success claims; code/docs repairs invalidate the pair | All three children; restart A01 evidence after any such repair, no fabricated approvals |
+
+### EXR-017-A01
+
+Rank 57 - Authorized first administrator walkthrough.
+
+- Dependencies: EXR-016-A01, EXR-016-A02, EXR-016-A03. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: first authorized actual administrator walkthrough packet on frozen revision/configuration and supplied isolated target.
+- Acceptance: independently confirm applicable D01-D05 and explicit testing permission before execution. Follow only published instructions and the opt-in harness, with no hidden repairs; prove approved configuration/apply/readback, effective security, domain/report delivery, encryption/client behavior and exact frozen evidence/go-live. Retain protected raw adapter proof and sanitized packet with target/revision/config identity.
+- Verification: shared atomic contract; previously authored negative-first checks must pass before authorized actual execution, then retain named real prerequisite/failure outcomes and positive walkthrough evidence. Missing prerequisites stop and route to RAID, never success; no offline fixture can close this child.
+- Existing evidence / remaining: no authorized live packet exists and D01-D05 remain unconfirmed. Any needed code/docs repair is routed to its owner and requires a new A01 evidence run; no tenant provisioning or concealed operator repair.
+- RAID: RAID-R01, RAID-D01 through RAID-D05; this To Do card grants no live permission.
+
+### EXR-017-A02
+
+Rank 58 - Consecutive repeat and recovery proof.
+
+- Dependencies: EXR-017-A01. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: second consecutive authorized pass and scoped recovery evidence paired with A01.
+- Acceptance: retain the same frozen code/docs revision, configuration and isolated target; record all controlled mutations. Prove no-op second apply, continued settings/delivery/client/evidence correctness, then authorized drift/partial-failure/typed rollback and owned-object cleanup through the documented harness. Code or documentation changes invalidate the pair and restart A01 evidence, not merely A02.
+- Verification: shared atomic contract; verify actual expected refusal/recovery outcomes and a second positive pass with raw proof, approval/readback/no-op receipts and ledger-bound cleanup. Reject mismatched pair identity, unexplained mutations, unrelated teardown or synthetic stand-ins.
+- Existing evidence / remaining: no consecutive pair or actual recovery proof exists. Original two-run requirement is retained, not two unrelated green runs; independent review belongs to A03.
+- RAID: RAID-R01, RAID-D01 through RAID-D05; continued explicit authorization and readiness required.
+
+### EXR-017-A03
+
+Rank 59 - Independent walkthrough acceptance.
+
+- Dependencies: EXR-017-A01, EXR-017-A02. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Deliverable: actual independent reviewer acceptance of the retained two-run live evidence pair.
+- Acceptance: retain two sanitized packets and protected raw-output proof references; reviewer independently attests published-command fidelity, same frozen revision/config/target, real settings/delivery/client results, immutable approvals/evidence and recovery/owned cleanup. Record actual reviewer identity/date/authority; never fabricate approval or treat the operator's self-attestation as independent review.
+- Verification: shared atomic contract; reject absent/non-independent attestation, missing raw proof, mismatched or interrupted pair, hidden repairs and offline-only substitutes. Positive release input requires the real signed/attested review over both actual packets, not synthetic approval tests alone.
+- Existing evidence / remaining: no independent live acceptance packet exists. A01/A02 changes invalidate approval and require re-review; unresolved external risks stay separately reported.
+- RAID: RAID-R01, RAID-D01 through RAID-D05; no new tenant work or readiness assertion.
+
 ### EXR-018
 
-Rank 26 - Enforce the Exchange release acceptance gate.
+Rank 60 - Enforce the Exchange release acceptance gate.
 
-- Dependencies: EXR-015, EXR-017. Owner: unassigned. Workstream: Release. Updated: 2026-09-21.
+- Dependencies: EXR-015-A01, EXR-015-A02, EXR-015-A03, EXR-017-A03. Owner: unassigned. Workstream: Release. Updated: 2026-09-21. Status: To Do.
 - Acceptance: release requires dated complete Exchange traceability, correct settings, all documented command tests, scoped regression/coverage, default live adapter compatibility, immutable approval/evidence verification, rollback/idempotency, and independent live walkthrough evidence. Report Exchange conformance, approved deviations, and external readiness separately; no tenant-wide 100% claim. Any newly identified applicable gap is force-ranked before this card can close.
 - Verification: machine-checkable release manifest refuses each missing prerequisite and accepts one complete Exchange release packet with links to test and live evidence; RAID owners acknowledge unresolved external risks without converting them into passed Exchange controls.
-- EXR-007 admission gate: require implementation evidence for all eight admitted children and all seven merged proposal clauses, resolved through this 15-row ledger into current source/control/evidence/runbook mappings. Reject omitted proposals, a mere Proposed/scheduled disposition offered as completion, stale review dates, missing per-setting coverage and absent authorized live evidence. Dependencies through EXR-012/013/014/016/017 already enforce all child completion; no reverse dependency from a child to documentation or release is introduced. The original 30-source/25-control/18-external inventory and 3,669-test result remain dated baseline evidence, not a promise that later scope/discovery counts stay unchanged.
+- EXR-007 admission gate: require implementation evidence for all eight originally admitted scopes and all seven merged proposal clauses, resolved through this 15-row ledger to every current executable leaf and source/control/evidence/runbook mapping. Reject omitted proposals, a mere Proposed/scheduled disposition offered as completion, stale review dates, missing per-setting coverage and absent authorized live evidence. EXR-017-A03 requires both live runs and all EXR-016 children; their EXR-014-A02/013-A02/013-A01/012-A01-A04 chain covers every implementation leaf. The original 30-source/25-control/18-external inventory and 3,669-test result remain dated baseline evidence, not a promise that later scope/discovery counts stay unchanged.
+- EXR-010 decomposition gate: require completed evidence for all twelve email children through EXR-010-A12 and its explicit dependencies. Resolve C10/C15 through the acceptance-allocation table; reject the parent summary, child scheduling or prior partial tests offered as completion. No extra recommendation denominator or duplicate parent counting is introduced.
+- Remaining-board gate: one machine-checkable release decision, not an implementation catchall. Require all 35 new children, retained EXR-007-A01/A06/A07 and every other executable prerequisite, with explicit child-to-parent clause and 15-proposal coverage. All three EXR-015 children and EXR-017-A03 are direct prerequisites; reject summary-parent status as evidence, unknown/missing leaves, unapproved coverage, interrupted live pairs and missing independent attestation. Missing acceptance returns to its scoped owner, never a new generic writer or tenant task. Historical retirement labels resolve through allocation tables; old parent ranks/statuses are not release eligibility.
+
+## Current Code Audit 2026-09-21
+
+Historical audit snapshot: preserve every evidence/status/count row below as dated provenance, not current state. Generation 4 is 60 executable cards, 50 To Do, 2 In Progress, 8 Done, plus 13 non-counted parents. Purple EXR-001 is reclosed on fresh 86/86 boundary checks and full 4,167/4,180 reconciliation, not a green full suite; its two baseline failures are cleared. Silver EXR-010-A01 and Gold EXR-011-A01 retain one active card and one new owned red each. All workers/test processes are quiescent; no next phase/card allocated. All 50 To Do remain unreserved; EXR-004 rank 4 is lowest eligible, EXR-007-A01 rank 26 also eligible. EXR-004 retains two original failures, EXR-010-A11 nine. EXR-010 acceptance routes to twelve children, the other retired parents to 35 children. Historical TST-006 integration now means EXR-014-A01/A02 consume A11 repairs, not duplicate them. No historical parent becomes executable or Done.
+
+### Evidence And Limits
+
+- Product revision: `02698622b3fb493cba3cd038ea39fbef9885b3eb` (pushed WIP checkpoint). Audit edits change planning documents only; no product fixes or tenant operations. The frozen full run completed against this product state before the audit: **4,160 total, 4,147 passed, 13 failed, 0 skipped, 0 not run, 0 failed containers**, no invocation error. Do not interpret its outer shell exit 0 as Pester success.
+- Local result artifact: `%TEMP%/exr010-regression-result.json`, SHA-256 `5A82AD175B60D9EAC41A5B0B195E41AF367E3214F1E317C57400948C4E70C6AE`. It is local diagnostic evidence, not a committed CI artifact or live acceptance packet. Counts and failure ownership are preserved below so status does not depend solely on the temporary file surviving.
+- Audit reruns used fresh `pwsh -NoProfile -NonInteractive` and `Invoke-Pester -Path <single-test-file> -PassThru -Output None`. [ExchangeOnlyPublicDispatch.Tests.ps1](../samples/contoso-exchange-online-managed-service/tests/unit/ExchangeOnlyPublicDispatch.Tests.ps1): **3 passed / 5 total, 2 failed**. [ApprovedAdapters.Tests.ps1](../samples/contoso-exchange-online-managed-service/tests/unit/ApprovedAdapters.Tests.ps1): **17 passed / 19 total, 2 failed**. Both have zero skipped/not-run/failed containers. Tests were not edited to obtain these results. The full suite was inspected, not redundantly rerun for planning-only changes.
+- Done is bounded to each card's original offline acceptance. A currently failing acceptance check reopens its owner even when the likely repair is a stale fixture. Passing tests do not close additional unimplemented clauses, establish Microsoft service serialization, or certify external evidence. The 193-card archive and original closure evidence remain unchanged. No percentage-complete estimates or live-readiness claims are inferred from file counts.
+
+### All-Card Disposition (Historical Snapshot)
+
+Paths below are relative to the supported sample. Completed-card suite names identify evidence from the full run; their historical closure counts remain above. For pending cards, existing neighboring functionality is acknowledged but is not substituted for the missing contract.
+
+| Card | Status at audit | Evidence and remaining acceptance |
+| --- | --- | --- |
+| EXR-001 | To Do; reopened | Two reproduced failures in public dispatch. [Harness](../samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeOnlyPublicHarness.ps1#L11) blocks Get-Recipient as EXCLUDED, while the new [email collector](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1#L6959) uses it for Exchange recipients. Repair classification and retain genuine external-call traps; no production scope violation is established by that marker. |
+| EXR-002 | Done; offline | RemoteDomainOofPolicy and RemoteDomainOofDeployment suites have no failures in the full run. None/approved External semantics and effective override admission remain supported; this does not implement organization relationships. |
+| EXR-003 | Done; offline | EwsException suite has no failures in the full run. Disabled default, enforced exceptions, expiry and readback remain supported; full consumer/migration inventory remains A01. |
+| EXR-004 | To Do; reopened | Two reproduced reporting-scope failures in [admission tests](../samples/contoso-exchange-online-managed-service/tests/unit/ApprovedAdapters.Tests.ps1#L46). Fixture uses sample approval=null, so the new [approval guard](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1#L148) refuses before raw-capture verification. Restore discriminating negatives, not weaker expected errors; retain signed round-trip coverage. |
+| EXR-005 | Done; offline | ExchangeLiveAdapters, ExchangeLiveContract and ExchangeLiveSignedRoundTrip suites have no failures in the full run. Raw collection and signed synthetic evidence remain implemented. Its dated 34-command audit is historical; EXR-010 owns reconciliation for its added readers, not a new claim that 34 is the current total. |
+| EXR-006 | Done; offline | ExchangeEvidenceSigning suite has no failures in the full run. Frozen-byte CMS, authority and binding refusal contracts remain supported. Enterprise PKI and live release approval remain unverified. |
+| EXR-007 | Done; inventory/admission | ExchangeRecommendationInventory suite has no failures in the full run. All 15 proposals have owners; four governance merges are offline Done, two email merges In Progress, domain merge and eight children To Do. Inventory validation is not implementation of all recommendations. |
+| EXR-008 | Done; offline walkthrough | ExchangeAdministratorJourney suite has no failures in the full run; it executes its 12 marked blocks with offline doubles. This bounded journey does not prove every command in every document or actual mail delivery. |
+| EXR-009 | Done; offline | ExchangeGovernance semantic/raw/adapter/documentation suites have no failures in the full run. Approved RBAC/MRM/hold/encryption contracts and three signed existing-object scopes remain supported. Separate application grants, recipient delegation, audit action sets and external legal authority are not claimed. |
+| EXR-010 | In Progress | Matrix/licensing/reporting tests pass in the full run, but [OutboundSpam](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1#L128) writes only AutoForwardingMode versus nine [catalogue fields](../samples/contoso-exchange-online-managed-service/config/exchange-email-settings.v1.json#L31). Reporting assessment checks local mailbox, forwarding and DLP-owner proof, whereas reporting change definitions do not perform those reads before changes. Finish signed setting/reporting integration, operator input documentation and regression reconciliation. |
+| EXR-011 | To Do | Existing DKIM/authentication tests do not establish the complete domain denominator. [Public EXO-001 collection](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1#L6761) targets only the configured primary domain. Accepted/sending/initial-domain reconciliation, independent MX/selector/DNS handoffs and bound message proof still require implementation; DNS hosting itself remains external. |
+| EXR-007-A01 | To Do | EWS enforcement exists, but no complete supplied consumer/migration inventory reconciliation was found in the shipped collector/evaluator path. Require consumer, owner/date, cloud and exception matching, not a new EWS enforcement duplicate. |
+| EXR-007-A02 | To Do | TABL/reporting and inbound connector checks exist. They do not implement the additional SCL, connection-filter allow, mailbox Safe Senders, sender/domain allow and connector-trust inventory with narrow approved exceptions and rollback. |
+| EXR-007-A03 | To Do | Administrator RBAC is implemented, not application resource authorization. No complete Exchange application assignment/scope plus additive-Entra-attestation and allowed/denied-mailbox contract was found. |
+| EXR-007-A04 | To Do | No complete sharing-policy, mailbox binding and calendar-publication collection/evaluation/change contract was found. Approved partner/anonymous/detail scope still needs independent verification. |
+| EXR-007-A05 | To Do | Forwarding and role membership do not prove FullAccess, SendAs and SendOnBehalf. No complete independent recipient-delegation inventory and reversible approved path was found. |
+| EXR-007-A06 | To Do | Remote-domain OOF is implemented, but no complete organization-relationship partner/detail/access-scope contract was found. Local readback cannot certify partner readiness. |
+| EXR-007-A07 | To Do | Organization auditing/bypass checks exist. No complete per-mailbox DefaultAuditSet/AuditAdmin/AuditDelegate/AuditOwner contract was found in the shipped collectors. |
+| EXR-007-A08 | To Do | EWS/POP/IMAP controls exist; complete mailbox-class ActiveSync/MAPI/OWA and associated policy/dependency reconciliation is not established. Do not count those neighboring controls as completion. |
+| EXR-012 | To Do | Current documents exist, but nine current failures involve runbook verification, legacy catalog reconciliation or removed Graph guidance; upstream email/domain/child contracts remain unfinished. Reconcile all operator documents after those contracts, with no reintroduction of excluded workload setup. |
+| EXR-013 | To Do | The journey executes 12 marked blocks, not every active command block across all operator documents with independently complete inputs. Full documented-command coverage remains unproved and depends on EXR-012. |
+| EXR-014 | To Do | Existing signed raw/public fixtures are useful but do not close the integrated new-scope workflow. Current legacy TST-006 reconciliation/public-command checks fail; account for legacy separation and require the scoped complete workflow plus green regression. |
+| EXR-015 | To Do | Existing registry/discovery guards do not establish maintainer-approved branch-capable coverage tooling, threshold, scope/exclusions and enforcing local/CI evidence for this release. No complete approval-and-enforcement packet was found. |
+| EXR-016 | To Do | [ExchangeLiveRawHarness.ps1](../samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeLiveRawHarness.ps1) is an offline raw-command double harness, not proof of an opt-in live acceptance harness. Complete opt-in, production-target refusal, idempotency, failure/rollback, sanitization and owned-object cleanup remain required. |
+| EXR-017 | To Do | No authorized independently reviewed two-run live acceptance packet exists in the inspected evidence. RAID-D01 through D05 remain unconfirmed; offline fixtures cannot close this card. |
+| EXR-018 | To Do | Scoped go-live and inventory validators exist, but no complete release packet proving all merged/child clauses, coverage and independent live walkthrough is available. EXR-015 and EXR-017 remain incomplete. |
+
+Negative search conclusions are limited to the supported sample's scripts, tests and mapped documentation reviewed in this audit, not a claim about every possible external artifact. Named missing APIs alone were not used as proof: acceptance requires their behavior through the shipped public workflow. No external dependency was confirmed or newly assigned.
+
+### Regression Ownership
+
+| Failure group | Count | Owner and required disposition |
+| --- | ---: | --- |
+| EXR-001 default public dispatch | 2 | EXR-001 reopened. Correct the harness classification and re-prove zero genuine excluded calls and manifest dispatch; do not delete the guard. |
+| EXR-004 incomplete ReportSubmission/SecOpsOverride capture | 2 | EXR-004 reopened. Supply valid prerequisites for raw-read negatives and retain independent approval refusal checks; coordinate with EXR-010 reporting changes. |
+| Documentation contract: missing Verify on excluded runbook | 1 | EXR-010 regression repair, consumed by EXR-012/013. Explicitly distinguish external handoff entries from executable Exchange runbooks without adding excluded setup. |
+| EVD-003 catalog extraction/parity | 5 | EXR-010 regression repair, consumed by EXR-012/014. [Catalog parser](../samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1#L7871) recognizes MUST/SHOULD rows; changing MDO-004/005 to External makes them disappear from the legacy parsed denominator while the historical registry still includes them. Preserve explicit profile separation; do not blindly drop assertions or restore cross-workload defaults. |
+| TST-006 emitted reconciliation/public command | 2 | EXR-010 regression reconciliation, final scoped ownership EXR-014. Observed 41 versus 43 legacy records and exit 13 need exact downstream confirmation after catalog repair, not an assumption that both automatically pass. |
+| LIC-007-A Graph permission document | 1 | EXR-010 regression reconciliation, consumed by EXR-012. Legacy expectation no longer matches Exchange supplied-entitlement guidance. Isolate historical opt-in guidance/tests; do not make Graph consent a default Exchange prerequisite to satisfy the old test. |
+| Total | 13 | Full suite remains red; this audit records rather than fixes the failures. |
+
+### Closure And Sequencing (Historical Snapshot)
+
+- Restore EXR-001 and EXR-004's exact failing contracts and record focused plus full verification before moving them back to Done. Preserve successful historical evidence, genuine external-call guards and negative-first named failures. No test assertion is weakened by this audit.
+- EXR-010 cannot close merely because its newly added tests pass. Complete the approved outbound/reporting change path and its missing prerequisite checks, reconcile all affected documentation/source mappings and the remaining nine regressions, then run the complete offline suite on frozen final files. Actual recipient delivery remains EXR-016/017.
+- Historical scheduling at audit, superseded by decomposition and generation 2: **18 To Do, 1 In Progress, 7 Done**, force ranks 1-26. The prior instruction was: EXR-010 retains ownership only; no implementation or test process remains running from this audit. Before beginning rank 1 repair, explicitly park EXR-010 in To Do and make EXR-001 the sole In Progress card. EXR-004 follows after EXR-001; do not start EXR-011 while lower-ranked repairs remain. This is retained provenance, not the current cohort authorization or current child eligibility.
+- Historical dependency completion sentences above describe their dates. Reopening EXR-001/004 does not automatically revoke passing OOF, EWS, raw collection, signing, inventory, journey or governance contracts, but all new dependent work and release acceptance must account for the unresolved regressions. No current green full-suite, live compatibility or tenant-wide certification is claimed.
 
 ## Prior Active Card Disposition
 
 The [original board](kanban-history-2026-09-19.md) remains verbatim. These are retirements/replacements, not completion claims. Audit: 22 actual To Do plus 3 In Progress equals 25 active cards; the old header overcounted To Do by one. Some cards contained useful work but mandated the wrong scope or deferred operator correctness behind unrelated work; replacement retains useful intent without asserting those cards alone caused the code defects.
+
+Current routing clarification (2026-09-21): parent IDs in this historical retirement table and the assessment-finding table below denote scope only. Follow the current per-parent allocation tables to executable leaves: EXR-012-A01-A04 for operator documentation, EXR-013-A01/A02 for command inventory/execution, EXR-014-A01/A02 for raw fixtures/workflow, EXR-015-A01/A02/A03 for independent coverage approval/enforcement/discovery guards, EXR-016-A01/A02/A03 for offline safety/recovery/probe authoring and EXR-017-A01/A02/A03 for authorized two-run/independent acceptance. Thus the old TST-005E phrase about one measurable card is historical: approval and enforcement now have separate owners and a mandatory dependency. EXR-010/011 resolve to their named children; EXR-018 remains the single release gate, not a place to implement omitted historical scope. No historical row is promoted to Done or counted twice.
 
 | Previous ID | Previous state | Disposition and reason |
 | --- | --- | --- |
