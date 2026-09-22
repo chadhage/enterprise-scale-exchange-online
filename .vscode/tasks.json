@@ -1,0 +1,46 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "EXR005 writer focused verification",
+			"type": "shell",
+			"command": "pwsh",
+			"args": [
+				"-NoProfile",
+				"-NonInteractive",
+				"-Command",
+				"$result = Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeLiveAdapters.Tests.ps1' -PassThru -Output Detailed; Write-Output ('EXR005-WRITER Total={0} Passed={1} Failed={2}' -f $result.TotalCount,$result.PassedCount,$result.FailedCount); if ($result.FailedCount) { exit 1 }"
+			],
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "EXR005 writer focused verification direct",
+			"type": "shell",
+			"command": "Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeLiveAdapters.Tests.ps1' -Output Detailed -PassThru",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "EXR005 writer contract verification",
+			"type": "shell",
+			"command": "Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeLiveContract.Tests.ps1' -Output Detailed -PassThru",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "EXR005 writer roundtrip verification",
+			"type": "shell",
+			"command": "Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/ExchangeLiveContract.Tests.ps1' -FullNameFilter '*round trips*' -Output Detailed -PassThru",
+			"isBackground": false,
+			"problemMatcher": []
+		},
+		{
+			"label": "EXR005 writer full regression",
+			"type": "shell",
+			"command": "& { $result = Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests' -Output None -PassThru; Write-Output ('EXR005 FULL Total={0} Passed={1} Failed={2} Skipped={3} NotRun={4} FailedContainers={5}' -f $result.TotalCount,$result.PassedCount,$result.FailedCount,$result.SkippedCount,$result.NotRunCount,$result.FailedContainersCount); foreach ($failure in $result.Failed) { Write-Output ('FAIL: {0}: {1}' -f $failure.ExpandedPath,$failure.ErrorRecord.Exception.Message) }; if ($result.FailedCount -or $result.FailedContainersCount) { exit 1 } }",
+			"isBackground": false,
+			"problemMatcher": []
+		}
+	]
+}
