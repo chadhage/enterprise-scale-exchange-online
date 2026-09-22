@@ -2,10 +2,49 @@
   "$schema": "./exchange-online-secure-baseline.schema.json",
   "metadata": {
     "name": "Contoso Exchange Online secure managed service baseline",
-    "version": "1.0.0",
-    "reviewedOn": "2026-09-14",
-    "profile": "Microsoft recommended Standard plus Strict for priority users",
+    "version": "2.0.0",
+    "reviewedOn": "2026-09-16",
+    "deploymentProfile": "ThirdPartyGateway",
+    "profile": "Microsoft recommended Standard plus Strict for priority users, fronted by a third-party SMTP gateway",
     "configurationOwner": "__ADMIN_REQUIRED:CONFIGURATION_OWNER_UPN__"
+  },
+  "licensing": {
+    "messagingTier": "MDO_P2",
+    "complianceTier": "E5Compliance",
+    "requiredServicePlans": [
+      {
+        "servicePlanId": "efb87545-963c-4e0d-99df-69c6916d9eb0",
+        "servicePlanName": "EXCHANGE_S_ENTERPRISE",
+        "controls": ["EXO-001", "EXO-002", "EXO-004", "EXO-005", "EXO-006", "EXO-007", "EXO-008", "EXO-009"]
+      },
+      {
+        "servicePlanId": "f20fedf3-f3c3-43c3-8267-2bfdd51c0939",
+        "servicePlanName": "ATP_ENTERPRISE",
+        "controls": ["MDO-001", "MDO-002", "MDO-003", "MDO-004"]
+      },
+      {
+        "servicePlanId": "8e0c0a52-6a6c-4d40-8370-dd62790dcd70",
+        "servicePlanName": "THREAT_INTELLIGENCE",
+        "controls": ["MDO-003"]
+      },
+      {
+        "servicePlanId": "bf6f5520-59e3-4f82-974b-7dbbc4fd27c7",
+        "servicePlanName": "SAFEDOCS",
+        "controls": ["MDO-005"]
+      },
+      {
+        "servicePlanId": "2f442157-a11c-46b9-ae5b-6e39ff4e5849",
+        "servicePlanName": "M365_ADVANCED_AUDITING",
+        "controls": ["GOV-001"]
+      }
+    ],
+    "targetValidationMode": "TenantAndEveryTarget",
+    "servicePlanProvisioningStateBehavior": {
+      "disabled": "TreatAsNotEntitled",
+      "suspended": "TreatAsNotEntitled",
+      "pending": "TreatAsNotEntitled"
+    },
+    "notes": "The tiers are planning metadata. Entitlement is decided from the tenant service-plan inventory, and a plan that is assigned but not enabled is never entitled. Verify every servicePlanId against the Microsoft published product names and service plan identifiers list. See docs/LICENSING-GATE.md."
   },
   "administratorInputs": {
     "tenantId": "__ADMIN_REQUIRED:MICROSOFT_ENTRA_TENANT_GUID__",
@@ -14,8 +53,8 @@
     "initialDomain": "__ADMIN_REQUIRED:INITIAL_ONMICROSOFT_DOMAIN__",
     "securityOperationsMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__",
     "priorityUsersGroup": "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__",
-    "proofpointInboundConnectorName": "Proofpoint Inbound",
-    "proofpointOutboundConnectorName": "Proofpoint Outbound",
+    "gatewayInboundConnectorName": "Proofpoint Inbound",
+    "gatewayOutboundConnectorName": "Proofpoint Outbound",
     "proofpointPublicSendingIpRanges": [
       "__ADMIN_REQUIRED:CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR__"
     ],
@@ -34,10 +73,15 @@
       "domainType": "Authoritative"
     },
     "mailFlow": {
+      "gateway": {
+        "declared": true,
+        "vendor": "Proofpoint",
+        "direction": "InboundAndOutbound"
+      },
       "mxTarget": "__ADMIN_REQUIRED:PROOFPOINT_MX_TARGET__",
       "inboundPath": "Internet -> Proofpoint -> Exchange Online Protection -> Exchange Online",
       "outboundPath": "Exchange Online -> Proofpoint -> Internet",
-      "proofpointInboundConnector": {
+      "gatewayInboundConnector": {
         "connectorType": "Partner",
         "enabled": true,
         "senderDomains": ["*"],
@@ -56,7 +100,7 @@
         ],
         "applyToAllRecipients": true
       },
-      "proofpointOutboundConnector": {
+      "gatewayOutboundConnector": {
         "connectorType": "Partner",
         "enabled": true,
         "recipientDomains": ["*"],
@@ -77,7 +121,16 @@
     "defenderForOffice365": {
       "standardPreset": {
         "enabled": true,
-        "scope": "AllRecipientsExceptStrictAndSecOps"
+        "scope": "AllRecipientsExceptStrictAndSecOps",
+        "sentToDomains": [
+          "__ADMIN_REQUIRED:PRIMARY_SMTP_DOMAIN__"
+        ],
+        "excludedGroups": [
+          "__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"
+        ],
+        "excludedSecOpsMailbox": [
+          "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+        ]
       },
       "strictPreset": {
         "enabled": true,
@@ -87,31 +140,115 @@
         "enabled": true,
         "exceptions": []
       },
+      "impersonationProtection": {
+        "enabled": true,
+        "protectedUsers": [
+          "__ADMIN_REQUIRED:IMPERSONATION_PROTECTED_USER_SMTP_ADDRESSES__"
+        ],
+        "protectedDomains": [
+          "__ADMIN_REQUIRED:IMPERSONATION_PROTECTED_CUSTOM_DOMAINS__"
+        ],
+        "approvedExceptions": []
+      },
       "safeAttachmentsForSharePointOneDriveTeams": true,
       "safeDocuments": {
         "enabled": true,
         "allowBypass": false,
+        "requiredServicePlan": "SAFEDOCS",
         "licenseRequired": "Microsoft 365 E5/A5/G5 or Microsoft Defender Suite"
       },
       "zeroHourAutoPurge": true,
+      "quarantinePolicies": {
+        "endUserAccessLevel": "LimitedAccess",
+        "highRiskAccessLevel": "AdminOnlyAccess",
+        "highRiskCategories": ["Malware", "HighConfidencePhish"],
+        "endUserSpamNotificationFrequencyInDays": 1,
+        "includeMessagesFromBlockedSenderAddress": false,
+        "categoryPermissions": [
+          { "category": "Malware", "accessLevel": "AdminOnlyAccess" },
+          { "category": "HighConfidencePhish", "accessLevel": "AdminOnlyAccess" },
+          { "category": "Phish", "accessLevel": "LimitedAccess" },
+          { "category": "HighConfidenceSpam", "accessLevel": "LimitedAccess" },
+          { "category": "Spam", "accessLevel": "LimitedAccess" },
+          { "category": "Bulk", "accessLevel": "LimitedAccess" },
+          { "category": "SpoofIntelligence", "accessLevel": "LimitedAccess" }
+        ]
+      },
       "userSubmissions": {
         "microsoftReportMessageButton": true,
         "sendReportedMessagesToMicrosoft": true,
-        "sendCopyToSecOpsMailbox": true
+        "sendCopyToSecOpsMailbox": true,
+        "reportingDestination": "MicrosoftAndCustomMailbox",
+        "reportingMailbox": "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+      },
+      "advancedDelivery": {
+        "secOpsMailbox": [
+          "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
+        ],
+        "phishingSimulationOverrides": []
       },
       "tenantAllowBlockList": {
+        "registerLocation": "__ADMIN_REQUIRED:TENANT_ALLOW_BLOCK_LIST_REGISTER_LOCATION__",
         "permanentAllowEntries": [],
-        "blockEntriesRequireExpiryAndTicket": true
+        "blockEntriesRequireExpiryAndTicket": true,
+        "allowEntryMaximumDurationDays": 30,
+        "blockEntryRetentionDays": 90,
+        "requiredEntryFields": [
+          "entryType",
+          "entryValue",
+          "owner",
+          "ticket",
+          "createdDateTime",
+          "expirationDateTime",
+          "justification"
+        ]
       }
     },
     "exchangeOnline": {
       "smtpClientAuthenticationDisabled": true,
       "externalPostmasterAddress": "__ADMIN_REQUIRED:EXTERNAL_POSTMASTER_SMTP_ADDRESS__",
       "mailboxAuditingDefault": true,
+      "mailboxAuditBypassAssociations": [],
       "modernAuthenticationRequired": true,
       "legacyAuthenticationBlockedByConditionalAccess": true,
       "automaticExternalForwarding": "Off",
-      "remoteDomainAutoForwardEnabled": false
+      "remoteDomainAutoForwardEnabled": false,
+      "externalSenderIdentification": {
+        "enabled": true,
+        "allowList": []
+      },
+      "remoteDomainDefault": {
+        "autoForwardEnabled": false,
+        "autoReplyEnabled": false,
+        "allowedOOFType": "None",
+        "deliveryReportEnabled": false,
+        "nonDeliveryReportEnabled": false
+      },
+      "protocolRestriction": {
+        "ewsEnabled": false,
+        "ewsApplicationAccessPolicy": "EnforceAllowList",
+        "ewsAllowList": [],
+        "popEnabledByDefault": false,
+        "imapEnabledByDefault": false,
+        "outlookAddInsForUsers": false
+      },
+      "roleBasedAccessControl": {
+        "noStandingGlobalAdministratorForMessaging": true,
+        "privilegedRolesJustInTime": true,
+        "roleGroupReviewFrequencyDays": 90,
+        "approvedRoleGroups": [
+          "Organization Management",
+          "Security Administrator",
+          "Security Reader",
+          "View-Only Organization Management"
+        ]
+      },
+      "transportSecurity": {
+        "mtaStsMode": "enforce",
+        "mtaStsMaxAgeSeconds": 604800,
+        "tlsRptEnabled": true,
+        "tlsRptAddress": "__ADMIN_REQUIRED:TLS_RPT_REPORTING_ADDRESS__"
+      }
     },
     "emailAuthentication": {
       "dkim": {
@@ -139,12 +276,44 @@
       ]
     },
     "abnormalSecurity": {
+      "integration": {
+        "mode": "Microsoft API post-delivery",
+        "smtpConnectorCreated": false,
+        "journalRuleCreated": false,
+        "sclBypassCreated": false,
+        "transportExceptionCreated": false,
+        "maximumVendorHealthAgeMinutes": 60,
+        "maximumFunctionalTestAgeHours": 24,
+        "requiredFunctionalOutcomes": [
+          "Detection",
+          "Removal",
+          "Restoration",
+          "AuditAttribution"
+        ],
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true
+      },
       "integrationMode": "Microsoft API post-delivery",
       "smtpConnectorCreated": false,
       "transportBypassCreated": false,
       "servicePrincipalUsesLeastPrivilege": true,
       "vendorHealthMonitoringEnabled": true,
-      "permissionReviewFrequencyDays": 90
+      "permissionReviewFrequencyDays": 90,
+      "permissions": {
+        "applicationPermissionAllowList": [
+          "Mail.ReadWrite",
+          "User.Read.All"
+        ],
+        "delegatedPermissionAllowList": [
+          "openid",
+          "profile"
+        ],
+        "administratorConsentRequired": true,
+        "userConsentAllowed": false,
+        "maximumAccessReviewAgeDays": 90,
+        "maximumEvidenceAgeDays": 7,
+        "requireSignedEvidence": true
+      }
     },
     "centralMonitoring": {
       "defenderXdrIncidentQueue": true,
@@ -167,12 +336,122 @@
         "minimumRetentionDays": 180,
         "alertRecipients": [
           "__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"
-        ]
+        ],
+        "maximumConnectorAgeMinutes": 60,
+        "maximumSyntheticAlertAgeMinutes": 60,
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true
+      },
+      "unifiedAudit": {
+        "enabled": true,
+        "minimumRetentionDays": 180,
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true,
+        "requireCompleteCollection": true,
+        "requireSearchResults": true
+      },
+      "driftEvidence": {
+        "scheduledCollectionEnabled": true,
+        "collectionFrequencyHours": 24,
+        "minimumRetentionDays": 180,
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true
       },
       "serviceHealthNotifications": true,
       "dailyOperationalReview": true,
       "weeklyControlDriftReview": true,
       "quarterlyAccessReview": true
+    },
+    "operations": {
+      "changeSafety": {
+        "maximumEvidenceAgeHours": 24,
+        "requireSignedEvidence": true,
+        "requirePreview": true,
+        "requirePilot": true,
+        "requireApproval": true,
+        "requireRollback": true,
+        "requirePostChange": true
+      },
+      "incidentExercise": {
+        "requiredServicePlan": "MDO P2",
+        "frequencyDays": 90,
+        "exerciseTypes": ["PhishingSimulation", "RemediationValidation"],
+        "owners": ["Security Operations", "Exchange Online Service Owner"],
+        "requireTrackedActions": true,
+        "maximumEvidenceAgeDays": 7
+      }
+    },
+    "purviewGovernance": {
+      "unifiedAuditLogEnabled": true,
+      "auditRetentionDays": 365,
+      "exchangeDlpPolicyRequired": true,
+      "exchangeDlpPolicyName": "__ADMIN_REQUIRED:EXCHANGE_DLP_POLICY_NAME__",
+      "mailboxRetentionPolicyRequired": true,
+      "mailboxRetentionPolicyName": "__ADMIN_REQUIRED:MAILBOX_RETENTION_POLICY_NAME__",
+      "litigationHoldRequiredForPriorityUsers": true,
+      "informationRightsManagementEnabled": true,
+      "mailboxRetention": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "policyName": "__ADMIN_REQUIRED:MAILBOX_RETENTION_POLICY_NAME__",
+        "requireCompleteMailboxCoverage": true,
+        "requireSuccessfulDistribution": true
+      },
+      "litigationHold": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "enabled": true,
+        "priorityIdentitySources": ["__ADMIN_REQUIRED:MAIL_ENABLED_PRIORITY_USERS_GROUP__"],
+        "custodians": ["__ADMIN_REQUIRED:LITIGATION_HOLD_CUSTODIAN_UPN__"]
+      },
+      "informationRightsManagement": {
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "internalLicensingEnabled": true,
+        "azureRmsLicensingEnabled": true,
+        "transportDecryptionSetting": "Mandatory",
+        "journalReportDecryptionEnabled": true,
+        "licensingLocation": "NorthAmerica",
+        "omeFunctionalTest": "EncryptedMessageRoundTrip"
+      },
+      "sensitivityLabelsPublished": true,
+      "ediscoveryCaseOwners": [
+        "__ADMIN_REQUIRED:EDISCOVERY_CASE_OWNER_UPN__"
+      ]
+    },
+    "governance": {
+      "auditRetention": {
+        "policyName": "Regulatory audit retention",
+        "requiredServicePlan": "M365_ADVANCED_AUDITING",
+        "retentionDays": 365,
+        "recordTypes": [
+          "ExchangeAdmin",
+          "ExchangeItem",
+          "SharePointFileOperation",
+          "AzureActiveDirectory"
+        ],
+        "maximumEvidenceAgeHours": 24
+      },
+      "dataLossPrevention": {
+        "policyName": "Regulated data protection",
+        "requiredServicePlan": "EXCHANGE_S_ENTERPRISE",
+        "mode": "Enforce",
+        "regulatedDataClasses": [
+          "Credit Card Number",
+          "U.S. Social Security Number (SSN)"
+        ],
+        "maximumEvidenceAgeHours": 24
+      },
+      "sensitivityLabels": {
+        "requiredServicePlan": "E5 Compliance",
+        "encryptionLabelNames": ["Confidential"],
+        "messagingTargets": ["__ADMIN_REQUIRED:SECURITY_OPERATIONS_MAILBOX__"],
+        "maximumEvidenceAgeDays": 7
+      },
+      "eDiscovery": {
+        "requiredServicePlan": "E5 Compliance",
+        "caseOwners": ["__ADMIN_REQUIRED:EDISCOVERY_CASE_OWNER_UPN__"],
+        "roleGroupIdentity": "eDiscovery Manager",
+        "maximumAccessReviewAgeDays": 90,
+        "maximumEvidenceAgeDays": 7
+      }
     }
   },
   "deployment": {

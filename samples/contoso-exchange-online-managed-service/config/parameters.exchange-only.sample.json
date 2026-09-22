@@ -1,0 +1,28 @@
+{
+  "MICROSOFT_ENTRA_TENANT_GUID": "00000000-0000-0000-0000-000000000000",
+  "PRIMARY_SMTP_DOMAIN": "contoso.example",
+  "INITIAL_ONMICROSOFT_DOMAIN": "contoso.onmicrosoft.com",
+  "EXTERNAL_POSTMASTER_SMTP_ADDRESS": "postmaster@contoso.example",
+  "MAIL_ENABLED_PRIORITY_USERS_GROUP": "priority-users@contoso.example",
+  "SECURITY_OPERATIONS_MAILBOX": "secops@contoso.example",
+  "MAILBOX_RETENTION_POLICY_NAME": "Externally approved Exchange MRM policy",
+  "domainInventory": {
+    "schemaVersion": 1,
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "complete": true,
+    "source": { "owner": "Synthetic inventory owner - replace before use", "reference": "fixture:domain-inventory-not-approval", "suppliedAtUtc": "2026-09-21T00:00:00Z" },
+    "domains": [
+      {
+        "domainName": "contoso.example", "accepted": true, "sending": true, "parked": false,
+        "parentDomain": null, "domainType": "Authoritative", "owner": "Synthetic Exchange owner",
+        "sendingSystem": "ExchangeOnline",
+        "senderSource": { "owner": "Synthetic sender owner", "reference": "fixture:sender-inventory-not-approval", "suppliedAtUtc": "2026-09-21T00:00:00Z" }
+      },
+      {
+        "domainName": "contoso.onmicrosoft.com", "accepted": true, "sending": false, "parked": false,
+        "parentDomain": null, "domainType": "Authoritative", "owner": "Synthetic Exchange owner"
+      }
+    ]
+  },
+  "entitlement": { "verified": false, "tenantId": "00000000-0000-0000-0000-000000000000", "expiresOn": "2026-09-20T00:00:00Z", "owner": "Licensing administrator", "reference": "RAID-D02", "servicePlans": [], "recipientDomains": ["contoso.example"] }
+}

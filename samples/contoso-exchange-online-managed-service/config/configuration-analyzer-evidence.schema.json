@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/configuration-analyzer-evidence.schema.json",
+  "title": "Sanitized Microsoft Configuration Analyzer evidence payload",
+  "description": "EVD-009. The closed, versioned payload admitted inside signed external evidence after tenant identifiers, user identifiers, tokens, and free-form source output have been removed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "SchemaVersion",
+    "GeneratedAtUtc",
+    "ControlResults"
+  ],
+  "properties": {
+    "SchemaVersion": {
+      "description": "The version of this sanitized Configuration Analyzer payload contract.",
+      "const": "1.0.0"
+    },
+    "GeneratedAtUtc": {
+      "description": "The UTC instant at which Configuration Analyzer completed the assessment.",
+      "$ref": "#/$defs/timestampUtc"
+    },
+    "ControlResults": {
+      "description": "One sanitized Analyzer result per baseline control. No source object identifiers, principals, tokens, or free-form findings are admitted.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ControlId", "Result"],
+        "properties": {
+          "ControlId": {
+            "type": "string",
+            "pattern": "^[A-Z]+-[0-9]{3}$"
+          },
+          "Result": {
+            "enum": ["Pass", "Fail", "NotApplicable"]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "timestampUtc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?Z$"
+    }
+  }
+}

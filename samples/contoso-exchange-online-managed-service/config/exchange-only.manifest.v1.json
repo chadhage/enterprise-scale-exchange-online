@@ -1,0 +1,13 @@
+{
+  "Profile": "ExchangeOnly",
+  "Version": "1.0.0",
+  "ControlId": ["EXO-001","EXO-002","EXO-004","EXO-005","EXO-006","EXO-007","EXO-008","EXO-009","EXO-010","EXO-012","MDO-001","MDO-002","MDO-003","MDO-006","MDO-007","MDO-008","MDO-009","PP-005","AUTH-001","MON-003","OPS-001","OPS-002","GOV-003","GOV-004","GOV-005"],
+  "Exclusion": [
+    { "ControlId": ["EXO-003"], "Reason": "Entra Conditional Access and identity provisioning are externally owned.", "Reference": "RAID-D02" },
+    { "ControlId": ["MDO-004","MDO-005"], "Reason": "Safe Documents and SPO/ODB/Teams protection are not Exchange recipient controls.", "Reference": "RAID-I04" },
+    { "ControlId": ["PP-001","PP-002","PP-003","PP-004","ABN-001","ABN-002"], "Reason": "Vendor and gateway setup is not part of the native Exchange journey.", "Reference": "RAID-D01" },
+    { "ControlId": ["MON-001","MON-002","GOV-001","GOV-002","GOV-006","GOV-007"], "Reason": "Tenant-wide Purview, SIEM and external governance are separate readiness obligations.", "Reference": "RAID-D03" }
+  ],
+  "ExternalCheck": [{ "ControlId": ["EXO-011","AUTH-002","AUTH-003"], "Status": "Unverified", "Reason": "DNS publication, HTTPS hosting and reporting readiness require the DNS owner's independent attestation.", "Reference": "RAID-D04" }],
+  "ExternalReadiness": { "Status": "Unverified", "Reference": ["RAID-A01","RAID-D01","RAID-D02","RAID-D03","RAID-D04","RAID-D05"], "Meaning": "Exchange conformance does not certify tenant or service launch readiness." }
+}

@@ -1,19 +1,70 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://contoso.example/schemas/exchange-online-secure-baseline.schema.json",
-  "title": "Contoso Exchange Online secure managed service baseline",
+  "title": "Exchange Online secure managed service baseline",
   "type": "object",
   "additionalProperties": false,
-  "required": ["metadata", "administratorInputs", "desiredState", "deployment"],
+  "required": ["metadata", "licensing", "administratorInputs", "desiredState", "deployment"],
   "properties": {
     "$schema": { "type": "string" },
     "metadata": {
       "type": "object",
-      "required": ["name", "version", "reviewedOn", "profile", "configurationOwner"]
+      "required": ["name", "version", "reviewedOn", "deploymentProfile", "profile", "configurationOwner"],
+      "properties": {
+        "deploymentProfile": { "enum": ["MicrosoftNative", "ThirdPartyGateway"] }
+      }
+    },
+    "licensing": {
+      "type": "object",
+      "required": ["requiredServicePlans", "targetValidationMode", "servicePlanProvisioningStateBehavior"],
+      "properties": {
+        "messagingTier": {
+          "description": "Planning metadata only. The tenant service-plan inventory decides entitlement at run time and overrides this value.",
+          "enum": ["EOP", "MDO_P1", "MDO_P2"]
+        },
+        "complianceTier": {
+          "description": "Planning metadata only. The tenant service-plan inventory decides entitlement at run time and overrides this value.",
+          "enum": ["None", "E3", "E5Compliance"]
+        },
+        "requiredServicePlans": {
+          "description": "The service plans a control needs. Matched against the tenant inventory by identifier, never by display name.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["servicePlanId", "servicePlanName"],
+            "properties": {
+              "servicePlanId": {
+                "type": "string",
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+              },
+              "servicePlanName": { "type": "string", "minLength": 1 },
+              "controls": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+            }
+          }
+        },
+        "targetValidationMode": {
+          "description": "How far the licensing gate reaches: the tenant alone, the tenant and at least one targeted user, or the tenant and every targeted user.",
+          "enum": ["TenantOnly", "TenantAndAnyTarget", "TenantAndEveryTarget"]
+        },
+        "servicePlanProvisioningStateBehavior": {
+          "description": "The outcome when an assigned service plan is not enabled. An assigned but non-enabled plan never counts as entitled.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["disabled", "suspended", "pending"],
+          "properties": {
+            "disabled": { "enum": ["TreatAsNotEntitled", "TreatAsFail", "TreatAsError"] },
+            "suspended": { "enum": ["TreatAsNotEntitled", "TreatAsFail", "TreatAsError"] },
+            "pending": { "enum": ["TreatAsNotEntitled", "TreatAsFail", "TreatAsError"] }
+          }
+        },
+        "notes": { "type": "string" }
+      }
     },
     "administratorInputs": {
       "type": "object",
-      "minProperties": 10,
+      "minProperties": 8,
       "additionalProperties": {
         "oneOf": [
           { "type": "string", "minLength": 1 },
@@ -23,15 +74,646 @@
     },
     "desiredState": {
       "type": "object",
-      "required": ["acceptedDomain", "mailFlow", "defenderForOffice365", "exchangeOnline", "emailAuthentication", "abnormalSecurity", "centralMonitoring"],
+      "required": [
+        "acceptedDomain",
+        "mailFlow",
+        "defenderForOffice365",
+        "exchangeOnline",
+        "emailAuthentication",
+        "centralMonitoring",
+        "operations",
+        "purviewGovernance",
+        "governance"
+      ],
       "properties": {
         "acceptedDomain": { "type": "object" },
-        "mailFlow": { "type": "object" },
-        "defenderForOffice365": { "type": "object" },
-        "exchangeOnline": { "type": "object" },
-        "emailAuthentication": { "type": "object" },
-        "abnormalSecurity": { "type": "object" },
-        "centralMonitoring": { "type": "object" }
+        "mailFlow": {
+          "type": "object",
+          "required": ["gateway", "enhancedFiltering", "prohibitedBypass"],
+          "properties": {
+            "gateway": {
+              "type": "object",
+              "required": ["declared", "vendor"],
+              "properties": {
+                "declared": { "type": "boolean" },
+                "vendor": { "type": "string", "minLength": 1 },
+                "direction": { "enum": ["None", "Inbound", "Outbound", "InboundAndOutbound"] }
+              }
+            },
+            "enhancedFiltering": {
+              "type": "object",
+              "required": ["enabled", "skipLastIp", "skipIpAddresses", "applyToAllRecipients"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "skipLastIp": { "type": "boolean" },
+                "skipIpAddresses": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "applyToAllRecipients": { "type": "boolean" }
+              }
+            },
+            "gatewayInboundConnector": {
+              "type": "object",
+              "required": [
+                "connectorType",
+                "enabled",
+                "senderDomains",
+                "requireTls",
+                "restrictDomainsToIpAddresses",
+                "restrictDomainsToCertificate",
+                "senderIpAddresses"
+              ],
+              "properties": {
+                "connectorType": { "const": "Partner" },
+                "enabled": { "const": true },
+                "senderDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": { "const": "*" }
+                },
+                "requireTls": { "const": true },
+                "restrictDomainsToIpAddresses": { "const": true },
+                "restrictDomainsToCertificate": { "const": false },
+                "senderIpAddresses": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "gatewayOutboundConnector": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "connectorType",
+                "enabled",
+                "recipientDomains",
+                "routeAllMessagesViaOnPremises",
+                "useMxRecord",
+                "smartHosts",
+                "tlsSettings",
+                "tlsDomain"
+              ],
+              "properties": {
+                "connectorType": { "const": "Partner" },
+                "enabled": { "const": true },
+                "recipientDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "maxItems": 1,
+                  "items": { "const": "*" }
+                },
+                "routeAllMessagesViaOnPremises": { "const": true },
+                "useMxRecord": { "const": false },
+                "smartHosts": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "tlsSettings": { "const": "DomainValidation" },
+                "tlsDomain": { "type": "string", "minLength": 1 }
+              }
+            },
+            "prohibitedBypass": {
+              "type": "object",
+              "properties": {
+                "sclMinusOneTransportRules": { "const": false },
+                "directToTenantMxFromInternet": { "const": false }
+              }
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": { "gateway": { "properties": { "declared": { "const": true } } } }
+              },
+              "then": {
+                "required": ["gatewayInboundConnector", "gatewayOutboundConnector"],
+                "properties": {
+                  "enhancedFiltering": {
+                    "properties": {
+                      "enabled": { "const": true },
+                      "skipLastIp": { "const": false },
+                      "skipIpAddresses": { "minItems": 1 },
+                      "applyToAllRecipients": { "const": true }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "not": {
+                  "anyOf": [
+                    { "required": ["gatewayInboundConnector"] },
+                    { "required": ["gatewayOutboundConnector"] }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "defenderForOffice365": {
+          "type": "object",
+          "required": [
+            "standardPreset",
+            "strictPreset",
+            "builtInProtection",
+            "quarantinePolicies",
+            "impersonationProtection",
+            "userSubmissions",
+            "advancedDelivery",
+            "tenantAllowBlockList"
+          ],
+          "properties": {
+            "safeDocuments": {
+              "type": "object",
+              "required": ["enabled", "requiredServicePlan"],
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "allowBypass": { "const": false },
+                "requiredServicePlan": { "const": "SAFEDOCS" }
+              }
+            },
+            "standardPreset": {
+              "type": "object",
+              "required": ["enabled", "scope", "sentToDomains", "excludedGroups", "excludedSecOpsMailbox"],
+              "properties": {
+                "enabled": { "const": true },
+                "scope": { "type": "string", "minLength": 1 },
+                "sentToDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "excludedGroups": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "excludedSecOpsMailbox": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                }
+              }
+            },
+            "strictPreset": {
+              "type": "object",
+              "required": ["enabled", "scopeGroup"],
+              "properties": {
+                "enabled": { "const": true },
+                "scopeGroup": { "type": "string", "minLength": 1 }
+              }
+            },
+            "impersonationProtection": {
+              "type": "object",
+              "required": ["enabled", "protectedUsers", "protectedDomains", "approvedExceptions"],
+              "properties": {
+                "enabled": { "const": true },
+                "protectedUsers": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "protectedDomains": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "approvedExceptions": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["exceptionType", "value", "owner", "ticket", "expirationDateTime", "justification"],
+                    "properties": {
+                      "exceptionType": { "enum": ["TrustedSender", "TrustedDomain"] },
+                      "value": { "type": "string", "minLength": 1 },
+                      "owner": { "type": "string", "minLength": 1 },
+                      "ticket": { "type": "string", "minLength": 1 },
+                      "expirationDateTime": { "type": "string", "format": "date-time", "minLength": 1 },
+                      "justification": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                }
+              }
+            },
+            "userSubmissions": {
+              "type": "object",
+              "required": [
+                "microsoftReportMessageButton",
+                "sendReportedMessagesToMicrosoft",
+                "reportingDestination",
+                "reportingMailbox"
+              ],
+              "properties": {
+                "microsoftReportMessageButton": { "const": true },
+                "sendReportedMessagesToMicrosoft": { "const": true },
+                "sendCopyToSecOpsMailbox": { "type": "boolean" },
+                "reportingDestination": {
+                  "enum": ["MicrosoftOnly", "MicrosoftAndCustomMailbox", "CustomMailboxOnly"]
+                },
+                "reportingMailbox": { "type": "string", "minLength": 1 }
+              }
+            },
+            "advancedDelivery": {
+              "type": "object",
+              "required": ["secOpsMailbox"],
+              "properties": {
+                "secOpsMailbox": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "phishingSimulationOverrides": { "type": "array" }
+              }
+            },
+            "tenantAllowBlockList": {
+              "type": "object",
+              "required": [
+                "registerLocation",
+                "allowEntryMaximumDurationDays",
+                "blockEntryRetentionDays",
+                "requiredEntryFields",
+                "blockEntriesRequireExpiryAndTicket"
+              ],
+              "properties": {
+                "registerLocation": { "type": "string", "minLength": 1 },
+                "allowEntryMaximumDurationDays": { "type": "integer", "minimum": 1, "maximum": 30 },
+                "blockEntryRetentionDays": { "type": "integer", "minimum": 1 },
+                "requiredEntryFields": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "enum": [
+                      "entryType",
+                      "entryValue",
+                      "owner",
+                      "ticket",
+                      "createdDateTime",
+                      "expirationDateTime",
+                      "justification"
+                    ]
+                  }
+                },
+                "blockEntriesRequireExpiryAndTicket": { "const": true },
+                "permanentAllowEntries": { "type": "array", "maxItems": 0 }
+              }
+            },
+            "quarantinePolicies": {
+              "type": "object",
+              "required": [
+                "endUserAccessLevel",
+                "highRiskAccessLevel",
+                "endUserSpamNotificationFrequencyInDays",
+                "categoryPermissions"
+              ],
+              "properties": {
+                "endUserAccessLevel": { "enum": ["AdminOnlyAccess", "LimitedAccess", "FullAccess"] },
+                "highRiskAccessLevel": { "const": "AdminOnlyAccess" },
+                "highRiskCategories": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+                "endUserSpamNotificationFrequencyInDays": { "enum": [1, 4, 7] },
+                "includeMessagesFromBlockedSenderAddress": { "type": "boolean" },
+                "categoryPermissions": {
+                  "type": "array",
+                  "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["category", "accessLevel"],
+                    "properties": {
+                      "category": {
+                        "enum": [
+                          "Malware",
+                          "HighConfidencePhish",
+                          "Phish",
+                          "HighConfidenceSpam",
+                          "Spam",
+                          "Bulk",
+                          "SpoofIntelligence"
+                        ]
+                      },
+                      "accessLevel": { "enum": ["AdminOnlyAccess", "LimitedAccess", "FullAccess"] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "exchangeOnline": {
+          "type": "object",
+          "required": [
+            "smtpClientAuthenticationDisabled",
+            "mailboxAuditingDefault",
+            "automaticExternalForwarding",
+            "externalSenderIdentification",
+            "remoteDomainDefault",
+            "protocolRestriction",
+            "roleBasedAccessControl",
+            "transportSecurity"
+          ],
+          "properties": {
+            "smtpClientAuthenticationDisabled": { "const": true },
+            "automaticExternalForwarding": { "const": "Off" }
+          }
+        },
+        "emailAuthentication": {
+          "type": "object",
+          "required": ["trustedArcSealers"],
+          "properties": {
+            "trustedArcSealers": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "abnormalSecurity": {
+          "type": "object",
+          "required": ["integration", "permissions"],
+          "properties": {
+            "integration": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["mode", "smtpConnectorCreated", "journalRuleCreated", "sclBypassCreated", "transportExceptionCreated", "maximumVendorHealthAgeMinutes", "maximumFunctionalTestAgeHours", "requiredFunctionalOutcomes", "requireSignedEvidence", "requireCompleteCollection"],
+              "properties": {
+                "mode": { "const": "Microsoft API post-delivery" },
+                "smtpConnectorCreated": { "const": false },
+                "journalRuleCreated": { "const": false },
+                "sclBypassCreated": { "const": false },
+                "transportExceptionCreated": { "const": false },
+                "maximumVendorHealthAgeMinutes": { "type": "integer", "minimum": 1, "maximum": 1440 },
+                "maximumFunctionalTestAgeHours": { "type": "integer", "minimum": 1, "maximum": 168 },
+                "requiredFunctionalOutcomes": {
+                  "type": "array",
+                  "minItems": 4,
+                  "maxItems": 4,
+                  "uniqueItems": true,
+                  "items": { "enum": ["Detection", "Removal", "Restoration", "AuditAttribution"] },
+                  "allOf": [
+                    { "contains": { "const": "Detection" } },
+                    { "contains": { "const": "Removal" } },
+                    { "contains": { "const": "Restoration" } },
+                    { "contains": { "const": "AuditAttribution" } }
+                  ]
+                },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true }
+              }
+            },
+            "permissions": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "applicationPermissionAllowList",
+                "delegatedPermissionAllowList",
+                "administratorConsentRequired",
+                "userConsentAllowed",
+                "maximumAccessReviewAgeDays",
+                "maximumEvidenceAgeDays",
+                "requireSignedEvidence"
+              ],
+              "properties": {
+                "applicationPermissionAllowList": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "delegatedPermissionAllowList": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "administratorConsentRequired": { "const": true },
+                "userConsentAllowed": { "const": false },
+                "maximumAccessReviewAgeDays": { "type": "integer", "minimum": 1, "maximum": 90 },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1, "maximum": 7 },
+                "requireSignedEvidence": { "const": true }
+              }
+            }
+          }
+        },
+        "centralMonitoring": {
+          "type": "object",
+          "required": ["siemIntegration", "unifiedAudit", "driftEvidence"],
+          "properties": {
+            "siemIntegration": {
+              "type": "object",
+              "required": ["enabled", "destination", "sources", "minimumRetentionDays", "alertRecipients", "maximumConnectorAgeMinutes", "maximumSyntheticAlertAgeMinutes", "requireSignedEvidence", "requireCompleteCollection"],
+              "properties": {
+                "enabled": { "const": true },
+                "destination": { "type": "string", "minLength": 1 },
+                "sources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "alertRecipients": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "maximumConnectorAgeMinutes": { "type": "integer", "minimum": 1 },
+                "maximumSyntheticAlertAgeMinutes": { "type": "integer", "minimum": 1 },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "unifiedAudit": {
+              "type": "object",
+              "required": ["enabled", "minimumRetentionDays", "maximumEvidenceAgeHours", "requireSignedEvidence", "requireCompleteCollection", "requireSearchResults"],
+              "properties": {
+                "enabled": { "const": true },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 },
+                "requireSignedEvidence": { "const": true },
+                "requireCompleteCollection": { "const": true },
+                "requireSearchResults": { "const": true }
+              },
+              "additionalProperties": false
+            },
+            "driftEvidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["scheduledCollectionEnabled", "collectionFrequencyHours", "minimumRetentionDays", "maximumEvidenceAgeHours", "requireSignedEvidence"],
+              "properties": {
+                "scheduledCollectionEnabled": { "const": true },
+                "collectionFrequencyHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "minimumRetentionDays": { "type": "integer", "minimum": 180 },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "requireSignedEvidence": { "const": true }
+              }
+            }
+          }
+        },
+        "operations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["changeSafety", "incidentExercise"],
+          "properties": {
+            "changeSafety": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["maximumEvidenceAgeHours", "requireSignedEvidence", "requirePreview", "requirePilot", "requireApproval", "requireRollback", "requirePostChange"],
+              "properties": {
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1, "maximum": 24 },
+                "requireSignedEvidence": { "const": true },
+                "requirePreview": { "const": true },
+                "requirePilot": { "const": true },
+                "requireApproval": { "const": true },
+                "requireRollback": { "const": true },
+                "requirePostChange": { "const": true }
+              }
+            },
+            "incidentExercise": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "frequencyDays", "exerciseTypes", "owners", "requireTrackedActions", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "MDO P2" },
+                "frequencyDays": { "type": "integer", "minimum": 1, "maximum": 90 },
+                "exerciseTypes": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": { "enum": ["PhishingSimulation", "RemediationValidation"] }
+                },
+                "owners": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "requireTrackedActions": { "const": true },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1, "maximum": 7 }
+              }
+            }
+          }
+        },
+        "purviewGovernance": {
+          "type": "object",
+          "required": [
+            "unifiedAuditLogEnabled",
+            "auditRetentionDays",
+            "mailboxRetention",
+            "litigationHold",
+            "informationRightsManagement"
+          ],
+          "properties": {
+            "unifiedAuditLogEnabled": { "const": true },
+            "auditRetentionDays": { "type": "integer", "minimum": 180 },
+            "mailboxRetention": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "policyName", "requireCompleteMailboxCoverage", "requireSuccessfulDistribution"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "policyName": { "type": "string", "minLength": 1 },
+                "requireCompleteMailboxCoverage": { "const": true },
+                "requireSuccessfulDistribution": { "const": true }
+              }
+            },
+            "litigationHold": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "enabled", "priorityIdentitySources", "custodians"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "enabled": { "const": true },
+                "priorityIdentitySources": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+                "custodians": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+              }
+            },
+            "informationRightsManagement": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["requiredServicePlan", "internalLicensingEnabled", "azureRmsLicensingEnabled", "transportDecryptionSetting", "journalReportDecryptionEnabled", "licensingLocation", "omeFunctionalTest"],
+              "properties": {
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "internalLicensingEnabled": { "const": true },
+                "azureRmsLicensingEnabled": { "const": true },
+                "transportDecryptionSetting": { "const": "Mandatory" },
+                "journalReportDecryptionEnabled": { "const": true },
+                "licensingLocation": { "type": "string", "minLength": 1 },
+                "omeFunctionalTest": { "const": "EncryptedMessageRoundTrip" }
+              }
+            }
+          }
+        },
+        "governance": {
+          "type": "object",
+          "required": ["auditRetention", "dataLossPrevention", "sensitivityLabels", "eDiscovery"],
+          "properties": {
+            "auditRetention": {
+              "type": "object",
+              "required": ["policyName", "requiredServicePlan", "retentionDays", "recordTypes", "maximumEvidenceAgeHours"],
+              "properties": {
+                "policyName": { "type": "string", "minLength": 1 },
+                "requiredServicePlan": { "const": "M365_ADVANCED_AUDITING" },
+                "retentionDays": { "type": "integer", "minimum": 180 },
+                "recordTypes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "dataLossPrevention": {
+              "type": "object",
+              "required": ["policyName", "requiredServicePlan", "mode", "regulatedDataClasses", "maximumEvidenceAgeHours"],
+              "properties": {
+                "policyName": { "type": "string", "minLength": 1 },
+                "requiredServicePlan": { "const": "EXCHANGE_S_ENTERPRISE" },
+                "mode": { "const": "Enforce" },
+                "regulatedDataClasses": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeHours": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "sensitivityLabels": {
+              "type": "object",
+              "required": ["requiredServicePlan", "encryptionLabelNames", "messagingTargets", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "E5 Compliance" },
+                "encryptionLabelNames": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "messagingTargets": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            },
+            "eDiscovery": {
+              "type": "object",
+              "required": ["requiredServicePlan", "caseOwners", "roleGroupIdentity", "maximumAccessReviewAgeDays", "maximumEvidenceAgeDays"],
+              "properties": {
+                "requiredServicePlan": { "const": "E5 Compliance" },
+                "caseOwners": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": { "type": "string", "minLength": 1 }
+                },
+                "roleGroupIdentity": { "const": "eDiscovery Manager" },
+                "maximumAccessReviewAgeDays": { "type": "integer", "minimum": 1 },
+                "maximumEvidenceAgeDays": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
       }
     },
     "deployment": {
@@ -46,5 +728,39 @@
         "evidenceOutputDirectory": { "type": "string" }
       }
     }
-  }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "metadata": {
+            "properties": { "deploymentProfile": { "const": "ThirdPartyGateway" } },
+            "required": ["deploymentProfile"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "desiredState": {
+            "properties": {
+              "emailAuthentication": {
+                "properties": { "trustedArcSealers": { "minItems": 1 } }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "desiredState": {
+            "properties": {
+              "emailAuthentication": {
+                "properties": { "trustedArcSealers": { "maxItems": 0 } }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
 }

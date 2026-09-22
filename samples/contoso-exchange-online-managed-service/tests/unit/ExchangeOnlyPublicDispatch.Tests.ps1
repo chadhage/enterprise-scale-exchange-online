@@ -1,0 +1,161 @@
+BeforeAll {
+    $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+    $command = Join-Path $sampleRoot 'scripts/Test-ExchangeOnlineBaseline.ps1'
+    $harness = Join-Path $sampleRoot 'tests/helpers/ExchangeOnlyPublicHarness.ps1'
+    $parameters = Get-Content (Join-Path $sampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable
+    $parameters.entitlement.verified = $true
+    $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
+    $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
+    $parameterPath = Join-Path $TestDrive 'parameters.json'
+    $parameters | ConvertTo-Json -Depth 20 | Set-Content $parameterPath
+}
+
+Describe 'EXR-001 default public Exchange dispatch' {
+    It 'blocks the genuine excluded harness operation <Operation>' -ForEach @(
+        @{ Operation = 'Connect-MgGraph' }
+        @{ Operation = 'Invoke-MgGraphRequest' }
+        @{ Operation = 'Get-AtpPolicyForO365' }
+        @{ Operation = 'Set-AtpPolicyForO365' }
+        @{ Operation = 'Get-DlpCompliancePolicy' }
+        @{ Operation = 'Get-DlpComplianceRule' }
+        @{ Operation = 'Get-RetentionCompliancePolicy' }
+        @{ Operation = 'Get-UnifiedAuditLogRetentionPolicy' }
+        @{ Operation = 'Get-AdminAuditLogConfig' }
+        @{ Operation = 'Search-UnifiedAuditLog' }
+        @{ Operation = 'Get-Label' }
+        @{ Operation = 'Get-LabelPolicy' }
+        @{ Operation = 'Get-ComplianceCase' }
+        @{ Operation = 'Resolve-DnsName' }
+        @{ Operation = 'Connect-IPPSSession' }
+        @{ Operation = 'Get-MgRoleManagementDirectoryRoleEligibilityScheduleInstance' }
+        @{ Operation = 'Get-MgIdentityGovernanceAccessReviewDefinition' }
+        @{ Operation = 'GraphImport' }
+    ) {
+        # Arrange
+        $probePath = Join-Path $TestDrive "$Operation.ps1"
+        $calls = Join-Path $TestDrive "$Operation.calls"
+        $outputPath = Join-Path $TestDrive "$Operation-output"
+        $probe = @'
+param($ParameterPath, $OutputPath)
+$PSModuleAutoLoadingPreference = 'None'
+$operation = '__OPERATION__'
+$commandName = if ($operation -eq 'GraphImport') { 'Import-Module' } else { $operation }
+$guard = Get-Command $commandName -CommandType Function -ErrorAction SilentlyContinue
+if (-not $guard -or $guard.Definition -notmatch 'ExcludedServiceCalled') {
+    throw "ExcludedGuardMissing:$operation"
+}
+if ($operation -eq 'GraphImport') { & $guard 'Microsoft.Graph.Authentication' }
+else { & $guard }
+throw "ExcludedGuardDidNotStop:$operation"
+'@
+        $probe.Replace('__OPERATION__', $Operation) | Set-Content $probePath
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $probePath $parameterPath $outputPath $calls 2>&1 | Out-String
+        # Assert
+        $LASTEXITCODE | Should -Not -Be 0
+        $output | Should -Match 'ExcludedServiceCalled'
+        $output | Should -Not -Match 'ExcludedGuardMissing|ExcludedGuardDidNotStop'
+        @(Get-Content $calls) | Should -Be @("EXCLUDED:$Operation")
+        Test-Path $outputPath | Should -BeFalse
+    }
+
+    It 'refuses schema-invalid resolved parameters before any connection, collection or evidence' {
+        # Arrange
+        $invalidParameters = $parameters.Clone()
+        $invalidParameters.EXTERNAL_POSTMASTER_SMTP_ADDRESS = ''
+        $invalidParameterPath = Join-Path $TestDrive 'invalid-resolved-parameters.json'
+        $invalidParameters | ConvertTo-Json -Depth 20 | Set-Content $invalidParameterPath
+        $calls = Join-Path $TestDrive 'invalid-resolved.calls'
+        $outputPath = Join-Path $TestDrive 'invalid-resolved-output'
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $invalidParameterPath $outputPath $calls 2>&1 | Out-String
+        # Assert
+        $LASTEXITCODE | Should -Not -Be 0
+        $output | Should -Match 'ExchangeSchemaInvalid'
+        Test-Path $calls | Should -BeFalse
+        Test-Path $outputPath | Should -BeFalse
+    }
+
+    It 'refuses malformed scoped input before any connection or collector' {
+        # Arrange
+        $configuration = Get-Content (Join-Path $sampleRoot 'config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
+        $configuration.controls['EXO-002'].smtpClientAuthenticationDisabled = 'false'
+        $configurationPath = Join-Path $TestDrive 'invalid.json'
+        $configuration | ConvertTo-Json -Depth 30 | Set-Content $configurationPath
+        $calls = Join-Path $TestDrive 'invalid.calls'
+        $outputPath = Join-Path $TestDrive 'invalid-output'
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $parameterPath $outputPath $calls -ConfigurationPath $configurationPath 2>&1 | Out-String
+        # Assert
+        $output | Should -Match 'ExchangeSchemaInvalid'
+        Test-Path $calls | Should -BeFalse
+        Test-Path (Join-Path $outputPath 'exchange-online-evidence.json') | Should -BeFalse
+    }
+
+    It 'never connects to or collects an excluded service in an entitled default run' {
+        # Arrange
+        $outputPath = Join-Path $TestDrive 'no-excluded'
+        $calls = Join-Path $TestDrive 'no-excluded.calls'
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $parameterPath $outputPath $calls 2>&1 | Out-String
+        # Assert
+        Test-Path $calls | Should -BeTrue
+        Get-Content $calls -Raw | Should -Not -Match 'EXCLUDED:'
+        Test-Path (Join-Path $outputPath 'exchange-online-evidence.json') | Should -BeTrue -Because $output
+    }
+
+    It 'does not turn inaccessible Exchange collections into Pass or omit them' {
+        # Arrange
+        $outputPath = Join-Path $TestDrive 'inaccessible'
+        $calls = Join-Path $TestDrive 'inaccessible.calls'
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $parameterPath $outputPath $calls 2>&1 | Out-String
+        # Assert
+        $LASTEXITCODE | Should -Not -Be 0
+        $path = Join-Path $outputPath 'exchange-online-evidence.json'
+        Test-Path $path | Should -BeTrue -Because $output
+        $envelope = Get-Content $path -Raw | ConvertFrom-Json
+        @($envelope.Check).Count | Should -Be 25
+        @($envelope.Check | Where-Object Status -EQ Pass).Count | Should -Be 0
+        @($envelope.Check | Where-Object Status -EQ Error).Count | Should -Be 25
+    }
+
+    It 'completes the entire scoped registry through the actual default public command' {
+        # Arrange
+        $manifest = Get-Content (Join-Path $sampleRoot 'config/exchange-only.manifest.v1.json') -Raw | ConvertFrom-Json
+        $outputPath = Join-Path $TestDrive 'complete'
+        $calls = Join-Path $TestDrive 'complete.calls'
+        # Act
+        $output = & pwsh -NoProfile -NonInteractive -File $harness $command $parameterPath $outputPath $calls -RawExchange 2>&1 | Out-String
+        # Assert
+        $path = Join-Path $outputPath 'exchange-online-evidence.json'
+        Test-Path $path | Should -BeTrue -Because $output
+        $envelope = Get-Content $path -Raw | ConvertFrom-Json
+        @($envelope.Check.ControlId) | Should -Be @($manifest.ControlId)
+        @($envelope.Evidence.ControlId) | Should -Be @($manifest.ControlId)
+        $envelope.DeploymentProfile | Should -BeExactly 'ExchangeOnly'
+        $envelope.ProfileVersion | Should -BeExactly '1.0.0'
+        $envelope.ManifestHash | Should -Match '^[a-f0-9]{64}$'
+        $envelope.ExternalReadiness.Status | Should -BeExactly 'Unverified'
+        @($envelope.ExternalCheck.ControlId).Count | Should -Be 3
+        @($envelope.Exclusion.ControlId).Count | Should -Be 15
+        $envelope.Exclusion.Count | Should -Be $manifest.Exclusion.Count
+        ($envelope.Check | Where-Object ControlId -EQ 'EXO-001').Status | Should -BeExactly 'Pass'
+        $acceptedDomains = @(($envelope.Evidence | Where-Object ControlId -EQ 'EXO-001').Value)
+        $acceptedDomains.Count | Should -Be 2
+        @($acceptedDomains.DomainName | Sort-Object) | Should -BeExactly @($parameters.PRIMARY_SMTP_DOMAIN, $parameters.INITIAL_ONMICROSOFT_DOMAIN | Sort-Object)
+        ($acceptedDomains | Where-Object DomainName -EQ $parameters.PRIMARY_SMTP_DOMAIN).DomainType | Should -BeExactly 'Authoritative'
+        ($acceptedDomains | Where-Object DomainName -EQ $parameters.INITIAL_ONMICROSOFT_DOMAIN).DomainType | Should -BeExactly 'Authoritative'
+        foreach ($controlId in @('MON-003','OPS-001','OPS-002')) {
+            $result = $envelope.Check | Where-Object ControlId -EQ $controlId
+            $result.Status | Should -BeExactly 'Error'
+            $result.Reason | Should -Match 'ExchangeOperationalEvidenceRequired'
+        }
+        $observed = Get-Content $calls
+        $observed | Should -Contain 'Get-RoleGroup'
+        $observed | Should -Contain 'Get-RetentionPolicy'
+        $observed | Should -Contain 'Get-DkimSigningConfig'
+        $observed | Should -Contain 'Get-AntiPhishPolicy'
+        @($observed | Where-Object { $_ -like 'EXCLUDED:*' }).Count | Should -Be 0
+    }
+}

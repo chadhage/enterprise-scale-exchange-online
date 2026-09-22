@@ -1,0 +1,16 @@
+{
+  "CONFIGURATION_OWNER_UPN": "secops.owner@contoso.example",
+  "MICROSOFT_ENTRA_TENANT_GUID": "00000000-1111-2222-3333-444444444444",
+  "LEGAL_ORGANIZATION_NAME": "Contoso \"Global\" Ltd \\ EMEA",
+  "PRIMARY_SMTP_DOMAIN": "contoso.example",
+  "SECURITY_OPERATIONS_MAILBOX": "secops@contoso.example",
+  "PROOFPOINT_TLS_CERTIFICATE_SUBJECT": "CN=mail.contoso.example, O=Contoso \"Global\" Ltd",
+  "CURRENT_PROOFPOINT_PUBLIC_IP_OR_CIDR": [
+    "198.51.100.0/24",
+    "203.0.113.10"
+  ],
+  "PROOFPOINT_OUTBOUND_SMART_HOST_FQDN": [
+    "outbound1.pphosted.example",
+    "outbound2.pphosted.example"
+  ]
+}

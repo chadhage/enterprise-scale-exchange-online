@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/risk-acceptance.schema.json",
+  "title": "Exchange Online baseline risk acceptance",
+  "description": "GATE-002. The artifact that lets a named control fail without failing the go-live gate. Every field is demanded because an exception missing any one of them cannot be reviewed, re-approved, bounded or retired, and an exception nobody can retire is a permanent hole with an approval attached.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ControlId",
+    "TenantId",
+    "Owner",
+    "Justification",
+    "CompensatingControl",
+    "ExternalReference",
+    "ApprovalIdentity",
+    "ApprovalAuthority",
+    "ApprovalTimeUtc",
+    "EffectiveTimeUtc",
+    "ExpiryTimeUtc",
+    "Signature"
+  ],
+  "anyOf": [
+    {
+      "description": "Bound to one resolved configuration by its canonical hash.",
+      "required": ["ConfigurationHash"]
+    },
+    {
+      "description": "Bound by an explicitly stated, finite applicability instead.",
+      "required": ["AppliesTo"]
+    }
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "SchemaVersion": {
+      "description": "DES-004. The exception contract is versioned independently of the baseline.",
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ControlId": {
+      "description": "The one catalog control this exception excuses. An exception that names no control excuses every control.",
+      "type": "string",
+      "pattern": "^[A-Z]+-[0-9]{3}$"
+    },
+    "TenantId": {
+      "description": "The tenant directory identifier. Named by identifier rather than by domain, because a domain can be renamed out from under the exception.",
+      "type": "string",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "ConfigurationHash": {
+      "description": "The canonical SHA-256 hash of the resolved configuration this exception was raised against, with or without the algorithm prefix the evidence envelope carries.",
+      "type": "string",
+      "pattern": "^(?:sha256:)?[0-9a-f]{64}$"
+    },
+    "AppliesTo": {
+      "description": "The alternative to a configuration hash. An exception that is not pinned to one configuration must say exactly what it is pinned to instead, and that boundary must be finite.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["DeploymentProfile", "BaselineVersion", "BoundedBy"],
+      "properties": {
+        "DeploymentProfile": { "enum": ["MicrosoftNative", "ThirdPartyGateway"] },
+        "BaselineVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "BoundedBy": {
+          "description": "The named conditions that hold this exception open. An empty list is the word bounded without the fact.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+        }
+      }
+    },
+    "Owner": {
+      "description": "The identity accountable for retiring this exception.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "Justification": {
+      "description": "The business reason the control cannot be met. Held to a substantive length, because a one-word justification is a justification nobody can review.",
+      "type": "string",
+      "minLength": 20,
+      "pattern": "\\S"
+    },
+    "CompensatingControl": {
+      "description": "What is carrying the risk in the meantime. Accepting a risk with nothing compensating for it is a gap, not an exception.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1, "pattern": "\\S" }
+    },
+    "ExternalReference": {
+      "description": "The change or risk record outside this repository that this exception is filed under.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "ApprovalIdentity": {
+      "description": "The approver. Held apart from the operator requesting the change at evaluation time, because a self-approved exception is an unapproved one.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "ApprovalAuthority": {
+      "description": "DES-005 names exactly one role that may accept this risk. A schema admitting any other role makes the role advisory.",
+      "enum": ["ExchangeOnlineChangeApproval"]
+    },
+    "ApprovalTimeUtc": {
+      "$ref": "#/$defs/timestampUtc",
+      "description": "When the approval was given."
+    },
+    "EffectiveTimeUtc": {
+      "$ref": "#/$defs/timestampUtc",
+      "description": "When the exception starts being honoured."
+    },
+    "ExpiryTimeUtc": {
+      "$ref": "#/$defs/timestampUtc",
+      "description": "When the exception stops being honoured. An expiry nobody can compare against a clock is an exception that never expires."
+    },
+    "Signature": {
+      "description": "DES-005 selected detached CMS. The signature binds the approval to the artifact bytes without mutating them.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Model", "Value"],
+      "properties": {
+        "Model": { "enum": ["DetachedCms"] },
+        "Value": { "type": "string", "minLength": 1, "pattern": "\\S" }
+      }
+    }
+  },
+  "$defs": {
+    "timestampUtc": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    }
+  }
+}
