@@ -8,6 +8,35 @@ Supply `entitlement` in the parameter document with the exact tenant, covered Ex
 
 The current versioned workflow requires the explicit Exchange service plan `EXCHANGE_S_ENTERPRISE`. It does not yet model every Exchange plan or shared-mailbox licensing alternative. Do not substitute a suite name, invent a service-plan assignment or claim unsupported recipient licensing is verified. Stop for an approved capability-model update when the supplied plans differ.
 
+## Optional Capability Attestations
+
+The handoff may include `entitlement.capabilityAttestations`. Each entry names exactly `PriorityAccountProtection` or `AutomatedInvestigation`, a Boolean `entitled`, and a nonempty array of unique valid recipient addresses:
+
+```text
+"capabilityAttestations": [
+  {
+    "capability": "PriorityAccountProtection",
+    "entitled": true,
+    "recipients": ["priority@contoso.example"]
+  },
+  {
+    "capability": "AutomatedInvestigation",
+    "entitled": true,
+    "recipients": ["priority@contoso.example"]
+  }
+]
+```
+
+This is a member of the existing entitlement object, not an independent handoff. Both capabilities inherit the parent's matching valid tenant ID, Boolean `verified: true`, nonempty `owner` and `reference`, covered recipient domain and future `expiresOn`. The parent and every affected recipient still require `EXCHANGE_S_ENTERPRISE`; Defender capability use also requires tenant and recipient `ATP_ENTERPRISE`. An affirmative attestation never replaces these prerequisites. All attested addresses must match exactly one recipient-license row, and the requested recipient matrix must be contained in the attested scope. An attestation for one licensed recipient does not authorize another licensed recipient outside that scope. Duplicate capability records and malformed Boolean or scope values do not grant entitlement.
+
+Trust remains externally accepted through the licensing owner under RAID-D02. The workflow checks the supplied contract, not issuer cryptography or the independent truth of license assignments. There is no new P2 service-plan identifier: `ATP_ENTERPRISE`, suite labels, impersonation settings, reporting evidence and tabletop cadence cannot affirm either optional P2 capability.
+
+Collection, independent evaluation and action admission use the same typed capability decision rules. `DeploymentEntitlement.Capability` contains named Boolean decisions with recipient scope and a `Reason`; `NotEntitled` lists unconfirmed capabilities. Reasons retain human-readable refusal prefixes and include a separate `Category:` line for expiry, tenant binding, scope, malformed evidence, missing tenant/recipient Exchange or Defender entitlement, and unconfirmed capability. Categories belong to the named decision, not to an unrelated capability.
+
+Missing or invalid optional P2 evidence yields a false decision without blocking otherwise valid EOP/P1 planning. Invalid mandatory parent or recipient prerequisites refuse `-ForActionPlanning` and public approved-change preview before adapter reads, writes or a preview artifact. EOP requires Exchange entitlement, not Defender. Actual setting drift remains `Fail`, including BuiltIn settings that do not meet Standard requirements; entitlement does not make those settings conformant.
+
+Capability entitlement is separate from operational readiness. Even a true P2 decision leaves operational readiness unverified: AIR operation, audit configuration, permissions, priority-account tags and reporting delivery require their own observations. Missing operational evidence cannot be converted into Pass by a licensing attestation.
+
 ## Capability Boundaries
 
 | Capability | Supplied entitlement | Result without capability |
@@ -15,11 +44,13 @@ The current versioned workflow requires the explicit Exchange service plan `EXCH
 | Standard and Strict EOP policies | Supported Exchange entitlement | Exchange validation cannot proceed without its required handoff |
 | Safe Links and Safe Attachments email, built-in Defender protection | `ATP_ENTERPRISE` for the tenant and affected recipients | Defender controls remain NotEntitled; EOP evaluation still runs |
 | Targeted user/domain impersonation | Defender P1/P2 email capability, represented by `ATP_ENTERPRISE` | MDO-009 remains NotEntitled; spoof/EOP settings are still evaluated |
-| P2 priority-account capabilities, AIR and Attack Simulation Training | Separately confirmed P2 feature entitlement | Not inferred from impersonation, reporting or tabletop evidence |
+| P2 priority-account capabilities, AIR | Separately confirmed scoped `PriorityAccountProtection` / `AutomatedInvestigation` attestations | Typed false decisions when unconfirmed; not inferred from P1 or operational evidence |
 | OPS-002 Exchange tabletop | Supported Exchange entitlement | Tabletop cadence has no P2 mandate; missing exercise evidence is not a licensing skip |
 | MRM/archive, hold and encryption | Exact per-mailbox or feature evidence in the governance contract | Missing capability evidence fails the applicable governance check |
 
 Safe Documents and SharePoint/OneDrive/Teams are excluded workloads, not unlicensed retained Exchange controls. They are not part of this setup or release claim.
+
+Attack Simulation Training entitlement is not modeled by these two optional capability names.
 
 ## Results
 

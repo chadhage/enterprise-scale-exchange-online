@@ -24,6 +24,75 @@ BeforeAll {
     }
 }
 Describe 'EXR-010 effective email setting matrix' {
+    It 'A02 g20 excludes an unlicensed GuestMailUser without rejecting or losing real mailbox coverage' {
+        # Arrange
+        $fixture = New-A02MatrixFixture
+        $guestAddress = 'guest@contoso.example'
+        $fixture.Raw['Get-Recipient'].Items += @{ Identity = 'guest'; PrimarySmtpAddress = $guestAddress; RecipientTypeDetails = 'GuestMailUser' }
+        # Act
+        $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
+        # Assert
+        $result.Result.Status | Should -BeExactly Pass
+        $result.Result.Reason | Should -Match '^EmailProtectionVerified:'
+        @($result.Evidence.Value.Matrix).Count | Should -Be 6
+        @($result.Evidence.Value.Matrix.Recipient | Select-Object -Unique) | Should -Be @('custom@contoso.example')
+        @($result.Evidence.Value.Matrix.Recipient) | Should -Not -Contain $guestAddress
+        @($result.Evidence.Value.Matrix.Family | Sort-Object) | Should -Be @('AntiPhish','HostedContentFilter','HostedOutboundSpamFilter','MalwareFilter','SafeAttachment','SafeLinks')
+        @($fixture.Context.Entitlement.recipients.address) | Should -Not -Contain $guestAddress
+        $observedGuest = @($result.Evidence.Observation | Where-Object Command -eq Get-Recipient | ForEach-Object Raw | Where-Object PrimarySmtpAddress -eq $guestAddress)
+        $observedGuest.Count | Should -Be 1
+        $observedGuest[0].RecipientTypeDetails | Should -BeExactly GuestMailUser
+    }
+
+    It 'A02 g20 comparator rejects <Case>' -ForEach @(
+        @{ Case = 'one empty string versus zero elements'; ActualValues = @(''); ExpectedValues = @() }
+        @{ Case = 'one newline-containing element versus two elements'; ActualValues = @("alpha`nbeta"); ExpectedValues = @('alpha','beta') }
+    ) {
+        # Arrange
+        $actual = $ActualValues
+        $expected = $ExpectedValues
+        # Act
+        $equal = & $script:matrixModule { param($actual, $expected) Test-BaselineEmailSettingEqual -Actual $actual -Expected $expected } $actual $expected
+        # Assert
+        $equal | Should -BeFalse
+    }
+
+    It 'A02 g20 rejects ordinary setting drift for <Case>' -ForEach @(
+        @{ Case = 'one empty DoNotRewriteUrls element versus an empty target'; Family = 'SafeLinks'; Field = 'DoNotRewriteUrls'; Mutate = {
+            param($fixture)
+            $fixture.Raw['Get-SafeLinksPolicy'].Items[2].DoNotRewriteUrls = @('')
+        } }
+        @{ Case = 'one newline-containing domain versus two target domains'; Family = 'AntiPhish'; Field = 'TargetedDomainsToProtect'; Mutate = {
+            param($fixture)
+            $fixture.Context.Configuration.controls['MDO-009'].protectedDomains = @('alpha.contoso.example','beta.contoso.example')
+            $fixture.Raw['Get-AntiPhishPolicy'].Items[2].TargetedDomainsToProtect = @("alpha.contoso.example`nbeta.contoso.example")
+        } }
+    ) {
+        # Arrange
+        $fixture = New-A02MatrixFixture
+        & $Mutate $fixture
+        # Act
+        $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
+        # Assert
+        $result.Result.Status | Should -BeExactly Fail
+        $result.Result.Reason | Should -Match "^EmailProtectionSettingDrift: 'custom@contoso.example/$Family/$Field'"
+    }
+
+    It 'A02 g20 refuses ApprovedException for <Case>' -ForEach @(
+        @{ Case = 'one empty string instead of the approved zero elements'; ApprovedValues = @(); ObservedValues = @('') }
+        @{ Case = 'one newline-containing URL instead of the approved two elements'; ApprovedValues = @('https://alpha.example','https://beta.example'); ObservedValues = @("https://alpha.example`nhttps://beta.example") }
+    ) {
+        # Arrange
+        $fixture = New-A02MatrixFixture
+        Set-A02Exception $fixture 'DoNotRewriteUrls' $ApprovedValues
+        $fixture.Raw['Get-SafeLinksPolicy'].Items[2].DoNotRewriteUrls = $ObservedValues
+        # Act
+        $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
+        # Assert
+        $result.Result.Status | Should -BeExactly Fail
+        $result.Result.Reason | Should -Match "^EmailProtectionSettingDrift: 'custom@contoso.example/SafeLinks/DoNotRewriteUrls'"
+    }
+
     It 'A02 does not lose custom applicability when every inclusion condition is empty' {
         # Arrange
         $fixture = New-A02MatrixFixture
@@ -54,7 +123,7 @@ Describe 'EXR-010 effective email setting matrix' {
         @($row[0].Settings.Setting) | Should -Not -Contain $Field
     }
 
-    It 'A02 does not treat disabled encrypted-attachment dependent fields as unconditional <Field>' -ForEach @(
+    It 'A02 rejects explicit configured encrypted-attachment target drift in <Field> even when blocking is disabled' -ForEach @(
         @{ Field = 'ExcludedTypesFromBlockingEncryptedAttachments'; Value = @('pdf') }
         @{ Field = 'QuarantineTagForBlockingEncryptedAttachments'; Value = 'Unused quarantine tag' }
     ) {
@@ -64,10 +133,8 @@ Describe 'EXR-010 effective email setting matrix' {
         # Act
         $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
         # Assert
-        $result.Result.Status | Should -Not -BeIn @('Fail','Error','ApprovedException')
-        $row = @($result.Evidence.Value.Matrix | Where-Object Family -eq SafeAttachment)
-        $row.Count | Should -Be 1
-        @($row[0].Settings | Where-Object { $_.Setting -eq $Field -and $_.Basis -eq 'MicrosoftRecommendation' }).Count | Should -Be 0
+        $result.Result.Status | Should -BeExactly Fail
+        $result.Result.Reason | Should -Match "EmailProtectionSettingDrift: 'custom@contoso.example/SafeAttachment/$Field'"
     }
 
     It 'A02 refuses omitted rule scope <Field>' -ForEach @(
@@ -235,7 +302,16 @@ Describe 'EXR-010 effective email setting matrix' {
         @{ Case = 'direct recipient exclusion'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $fixture.Raw['Get-SafeLinksRule'].Items[0].ExceptIfSentTo = @('custom@contoso.example') } }
         @{ Case = 'domain exclusion'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $fixture.Raw['Get-SafeLinksRule'].Items[0].ExceptIfRecipientDomainIs = @('contoso.example') } }
         @{ Case = 'disabled custom rule'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $fixture.Raw['Get-SafeLinksRule'].Items[0].State = 'Disabled' } }
-        @{ Case = 'lower-priority expected policy'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $copy = $fixture.Raw['Get-SafeLinksRule'].Items[0].Clone(); $copy.Name = 'First matching'; $copy.Identity = $copy.Name; $copy.Priority = 0; $copy.SafeLinksPolicy = 'Standard Preset Security Policy'; $fixture.Raw['Get-SafeLinksRule'].Items += $copy } }
+        @{ Case = 'lower-priority expected policy'; Reason = 'EmailProtectionPrecedence'; Mutate = {
+            param($fixture)
+            $firstPolicy = $fixture.Raw['Get-SafeLinksPolicy'].Items[2].Clone()
+            $firstPolicy.Name = 'First custom'; $firstPolicy.Identity = 'First custom'; $firstPolicy.IsDefault = $false
+            $fixture.Raw['Get-SafeLinksPolicy'].Items += $firstPolicy
+            $fixture.Raw['Get-SafeLinksRule'].Items[0].Priority = 1
+            $firstRule = $fixture.Raw['Get-SafeLinksRule'].Items[0].Clone()
+            $firstRule.Name = 'First matching'; $firstRule.Identity = 'First matching'; $firstRule.Priority = 0; $firstRule.SafeLinksPolicy = 'First custom'
+            $fixture.Raw['Get-SafeLinksRule'].Items += $firstRule
+        } }
         @{ Case = 'recipient scope mistaken for outbound sender scope'; Reason = 'EmailProtectionSettingDrift'; Mutate = { param($fixture) $fixture.Raw['Get-HostedOutboundSpamFilterRule'].Items[0].SentTo = @('custom@contoso.example'); $fixture.Raw['Get-HostedOutboundSpamFilterPolicy'].Items[1].AutoForwardingMode = 'On' } }
         @{ Case = 'outbound sender exclusion'; Reason = 'EmailProtectionSettingDrift'; Mutate = { param($fixture) $fixture.Raw['Get-HostedOutboundSpamFilterRule'].Items[0].From = @('custom@contoso.example'); $fixture.Raw['Get-HostedOutboundSpamFilterRule'].Items[0].ExceptIfFrom = @('custom@contoso.example'); $fixture.Raw['Get-HostedOutboundSpamFilterPolicy'].Items[1].AutoForwardingMode = 'On' } }
         @{ Case = 'missing default policy'; Reason = 'EmailProtectionPolicyMissing'; Mutate = { param($fixture) $fixture.Raw['Get-HostedOutboundSpamFilterPolicy'].Items = @($fixture.Raw['Get-HostedOutboundSpamFilterPolicy'].Items | Where-Object Name -ne Default) } }
@@ -266,6 +342,23 @@ Describe 'EXR-010 effective email setting matrix' {
             $caught | Should -Match '^ExchangeSchemaInvalid:'
         } else {
             $caught | Should -BeNullOrEmpty
+            if ($Case -eq 'lower-priority expected policy') {
+                $rawRules = @($result.Evidence.Observation | Where-Object Command -eq Get-SafeLinksRule | ForEach-Object Raw | Sort-Object { $_.Priority })
+                $rawRules.Count | Should -Be 2
+                $rawRules[0].Priority | Should -BeOfType ([int])
+                $rawRules[0].Priority | Should -Be 0
+                $rawRules[0].SafeLinksPolicy | Should -BeExactly 'First custom'
+                $rawRules[1].Priority | Should -BeOfType ([int])
+                $rawRules[1].Priority | Should -Be 1
+                $rawRules[1].SafeLinksPolicy | Should -BeExactly 'Custom email'
+                $rawPolicies = @($result.Evidence.Observation | Where-Object Command -eq Get-SafeLinksPolicy | ForEach-Object Raw | Where-Object Name -in @('First custom','Custom email'))
+                $rawPolicies.Count | Should -Be 2
+                foreach ($policy in $rawPolicies) {
+                    $policy.IsDefault | Should -BeExactly $false
+                    foreach ($field in (Get-ProtectionReferenceValues).SafeLinks.Keys) { $policy.Keys | Should -Contain $field }
+                }
+                $result.Result.Reason | Should -BeExactly "EmailProtectionPrecedence: 'custom@contoso.example/SafeLinks' resolves to 'First custom', not 'Custom email'."
+            }
             $result.Result.Status | Should -Not -BeIn @('Pass','ApprovedException')
             $result.Result.Reason | Should -Match $Reason
         }
@@ -326,22 +419,31 @@ Describe 'EXR-010 effective email setting matrix' {
         $result.Result.Reason | Should -Match 'EmailProtectionGroupUnresolved|A02 nested'
     }
 
-    It 'A02 rejects Standard substituted for BuiltIn <Field>' -ForEach @(
-        @{ Field = 'EnableForInternalSenders'; StandardValue = $true }
-        @{ Field = 'DisableURLRewrite'; StandardValue = $false }
-        @{ Field = 'AllowClickThrough'; StandardValue = $false }
+    It 'A02 does not substitute Standard for genuine raw BuiltIn <Field>' -ForEach @(
+        @{ Field = 'EnableForInternalSenders'; BuiltInValue = $false; StandardValue = $true }
+        @{ Field = 'DisableURLRewrite'; BuiltInValue = $true; StandardValue = $false }
+        @{ Field = 'AllowClickThrough'; BuiltInValue = $true; StandardValue = $false }
     ) {
         # Arrange
         $fixture = New-ProtectionFixture
         $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix = @($fixture.Context.Configuration.controls['MDO-001'].recipientMatrix | Where-Object address -eq 'default@contoso.example')
         $fixture.Raw['Get-Recipient'].Items = @($fixture.Raw['Get-Recipient'].Items | Where-Object PrimarySmtpAddress -eq 'default@contoso.example')
-        $builtIn = $fixture.Raw['Get-SafeLinksPolicy'].Items[-1]
-        $builtIn[$Field] = $StandardValue
         # Act
         $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
         # Assert
+        $rawPolicies = @($result.Evidence.Observation | Where-Object Command -eq Get-SafeLinksPolicy | ForEach-Object Raw)
+        $builtIn = @($rawPolicies | Where-Object Name -eq 'Built-In Protection Policy')
+        $builtIn.Count | Should -Be 1
+        $builtIn[0].Identity | Should -BeExactly 'Built-In Protection Policy'
+        $builtIn[0].$Field | Should -BeOfType ([bool])
+        $builtIn[0].$Field | Should -BeExactly $BuiltInValue
+        $builtIn[0].$Field | Should -Not -Be $StandardValue
+        $standard = @($rawPolicies | Where-Object Name -eq 'Standard Preset Security Policy')
+        $standard.Count | Should -Be 1
+        $standard[0].$Field | Should -BeOfType ([bool])
+        $standard[0].$Field | Should -BeExactly $StandardValue
         $result.Result.Status | Should -BeExactly Fail
-        $result.Result.Reason | Should -Match "EmailProtectionSettingDrift: 'default@contoso.example/SafeLinks/$Field'"
+        $result.Result.Reason | Should -Match "EmailProtectionSettingDrift: 'default@contoso.example/SafeLinks/(EnableForInternalSenders|DisableURLRewrite|AllowClickThrough)'"
     }
     It 'rejects drift in <Family>/<Field>' -ForEach $settingCases {
         # Arrange
@@ -393,6 +495,11 @@ Describe 'EXR-010 effective email setting matrix' {
     It 'A02 records one complete mixed public matrix with independent field and policy evidence' {
         # Arrange
         $fixture = New-ProtectionFixture
+        $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[3].expectedPolicy = 'Standard Preset Security Policy'
+        $fixture.Context.Configuration.controls['MDO-001'].excludedSecOpsMailbox = @('custom@contoso.example','secops@contoso.example')
+        foreach ($kind in @('EOP','ATP')) {
+            $fixture.Raw["Get-${kind}ProtectionPolicyRule"].ByIdentity['Standard Preset Security Policy'][0].ExceptIfSentTo = @('custom@contoso.example','secops@contoso.example')
+        }
         $priorityGroup = $fixture.Raw['Get-EOPProtectionPolicyRule'].ByIdentity['Strict Preset Security Policy'][0].SentToMemberOf[0]
         $fixture.Raw['Get-DistributionGroup'].Items += @{ Identity = 'nested@contoso.example'; PrimarySmtpAddress = 'nested@contoso.example' }
         $fixture.Raw['Get-DistributionGroupMember'] = @{ ByIdentity = @{
@@ -407,7 +514,7 @@ Describe 'EXR-010 effective email setting matrix' {
             @{ Address = 'user@contoso.example'; Policy = 'Standard Preset Security Policy'; Profile = 'Standard'; Defender = $true; Outbound = 'Default' }
             @{ Address = 'strict@contoso.example'; Policy = 'Strict Preset Security Policy'; Profile = 'Strict'; Defender = $true; Outbound = 'Strict outbound' }
             @{ Address = 'custom@contoso.example'; Policy = 'Custom email'; Profile = 'Standard'; Defender = $true; Outbound = 'Default' }
-            @{ Address = 'default@contoso.example'; Policy = 'Default'; Profile = 'Standard'; Defender = $true; Outbound = 'Default' }
+            @{ Address = 'default@contoso.example'; Policy = 'Standard Preset Security Policy'; Profile = 'Standard'; Defender = $true; Outbound = 'Default' }
             @{ Address = 'secops@contoso.example'; Policy = 'Default'; Profile = 'Standard'; Defender = $false; Outbound = 'Default' }
         )
         $eopFields = @('EnableSpoofIntelligence','HonorDmarcPolicy','DmarcQuarantineAction','DmarcRejectAction','AuthenticationFailAction','SpoofQuarantineTag','EnableFirstContactSafetyTips','EnableUnauthenticatedSender','EnableViaTag')
@@ -418,6 +525,14 @@ Describe 'EXR-010 effective email setting matrix' {
             AntiPhish = 'Anti-phishing policy settings for all cloud mailboxes / Impersonation settings / Phishing email thresholds'
             SafeAttachment = 'Safe Attachments policy settings'
             SafeLinks = 'Safe Links policy settings (Email and Click protection only)'
+        }
+        $localFields = @{
+            MalwareFilter = @('EnableInternalSenderAdminNotifications','InternalSenderAdminAddress','EnableExternalSenderAdminNotifications','ExternalSenderAdminAddress','CustomNotifications','CustomFromName','CustomFromAddress','CustomInternalSubject','CustomInternalBody','CustomExternalSubject','CustomExternalBody')
+            HostedContentFilter = @('EnableLanguageBlockList','LanguageBlockList','EnableRegionBlockList','RegionBlockList')
+            HostedOutboundSpamFilter = @()
+            AntiPhish = @('TargetedUsersToProtect','TargetedDomainsToProtect','ExcludedSenders','ExcludedDomains')
+            SafeAttachment = @()
+            SafeLinks = @('DoNotRewriteUrls','EnableOrganizationBranding','CustomNotificationText','UseTranslatedNotificationText')
         }
         $expected = @(foreach ($recipient in $expectedRecipients) {
             $values = Get-ProtectionReferenceValues $recipient.Profile
@@ -433,13 +548,8 @@ Describe 'EXR-010 effective email setting matrix' {
                     if (-not $recipient.Defender) { foreach ($field in @($fields.Keys)) { if ($field -notin $eopFields) { $fields.Remove($field) } } }
                     else { $fields.TargetedUsersToProtect = @('secops@contoso.example') }
                 }
-                if ($family -eq 'SafeAttachment') { $fields.Remove('ExcludedTypesFromBlockingEncryptedAttachments'); $fields.Remove('QuarantineTagForBlockingEncryptedAttachments') }
-                if ($recipient.Policy -eq 'Default' -and $family -in @('SafeLinks','SafeAttachment')) {
-                    $policyName = 'Built-In Protection Policy'
-                    if ($family -eq 'SafeLinks') { $fields.EnableForInternalSenders = $false; $fields.DisableURLRewrite = $true; $fields.AllowClickThrough = $true }
-                }
                 if ($recipient.Address -eq 'custom@contoso.example' -and $family -eq 'SafeLinks') { $fields.DisableURLRewrite = $true }
-                @{ Recipient = $recipient.Address; Family = $family; Policy = $policyName; Fields = $fields }
+                @{ Recipient = $recipient.Address; Family = $family; Policy = $policyName; Level = $recipient.Profile; Fields = $fields }
             }
         })
         # Act
@@ -453,20 +563,39 @@ Describe 'EXR-010 effective email setting matrix' {
             $rows = @($result.Evidence.Value.Matrix | Where-Object { $_.Recipient -eq $entry.Recipient -and $_.Family -eq $entry.Family })
             $rows.Count | Should -Be 1
             $rows[0].Policy | Should -BeExactly $entry.Policy
+            $rows[0].Level | Should -BeExactly $entry.Level
+            @($rows[0].Settings).Count | Should -Be $entry.Fields.Count
+            @($rows[0].Settings.Setting | Sort-Object) | Should -Be @($entry.Fields.Keys | Sort-Object)
             foreach ($field in $entry.Fields.Keys) {
                 $settings = @($rows[0].Settings | Where-Object Setting -eq $field)
                 $settings.Count | Should -Be 1
                 $actual = $settings[0]
                 if ($entry.Fields[$field] -is [array]) {
+                    ($actual.Actual -is [Collections.IList]) | Should -BeTrue -Because "$($entry.Recipient)/$($entry.Family)/$field Actual must preserve an array, not null or a scalar"
+                    ($actual.Expected -is [Collections.IList]) | Should -BeTrue -Because "$($entry.Recipient)/$($entry.Family)/$field Expected must preserve an array, not null or a scalar"
+                    @($actual.Actual).Count | Should -Be $entry.Fields[$field].Count
+                    @($actual.Expected).Count | Should -Be $entry.Fields[$field].Count
+                    foreach ($value in @($actual.Actual) + @($actual.Expected)) { $value | Should -BeOfType ([string]) }
                     @($actual.Actual | Sort-Object) | Should -Be @($entry.Fields[$field] | Sort-Object)
                     @($actual.Expected | Sort-Object) | Should -Be @($entry.Fields[$field] | Sort-Object)
                 } else {
+                    if ($entry.Fields[$field] -is [int] -or $entry.Fields[$field] -is [long]) {
+                        ($actual.Actual -is [int] -or $actual.Actual -is [long]) | Should -BeTrue -Because "$field Actual must preserve an integer"
+                        ($actual.Expected -is [int] -or $actual.Expected -is [long]) | Should -BeTrue -Because "$field Expected must preserve an integer"
+                    } else {
+                        $actual.Actual | Should -BeOfType ($entry.Fields[$field].GetType())
+                        $actual.Expected | Should -BeOfType ($entry.Fields[$field].GetType())
+                    }
                     $actual.Actual | Should -BeExactly $entry.Fields[$field]
                     $actual.Expected | Should -BeExactly $entry.Fields[$field]
                 }
+                $basis = if ($entry.Recipient -eq 'custom@contoso.example' -and $entry.Family -eq 'SafeLinks' -and $field -eq 'DisableURLRewrite') { 'ApprovedException' }
+                    elseif ($field -in $localFields[$entry.Family]) { 'LocalPolicy' }
+                    else { 'MicrosoftRecommendation' }
+                $actual.Basis | Should -BeExactly $basis
                 $actual.Source | Should -BeExactly 'https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365'
                 $actual.Section | Should -BeExactly $sections[$entry.Family]
-                $actual.ReviewedOn | Should -Match '^\d{4}-\d{2}-\d{2}$'
+                $actual.ReviewedOn | Should -BeExactly '2026-09-21'
             }
         }
         $customLinks = @($result.Evidence.Value.Matrix | Where-Object { $_.Recipient -eq 'custom@contoso.example' -and $_.Family -eq 'SafeLinks' })[0]

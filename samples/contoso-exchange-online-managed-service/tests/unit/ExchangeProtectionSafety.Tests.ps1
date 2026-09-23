@@ -42,7 +42,7 @@ Describe 'EXR-010 managed protection boundaries' {
         $fixture = New-ProtectionFixture
         $fixture.Context.Entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE')
         $result = Invoke-EmailSafetyCheck $fixture
-        $result.Result.Status | Should -BeExactly Fail
+        $result.Result.Status | Should -BeExactly NotEntitled
         $result.Result.Reason | Should -Match 'EmailProtectionNotEntitled'
     }
     It 'rejects an unlicensed recipient inside a Defender preset' {
@@ -50,7 +50,7 @@ Describe 'EXR-010 managed protection boundaries' {
         $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[0].defender = $false
         $fixture.Context.Entitlement.recipients[0].servicePlans = @('EXCHANGE_S_ENTERPRISE')
         $result = Invoke-EmailSafetyCheck $fixture
-        $result.Result.Status | Should -BeExactly Fail
+        $result.Result.Status | Should -BeExactly NotEntitled
         $result.Result.Reason | Should -Match 'EmailProtectionNotEntitled'
     }
     It 'does not substitute local limited permissions for managed preset recommendations' {

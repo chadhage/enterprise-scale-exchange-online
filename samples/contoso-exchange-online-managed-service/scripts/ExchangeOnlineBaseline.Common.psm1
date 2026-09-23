@@ -6246,7 +6246,9 @@ function Get-BaselineRecordMember {
         [object]$Node,
 
         [Parameter(Mandatory)]
-        [string]$Name
+        [string]$Name,
+
+        [switch]$PreserveCollection
     )
 
     if ($null -eq $Node) {
@@ -6257,6 +6259,7 @@ function Get-BaselineRecordMember {
         $key = @(foreach ($declared in $Node.Keys) { [string]$declared })
         if ($key -ccontains $Name) {
             $value = $Node[$Name]
+            if ($PreserveCollection) { return ,$value }
             return $value
         }
 
@@ -6265,6 +6268,7 @@ function Get-BaselineRecordMember {
 
     if ($Node.PSObject.Properties.Match($Name).Count -gt 0) {
         $value = $Node.PSObject.Properties[$Name].Value
+        if ($PreserveCollection) { return ,$value }
         return $value
     }
 
@@ -6756,7 +6760,17 @@ function Invoke-BaselineExchangeRegistry {
         }
         $requiredPlan = if ($controlId -in @('MDO-003','MDO-009')) { 'ATP_ENTERPRISE' } else { 'EXCHANGE_S_ENTERPRISE' }
         try {
-            if ($requiredPlan -cnotin @($Context.Entitlement.servicePlans)) {
+            $capability = switch ($controlId) {
+                'MDO-001' { 'EmailProtection' }
+                { $_ -in @('MDO-002','MDO-006') } { 'ExchangeOnline' }
+                { $_ -in @('MDO-003','MDO-009') } { 'AtpPresets' }
+            }
+            $decision = if ($capability) { Get-BaselineExchangeCapabilityDecision -Context $Context -Capability $capability }
+            if ($null -ne $decision -and -not $decision.Entitled) {
+                $evidence = New-BaselineEvidence -ControlId $controlId -Source SuppliedExternalEntitlement -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason $decision.Reason
+                $result = New-ControlResult -ControlId $controlId -Status NotEntitled -Reason $decision.Reason
+            }
+            elseif ($requiredPlan -cnotin @($Context.Entitlement.servicePlans)) {
                 $evidence = New-BaselineEvidence -ControlId $controlId -Source 'SuppliedExternalEntitlement' -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason "ExchangeNotEntitled: '$requiredPlan' is not confirmed for this recipient scope."
                 $result = New-ControlResult -ControlId $controlId -Status NotEntitled -Reason "ExchangeNotEntitled: '$requiredPlan' is not confirmed for this recipient scope."
             }
@@ -7130,7 +7144,13 @@ function Get-BaselineEmailProtectionState {
     $scopeFields = @('SentTo','SentToMemberOf','RecipientDomainIs','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs')
     $senderFields = @('From','FromMemberOf','SenderDomainIs','ExceptIfFrom','ExceptIfFromMemberOf','ExceptIfSenderDomainIs')
     $state = @{ Families = @{}; Presets = @{}; Groups = @{}; Matrix = @() }
-    $state.Recipients = @(Invoke-BaselineExchangeRawCollection -Command Get-Recipient -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty Identity,PrimarySmtpAddress,RecipientTypeDetails -IdentityProperty Identity -MinimumCount 1 -Observation $Observation | Where-Object { $_.RecipientTypeDetails -in @('UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox','MailUser') })
+    $recipients = @(Invoke-BaselineExchangeRawCollection -Command Get-Recipient -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty Identity,PrimarySmtpAddress,RecipientTypeDetails -IdentityProperty Identity -MinimumCount 1 -Observation $Observation)
+    $mailboxTypes = @('UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox','MailUser')
+    $nonMailboxTypes = @('GuestMailUser','MailContact','MailUniversalDistributionGroup','MailUniversalSecurityGroup','DynamicDistributionGroup','RoomList','PublicFolder')
+    foreach ($recipient in $recipients) {
+        if ($recipient.RecipientTypeDetails -notin ($mailboxTypes + $nonMailboxTypes)) { throw 'EmailProtectionRecipientInventory: recipient class is unresolved or unsupported.' }
+    }
+    $state.Recipients = @($recipients | Where-Object { $_.RecipientTypeDetails -in $mailboxTypes })
     $defender = 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)
     foreach ($kind in @('EOP','ATP')) {
         $state.Presets[$kind] = @()
@@ -7144,10 +7164,18 @@ function Get-BaselineEmailProtectionState {
         $definition = $catalog.Families[$family]
         if ($definition.Plan -eq 'Defender' -and -not $defender) { continue }
         $fields = @($definition.Standard.Keys)
-        if ($family -eq 'AntiPhish' -and -not $defender) { $fields = @($fields | Where-Object { $_ -notin $definition.DefenderFields }) }
+        if ($family -eq 'AntiPhish') { $fields = @($fields | Where-Object { $_ -notin $definition.DefenderFields }) }
+        if ($family -eq 'HostedOutboundSpamFilter') { $fields = @($fields | Where-Object { $_ -notin @('BccSuspiciousOutboundMail','BccSuspiciousOutboundAdditionalRecipients') }) }
         $required = @('Name') + $fields
         if ($definition.Plan -ne 'Defender') { $required += 'IsDefault' }
         $policies = @(Invoke-BaselineExchangeRawCollection -Command "Get-${family}Policy" -RequiredProperty $required -IdentityProperty Name -MinimumCount 1 -Observation $Observation)
+        if ($family -eq 'HostedOutboundSpamFilter') {
+            foreach ($policy in @($policies | Where-Object { $_.IsDefault -eq $true })) {
+                foreach ($field in @('BccSuspiciousOutboundMail','BccSuspiciousOutboundAdditionalRecipients')) {
+                    if (-not (Test-BaselineNodeMember $policy $field)) { throw "ExchangeRawPropertyMissing: 'Get-${family}Policy' omitted '$field'." }
+                }
+            }
+        }
         $conditions = if ($family -eq 'HostedOutboundSpamFilter') { $senderFields } else { $scopeFields }
         $rules = @(Invoke-BaselineExchangeRawCollection -Command "Get-${family}Rule" -RequiredProperty (@('Name','State','Priority',"${family}Policy") + $conditions) -IdentityProperty Name -Observation $Observation)
         $state.Families[$family] = @{ Policies = $policies; Rules = $rules }
@@ -7172,6 +7200,13 @@ function Get-BaselineEmailProtectionState {
             if ($member.RecipientType -match 'Group') { $pending.Enqueue([string]$member.PrimarySmtpAddress) }
         }
     }
+    foreach ($recipient in @($Context.Configuration.controls['MDO-001'].recipientMatrix | Where-Object { $_.defender -eq $true })) {
+        $policy = Resolve-BaselineEmailPolicy $state 'AntiPhish' $recipient.address $true
+        foreach ($field in $catalog.Families.AntiPhish.DefenderFields) {
+            if (-not (Test-BaselineNodeMember $policy $field)) { throw "ExchangeRawPropertyMissing: 'Get-AntiPhishPolicy' omitted '$field'." }
+            if ($field -in @('EnableTargetedUserProtection','EnableTargetedDomainsProtection') -and (Get-BaselineRecordMember $policy $field) -isnot [bool]) { throw "ExchangeRawBooleanInvalid: 'Get-AntiPhishPolicy.$field' is not Boolean." }
+        }
+    }
     $state
 }
 
@@ -7191,12 +7226,21 @@ function Test-BaselineEmailRuleScope {
     if ($Rule.State -notin @('Enabled','Disabled')) { throw 'EmailProtectionRuleState: rule state is unresolved.' }
     if ($Rule.State -eq 'Disabled') { return $false }
     $fields = if ($Outbound) { @('From','FromMemberOf','SenderDomainIs') } else { @('SentTo','SentToMemberOf','RecipientDomainIs') }
+    $knownScope = @('SentTo','SentToMemberOf','RecipientDomainIs','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs','From','FromMemberOf','SenderDomainIs','ExceptIfFrom','ExceptIfFromMemberOf','ExceptIfSenderDomainIs')
+    foreach ($name in @(Get-BaselineRecordMemberName $Rule)) {
+        if ($name -notin $knownScope -and $name -match '^(ExceptIf)?(Recipient|Sender|SentTo|From)|^(Conditions|Exceptions)$') {
+            $unsupported = Get-BaselineRecordMember $Rule $name
+            if ($null -ne $unsupported -and @($unsupported).Count -gt 0) { throw "EmailProtectionRuleScope: '$name' is unsupported." }
+        }
+    }
     foreach ($exception in @($false,$true)) {
         if ($BuiltIn -and -not $exception) { continue }
         $matches = @()
         for ($index = 0; $index -lt $fields.Count; $index++) {
             $field = $(if ($exception) { 'ExceptIf' }) + $fields[$index]
-            $values = @(Get-BaselineRecordMember $Rule $field)
+            $values = Get-BaselineRecordMember $Rule $field -PreserveCollection
+            if ($null -eq $values) { throw "EmailProtectionRuleScope: '$field' is unresolved." }
+            $values = @($values)
             if ($values.Count -eq 0) { continue }
             $matched = $false
             foreach ($value in $values) {
@@ -7227,10 +7271,15 @@ function Resolve-BaselineEmailPolicy {
             }
         }
     }
+    foreach ($rule in @($State.Families[$Family].Rules)) {
+        if ($rule.State -notin @('Enabled','Disabled')) { throw 'EmailProtectionRuleState: rule state is unresolved.' }
+    }
     $rules = @($State.Families[$Family].Rules | Where-Object State -eq Enabled)
     if (@($rules | Group-Object { $_.Priority } | Where-Object Count -gt 1).Count) { throw 'EmailProtectionPriorityAmbiguous: custom rule priorities must be unique.' }
-    foreach ($rule in @($rules | Sort-Object Priority)) {
+    foreach ($rule in $rules) {
         if ($rule.Priority -isnot [int] -and $rule.Priority -isnot [long] -or $rule.Priority -lt 0) { throw 'EmailProtectionPriorityAmbiguous: numeric nonnegative priorities are required.' }
+    }
+    foreach ($rule in @($rules | Sort-Object { $_.Priority })) {
         $selected = @($policies | Where-Object Name -eq $rule."${Family}Policy")
         if ($selected.Count -ne 1) { throw 'EmailProtectionPolicyMissing: rule refers to an absent policy.' }
         if (Test-BaselineEmailRuleScope $rule $Address $State.Groups -Outbound:$outbound) { return $selected[0] }
@@ -7248,7 +7297,17 @@ function Test-BaselineEmailSettingEqual {
     if ($Expected -is [bool]) { return $Actual -is [bool] -and $Actual -eq $Expected }
     if ($Expected -is [int] -or $Expected -is [long]) { return ($Actual -is [int] -or $Actual -is [long]) -and $Actual -eq $Expected }
     if ($Expected -is [array]) {
-        return ((@($Actual | ForEach-Object { ([string]$_).ToLowerInvariant() } | Sort-Object) -join "`n") -ceq (@($Expected | ForEach-Object { ([string]$_).ToLowerInvariant() } | Sort-Object) -join "`n"))
+        if ($Actual -isnot [System.Collections.IList]) { return $false }
+        foreach ($item in $Actual) { if ($item -isnot [string]) { return $false } }
+        if ($Actual.Count -ne $Expected.Count) { return $false }
+        $actualValues = [string[]]@($Actual)
+        $expectedValues = [string[]]@($Expected)
+        [Array]::Sort($actualValues, [StringComparer]::OrdinalIgnoreCase)
+        [Array]::Sort($expectedValues, [StringComparer]::OrdinalIgnoreCase)
+        for ($index = 0; $index -lt $actualValues.Count; $index++) {
+            if (-not [StringComparer]::OrdinalIgnoreCase.Equals($actualValues[$index], $expectedValues[$index])) { return $false }
+        }
+        return $true
     }
     [string]$Actual -ieq [string]$Expected
 }
@@ -7256,6 +7315,8 @@ function Test-BaselineEmailSettingEqual {
 function Test-BaselineEmailProtectionState {
     param($State, $Context)
     $matrix = [Collections.Generic.List[object]]::new()
+    $decision = Get-BaselineExchangeCapabilityDecision -Context $Context -Capability EmailProtection
+    if (-not $decision.Entitled) { return @{ Status = 'NotEntitled'; Reason = $decision.Reason; Matrix = @() } }
     try {
         $State = ConvertTo-BaselineHashableNode $State
         $desired = $Context.Configuration.controls['MDO-001']
@@ -7268,6 +7329,13 @@ function Test-BaselineEmailProtectionState {
         $used = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
         foreach ($exception in $exceptions) {
             if ($exception.recipient -notin @($desired.recipientMatrix | ForEach-Object { $_.address }) -or -not $catalog.Families.ContainsKey($exception.family) -or -not $catalog.Families[$exception.family].Standard.ContainsKey($exception.setting)) { throw 'EmailProtectionException: exception target must be one declared recipient and known email setting.' }
+            $reference = $catalog.Families[$exception.family].Standard[$exception.setting]
+            $value = $exception.value
+            $validType = if ($reference -is [array]) {
+                $value -is [System.Collections.IList] -and @($value | Where-Object { $_ -isnot [string] }).Count -eq 0
+            } elseif ($reference -is [int] -or $reference -is [long]) { $value -is [int] -or $value -is [long] }
+            else { $null -ne $value -and $reference.GetType().IsInstanceOfType($value) }
+            if (-not $validType) { throw 'EmailProtectionException: exception value must retain the catalogue setting type.' }
             try { Assert-ExchangeGovernanceApproval $exception.approval ([datetimeoffset]::UtcNow) } catch { throw "EmailProtectionException: $($_.Exception.Message)" }
             if (@($exception.value | Where-Object { [string]$_ -match '\*|/0$' }).Count) { throw 'EmailProtectionException: broad exception values are prohibited.' }
             if (-not $used.Add("$($exception.recipient)/$($exception.family)/$($exception.setting)")) { throw 'EmailProtectionException: duplicate setting authorization.' }
@@ -7290,6 +7358,10 @@ function Test-BaselineEmailProtectionState {
                 if ($family -ne 'HostedOutboundSpamFilter' -and $policy.Name -ine $expectedName) { throw "EmailProtectionPrecedence: '$($recipient.address)/$family' resolves to '$($policy.Name)', not '$expectedName'." }
                 $settings = $definition.Standard.Clone()
                 if ($recipient.level -eq 'Strict') { foreach ($field in $definition.Strict.Keys) { $settings[$field] = $definition.Strict[$field] } }
+                if ($family -eq 'HostedOutboundSpamFilter' -and $policy.IsDefault -ne $true) {
+                    $settings.Remove('BccSuspiciousOutboundMail')
+                    $settings.Remove('BccSuspiciousOutboundAdditionalRecipients')
+                }
                 if ($family -eq 'AntiPhish') {
                     if (-not $recipient.defender) { foreach ($field in $definition.DefenderFields) { $settings.Remove($field) } }
                     else {
@@ -7310,8 +7382,8 @@ function Test-BaselineEmailProtectionState {
                         if ($policy.Name -like '*Preset Security Policy' -or $policy.Name -eq 'Built-In Protection Policy') { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
                         $expected = $bound[0].value; $applied++
                     }
-                    $actual = Get-BaselineRecordMember $policy $field
-                    if ($field -eq 'TargetedUsersToProtect') { $actual = @($actual | ForEach-Object { ([string]$_ -split ';')[-1] }) }
+                    $actual = Get-BaselineRecordMember $policy $field -PreserveCollection
+                    if ($field -eq 'TargetedUsersToProtect' -and $actual -is [System.Collections.IList]) { $actual = @($actual | ForEach-Object { ([string]$_ -split ';')[-1] }) }
                     if (-not (Test-BaselineEmailSettingEqual $actual $expected)) { throw "EmailProtectionSettingDrift: '$($recipient.address)/$family/$field' differs from '$($recipient.level)' or its approved local value." }
                     $observedSettings += @{ Setting = $field; Actual = $actual; Expected = $expected; Basis = $(if ($bound.Count) { 'ApprovedException' } elseif ($field -in $definition.Local) { 'LocalPolicy' } else { 'MicrosoftRecommendation' }); Source = $catalog.Source; Section = $definition.Section; ReviewedOn = $catalog.ReviewedOn }
                 }
@@ -7320,7 +7392,7 @@ function Test-BaselineEmailProtectionState {
         }
         if ($applied -ne $exceptions.Count) { throw 'EmailProtectionException: unused exception does not authorize this effective matrix.' }
         @{ Status = $(if ($exceptions.Count) { 'ApprovedException' } else { 'Pass' }); Reason = 'EmailProtectionVerified: effective Exchange recipient settings and supplied entitlement reconciled; external readiness remains unverified.'; Matrix = $matrix.ToArray() }
-    } catch { @{ Status = 'Fail'; Reason = $_.Exception.Message; Matrix = $matrix.ToArray() } }
+    } catch { @{ Status = $(if ($_.Exception.Message -like 'EmailProtectionNotEntitled:*') { 'NotEntitled' } else { 'Fail' }); Reason = $_.Exception.Message; Matrix = $matrix.ToArray() } }
 }
 
 function Get-BaselineExchangeGovernanceEvidence {
@@ -7888,27 +7960,131 @@ function Get-BaselineDeploymentProfile {
     $deploymentProfile
 }
 
+function Get-BaselineExchangeCapabilityDecision {
+    param(
+        [Parameter(Mandatory)]$Context,
+        [Parameter(Mandatory)][ValidateSet('ExchangeOnline','EmailProtection','AtpPresets','PriorityAccountProtection','AutomatedInvestigation')][string]$Capability
+    )
+    $scope = @($Context.Configuration.controls['MDO-001'].recipientMatrix)
+    $addresses = @($scope | ForEach-Object { $_.address })
+    $category = 'CapabilityUnconfirmed'
+    $reason = 'CapabilityUnconfirmed: no current scoped capability affirmation.'
+    $entitled = $false
+    try {
+        $handoff = Get-BaselineRecordMember $Context Entitlement
+        $legacy = 'ExchangeEntitlementUnverified: supply a current tenant- and recipient-bound licensing owner handoff (RAID-D02).'
+        $verified = Get-BaselineRecordMember $handoff verified
+        if ($null -eq $handoff -or $verified -eq $false) { $category = 'Unverified'; throw $legacy }
+        if ($verified -isnot [bool]) { $category = 'MalformedVerification'; throw $legacy }
+        $tenant = Get-BaselineRecordMember $handoff tenantId
+        $tenantGuid = [guid]::Empty
+        if ($tenant -isnot [string] -or -not [guid]::TryParse($tenant, [ref]$tenantGuid) -or $tenant -cne $Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID) {
+            $category = 'TenantBindingMismatch'; throw $legacy
+        }
+        $expiry = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $handoff expiresOn), [ref]$expiry) -or $expiry -le [datetimeoffset]::UtcNow) {
+            $category = 'Expired'; throw $legacy
+        }
+        foreach ($field in @('owner','reference')) {
+            $value = Get-BaselineRecordMember $handoff $field
+            if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) { $category = "Invalid$field"; throw $legacy }
+        }
+        $domains = Get-BaselineRecordMember $handoff recipientDomains -PreserveCollection
+        if ($domains -isnot [Collections.IList] -or $Context.Parameters.PRIMARY_SMTP_DOMAIN -cnotin $domains) { $category = 'ScopeMismatch'; throw $legacy }
+        $plans = @(Get-BaselineRecordMember $handoff servicePlans)
+        if ('EXCHANGE_S_ENTERPRISE' -cnotin $plans) {
+            $category = 'TenantExchangeMissing'; throw "ExchangeNotEntitled: 'EXCHANGE_S_ENTERPRISE' is not confirmed for this recipient scope."
+        }
+        $licenses = Get-BaselineRecordMember $handoff recipients -PreserveCollection
+        foreach ($recipient in $scope) {
+            $legacy = "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans."
+            $matched = @($licenses | Where-Object { (Get-BaselineRecordMember $_ address) -ieq $recipient.address })
+            if ($licenses -isnot [Collections.IList] -or $matched.Count -eq 0) { $category = 'ScopeMissing'; throw $legacy }
+            if ($matched.Count -ne 1) { $category = 'DuplicateRecipient'; throw $legacy }
+            $recipientPlans = @(Get-BaselineRecordMember $matched[0] servicePlans)
+            if ('EXCHANGE_S_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientExchangeMissing'; throw $legacy }
+            $requiresDefender = $Capability -notin @('ExchangeOnline','EmailProtection') -or
+                ($Capability -eq 'EmailProtection' -and ($recipient.defender -or 'ATP_ENTERPRISE' -cin $plans))
+            if ($requiresDefender) {
+                if ('ATP_ENTERPRISE' -cnotin $plans) { $category = 'TenantDefenderMissing'; throw $legacy }
+                if ('ATP_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientDefenderMissing'; throw $legacy }
+            }
+        }
+        if ($Capability -in @('PriorityAccountProtection','AutomatedInvestigation')) {
+            $legacy = "EmailProtectionNotEntitled: '$Capability' requires a current exact recipient-scoped capability affirmation."
+            $records = Get-BaselineRecordMember $handoff capabilityAttestations -PreserveCollection
+            if ($null -eq $records -or ($records -is [Collections.IList] -and $records.Count -eq 0)) { $category = 'CapabilityUnconfirmed'; throw $legacy }
+            if ($records -isnot [Collections.IList]) { $category = 'MalformedAttestation'; throw $legacy }
+            $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($record in $records) {
+                $name = Get-BaselineRecordMember $record capability
+                if (($record -isnot [Collections.IDictionary] -and $record -isnot [pscustomobject]) -or $name -cnotin @('PriorityAccountProtection','AutomatedInvestigation')) {
+                    $category = 'MalformedAttestation'; throw $legacy
+                }
+                if (-not $seen.Add($name)) { $category = 'DuplicateCapability'; throw $legacy }
+            }
+            $record = @($records | Where-Object { (Get-BaselineRecordMember $_ capability) -ceq $Capability })
+            if ($record.Count -ne 1) { $category = 'CapabilityUnconfirmed'; throw $legacy }
+            $affirmed = Get-BaselineRecordMember $record[0] entitled
+            if ($affirmed -isnot [bool]) { $category = 'MalformedAttestation'; throw $legacy }
+            if (-not $affirmed) { $category = 'CapabilityUnconfirmed'; throw $legacy }
+            $attested = Get-BaselineRecordMember $record[0] recipients -PreserveCollection
+            if ($null -eq $attested -or ($attested -is [Collections.IList] -and $attested.Count -eq 0)) { $category = 'ScopeMissing'; throw $legacy }
+            if ($attested -isnot [Collections.IList]) { $category = 'MalformedAttestation'; throw $legacy }
+            $seenRecipients = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+            foreach ($address in $attested) {
+                $mailAddress = $null
+                if ($address -isnot [string] -or -not [System.Net.Mail.MailAddress]::TryCreate($address, [ref]$mailAddress) -or $mailAddress.Address -cne $address -or $address -notmatch '^[^\s@]+@[^\s@]+\.[^\s@]+$') {
+                    $category = 'MalformedAttestation'; throw $legacy
+                }
+                if (-not $seenRecipients.Add($address)) { $category = 'DuplicateRecipient'; throw $legacy }
+                $matched = @($licenses | Where-Object { (Get-BaselineRecordMember $_ address) -ieq $address })
+                if ($matched.Count -eq 0) { $category = 'ScopeMismatch'; throw $legacy }
+                if ($matched.Count -ne 1) { $category = 'DuplicateRecipient'; throw $legacy }
+                $recipientPlans = @(Get-BaselineRecordMember $matched[0] servicePlans)
+                if ('EXCHANGE_S_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientExchangeMissing'; throw $legacy }
+                if ('ATP_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientDefenderMissing'; throw $legacy }
+            }
+            if ($addresses.Count -eq 0 -or @($addresses | Where-Object { -not $seenRecipients.Contains($_) }).Count) { $category = 'ScopeMismatch'; throw $legacy }
+        }
+        $entitled = $true
+        $category = 'CapabilityConfirmed'
+        $reason = 'Externally supplied recipient-bound licensing handoff; operational readiness remains unverified.'
+    }
+    catch { $reason = $_.Exception.Message }
+    [pscustomobject]@{ Name = $Capability; Entitled = [bool]$entitled; Recipients = $addresses; Reason = "$reason`nCategory: $category" }
+}
+
 function Get-BaselineExchangeContext {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$ConfigurationPath, [Parameter(Mandatory)][string]$ParameterPath, [switch]$ForActionPlanning)
     $configuration = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
     $manifest = Assert-BaselineExchangeScope -Configuration $configuration
     $parameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
-    $entitlement = $parameters.entitlement
-    $expiry = [datetimeoffset]::MinValue
-    if ($null -eq $entitlement -or $entitlement.verified -isnot [bool] -or -not $entitlement.verified -or
-        $entitlement.tenantId -cne $parameters.MICROSOFT_ENTRA_TENANT_GUID -or
-        -not [datetimeoffset]::TryParse([string]$entitlement.expiresOn, [ref]$expiry) -or $expiry -le [datetimeoffset]::UtcNow -or
-        [string]::IsNullOrWhiteSpace([string]$entitlement.owner) -or [string]::IsNullOrWhiteSpace([string]$entitlement.reference) -or
-        $parameters.PRIMARY_SMTP_DOMAIN -cnotin @($entitlement.recipientDomains)) {
-        throw 'ExchangeEntitlementUnverified: supply a current tenant- and recipient-bound licensing owner handoff (RAID-D02).'
-    }
+    $entitlement = Get-BaselineRecordMember $parameters entitlement
     $resolved = Convert-BaselinePlaceholderNode -Node $configuration -Parameter $parameters
     $canonical = ConvertTo-CanonicalJson -InputObject $resolved
     if ($canonical -match $script:PlaceholderScanPattern) { throw 'ExchangeInputUnresolved: an administrator input remains unresolved.' }
     $null = Assert-BaselineExchangeScope -Configuration $resolved
     $hash = [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))).ToLowerInvariant()
     $controls = $resolved.controls
+    $capabilityContext = @{ Configuration = $resolved; Parameters = $parameters; Entitlement = $entitlement }
+    $admission = Get-BaselineExchangeCapabilityDecision -Context $capabilityContext -Capability EmailProtection
+    if (-not $admission.Entitled -and ($ForActionPlanning -or $admission.Reason -like 'ExchangeEntitlementUnverified:*')) { throw $admission.Reason }
+    $capabilities = @(foreach ($name in @('ExchangeOnline','AtpPresets','PriorityAccountProtection','AutomatedInvestigation')) {
+        Get-BaselineExchangeCapabilityDecision -Context $capabilityContext -Capability $name
+    })
+    if ($ForActionPlanning) {
+        foreach ($decision in @($capabilities | Where-Object { $_.Name -cin @('PriorityAccountProtection','AutomatedInvestigation') })) {
+            $affirmations = @(Get-BaselineRecordMember $entitlement capabilityAttestations | Where-Object {
+                (Get-BaselineRecordMember $_ capability) -ceq $decision.Name -and
+                (Get-BaselineRecordMember $_ entitled) -is [bool] -and (Get-BaselineRecordMember $_ entitled) -eq $true
+            })
+            if ($affirmations.Count -gt 0 -and -not $decision.Entitled -and $decision.Reason -match '(?m)^Category: (Tenant|Recipient)(Exchange|Defender)Missing$') {
+                throw $decision.Reason
+            }
+        }
+    }
     $inventory = $null
     $inventoryValidationError = $null
     try {
@@ -7946,9 +8122,9 @@ function Get-BaselineExchangeContext {
         }
     } | ConvertTo-Json -Depth 40 | ConvertFrom-Json
     $deploymentEntitlement = [pscustomobject]@{
-        AtpPresets = ('ATP_ENTERPRISE' -cin @($entitlement.servicePlans)); SafeAttachmentsSpo = $false; Source = 'SuppliedExternalEntitlement'
-        Capability = @([pscustomobject]@{ Name = 'AtpPresets'; Entitled = ('ATP_ENTERPRISE' -cin @($entitlement.servicePlans)); Reason = 'Externally supplied recipient-bound licensing handoff.' })
-        NotEntitled = @(); DeclaredMessagingTier = 'ExternalHandoff'; DeclaredComplianceTier = 'Excluded'
+        AtpPresets = [bool]($capabilities | Where-Object Name -CEQ AtpPresets).Entitled; SafeAttachmentsSpo = $false; Source = 'SuppliedExternalEntitlement'
+        Capability = $capabilities
+        NotEntitled = @($capabilities | Where-Object { -not $_.Entitled } | ForEach-Object Name); DeclaredMessagingTier = 'ExternalHandoff'; DeclaredComplianceTier = 'Excluded'
     }
     [pscustomobject]@{ Configuration = $resolved; Manifest = $manifest; Parameters = $parameters; DomainInventoryValidationError = $inventoryValidationError; DeploymentProfile = 'ExchangeOnly'; Hash = $hash; Entitlement = $entitlement; DeploymentConfiguration = $deploymentConfiguration; DeploymentEntitlement = $deploymentEntitlement; Algorithm = 'SHA256'; GatewayDeclared = $false }
 }
@@ -12545,6 +12721,10 @@ function Get-StandardPresetEvidence {
     )
 
     if ($null -ne $ExchangeContext) {
+        $decision = Get-BaselineExchangeCapabilityDecision -Context $ExchangeContext -Capability EmailProtection
+        if (-not $decision.Entitled) {
+            return New-BaselineEvidence -ControlId MDO-001 -Source SuppliedExternalEntitlement -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason $decision.Reason
+        }
         return Get-BaselineEvidence -ControlId MDO-001 -Source ExchangeOnline -Command 'ExchangeEmailProtectionMatrix' -Collection {
             $state = Get-BaselineEmailProtectionState $ExchangeContext $Observation
             $assessment = Test-BaselineEmailProtectionState $state $ExchangeContext
@@ -12616,6 +12796,8 @@ function Test-StandardPresetControl {
     )
 
     if ($null -ne $ExchangeContext) {
+        $decision = Get-BaselineExchangeCapabilityDecision -Context $ExchangeContext -Capability EmailProtection
+        if (-not $decision.Entitled) { return New-ControlResult -ControlId MDO-001 -Status NotEntitled -Reason $decision.Reason }
         return Test-BaselineControl -ControlId MDO-001 -Evidence $Evidence -Evaluator {
             param($Record)
             Test-BaselineEmailProtectionState (Get-BaselineRecordMember $Record Value) $ExchangeContext
