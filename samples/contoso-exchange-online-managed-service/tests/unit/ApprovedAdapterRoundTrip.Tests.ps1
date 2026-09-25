@@ -228,7 +228,6 @@ Context 'Creation recovery for <Scope>' -ForEach @(
     @{ Scope = 'AcceptedDomains'; Noun = 'AcceptedDomain'; Identity = 'contoso.example' },
     @{ Scope = 'Impersonation'; Noun = 'AntiPhishPolicy'; Identity = 'Contoso Impersonation Protection' },
     @{ Scope = 'Quarantine'; Noun = 'QuarantinePolicy'; Identity = 'Baseline-AdminOnlyAccess' },
-    @{ Scope = 'Dkim'; Noun = 'DkimSigningConfig'; Identity = 'contoso.example' },
     @{ Scope = 'TenantAllowBlockList'; Noun = 'TenantAllowBlockListItems'; Identity = 'block-1' }
 ) {
     BeforeEach {

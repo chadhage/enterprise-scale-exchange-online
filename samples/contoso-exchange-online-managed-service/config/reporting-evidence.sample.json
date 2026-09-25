@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0.0",
+  "mailbox": "secops@contoso.example",
+  "approval": {
+    "reference": "REPLACE-WITH-CURRENT-APPROVAL-REFERENCE",
+    "owner": "approval-owner@contoso.example",
+    "expiresOn": "2000-01-01T00:00:00Z"
+  },
+  "dlp": {
+    "mailbox": "secops@contoso.example",
+    "status": "NotApplicable",
+    "approval": {
+      "reference": "REPLACE-WITH-CURRENT-DLP-OWNER-HANDOFF",
+      "owner": "dlp-owner@contoso.example",
+      "expiresOn": "2000-01-01T00:00:00Z"
+    }
+  },
+  "deliveries": [
+    {
+      "category": "Junk",
+      "recipient": "secops@contoso.example",
+      "reporter": "reporter@contoso.example",
+      "messageId": "REPLACE-WITH-JUNK-MESSAGE-ID",
+      "microsoftSubmissionId": "REPLACE-WITH-JUNK-SUBMISSION-ID",
+      "feedbackMessageId": "REPLACE-WITH-JUNK-FEEDBACK-ID",
+      "receivedAt": "2000-01-01T00:00:00Z",
+      "originalMessagePreserved": true
+    },
+    {
+      "category": "NotJunk",
+      "recipient": "secops@contoso.example",
+      "reporter": "reporter@contoso.example",
+      "messageId": "REPLACE-WITH-NOT-JUNK-MESSAGE-ID",
+      "microsoftSubmissionId": "REPLACE-WITH-NOT-JUNK-SUBMISSION-ID",
+      "feedbackMessageId": "REPLACE-WITH-NOT-JUNK-FEEDBACK-ID",
+      "receivedAt": "2000-01-01T00:00:00Z",
+      "originalMessagePreserved": true
+    },
+    {
+      "category": "Phish",
+      "recipient": "secops@contoso.example",
+      "reporter": "reporter@contoso.example",
+      "messageId": "REPLACE-WITH-PHISH-MESSAGE-ID",
+      "microsoftSubmissionId": "REPLACE-WITH-PHISH-SUBMISSION-ID",
+      "feedbackMessageId": "REPLACE-WITH-PHISH-FEEDBACK-ID",
+      "receivedAt": "2000-01-01T00:00:00Z",
+      "originalMessagePreserved": true
+    }
+  ]
+}

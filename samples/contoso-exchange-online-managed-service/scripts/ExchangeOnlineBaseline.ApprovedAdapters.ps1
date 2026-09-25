@@ -312,35 +312,118 @@ function Get-ApprovedAdapterDefinitions {
             Quarantine {
                 $settings = $controls['MDO-008']
                 $permission = @{ AdminOnlyAccess = 0; LimitedAccess = 106; FullAccess = 236 }
-                foreach ($level in @($settings.categoryPermissions.accessLevel | Sort-Object -Unique)) {
-                    if (-not $permission.ContainsKey($level)) { throw 'ChangeOptionsInvalid: unsupported quarantine permission.' }
+                $categories = @('Malware','HighConfidencePhish','Phish','HighConfidenceSpam','Spam','Bulk','SpoofIntelligence')
+                if ($settings.endUserAccessLevel -cnotin @($permission.Keys) -or $settings.highRiskAccessLevel -cnotin @($permission.Keys)) { throw 'QuarantineCustomDeviationUnapproved: quarantine access levels must use an approved local mapping.' }
+                if ($settings.endUserSpamNotificationFrequencyInDays -isnot [int] -and $settings.endUserSpamNotificationFrequencyInDays -isnot [long] -or [long]$settings.endUserSpamNotificationFrequencyInDays -le 0 -or $settings.includeMessagesFromBlockedSenderAddress -isnot [bool]) { throw 'QuarantineCustomDeviationUnapproved: notification choices must use the exact approved local mapping.' }
+                $highRisk = @($settings.highRiskCategories | Sort-Object -Unique)
+                if ((ConvertTo-CanonicalJson $highRisk) -cne (ConvertTo-CanonicalJson @('HighConfidencePhish','Malware'))) { throw 'QuarantineCategoryBindingInvalid: high-risk categories must match the approved mapping.' }
+                $categoryPermissions = @{}
+                foreach ($category in $categories) {
+                    $bindings = @($settings.categoryPermissions | Where-Object category -CEQ $category)
+                    if ($bindings.Count -ne 1) { throw "QuarantineCategoryBindingInvalid: $category must have exactly one quarantine tag binding." }
+                    $categoryPermissions[$category] = [string]$bindings[0].accessLevel
+                }
+                if (@($settings.categoryPermissions).Count -ne $categories.Count -or @($settings.categoryPermissions | Where-Object { $_.category -cnotin $categories }).Count) { throw 'QuarantineCategoryBindingInvalid: only the approved message categories may be bound.' }
+                foreach ($category in $highRisk) {
+                    if ($settings.highRiskAccessLevel -cne 'AdminOnlyAccess' -or $categoryPermissions[$category] -cne 'AdminOnlyAccess') { throw "QuarantineHighRiskPermissionExcessive: $category must use AdminOnlyAccess." }
+                }
+                foreach ($category in @($categories | Where-Object { $_ -cnotin $highRisk })) {
+                    if ($categoryPermissions[$category] -cne $settings.endUserAccessLevel) { throw "QuarantineCustomDeviationUnapproved: $category does not match the approved local end-user mapping." }
+                }
+                foreach ($level in @($categoryPermissions.Values | Sort-Object -Unique)) {
+                    if (-not $permission.ContainsKey($level)) { throw 'QuarantineCustomDeviationUnapproved: unsupported quarantine permission.' }
                     & $fixed QuarantinePolicy QuarantinePolicy @{ Identity = "Baseline-$level" } @{ EndUserQuarantinePermissionsValue = $permission[$level] } @{ EndUserQuarantinePermissionsValue = 'Integer' } $true @{ Name = "Baseline-$level" }
                 }
                 & $fixed QuarantineGlobal QuarantinePolicy @{ Identity = 'DefaultGlobalTag' } @{ EndUserSpamNotificationFrequency = [timespan]::FromDays($settings.endUserSpamNotificationFrequencyInDays).ToString('c'); IncludeMessagesFromBlockedSenderAddress = $settings.includeMessagesFromBlockedSenderAddress } @{ EndUserSpamNotificationFrequency = 'Duration'; IncludeMessagesFromBlockedSenderAddress = 'Boolean' }
                 $desired = @{}; $types = @{}
                 foreach ($category in @('HighConfidencePhish','Phish','HighConfidenceSpam','Spam','Bulk')) {
                     $member = $category + 'QuarantineTag'
-                    $level = @($settings.categoryPermissions | Where-Object category -CEQ $category).accessLevel
+                    $level = $categoryPermissions[$category]
                     $desired[$member] = "Baseline-$level"; $types[$member] = 'NullableString'
                 }
                 $managedPolicies = @('Standard Preset Security Policy','Strict Preset Security Policy','Built-In Protection Policy')
                 foreach ($target in (& $targets QuarantineContent Get-HostedContentFilterPolicy)) {
-                    if ($target.Identity -in $managedPolicies) { continue }
+                    if ($target.Identity -in $managedPolicies) {
+                        if ($null -ne $Approved) { throw 'QuarantineManagedPolicyMutationUnsupported: Microsoft-managed quarantine policies cannot be changed.' }
+                        continue
+                    }
                     & $fixed QuarantineContent HostedContentFilterPolicy $target $desired $types
                 }
-                $level = @($settings.categoryPermissions | Where-Object category -CEQ Malware).accessLevel
+                $level = $categoryPermissions.Malware
                 foreach ($target in (& $targets QuarantineMalware Get-MalwareFilterPolicy)) {
-                    if ($target.Identity -in $managedPolicies) { continue }
+                    if ($target.Identity -in $managedPolicies) {
+                        if ($null -ne $Approved) { throw 'QuarantineManagedPolicyMutationUnsupported: Microsoft-managed quarantine policies cannot be changed.' }
+                        continue
+                    }
                     & $fixed QuarantineMalware MalwareFilterPolicy $target @{ QuarantineTag = "Baseline-$level" } @{ QuarantineTag = 'NullableString' }
                 }
-                $level = @($settings.categoryPermissions | Where-Object category -CEQ SpoofIntelligence).accessLevel
+                $level = $categoryPermissions.SpoofIntelligence
                 foreach ($target in (& $targets QuarantinePhish Get-AntiPhishPolicy)) {
-                    if ($target.Identity -in $managedPolicies) { continue }
+                    if ($target.Identity -in $managedPolicies) {
+                        if ($null -ne $Approved) { throw 'QuarantineManagedPolicyMutationUnsupported: Microsoft-managed quarantine policies cannot be changed.' }
+                        continue
+                    }
                     & $fixed QuarantinePhish AntiPhishPolicy $target @{ SpoofQuarantineTag = "Baseline-$level" } @{ SpoofQuarantineTag = 'NullableString' }
                 }
             }
             Dkim {
-                & $fixed Dkim DkimSigningConfig @{ Identity = [string]$parameters.PRIMARY_SMTP_DOMAIN } @{ Enabled = [bool]$options['enableDkim'] } @{ Enabled = 'Boolean' } $true @{ DomainName = $parameters.PRIMARY_SMTP_DOMAIN; KeySize = [int]$controls['AUTH-001'].keySize }
+                $required = @('Identity','Domain','Enabled','Status','Selector1CNAME','Selector2CNAME','Selector1KeySize','Selector2KeySize')
+                $rows = if ($DesiredOnly) { @() } else { @(& Get-DkimSigningConfig -ErrorAction Stop) }
+                $byDomain = @{}
+                foreach ($row in $rows) {
+                    foreach ($field in $required) {
+                        if (-not (Test-BaselineNodeMember $row $field) -or [string]::IsNullOrWhiteSpace([string]$row.$field)) { throw "ChangeReadIncomplete: Dkim omitted $field." }
+                    }
+                    $domain = ([string]$row.Identity).TrimEnd('.').ToLowerInvariant()
+                    if ($byDomain.ContainsKey($domain)) { throw 'ChangeReadIncomplete: Get-DkimSigningConfig returned duplicate identities.' }
+                    $byDomain[$domain] = $row
+                }
+                $minimumKeySize = [int]$controls['AUTH-001'].keySize
+                foreach ($inventoryDomain in @($parameters.domainInventory.domains | Where-Object { $_.sending -and $_.sendingSystem -ceq 'ExchangeOnline' })) {
+                    $domain = ([string]$inventoryDomain.domainName).TrimEnd('.').ToLowerInvariant()
+                    $approvedOperation = @($Approved | Where-Object {
+                        if ($null -eq $_ -or $_.OperationId -cnotlike 'Dkim-*') { return $false }
+                        $identity = ConvertFrom-Json -InputObject $_.Identity -AsHashtable
+                        ([string]$identity.Identity).TrimEnd('.') -ieq $domain
+                    })
+                    if ($approvedOperation.Count -eq 1) {
+                        $approvedBefore = ConvertTo-BaselineHashableNode $approvedOperation[0].Before
+                        $approvedAfter = ConvertTo-BaselineHashableNode $approvedOperation[0].After
+                        if ($approvedBefore.Exists) {
+                            foreach ($field in @('Status','Selector1CNAME','Selector2CNAME','Selector1KeySize','Selector2KeySize')) {
+                                if (-not (Test-BaselineNodeMember $approvedBefore.Value $field) -or
+                                    -not (Test-BaselineNodeMember $approvedAfter.Value $field) -or
+                                    (ConvertTo-CanonicalJson $approvedBefore.Value[$field]) -cne (ConvertTo-CanonicalJson $approvedAfter.Value[$field])) {
+                                    throw "ChangeOperationMismatch: approved Dkim mutation of $field is unsupported for existing configuration."
+                                }
+                            }
+                        }
+                    }
+                    if ($DesiredOnly) {
+                        if ($approvedOperation.Count -ne 1) { throw "ChangeOperationMismatch: approved Dkim operation is required for $domain." }
+                        $desired = ConvertTo-BaselineHashableNode $approvedOperation[0].After.Value
+                    } else {
+                        if (-not $byDomain.ContainsKey($domain)) { throw "ChangeReadIncomplete: Dkim requires exactly one target for $domain." }
+                        $row = $byDomain[$domain]
+                        foreach ($field in @('Selector1KeySize','Selector2KeySize')) {
+                            if ([int]$row.$field -lt $minimumKeySize) { throw "DkimKeyTooShort: $field is $($row.$field); minimum is $minimumKeySize." }
+                        }
+                        if ([bool]$row.Enabled -and [string]$row.Status -cne 'Valid') { throw "DkimSigningInvalid: enabled signing status is $($row.Status)." }
+                        if ($approvedOperation.Count -gt 1) { throw "ChangeOperationMismatch: approved Dkim operation is ambiguous for $domain." }
+                        $desired = if ($approvedOperation.Count -eq 1) { ConvertTo-BaselineHashableNode $approvedOperation[0].After.Value } else {
+                            @{
+                                Enabled = [bool]$options['enableDkim']
+                                Status = [string]$row.Status
+                                Selector1CNAME = [string]$row.Selector1CNAME
+                                Selector2CNAME = [string]$row.Selector2CNAME
+                                Selector1KeySize = [int]$row.Selector1KeySize
+                                Selector2KeySize = [int]$row.Selector2KeySize
+                            }
+                        }
+                    }
+                    $types = @{ Enabled = 'Boolean'; Status = 'String'; Selector1CNAME = 'String'; Selector2CNAME = 'String'; Selector1KeySize = 'Integer'; Selector2KeySize = 'Integer' }
+                    & $fixed Dkim DkimSigningConfig @{ Identity = $domain } $desired $types $true @{ DomainName = $domain; KeySize = $minimumKeySize }
+                }
             }
             Forwarding {
                 foreach ($target in (& $targets ForwardingMailbox Get-Mailbox @{ ResultSize = 'Unlimited' } @('Identity','PrimarySmtpAddress'))) {
@@ -519,11 +602,11 @@ function Assert-ApprovedAdapterCommands {
             foreach ($verb in @('Enable','Disable')) { $contracts += @{ Command = "$verb-$($definition.Noun)"; Fields = @($definition.Target.Keys) } }
         } else {
             if (-not $definition.Delete -and $definition.Adapter -cne 'TenantAllowBlockList') {
-                $fields = if ($definition.Adapter -ceq 'SecOpsOverride') { @('Identity','AddSentTo','RemoveSentTo') } else { @($definition.Target.Keys) + @($definition.Desired.Keys) }
+                $fields = if ($definition.Adapter -ceq 'SecOpsOverride') { @('Identity','AddSentTo','RemoveSentTo') } elseif ($definition.Adapter -ceq 'Dkim') { @($definition.Target.Keys) + @('Enabled') } else { @($definition.Target.Keys) + @($definition.Desired.Keys) }
                 $contracts += @{ Command = $definition.Set; Fields = $fields }
             }
             if ($definition.New) {
-                $fields = if ($definition.Delete) { @('Name','Role','Policy') } elseif ($definition.Adapter -ceq 'TenantAllowBlockList') { @('Entries','ListType','ExpirationDate','Notes','Allow','Block') } else { @($definition.CreateTarget.Keys) + @($definition.Desired.Keys) }
+                $fields = if ($definition.Delete) { @('Name','Role','Policy') } elseif ($definition.Adapter -ceq 'TenantAllowBlockList') { @('Entries','ListType','ExpirationDate','Notes','Allow','Block') } elseif ($definition.Adapter -ceq 'Dkim') { @($definition.CreateTarget.Keys) + @('Enabled') } else { @($definition.CreateTarget.Keys) + @($definition.Desired.Keys) }
                 $contracts += @{ Command = $definition.New; Fields = $fields }
                 $contracts += @{ Command = $definition.Remove; Fields = @($definition.Target.Keys) }
             }
@@ -588,7 +671,8 @@ function Invoke-BaselineConcreteOperation {
     elseif ($Desired.Exists -and -not $Definition.Delete) {
         $commandInfo = Get-Command -Name $command -ErrorAction SilentlyContinue
         if ($null -eq $commandInfo) { throw "ChangeCommandUnavailable: $command is required for apply and restoration." }
-        foreach ($field in $Desired.Value.Keys) {
+        $mutationFields = if ($Definition.Adapter -ceq 'Dkim') { @('Enabled') } else { @($Desired.Value.Keys) }
+        foreach ($field in $mutationFields) {
             if (Test-ApprovedPresetFieldOmission $Definition $field $Desired.Value $Current) { continue }
             if (-not $commandInfo.Parameters.ContainsKey($field)) {
                 throw "ChangeCommandUnavailable: $command has no $field parameter."

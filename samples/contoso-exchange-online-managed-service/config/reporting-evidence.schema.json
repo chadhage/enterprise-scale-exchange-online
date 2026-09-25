@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contoso.example/schemas/reporting-evidence.schema.json",
+  "title": "Exchange Online reporting evidence",
+  "description": "Versioned operator-supplied evidence for MDO-006 reporting validation. Schema validity establishes structure only; it does not establish approval or delivery truth.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "mailbox",
+    "approval",
+    "dlp",
+    "deliveries"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "mailbox": {
+      "$ref": "#/$defs/mailbox"
+    },
+    "approval": {
+      "$ref": "#/$defs/approval"
+    },
+    "dlp": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mailbox", "status", "approval"],
+      "properties": {
+        "mailbox": {
+          "$ref": "#/$defs/mailbox"
+        },
+        "status": {
+          "enum": ["Excluded", "NotApplicable"]
+        },
+        "approval": {
+          "$ref": "#/$defs/approval"
+        }
+      }
+    },
+    "deliveries": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "category",
+          "recipient",
+          "reporter",
+          "messageId",
+          "microsoftSubmissionId",
+          "feedbackMessageId",
+          "receivedAt",
+          "originalMessagePreserved"
+        ],
+        "properties": {
+          "category": {
+            "enum": ["Junk", "NotJunk", "Phish"]
+          },
+          "recipient": {
+            "$ref": "#/$defs/mailbox"
+          },
+          "reporter": {
+            "$ref": "#/$defs/mailbox"
+          },
+          "messageId": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "microsoftSubmissionId": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "feedbackMessageId": {
+            "$ref": "#/$defs/nonEmptyString"
+          },
+          "receivedAt": {
+            "$ref": "#/$defs/timestamp"
+          },
+          "originalMessagePreserved": {
+            "const": true
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reference", "owner", "expiresOn"],
+      "properties": {
+        "reference": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "owner": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "expiresOn": {
+          "$ref": "#/$defs/timestamp"
+        }
+      }
+    },
+    "mailbox": {
+      "type": "string",
+      "format": "email",
+      "pattern": "^[^@\\s*]+@[^@\\s*]+\\.[^@\\s*]+$"
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

@@ -96,4 +96,60 @@ Describe 'EXR-010 reporting through raw Exchange registry' {
         @($result.Evidence.Value.ReportingEvidence.deliveries).Count | Should -Be 3
         @($result.Evidence.Observation | Where-Object { $_.Command -eq 'Get-Mailbox' -and $_.Arguments.Identity -eq 'secops@contoso.example' }).Count | Should -Be 1
     }
+    It 'refuses an absent report submission rule with a named public result' {
+        $fixture = New-ReportingRawFixture
+        $fixture.Raw['Get-ReportSubmissionRule'].Items = @()
+
+        $result = Invoke-ProtectionRawRegistry $fixture $script:reportModule | Where-Object ControlId -eq MDO-006
+
+        $result.Result.Status | Should -Not -Be Pass
+        $result.Result.Reason | Should -Match 'ReportingRuleMissing'
+    }
+    It 'refuses a disabled report submission rule with a named public result' {
+        $fixture = New-ReportingRawFixture
+        $fixture.Raw['Get-ReportSubmissionRule'].Items[0].State = 'Disabled'
+
+        $result = Invoke-ProtectionRawRegistry $fixture $script:reportModule | Where-Object ControlId -eq MDO-006
+
+        $result.Result.Status | Should -Not -Be Pass
+        $result.Result.Reason | Should -Match 'ReportingRuleDisabled'
+    }
+    It 'refuses a report submission rule bound to the wrong policy with a named public result' {
+        $fixture = New-ReportingRawFixture
+        $fixture.Raw['Get-ReportSubmissionRule'].Items[0].ReportSubmissionPolicy = 'OtherReportSubmissionPolicy'
+
+        $result = Invoke-ProtectionRawRegistry $fixture $script:reportModule | Where-Object ControlId -eq MDO-006
+
+        $result.Result.Status | Should -Not -Be Pass
+        $result.Result.Reason | Should -Match 'ReportingRulePolicyMismatch'
+    }
+    It 'accepts an enabled report submission rule bound to the exact policy with complete receipt evidence' {
+        $fixture = New-ReportingRawFixture
+        $expectedRule = $fixture.Raw['Get-ReportSubmissionRule'].Items[0]
+        $expectedPolicy = $fixture.Raw['Get-ReportSubmissionPolicy'].Items[0]
+
+        $result = Invoke-ProtectionRawRegistry $fixture $script:reportModule | Where-Object ControlId -eq MDO-006
+
+        $result.Result.Status | Should -BeExactly Pass
+        $expectedRule.State | Should -BeExactly 'Enabled'
+        $expectedRule.ReportSubmissionPolicy | Should -BeExactly $expectedPolicy.Identity
+        $result.Evidence.Value.ReportingState.Mailbox.PrimarySmtpAddress | Should -BeExactly 'secops@contoso.example'
+        $result.Evidence.Value.ReportingState.Mailbox.ForwardingAddress | Should -BeNullOrEmpty
+        $result.Evidence.Value.ReportingState.Mailbox.ForwardingSmtpAddress | Should -BeNullOrEmpty
+        $result.Evidence.Value.ReportingState.Mailbox.DeliverToMailboxAndForward | Should -BeFalse
+        @($result.Evidence.Value.ReportingState.SecOps.SentTo) | Should -Be @('secops@contoso.example')
+        $result.Evidence.Value.ReportingState.Policy.PreSubmitMessageEnabled | Should -BeTrue
+        $result.Evidence.Value.ReportingState.Policy.PostSubmitMessageEnabled | Should -BeTrue
+        $result.Evidence.Value.ReportingEvidence.dlp.mailbox | Should -BeExactly 'secops@contoso.example'
+        $result.Evidence.Value.ReportingEvidence.dlp.status | Should -BeExactly 'NotApplicable'
+        $deliveries = @($result.Evidence.Value.ReportingEvidence.deliveries)
+        $deliveries.Count | Should -Be 3
+        @($deliveries.category | Sort-Object -Unique).Count | Should -Be 3
+        @($deliveries.messageId | Sort-Object -Unique).Count | Should -Be 3
+        @($deliveries.microsoftSubmissionId | Sort-Object -Unique).Count | Should -Be 3
+        @($deliveries.feedbackMessageId | Sort-Object -Unique).Count | Should -Be 3
+        @($deliveries | Where-Object { -not $_.originalMessagePreserved }).Count | Should -Be 0
+        @($deliveries | Where-Object { ([datetimeoffset]::UtcNow - [datetimeoffset]::Parse($_.receivedAt)).TotalDays -gt 30 }).Count | Should -Be 0
+        @($result.Evidence.Observation | Where-Object Command -eq 'Get-ReportSubmissionRule').Count | Should -Be 1
+    }
 }

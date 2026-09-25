@@ -28,7 +28,7 @@ function Initialize-AdapterDoubles {
         InboxRule = @(@{ Identity = 'rule-1'; Mailbox = 'user@example.test'; Enabled = $true; ForwardTo = @('external@example.net'); ForwardAsAttachmentTo = @(); RedirectTo = @() })
         RoleAssignmentPolicy = @(@{ Identity = 'Default Policy'; IsDefault = $true })
         ManagementRoleAssignment = @(@{ Identity = 'GrantA'; Name = 'GrantA'; Role = 'My Custom Apps'; RoleAssignee = 'Default Policy'; RoleAssigneeType = 'RoleAssignmentPolicy'; Delegating = $false; RecipientWriteScope = 'Self'; ConfigWriteScope = 'None'; CustomRecipientWriteScope = $null; CustomConfigWriteScope = $null; ExclusiveRecipientWriteScope = $null; ExclusiveConfigWriteScope = $null })
-        DkimSigningConfig = @(@{ Identity = 'contoso.example'; Domain = 'contoso.example'; Enabled = $false; KeySize = 2048 })
+        DkimSigningConfig = @(@{ Identity = 'contoso.example'; Domain = 'contoso.example'; Enabled = $false; KeySize = 2048; Status = 'Valid'; Selector1CNAME = 'selector1-contoso-example._domainkey.contoso.onmicrosoft.com'; Selector2CNAME = 'selector2-contoso-example._domainkey.contoso.onmicrosoft.com'; Selector1KeySize = 2048; Selector2KeySize = 2048 })
         TenantAllowBlockListItems = @(@{ Identity = 'block-1'; Value = 'blocked.example'; ListType = 'Sender'; Action = 'Block'; ExpirationDate = [datetimeoffset]::UtcNow.AddDays(80).ToUniversalTime().ToString('o'); Notes = 'Old governed block' })
     }
     $specifications = @(

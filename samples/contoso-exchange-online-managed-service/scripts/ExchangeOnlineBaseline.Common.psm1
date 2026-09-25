@@ -6809,8 +6809,11 @@ function Invoke-BaselineExchangeRegistry {
                         $collectorArguments = @{
                             ReportSubmissionPolicyCollection = {
                                 $policy = Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionPolicy -RequiredProperty Identity,EnableThirdPartyAddress,EnableReportToMicrosoft,ReportJunkToCustomizedAddress,ReportJunkAddresses,ReportNotJunkToCustomizedAddress,ReportNotJunkAddresses,ReportPhishToCustomizedAddress,ReportPhishAddresses,PreSubmitMessageEnabled,PostSubmitMessageEnabled -IdentityProperty Identity -MinimumCount 1 -MaximumCount 1 -Observation $observations
-                                $rule = Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionRule -RequiredProperty Identity,State,ReportSubmissionPolicy,SentTo -IdentityProperty Identity -MinimumCount 1 -MaximumCount 1 -Observation $observations
-                                if ($rule.State -ne 'Enabled' -or [string]$rule.ReportSubmissionPolicy -ine [string]$policy.Identity) { throw 'ExchangeReportRuleInactiveOrMisbound: an enabled rule bound to the reporting policy is required.' }
+                                $rules = @(Invoke-BaselineExchangeRawCollection -Command Get-ReportSubmissionRule -RequiredProperty Identity,State,ReportSubmissionPolicy,SentTo -IdentityProperty Identity -MaximumCount 1 -Observation $observations)
+                                if ($rules.Count -eq 0) { throw 'ReportingRuleMissing: one report submission rule is required.' }
+                                $rule = $rules[0]
+                                if ($rule.State -ne 'Enabled') { throw 'ReportingRuleDisabled: the report submission rule must be enabled.' }
+                                if ([string]$rule.ReportSubmissionPolicy -ine [string]$policy.Identity) { throw 'ReportingRulePolicyMismatch: the report submission rule must be bound to the reporting policy.' }
                                 if (-not (Compare-NormalizedCollection -Desired @($settings.reportingMailbox) -Actual @($rule.SentTo) -Kind SmtpAddress).Equal) { throw 'ExchangeReportRuleMisroute: rule recipients do not match the reporting mailbox.' }
                                 foreach ($category in @('NotJunk','Phish')) {
                                     if ($policy."Report${category}ToCustomizedAddress" -isnot [bool] -or $policy."Report${category}ToCustomizedAddress" -ne $settings.sendCopyToSecOpsMailbox -or
