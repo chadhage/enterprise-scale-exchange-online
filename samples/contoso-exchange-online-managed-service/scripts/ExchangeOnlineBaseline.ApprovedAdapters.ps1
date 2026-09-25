@@ -273,6 +273,26 @@ function Get-ApprovedAdapterDefinitions {
                 foreach ($entry in $entries) {
                     foreach ($field in @('entryType','entryValue','action','owner','ticket','createdDateTime','expirationDateTime','justification')) { if ([string]::IsNullOrWhiteSpace([string]$entry[$field])) { throw "ChangeOptionsInvalid: TABL requires $field." } }
                     if ($entry.entryType -cnotin @('Sender','Domain','Url','File') -or $entry.action -cnotin @('Allow','Block')) { throw 'ChangeOptionsInvalid: unsupported TABL type or action.' }
+                    $entryValue = [string]$entry.entryValue
+                    if ($null -ne $Approved -and -not $DesiredOnly) {
+                        switch -CaseSensitive ($entry.entryType) {
+                            Sender {
+                                $mailbox = $null
+                                try { $mailbox = [Net.Mail.MailAddress]::new($entryValue) } catch {}
+                                if ($entryValue -match '[*?]' -or $null -eq $mailbox -or $mailbox.Address -ine $entryValue -or $mailbox.Host -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList Sender requires an exact mailbox address.' }
+                            }
+                            Domain {
+                                if ($entryValue -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList Domain requires an exact domain.' }
+                            }
+                            Url {
+                                $absoluteUri = $null
+                                if ($entryValue -match '[*]' -or -not [uri]::TryCreate($entryValue, [UriKind]::Absolute, [ref]$absoluteUri) -or $absoluteUri.Scheme -cnotin @('http','https') -or [string]::IsNullOrWhiteSpace($absoluteUri.Host)) { throw 'ChangeOptionsInvalid: TenantAllowBlockList Url requires an absolute non-wildcard HTTP or HTTPS URL.' }
+                            }
+                            File {
+                                if ($entryValue -notmatch '^[a-f0-9]{64}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList File requires an exact SHA-256 hash.' }
+                            }
+                        }
+                    }
                     $listType = switch ($entry.entryType) { Domain { 'Sender' } File { 'FileHash' } default { $entry.entryType } }
                     if (-not $seen.Add("$listType/$($entry.entryValue)")) { throw 'ChangeOptionsInvalid: duplicate TABL target.' }
                     $created = [datetimeoffset]$entry.createdDateTime; $expiry = [datetimeoffset]$entry.expirationDateTime

@@ -590,30 +590,43 @@ Policy readback alone does not prove delivery. Missing mailbox prerequisites, DL
 
 **Portal** — `https://security.microsoft.com/tenantAllowBlockList`.
 
-**Set** — Block entries are permanent-capable; allow entries must always expire.
+**Set** — Add each governed entry to `workflowOptions.tenantAllowBlockEntries` in the resolved parameter file. Every entry requires exact `entryType`, `entryValue`, `action`, `owner`, `ticket`, `createdDateTime`, `expirationDateTime`, and `justification` values. `Sender` is one exact mailbox address, `Domain` is one exact domain, `Url` is one absolute non-wildcard HTTP(S) URL, and `File` is one 64-hex SHA-256 value. Admission fails closed for any other value.
+
+Set each `Block` entry to the separately declared exact 90-day expiry. Each `Allow` entry must expire within the configured allow maximum and is never permanent. Repair the sender's SPF or DKIM instead of retaining an allow beyond its approved window — see `BAD-004`.
+
+Use the supported signed workflow; do not invoke the TABL mutation cmdlets directly. The independently reviewed detached-CMS approval of the immutable preview authorizes every exact TABL entry in that preview. Owner, ticket, justification, and expiry are provenance and lifecycle fields bound into that approval; no separate per-entry approval object is required.
 
 ```powershell
-New-TenantAllowBlockListItems -ListType Sender -Block `
-    -Entries 'badsender@malicious.example' -NoExpiration
-
-New-TenantAllowBlockListItems -ListType Sender -Allow `
-    -Entries 'newsletter@partner.example' `
-    -ExpirationDate (Get-Date).AddDays(30) `
-    -Notes 'CHG0012345 — partner DKIM repair in progress'
+$change = @{
+    ParameterPath = $parameterPath
+    ConfigurationPath = './config/exchange-only.v1.json'
+    ArtifactRoot = $artifactRoot
+    ChangeId = $changeId
+    RequestedBy = $requestedBy
+    AuthorizedSignerPath = $authorityPath
+    PreviewPath = Join-Path $artifactRoot "preview-$changeId.json"
+    ApprovalPath = Join-Path $artifactRoot "approval-$changeId.json"
+}
+./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope TenantAllowBlockList -Confirm:$false
+./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Approve @change -ApprovalIdentity $approvalIdentity -SigningCertificate $certificate -Confirm:$false
+./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Validate @change
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -Confirm:$false
 ```
 
-Never create a permanent allow. Repair the sender's SPF or DKIM instead — see `BAD-004`.
+Do not change an entry value, action, owner, ticket, justification, creation time, or expiry after approval. Any post-approval entry or governance-byte mutation requires a new preview and approval; Apply refuses it as `ChangePreviewBindingMismatch` before creating the prechange artifact or making an adapter write.
 
 **Verify**
 
 ```powershell
-Get-TenantAllowBlockListItems -ListType Sender |
-    Select-Object Value, Action, ExpirationDate, Notes
-Get-TenantAllowBlockListItems -ListType Sender -Allow |
-    Where-Object { -not $_.ExpirationDate }
+Get-TenantAllowBlockListItems -ListType Sender -Block
+Get-TenantAllowBlockListItems -ListType Sender -Allow
+Get-TenantAllowBlockListItems -ListType Url -Block
+Get-TenantAllowBlockListItems -ListType Url -Allow
+Get-TenantAllowBlockListItems -ListType FileHash -Block
+Get-TenantAllowBlockListItems -ListType FileHash -Allow
 ```
 
-**Expected** — Every `Allow` row has a future `ExpirationDate` and a `Notes` value carrying the change or ticket reference. The second command returns nothing.
+**Expected** — Complete TABL readback reconciles each exact approved identity, type, value, action, and expiry. Retain the immutable preview, detached-CMS approval, validation, prechange, apply, and postchange artifacts with the owner, ticket, justification, and lifecycle timestamps. Blocks show the separately declared exact 90-day expiry; allows have a future expiry within the configured maximum. The local offline tests use synthetic adapters and signing material; they do not prove live Exchange compatibility, external signer readiness, or go-live approval.
 
 ---
 

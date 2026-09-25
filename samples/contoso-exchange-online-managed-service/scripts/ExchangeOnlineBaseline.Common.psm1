@@ -6896,6 +6896,9 @@ function Invoke-BaselineExchangeRegistry {
                 $evidence = & $collector @collectorArguments
                 $evaluatorArguments.Evidence = $evidence
                 $result = & $evaluator @evaluatorArguments
+                if ($controlId -eq 'MDO-001' -and $result.Status -eq 'NotEntitled' -and $evidence.Collected) {
+                    $evidence = New-BaselineEvidence -ControlId $controlId -Source SuppliedExternalEntitlement -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason $result.Reason
+                }
                 if ($controlId -eq 'EXO-001' -and $null -ne $result.Evidence) { $evidence = $result.Evidence }
                 if ($null -eq $result -or [string]$result.ControlId -cne $controlId -or [string]$result.Status -cnotin @('Pass','Fail','Error','NotEntitled','Unverified','ApprovedException')) {
                     throw "ExchangeEvaluatorContractInvalid: '$controlId' returned an invalid result."
@@ -7261,6 +7264,21 @@ function Resolve-BaselineEmailPolicy {
     $policies = @($State.Families[$Family].Policies)
     $outbound = $Family -eq 'HostedOutboundSpamFilter'
     if (-not $outbound) {
+        if ($Family -eq 'AntiPhish' -and $Defender) {
+            $matchedPreset = @{}
+            foreach ($presetKind in @('EOP','ATP')) {
+                foreach ($presetLevel in @('Strict','Standard')) {
+                    $presetRule = @($State.Presets[$presetKind] | Where-Object Name -eq "$presetLevel Preset Security Policy")
+                    if ($presetRule.Count -eq 1 -and (Test-BaselineEmailRuleScope $presetRule[0] $Address $State.Groups)) {
+                        $matchedPreset[$presetKind] = $presetLevel
+                        break
+                    }
+                }
+            }
+            if ($matchedPreset.ContainsKey('EOP') -and $matchedPreset.ContainsKey('ATP') -and $matchedPreset.EOP -cne $matchedPreset.ATP) {
+                throw 'EmailProtectionPrecedenceAmbiguous: matching EOP and ATP anti-phishing preset levels differ.'
+            }
+        }
         $kind = if ($Family -in @('SafeLinks','SafeAttachment') -or ($Family -eq 'AntiPhish' -and $Defender)) { 'ATP' } else { 'EOP' }
         foreach ($level in @('Strict','Standard')) {
             $rule = @($State.Presets[$kind] | Where-Object Name -eq "$level Preset Security Policy")
@@ -7344,6 +7362,22 @@ function Test-BaselineEmailProtectionState {
         foreach ($recipient in $desired.recipientMatrix) {
             $licenses = @(Get-BaselineRecordMember $Context.Entitlement recipients | Where-Object address -eq $recipient.address)
             if ($licenses.Count -ne 1 -or 'EXCHANGE_S_ENTERPRISE' -notin @($licenses[0].servicePlans) -or ($recipient.defender -and ('ATP_ENTERPRISE' -notin @($licenses[0].servicePlans) -or 'ATP_ENTERPRISE' -notin @($Context.Entitlement.servicePlans)))) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            if (-not $recipient.defender -and 'ATP_ENTERPRISE' -notin @($licenses[0].servicePlans) -and 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)) {
+                if (@($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $catalog.Families[$_.family].Plan -eq 'Defender' }).Count) { throw 'EmailProtectionException: Defender-only setting authorization is unused for an EOP-only recipient.' }
+                $antiPhishPolicy = Resolve-BaselineEmailPolicy $State 'AntiPhish' $recipient.address $false
+                $materialDefenderFields = @($catalog.Families.AntiPhish.DefenderFields | Where-Object {
+                    if (-not (Test-BaselineNodeMember $antiPhishPolicy $_)) { return $false }
+                    $value = Get-BaselineRecordMember $antiPhishPolicy $_ -PreserveCollection
+                    if ($null -eq $value) { return $false }
+                    if ($value -is [bool]) { return $value }
+                    if ($value -is [string]) { return -not [string]::IsNullOrWhiteSpace($value) }
+                    if ($value -is [System.Collections.IList]) { return $value.Count -gt 0 }
+                    return $true
+                })
+                $usesCustomDefenderFields = $antiPhishPolicy.IsDefault -eq $false -and $antiPhishPolicy.Name -notlike '*Preset Security Policy' -and $materialDefenderFields.Count -gt 0
+                $usesBuiltInProtection = $antiPhishPolicy.IsDefault -eq $true -and (Test-BaselineEmailRuleScope $State.BuiltIn $recipient.address $State.Groups -BuiltIn)
+                if ($usesCustomDefenderFields -or $usesBuiltInProtection) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            }
             if (-not $recipient.defender -and 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)) {
                 foreach ($rule in @($State.Presets.ATP)) {
                     if (Test-BaselineEmailRuleScope $rule $recipient.address $State.Groups) { throw "EmailProtectionNotEntitled: '$($recipient.address)' is inside Defender preset scope without approved recipient capability." }
@@ -8004,7 +8038,7 @@ function Get-BaselineExchangeCapabilityDecision {
             $recipientPlans = @(Get-BaselineRecordMember $matched[0] servicePlans)
             if ('EXCHANGE_S_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientExchangeMissing'; throw $legacy }
             $requiresDefender = $Capability -notin @('ExchangeOnline','EmailProtection') -or
-                ($Capability -eq 'EmailProtection' -and ($recipient.defender -or 'ATP_ENTERPRISE' -cin $plans))
+                ($Capability -eq 'EmailProtection' -and $recipient.defender)
             if ($requiresDefender) {
                 if ('ATP_ENTERPRISE' -cnotin $plans) { $category = 'TenantDefenderMissing'; throw $legacy }
                 if ('ATP_ENTERPRISE' -cnotin $recipientPlans) { $category = 'RecipientDefenderMissing'; throw $legacy }

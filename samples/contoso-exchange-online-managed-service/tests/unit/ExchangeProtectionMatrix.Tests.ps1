@@ -198,7 +198,6 @@ Describe 'EXR-010 effective email setting matrix' {
     It 'A02 does not select <WrongPolicy> for <Case>' -ForEach @(
         @{ Case = 'empty custom conditions apply to all recipients'; Family = 'SafeLinks'; EopStrict = $false; AtpStrict = $false; EmptyCustom = $true; WrongPolicy = 'Built-In Protection Policy'; ExpectedPolicy = 'Custom email' }
         @{ Case = 'lower numeric priority wins the whole policy'; Family = 'SafeLinks'; EopStrict = $false; AtpStrict = $false; EmptyCustom = $false; WrongPolicy = 'Custom email'; ExpectedPolicy = 'First custom' }
-        @{ Case = 'EOP Strict anti-phishing is not lost behind ATP Standard'; Family = 'AntiPhish'; EopStrict = $true; AtpStrict = $false; EmptyCustom = $false; WrongPolicy = 'Standard Preset Security Policy'; ExpectedPolicy = 'Strict Preset Security Policy' }
     ) {
         # Arrange
         $scope = @{ State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
@@ -228,6 +227,43 @@ Describe 'EXR-010 effective email setting matrix' {
         # Assert
         $policy.Name | Should -Not -BeExactly $WrongPolicy
         $policy.Name | Should -BeExactly $ExpectedPolicy
+    }
+
+    It 'A02 fails closed when matching EOP <EopLevel> and ATP <AtpLevel> anti-phishing preset levels differ' -ForEach @(
+        @{ EopLevel = 'Strict'; AtpLevel = 'Standard' }
+        @{ EopLevel = 'Standard'; AtpLevel = 'Strict' }
+    ) {
+        # Arrange
+        $scope = @{ State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
+        $eop = $scope.Clone(); $eop.Name = "$EopLevel Preset Security Policy"
+        $atp = $scope.Clone(); $atp.Name = "$AtpLevel Preset Security Policy"
+        $state = @{
+            Groups = @{}; Presets = @{ EOP = @($eop); ATP = @($atp) }
+            Families = @{ AntiPhish = @{ Rules = @(); Policies = @(
+                @{ Name = 'Standard Preset Security Policy'; IsDefault = $false }
+                @{ Name = 'Strict Preset Security Policy'; IsDefault = $false }
+            ) } }
+        }
+        # Act
+        $act = { & $script:matrixModule { param($state) Resolve-BaselineEmailPolicy $state 'AntiPhish' 'custom@contoso.example' $true } $state }
+        # Assert
+        $act | Should -Throw '*EmailProtectionPrecedenceAmbiguous*'
+    }
+
+    It 'A02 deterministically resolves matching same-level EOP and ATP anti-phishing presets' {
+        # Arrange
+        $scope = @{ Name = 'Standard Preset Security Policy'; State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
+        $state = @{
+            Groups = @{}; Presets = @{ EOP = @($scope.Clone()); ATP = @($scope.Clone()) }
+            Families = @{ AntiPhish = @{ Rules = @(); Policies = @(
+                @{ Name = 'Standard Preset Security Policy'; IsDefault = $false }
+                @{ Name = 'Strict Preset Security Policy'; IsDefault = $false }
+            ) } }
+        }
+        # Act
+        $policy = & $script:matrixModule { param($state) Resolve-BaselineEmailPolicy $state 'AntiPhish' 'custom@contoso.example' $true } $state
+        # Assert
+        $policy.Name | Should -BeExactly 'Standard Preset Security Policy'
     }
 
     It 'A02 rejects a <Case> before accepting an effective policy' -ForEach @(

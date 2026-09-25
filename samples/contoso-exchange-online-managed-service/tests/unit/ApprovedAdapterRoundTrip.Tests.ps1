@@ -19,6 +19,16 @@ BeforeDiscovery {
         @{ Scope = 'Dkim'; Noun = 'DkimSigningConfig'; Field = 'Enabled'; Mutator = 'Set-DkimSigningConfig' },
         @{ Scope = 'TenantAllowBlockList'; Noun = 'TenantAllowBlockListItems'; Field = 'Notes'; Mutator = 'Remove-TenantAllowBlockListItems' }
     )
+    $tablAdmissionNegativeCases = @(
+        @{ Case = 'sender wildcard'; EntryType = 'Sender'; EntryValue = '*@contoso.example' },
+        @{ Case = 'domain as sender'; EntryType = 'Sender'; EntryValue = 'contoso.example' },
+        @{ Case = 'domain wildcard'; EntryType = 'Domain'; EntryValue = '*.contoso.example' },
+        @{ Case = 'address as domain'; EntryType = 'Domain'; EntryValue = 'sender@contoso.example' },
+        @{ Case = 'URL wildcard'; EntryType = 'Url'; EntryValue = 'https://contoso.example/*' },
+        @{ Case = 'non-absolute URL'; EntryType = 'Url'; EntryValue = '/relative/path' },
+        @{ Case = 'file wildcard'; EntryType = 'File'; EntryValue = ('a' * 63 + '*') },
+        @{ Case = 'non-hash file'; EntryType = 'File'; EntryValue = 'not-a-sha256-hash' }
+    )
 }
 BeforeAll {
     $script:adapterRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -48,6 +58,17 @@ BeforeAll {
             if ($record.Name -ceq (Split-Path $Fixture.AttemptPath -Leaf)) { $record.Hash = (Get-FileHash $Fixture.AttemptPath).Hash.ToLowerInvariant() }
         }
         ConvertTo-Json -InputObject @($history) -Depth 40 | Set-Content $Fixture.LockPath
+    }
+    function New-ApprovedTablAdmissionFixture {
+        param([string]$EntryType, [string]$EntryValue)
+        $arguments = New-StatefulAdapterFixture -Scope TenantAllowBlockList
+        $parameters = Get-Content $arguments.ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].entryType = $EntryType
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].entryValue = $EntryValue
+        $parameters | ConvertTo-Json -Depth 30 | Set-Content $arguments.ParameterPath
+        & $script:adapterCommand -Stage Preview @arguments -Scope TenantAllowBlockList -Confirm:$false | Out-Null
+        & $script:adapterCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:adapterCertificate -Confirm:$false | Out-Null
+        $arguments
     }
 }
 Describe 'EXR-004 stateful approved adapters' {
@@ -133,6 +154,74 @@ Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
             $operation.Before.ContainsKey('Exists') | Should -BeTrue
             ($operation.Identity | ConvertFrom-Json -AsHashtable) | Should -BeOfType [System.Collections.IDictionary]
         }
+    }
+}
+Context 'Signed TABL value admission' {
+    It 'refuses <Case> before any adapter write' -ForEach $tablAdmissionNegativeCases {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType $EntryType -EntryValue $EntryValue
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        # Assert
+        $failure = $null
+        try { & $invoke } catch { $failure = $_ }
+        $failure.Exception.Message | Should -BeLike '*TenantAllowBlock*'
+        $global:adapterCalls.Count | Should -Be 0
+        Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
+    }
+    It 'applies one exact sender address through the approved adapter boundary' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'sender@contoso.example'
+        # Act
+        $result = & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false
+        # Assert
+        $result.Status | Should -BeExactly 'Succeeded'
+        @($global:adapterCalls).Count | Should -BeGreaterThan 0
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object { $_.ListType -eq 'Sender' -and $_.Value -eq 'sender@contoso.example' }).Count | Should -Be 1
+    }
+}
+Context 'Signed TABL governance binding' {
+    It 'refuses a TABL ticket changed after approval before any adapter write' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $parameters = Get-Content $arguments.ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].ticket = 'CHG004-MUTATED'
+        $parameters | ConvertTo-Json -Depth 30 | Set-Content $arguments.ParameterPath
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        # Assert
+        $invoke | Should -Throw '*ChangePreviewBindingMismatch*'
+        $global:adapterCalls.Count | Should -Be 0
+        Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
+    }
+
+    It 'refuses a TABL justification changed after approval before any adapter write' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $parameters = Get-Content $arguments.ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].justification = 'Mutated after approval'
+        $parameters | ConvertTo-Json -Depth 30 | Set-Content $arguments.ParameterPath
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        # Assert
+        $invoke | Should -Throw '*ChangePreviewBindingMismatch*'
+        $global:adapterCalls.Count | Should -Be 0
+        Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
+    }
+
+    It 'keeps unchanged approved TABL governance fields bound through apply' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $parameters = Get-Content $arguments.ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+        $entry = $parameters.workflowOptions.tenantAllowBlockEntries[0]
+        # Act
+        $result = & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false
+        # Assert
+        $entry.ticket | Should -BeExactly 'CHG004'
+        $entry.justification | Should -BeExactly 'Approved test block'
+        $result.Status | Should -BeExactly 'Succeeded'
+        @($global:adapterCalls).Count | Should -BeGreaterThan 0
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object { $_.ListType -eq 'Sender' -and $_.Value -eq 'governed@contoso.example' }).Count | Should -Be 1
     }
 }
 Context 'Creation recovery for <Scope>' -ForEach @(

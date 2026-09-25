@@ -129,6 +129,10 @@ function New-StatefulAdapterFixture {
     $parameters.entitlement.verified = $true
     $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
     $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE')
+    $parameters.entitlement.recipients = @(
+        @{ address = "user@$($parameters.PRIMARY_SMTP_DOMAIN)"; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') }
+        @{ address = $parameters.SECURITY_OPERATIONS_MAILBOX; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') }
+    )
     $created = [datetimeoffset]::UtcNow
     $parameters.workflowOptions = @{ enableDkim = $true; tenantAllowBlockEntries = @(@{ entryType = 'Domain'; entryValue = 'blocked.example'; action = 'Block'; owner = 'SecOps'; ticket = 'CHG004'; createdDateTime = $created.ToString('o'); expirationDateTime = $created.AddDays(90).ToString('o'); justification = 'Approved test block' }) }
     $parameterPath = Join-Path $directory 'parameters.json'

@@ -22,7 +22,33 @@ $moduleAst = [System.Management.Automation.Language.Parser]::ParseInput($moduleT
 $functionNames = @($moduleAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | ForEach-Object { $_.Name })
 $commandNames = @($moduleAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | ForEach-Object { $_.GetCommandName() })
 $rawCommandNames = @([regex]::Matches($moduleText, '-Command\s+([A-Za-z]+-[A-Za-z0-9]+)') | ForEach-Object { $_.Groups[1].Value })
-$knownCommands = @($functionNames) + @($commandNames) + @($rawCommandNames)
+$familyNames = @($moduleAst.FindAll({
+    param($node)
+    $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and
+        $node.Left -is [System.Management.Automation.Language.VariableExpressionAst] -and
+        $node.Left.VariablePath.UserPath -ceq 'families' -and
+        $node.Right -is [System.Management.Automation.Language.CommandExpressionAst] -and
+        $node.Right.Expression -is [System.Management.Automation.Language.HashtableAst]
+    }, $true) | ForEach-Object { $_.Right.Expression.KeyValuePairs } | ForEach-Object {
+    if ($_.Item1 -is [System.Management.Automation.Language.StringConstantExpressionAst]) { $_.Item1.Value }
+})
+$templatedCommandNames = @($moduleAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | ForEach-Object {
+    $elements = @($_.CommandElements)
+    for ($index = 0; $index -lt ($elements.Count - 1); $index++) {
+        $parameter = $elements[$index]
+        $template = $elements[$index + 1]
+        if ($parameter -is [System.Management.Automation.Language.CommandParameterAst] -and
+            $parameter.ParameterName -ceq 'Command' -and
+            $template -is [System.Management.Automation.Language.ExpandableStringExpressionAst] -and
+            $template.NestedExpressions.Count -eq 1 -and
+            $template.NestedExpressions[0] -is [System.Management.Automation.Language.VariableExpressionAst] -and
+            $template.NestedExpressions[0].VariablePath.UserPath -ceq 'family' -and
+            $template.Value -cin @('Get-${family}Policy','Get-${family}Rule')) {
+            foreach ($familyName in $familyNames) { $template.Value.Replace('${family}', $familyName) }
+        }
+    }
+})
+$knownCommands = @(@($functionNames) + @($commandNames) + @($rawCommandNames) + @($templatedCommandNames) | Sort-Object -Unique)
 $raidText = Get-Content (Join-Path $sampleRoot '../../.github/RAID.md') -Raw
 $backlogText = Get-Content (Join-Path $sampleRoot '../../.github/backlog.md') -Raw
 
