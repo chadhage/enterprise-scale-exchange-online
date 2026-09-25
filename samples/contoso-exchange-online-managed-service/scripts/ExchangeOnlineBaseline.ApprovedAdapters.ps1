@@ -175,11 +175,31 @@ function Get-ApprovedAdapterDefinitions {
             }
             { $_ -cin @('EopPresets','AtpPresets') } {
                 if ($area -ceq 'AtpPresets' -and 'ATP_ENTERPRISE' -cnotin @($Context.Entitlement.servicePlans)) { throw 'ChangeScopeNotEntitled: AtpPresets requires ATP_ENTERPRISE.' }
+                $standard = $controls['MDO-001']
+                $strict = $controls['MDO-002']
+                if (@($standard.excludedGroups).Count -ne 1 -or $standard.excludedGroups[0] -ine $parameters.MAIL_ENABLED_PRIORITY_USERS_GROUP -or @($standard.excludedSecOpsMailbox).Count -ne 1 -or $standard.excludedSecOpsMailbox[0] -ine $parameters.SECURITY_OPERATIONS_MAILBOX) { throw 'ChangePresetExclusionUnapproved: preset exclusions must match the approved priority group and security operations mailbox.' }
+                if (@($standard.sentToDomains).Count -ne 1 -or $standard.sentToDomains[0] -ine $parameters.PRIMARY_SMTP_DOMAIN -or $strict.scopeGroup -ine $parameters.MAIL_ENABLED_PRIORITY_USERS_GROUP) { throw 'ChangePresetScopeUnapproved: preset assignments must match the approved domain and priority group.' }
                 $noun = if ($area -ceq 'EopPresets') { 'EOPProtectionPolicyRule' } else { 'ATPProtectionPolicyRule' }
                 foreach ($level in @('Standard','Strict')) {
                     $target = @{ Identity = "$level Preset Security Policy" }
-                    $desired = if ($level -ceq 'Standard') { @{ RecipientDomainIs = @($controls['MDO-001'].sentToDomains); ExceptIfSentToMemberOf = @($controls['MDO-001'].excludedGroups); ExceptIfSentTo = @($controls['MDO-001'].excludedSecOpsMailbox) } } else { @{ SentToMemberOf = @($controls['MDO-002'].scopeGroup) } }
+                    $desired = @{ RecipientDomainIs = @(); SentTo = @(); SentToMemberOf = @(); ExceptIfRecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @() }
+                    if ($level -ceq 'Standard') {
+                        $desired.RecipientDomainIs = @($standard.sentToDomains)
+                        $desired.ExceptIfSentToMemberOf = @($standard.excludedGroups)
+                        $desired.ExceptIfSentTo = @($standard.excludedSecOpsMailbox)
+                    } else { $desired.SentToMemberOf = @($strict.scopeGroup) }
                     $types = @{}; foreach ($key in $desired.Keys) { $types[$key] = 'Strings' }
+                    if ($null -eq $Approved -and -not $DesiredOnly) {
+                        $rows = Get-ApprovedAdapterCollection "Get-$noun" $target
+                        if ($rows.Count -ne 1) { throw "ChangeReadIncomplete: $level preset must be initialized exactly once." }
+                        foreach ($field in $desired.Keys) {
+                            if (-not (Test-BaselineNodeMember $rows[0] $field)) {
+                                if ($types[$field] -ceq 'Strings' -and @($desired[$field]).Count -eq 0) { continue }
+                                throw "ChangeReadIncomplete: $level preset omitted $field."
+                            }
+                            if (@($desired[$field]).Count -eq 0 -and @($rows[0].$field).Count) { throw "ChangePresetScopeResidual: $level preset has residual $field assignments." }
+                        }
+                    }
                     & $fixed "$area$level" $noun $target $desired $types
                     New-ApprovedAdapterDefinition "$area$($level)State" $noun $target @{ Enabled = [bool]$(if ($level -ceq 'Standard') { $controls['MDO-001'].enabled } else { $controls['MDO-002'].enabled }) } @{ Enabled = 'Boolean' } -Toggle
                 }
@@ -343,8 +363,10 @@ function Read-ApprovedAdapterState {
     $value = @{}
     foreach ($field in $Definition.Types.Keys) {
         $source = if ($Definition.Toggle -and $Definition.Noun -ne 'InboxRule') { 'State' } else { $field }
-        if (-not (Test-BaselineNodeMember $row $source)) { throw "ChangeReadIncomplete: $($Definition.Adapter) omitted $source." }
-        $actual = $row.$source
+        if (-not (Test-BaselineNodeMember $row $source)) {
+            if ($Definition.Adapter -cmatch '^(?:Eop|Atp)Presets(?:Standard|Strict)$' -and $Definition.Types[$field] -ceq 'Strings' -and @($Definition.Desired[$field]).Count -eq 0) { $actual = @() }
+            else { throw "ChangeReadIncomplete: $($Definition.Adapter) omitted $source." }
+        } else { $actual = $row.$source }
         if ($source -ceq 'State') {
             if ($actual -cnotin @('Enabled','Disabled')) { throw 'ChangeReadIncomplete: preset State must be Enabled or Disabled.' }
             $actual = $actual -ceq 'Enabled'
@@ -380,6 +402,14 @@ function Get-BaselineConcreteOperation {
     }
 }
 
+function Test-ApprovedPresetFieldOmission {
+    param($Definition, [string]$Field, $DesiredValue, $Current)
+    $Definition.Adapter -cmatch '^(?:Eop|Atp)Presets(?:Standard|Strict)$' -and
+        $Definition.Types.ContainsKey($Field) -and $Definition.Types[$Field] -ceq 'Strings' -and
+        (Test-BaselineNodeMember $DesiredValue $Field) -and @($DesiredValue[$Field]).Count -eq 0 -and
+        $Current.Exists -and (Test-BaselineNodeMember $Current.Value $Field) -and @($Current.Value[$Field]).Count -eq 0
+}
+
 function Assert-ApprovedAdapterCommands {
     param($Definitions)
     foreach ($definition in $Definitions) {
@@ -400,8 +430,13 @@ function Assert-ApprovedAdapterCommands {
         foreach ($contract in $contracts) {
             $command = Get-Command -Name $contract.Command -ErrorAction SilentlyContinue
             if ($null -eq $command) { throw "ChangeCommandUnavailable: $($contract.Command) is required for apply and restoration." }
+            $current = $null
             foreach ($field in $contract.Fields) {
-                if (-not $command.Parameters.ContainsKey($field)) { throw "ChangeCommandUnavailable: $($contract.Command) has no $field parameter." }
+                if (-not $command.Parameters.ContainsKey($field)) {
+                    if ($null -eq $current) { $current = Read-ApprovedAdapterState $definition }
+                    if (Test-ApprovedPresetFieldOmission $definition $field $definition.Desired $current) { continue }
+                    throw "ChangeCommandUnavailable: $($contract.Command) has no $field parameter."
+                }
             }
         }
     }
@@ -450,7 +485,13 @@ function Invoke-BaselineConcreteOperation {
     }
     if ($Definition.Toggle) { $command = "$(if ($Desired.Value.Enabled) { 'Enable' } else { 'Disable' })-$($Definition.Noun)" }
     elseif ($Desired.Exists -and -not $Definition.Delete) {
+        $commandInfo = Get-Command -Name $command -ErrorAction SilentlyContinue
+        if ($null -eq $commandInfo) { throw "ChangeCommandUnavailable: $command is required for apply and restoration." }
         foreach ($field in $Desired.Value.Keys) {
+            if (-not $commandInfo.Parameters.ContainsKey($field)) {
+                if (Test-ApprovedPresetFieldOmission $Definition $field $Desired.Value $Current) { continue }
+                throw "ChangeCommandUnavailable: $command has no $field parameter."
+            }
             $arguments[$field] = $Desired.Value[$field]
             if ($Definition.Types[$field] -ceq 'Duration') { $arguments[$field] = [timespan]$Desired.Value[$field] }
             if ($Definition.Types[$field] -ceq 'DateTime') { $arguments[$field] = [datetimeoffset]$Desired.Value[$field] }
