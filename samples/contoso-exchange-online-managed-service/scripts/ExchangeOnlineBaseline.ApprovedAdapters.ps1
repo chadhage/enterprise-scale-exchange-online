@@ -50,7 +50,7 @@ function Get-ApprovedAdapterDefinitions {
     $parameters = $Context.Parameters
     $options = $parameters['workflowOptions']
     if ($null -eq $options) { $options = @{} }
-    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
+    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
@@ -125,7 +125,67 @@ function Get-ApprovedAdapterDefinitions {
                 & $fixed Organization OrganizationConfig @{} $desired $types
             }
             ExternalSender { & $fixed ExternalSender ExternalInOutlook @{} @{ Enabled = $true; AllowList = @($controls['EXO-007'].allowList) } @{ Enabled = 'Boolean'; AllowList = 'Strings' } }
-            OutboundSpam { & $fixed OutboundSpam HostedOutboundSpamFilterPolicy @{ Identity = 'Default' } @{ AutoForwardingMode = $controls['EXO-004'].automaticExternalForwarding } @{ AutoForwardingMode = 'String' } }
+            OutboundSpam {
+                if (-not $options.ContainsKey('outboundSpam')) {
+                    & $fixed OutboundSpam HostedOutboundSpamFilterPolicy @{ Identity = 'Default' } @{ AutoForwardingMode = $controls['EXO-004'].automaticExternalForwarding } @{ AutoForwardingMode = 'String' }
+                    continue
+                }
+                $outbound = $options.outboundSpam
+                $policyIdentity = 'Contoso Strict Outbound'
+                $ruleIdentity = 'Contoso Strict Outbound Rule'
+                $settingTypes = [ordered]@{
+                    RecipientLimitExternalPerHour = 'Integer'
+                    RecipientLimitInternalPerHour = 'Integer'
+                    RecipientLimitPerDay = 'Integer'
+                    ActionWhenThresholdReached = 'String'
+                    AutoForwardingMode = 'String'
+                    BccSuspiciousOutboundMail = 'Boolean'
+                    BccSuspiciousOutboundAdditionalRecipients = 'Strings'
+                    NotifyOutboundSpam = 'Boolean'
+                    NotifyOutboundSpamRecipients = 'Strings'
+                }
+                $scopeTypes = [ordered]@{
+                    From = 'Strings'
+                    FromMemberOf = 'Strings'
+                    SenderDomainIs = 'Strings'
+                    ExceptIfFrom = 'Strings'
+                    ExceptIfFromMemberOf = 'Strings'
+                    ExceptIfSenderDomainIs = 'Strings'
+                }
+                if ($null -ne $Approved -and -not $DesiredOnly) {
+                    if ($outbound -isnot [System.Collections.IDictionary] -or $outbound.policyIdentity -cne $policyIdentity -or $outbound.ruleIdentity -cne $ruleIdentity -or $outbound.profile -cne 'Strict') { throw 'OutboundSpamIdentityUnapproved: only the exact approved custom Strict policy and rule are supported.' }
+                    if ($outbound.settings -isnot [System.Collections.IDictionary] -or @($outbound.settings.Keys).Count -ne $settingTypes.Count -or @($settingTypes.Keys | Where-Object { -not $outbound.settings.ContainsKey($_) }).Count) { throw 'OutboundSpamSettingsIncomplete: all nine outbound settings are required.' }
+                    foreach ($field in @('RecipientLimitExternalPerHour','RecipientLimitInternalPerHour','RecipientLimitPerDay')) {
+                        if ($outbound.settings[$field] -isnot [int] -and $outbound.settings[$field] -isnot [long] -or [long]$outbound.settings[$field] -le 0) { throw "OutboundSpamSettingsIncomplete: $field must be a positive integer." }
+                    }
+                    if ($outbound.settings.ActionWhenThresholdReached -cnotin @('Alert','BlockUser') -or $outbound.settings.AutoForwardingMode -cnotin @('Automatic','On','Off') -or $outbound.settings.BccSuspiciousOutboundMail -isnot [bool] -or $outbound.settings.NotifyOutboundSpam -isnot [bool]) { throw 'OutboundSpamSettingsIncomplete: outbound actions and notification choices are invalid.' }
+                    foreach ($field in @('BccSuspiciousOutboundAdditionalRecipients','NotifyOutboundSpamRecipients')) {
+                        if ($null -eq $outbound.settings[$field] -or @($outbound.settings[$field] | Where-Object { $_ -isnot [string] }).Count) { throw "OutboundSpamSettingsIncomplete: $field must be a string collection." }
+                    }
+                    if ($outbound.senderScope -isnot [System.Collections.IDictionary] -or @($outbound.senderScope.Keys).Count -ne $scopeTypes.Count -or @($scopeTypes.Keys | Where-Object { -not $outbound.senderScope.ContainsKey($_) }).Count) { throw 'OutboundSpamSenderScopeMismatch: all approved sender conditions and exceptions are required.' }
+                    foreach ($field in $scopeTypes.Keys) {
+                        if ($null -eq $outbound.senderScope[$field] -or @($outbound.senderScope[$field] | Where-Object { $_ -isnot [string] }).Count) { throw "OutboundSpamSenderScopeMismatch: $field must be a string collection." }
+                    }
+                    $rules = Get-ApprovedAdapterCollection Get-HostedOutboundSpamFilterRule @{ Identity = $ruleIdentity } @('Identity','HostedOutboundSpamFilterPolicy','State')
+                    if ($rules.Count -ne 1 -or $rules[0].HostedOutboundSpamFilterPolicy -cne $policyIdentity -or $rules[0].State -cne 'Enabled') { throw 'OutboundSpamSenderScopeMismatch: the exact enabled policy-bound rule is required.' }
+                    $currentScope = [ordered]@{}
+                    foreach ($field in $scopeTypes.Keys) {
+                        if (-not (Test-BaselineNodeMember $rules[0] $field)) { throw "OutboundSpamSenderScopeMismatch: the rule omitted $field." }
+                        $currentScope[$field] = ConvertTo-ApprovedAdapterValue $rules[0].$field Strings $field
+                    }
+                    $desiredScope = [ordered]@{}; foreach ($field in $scopeTypes.Keys) { $desiredScope[$field] = ConvertTo-ApprovedAdapterValue $outbound.senderScope[$field] Strings $field }
+                    $legacyScope = [ordered]@{ From = @("legacy@$($parameters.PRIMARY_SMTP_DOMAIN)"); FromMemberOf = @(); SenderDomainIs = @(); ExceptIfFrom = @(); ExceptIfFromMemberOf = @(); ExceptIfSenderDomainIs = @() }
+                    $currentJson = ConvertTo-CanonicalJson $currentScope
+                    if ($currentJson -cne (ConvertTo-CanonicalJson $desiredScope) -and $currentJson -cne (ConvertTo-CanonicalJson $legacyScope)) { throw 'OutboundSpamSenderScopeMismatch: refusing to overwrite an unapproved sender scope.' }
+                }
+                $policy = & $fixed OutboundSpamPolicy HostedOutboundSpamFilterPolicy @{ Identity = $policyIdentity } @{} $settingTypes
+                foreach ($field in $settingTypes.Keys) { if (Test-BaselineNodeMember $outbound.settings $field) { $policy.Desired[$field] = $outbound.settings[$field] } }
+                $policy
+                $rule = & $fixed OutboundSpamRule HostedOutboundSpamFilterRule @{ Identity = $ruleIdentity } @{} $scopeTypes
+                foreach ($field in $scopeTypes.Keys) { if (Test-BaselineNodeMember $outbound.senderScope $field) { $rule.Desired[$field] = @($outbound.senderScope[$field]) } }
+                $rule.Guard = @{ HostedOutboundSpamFilterPolicy = $policyIdentity; State = 'Enabled' }
+                $rule
+            }
             RemoteDomains {
                 $remote = $controls['EXO-008']
                 $oof = Resolve-BaselineRemoteDomainOofType $remote
@@ -171,7 +231,48 @@ function Get-ApprovedAdapterDefinitions {
             Impersonation {
                 if ('ATP_ENTERPRISE' -cnotin @($Context.Entitlement.servicePlans)) { throw 'ChangeScopeNotEntitled: Impersonation requires ATP_ENTERPRISE.' }
                 $settings = $controls['MDO-009']
-                & $fixed Impersonation AntiPhishPolicy @{ Identity = 'Contoso Impersonation Protection' } @{ EnableTargetedUserProtection = $settings.enabled; EnableTargetedDomainsProtection = $settings.enabled; TargetedUsersToProtect = @($settings.protectedUsers); TargetedDomainsToProtect = @($settings.protectedDomains); ExcludedSenders = @($settings.approvedExceptions | Where-Object exceptionType -CEQ TrustedSender | ForEach-Object value); ExcludedDomains = @($settings.approvedExceptions | Where-Object exceptionType -CEQ TrustedDomain | ForEach-Object value) } @{ EnableTargetedUserProtection = 'Boolean'; EnableTargetedDomainsProtection = 'Boolean'; TargetedUsersToProtect = 'Strings'; TargetedDomainsToProtect = 'Strings'; ExcludedSenders = 'Strings'; ExcludedDomains = 'Strings' } $true @{ Name = 'Contoso Impersonation Protection' }
+                $policyIdentity = 'Contoso Impersonation Protection'
+                $ruleIdentity = 'Contoso Impersonation Protection Rule'
+                foreach ($entry in @($settings.approvedExceptions)) {
+                    $type = [string](Get-BaselineRecordMember $entry exceptionType)
+                    $value = [string](Get-BaselineRecordMember $entry value)
+                    $owner = [string](Get-BaselineRecordMember $entry owner)
+                    $ticket = [string](Get-BaselineRecordMember $entry ticket)
+                    $justification = [string](Get-BaselineRecordMember $entry justification)
+                    $expiration = Get-BaselineRecordMember $entry expirationDateTime
+                    if ($null -eq $expiration) { $expiration = Get-BaselineRecordMember $entry expiresOn }
+                    $expirationInstant = [datetimeoffset]::MinValue
+                    $expirationValid = [datetimeoffset]::TryParse([string]$expiration, [ref]$expirationInstant) -and $expirationInstant -gt [datetimeoffset]::UtcNow
+                    $valueValid = switch ($type) {
+                        TrustedSender { $value -match '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' }
+                        TrustedDomain { $value -match '^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$' }
+                        default { $false }
+                    }
+                    if (-not $valueValid -or [string]::IsNullOrWhiteSpace($owner) -or [string]::IsNullOrWhiteSpace($ticket) -or [string]::IsNullOrWhiteSpace($justification) -or -not $expirationValid) { throw 'ImpersonationExceptionInvalid: exceptions require a narrow sender or domain, governance metadata and a future expiry.' }
+                }
+                if (-not (Test-BaselineNodeMember $Context.Entitlement recipients)) { throw 'ChangeReadIncomplete: entitlement omitted recipients.' }
+                $recipients = @($Context.Entitlement.recipients)
+                foreach ($protectedUser in @($settings.protectedUsers)) {
+                    $address = ([string]$protectedUser -split ';')[-1]
+                    $recipient = @($recipients | Where-Object { [string]$_.address -ieq $address })
+                    if ($recipient.Count -ne 1 -or 'ATP_ENTERPRISE' -cnotin @($recipient[0].servicePlans)) { throw "ImpersonationRecipientNotEntitled: $address requires ATP_ENTERPRISE." }
+                }
+                if (-not $DesiredOnly) {
+                    $rules = Get-ApprovedAdapterCollection Get-AntiPhishRule @{ Identity = $ruleIdentity } @('Identity','AntiPhishPolicy','State')
+                    if ($rules.Count -ne 1 -or $rules[0].AntiPhishPolicy -cne $policyIdentity -or $rules[0].State -cne 'Enabled') { throw 'ImpersonationRuleBindingInvalid: the exact enabled custom rule must bind the approved policy.' }
+                    $scopeFields = @('RecipientDomainIs','SentTo','SentToMemberOf','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs')
+                    foreach ($field in $scopeFields) {
+                        if (-not (Test-BaselineNodeMember $rules[0] $field)) { throw "ImpersonationRuleBindingInvalid: the custom rule omitted $field." }
+                    }
+                    $approvedDomain = @([string]$parameters.PRIMARY_SMTP_DOMAIN)
+                    if ((ConvertTo-CanonicalJson (ConvertTo-ApprovedAdapterValue $rules[0].RecipientDomainIs Strings RecipientDomainIs)) -cne (ConvertTo-CanonicalJson $approvedDomain) -or @($scopeFields | Where-Object { $_ -cne 'RecipientDomainIs' -and @($rules[0].$_).Count }).Count) { throw 'ImpersonationRuleBindingInvalid: the custom rule must use only the approved recipient domain scope.' }
+                    foreach ($preset in (Get-ApprovedAdapterCollection Get-ATPProtectionPolicyRule @{} @('Identity','State'))) {
+                        if ($preset.State -cne 'Enabled') { continue }
+                        $presetDomains = if (Test-BaselineNodeMember $preset RecipientDomainIs) { @($preset.RecipientDomainIs) } else { @() }
+                        if (@($presetDomains | Where-Object { $_ -iin $approvedDomain }).Count) { throw 'ImpersonationPolicyShadowed: an enabled preset policy already matches the approved recipient domain.' }
+                    }
+                }
+                & $fixed Impersonation AntiPhishPolicy @{ Identity = $policyIdentity } @{ EnableTargetedUserProtection = $settings.enabled; EnableTargetedDomainsProtection = $settings.enabled; TargetedUsersToProtect = @($settings.protectedUsers); TargetedDomainsToProtect = @($settings.protectedDomains); ExcludedSenders = @($settings.approvedExceptions | Where-Object exceptionType -CEQ TrustedSender | ForEach-Object value); ExcludedDomains = @($settings.approvedExceptions | Where-Object exceptionType -CEQ TrustedDomain | ForEach-Object value) } @{ EnableTargetedUserProtection = 'Boolean'; EnableTargetedDomainsProtection = 'Boolean'; TargetedUsersToProtect = 'Strings'; TargetedDomainsToProtect = 'Strings'; ExcludedSenders = 'Strings'; ExcludedDomains = 'Strings' } $true @{ Name = $policyIdentity }
             }
             { $_ -cin @('EopPresets','AtpPresets') } {
                 if ($area -ceq 'AtpPresets' -and 'ATP_ENTERPRISE' -cnotin @($Context.Entitlement.servicePlans)) { throw 'ChangeScopeNotEntitled: AtpPresets requires ATP_ENTERPRISE.' }
@@ -488,8 +589,8 @@ function Invoke-BaselineConcreteOperation {
         $commandInfo = Get-Command -Name $command -ErrorAction SilentlyContinue
         if ($null -eq $commandInfo) { throw "ChangeCommandUnavailable: $command is required for apply and restoration." }
         foreach ($field in $Desired.Value.Keys) {
+            if (Test-ApprovedPresetFieldOmission $Definition $field $Desired.Value $Current) { continue }
             if (-not $commandInfo.Parameters.ContainsKey($field)) {
-                if (Test-ApprovedPresetFieldOmission $Definition $field $Desired.Value $Current) { continue }
                 throw "ChangeCommandUnavailable: $command has no $field parameter."
             }
             $arguments[$field] = $Desired.Value[$field]

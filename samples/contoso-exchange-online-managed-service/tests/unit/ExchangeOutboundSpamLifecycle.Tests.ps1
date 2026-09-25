@@ -8,7 +8,7 @@ BeforeAll {
 
     $script:signingKey = [Security.Cryptography.RSA]::Create(2048)
     $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
-        'CN=Offline Outbound Lifecycle',
+        'CN=Offline Adapter',
         $script:signingKey,
         [Security.Cryptography.HashAlgorithmName]::SHA256,
         [Security.Cryptography.RSASignaturePadding]::Pkcs1
@@ -142,7 +142,14 @@ BeforeAll {
         $apply = & $script:deployCommand @Arguments -Apply -SkipConnection -Confirm:$false
         $applied = Get-AdapterSnapshot
         $writesAfterApply = $global:adapterCalls.Count
-        $secondApply = & $script:deployCommand @Arguments -Apply -SkipConnection -Confirm:$false
+        $repeatArguments = New-OutboundSpamFixture -TestDrive $TestDrive
+        $repeatArguments.ChangeId = 'ADAPTER004-REPEAT'
+        $repeatArguments.PreviewPath = Join-Path $repeatArguments.ArtifactRoot 'preview-ADAPTER004-REPEAT.json'
+        $repeatArguments.ApprovalPath = Join-Path $repeatArguments.ArtifactRoot 'approval-ADAPTER004-REPEAT.json'
+        & $script:changeCommand -Stage Preview @repeatArguments -Scope OutboundSpam -Confirm:$false | Out-Null
+        & $script:changeCommand -Stage Approve @repeatArguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
+        & $script:changeCommand -Stage Validate @repeatArguments | Out-Null
+        $secondApply = & $script:deployCommand @repeatArguments -Apply -SkipConnection -Confirm:$false
         $noOpWrites = $global:adapterCalls.Count - $writesAfterApply
         $global:adapterState.HostedOutboundSpamFilterPolicy[0].AutoForwardingMode = 'Automatic'
         $drift = $null
@@ -256,12 +263,13 @@ Describe 'EXR-010-A05 approved outbound spam lifecycle' {
 
         # Act
         $result = Invoke-OutboundSpamLifecycle -Arguments $arguments
+        $applied = $result.Applied | ConvertFrom-Json -AsHashtable -DateKind String
 
         # Assert
         $result.Apply.Status | Should -BeExactly 'Succeeded'
         foreach ($field in $expectedSettings.Keys) {
             $result.Applied | Should -Match ([regex]::Escape($field))
-            $global:adapterState.HostedOutboundSpamFilterPolicy[0][$field] | Should -Be $expectedSettings[$field]
+            $applied.HostedOutboundSpamFilterPolicy[0][$field] | Should -Be $expectedSettings[$field]
         }
         $result.Applied | Should -Match 'strict@contoso\.example'
         $result.SecondApply.Status | Should -BeExactly 'Succeeded'
