@@ -173,7 +173,13 @@ function Invoke-ProtectionRawRegistry {
     & $Module {
         param($context, $protectionRawFixture)
         $context.Configuration = Convert-BaselinePlaceholderNode $context.Configuration $context.Parameters
-        foreach ($command in $protectionRawFixture.Keys) {
+        $installedCommands = @($protectionRawFixture.Keys)
+        $originalFunctions = @{}
+        foreach ($command in $installedCommands) {
+            $original = Microsoft.PowerShell.Management\Get-Item "Function:\$command" -ErrorAction SilentlyContinue
+            if ($null -ne $original) {
+                $originalFunctions[$command] = $original.ScriptBlock
+            }
             $body = @'
             [CmdletBinding()]
             param($Identity,$ResultSize,$QuarantinePolicyType,$Policy,$ListType,[switch]$Allow,[switch]$Block,$Mailbox,[switch]$IncludeHidden,[switch]$RetrieveEwsOperationAccessPolicy,[switch]$GetEffectiveUsers,[switch]$InactiveMailboxOnly,[switch]$SoftDeletedMailbox,[switch]$IncludeSoftDeletedRecipients,[switch]$ExtendedProperties,$Sender,$Recipient)
@@ -189,8 +195,20 @@ function Invoke-ProtectionRawRegistry {
             if ($SoftDeletedMailbox) { $items = $response['SoftDeleted'] }
             foreach ($item in $items) { [pscustomobject]$item }
 '@
-            Set-Item "Function:$command" ([scriptblock]::Create($body))
+            Set-Item "Function:$command" ([scriptblock]::Create($body).GetNewClosure())
         }
-        @(Invoke-BaselineExchangeRegistry $context)
+        try {
+            @(Invoke-BaselineExchangeRegistry $context)
+        }
+        finally {
+            foreach ($command in $installedCommands) {
+                if ($originalFunctions.ContainsKey($command)) {
+                    Set-Item "Function:$command" $originalFunctions[$command]
+                }
+                else {
+                    Remove-Item "Function:$command" -ErrorAction SilentlyContinue
+                }
+            }
+        }
     } $Fixture.Context $Fixture.Raw
 }

@@ -10798,6 +10798,118 @@ function Test-BaselineEwsState {
     return [pscustomobject]@{ Status = 'Pass'; Reason = "EwsApprovedException: exact temporary exception '$approval' verified; this is not conformance to the disabled default or proof of external approval authenticity." }
 }
 
+function Test-BaselineEwsConsumerReadiness {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$ConsumerInventory,
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$ApprovedExceptions,
+        [Parameter(Mandatory)][AllowNull()][object[]]$MailboxReadback,
+        [Parameter(Mandatory)][AllowNull()][object[]]$RetirementNotices,
+        [datetimeoffset]$Now = [datetimeoffset]::UtcNow
+    )
+
+    $consumers = @($ConsumerInventory)
+    $exceptions = @($ApprovedExceptions)
+    $mailboxes = @($MailboxReadback)
+    $notices = @($RetirementNotices)
+    if ($consumers.Count -eq 0) {
+        return [pscustomobject]@{ Status = 'Error'; Reason = 'EwsConsumerInventoryMissing' }
+    }
+
+    foreach ($consumer in $consumers) {
+        $consumerId = [string](Get-BaselineRecordMember -Node $consumer -Name 'ConsumerId')
+        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $consumer -Name 'Owner'))) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerOwnerMissing:$consumerId" }
+        }
+
+        $migrationDate = [datetimeoffset]::MinValue
+        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $consumer -Name 'MigrationOwner')) -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $consumer -Name 'MigrationDate'), [ref]$migrationDate)) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsMigrationPlanMissing:$consumerId" }
+        }
+
+        $attestedAt = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $consumer -Name 'AttestedAt'), [ref]$attestedAt) -or
+            $attestedAt -gt $Now -or ($Now - $attestedAt).TotalDays -gt 30) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerAttestationStale:$consumerId" }
+        }
+
+        $cloud = [string](Get-BaselineRecordMember -Node $consumer -Name 'Cloud')
+        $cloudNotices = @($notices | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'Cloud') -ceq $cloud })
+        if ([string]::IsNullOrWhiteSpace($cloud) -or $cloudNotices.Count -ne 1) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerCloudMismatch:$consumerId" }
+        }
+
+        $reviewedAt = [datetimeoffset]::MinValue
+        $reviewRequiredBefore = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $cloudNotices[0] -Name 'ReviewedAt'), [ref]$reviewedAt) -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $cloudNotices[0] -Name 'ReviewRequiredBefore'), [ref]$reviewRequiredBefore) -or
+            $reviewedAt -gt $Now -or ($Now - $reviewedAt).TotalDays -gt 30 -or $Now -ge $reviewRequiredBefore) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsRetirementNoticeStale:$cloud" }
+        }
+
+        $exceptionId = [string](Get-BaselineRecordMember -Node $consumer -Name 'ExceptionId')
+        if ([string]::IsNullOrWhiteSpace($exceptionId) -or
+            @($exceptions | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'ExceptionId') -ceq $exceptionId }).Count -ne 1) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerExceptionMissing:$consumerId" }
+        }
+
+        $declaredMailboxes = @((Get-BaselineRecordMember -Node $consumer -Name 'Mailboxes') | ForEach-Object { [string]$_ })
+        if ($declaredMailboxes.Count -eq 0 -or @($declaredMailboxes | Where-Object {
+                    $mailbox = $_
+                    @($mailboxes | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'Identity') -ieq $mailbox }).Count -ne 1
+                }).Count -gt 0) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = 'EwsConsumerInventoryMissing' }
+        }
+    }
+
+    $allDeclaredMailboxes = @($consumers | ForEach-Object {
+            (Get-BaselineRecordMember -Node $_ -Name 'Mailboxes') | ForEach-Object { [string]$_ }
+        })
+    foreach ($mailbox in $mailboxes) {
+        $identity = [string](Get-BaselineRecordMember -Node $mailbox -Name 'Identity')
+        if ($identity -inotcontains $allDeclaredMailboxes) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsMailboxReadbackSurplus:$identity" }
+        }
+    }
+
+    foreach ($exception in $exceptions) {
+        $exceptionId = [string](Get-BaselineRecordMember -Node $exception -Name 'ExceptionId')
+        $consumerId = [string](Get-BaselineRecordMember -Node $exception -Name 'ConsumerId')
+        $consumer = @($consumers | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'ConsumerId') -ceq $consumerId })
+        if ($consumer.Count -ne 1 -or [string](Get-BaselineRecordMember -Node $consumer[0] -Name 'ExceptionId') -cne $exceptionId) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerExceptionUnmatched:$exceptionId" }
+        }
+
+        $cloud = [string](Get-BaselineRecordMember -Node $exception -Name 'Cloud')
+        if ($cloud -cne [string](Get-BaselineRecordMember -Node $consumer[0] -Name 'Cloud')) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerExceptionCloudMismatch:$exceptionId" }
+        }
+
+        $notice = @($notices | Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'Cloud') -ceq $cloud })
+        $expiresAt = [datetimeoffset]::MinValue
+        $supportedUntil = [datetimeoffset]::MinValue
+        if ($notice.Count -ne 1 -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $exception -Name 'ExpiresAt'), [ref]$expiresAt) -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $notice[0] -Name 'ExceptionSupportedUntil'), [ref]$supportedUntil) -or
+            $expiresAt -gt $supportedUntil) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerExceptionBeyondRetirement:$exceptionId" }
+        }
+        if ($expiresAt -le $Now) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = "EwsConsumerExceptionExpired:$exceptionId" }
+        }
+    }
+
+    [pscustomobject]@{
+        Status = 'Pass'
+        Reason = 'EwsConsumerReadinessReconciled'
+        ConsumerCount = $consumers.Count
+        ExceptionCount = $exceptions.Count
+        MailboxCount = $mailboxes.Count
+        ExternalMigrationReadiness = 'Unverified'
+    }
+}
+
 function Test-ClientProtocolControl {
     [CmdletBinding()]
     param(
@@ -16698,6 +16810,132 @@ function Test-IncidentExerciseControl {
     return Test-BaselineControl -ControlId 'OPS-002' -Evidence $Evidence -Evaluator $evaluator
 }
 
+function Get-DnsOwnerHandoffEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object[]]$DomainInventory,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$HandoffCollection
+    )
+
+    if ($null -eq $DomainInventory -or @($DomainInventory).Count -eq 0) {
+        throw 'DnsDomainInventoryRequired: DNS-owner handoff evidence requires the resolved domain inventory.'
+    }
+    if ($null -eq $HandoffCollection) {
+        throw 'DnsOwnerHandoffCollectionRequired: DNS-owner handoff evidence requires an injected offline collection.'
+    }
+
+    $inventory = @($DomainInventory)
+    $collection = { & $HandoffCollection }.GetNewClosure()
+    $evidence = Get-BaselineEvidence -ControlId 'EXR-011-A03' -Source 'DnsOwnerHandoff' `
+        -Command 'Injected DNS-owner handoff collection' -Collection $collection
+
+    [pscustomobject][ordered]@{
+        ControlId = $evidence.ControlId
+        Source = $evidence.Source
+        Command = $evidence.Command
+        Collected = $evidence.Collected
+        FailureReason = $evidence.FailureReason
+        Value = $evidence.Value
+        CollectedAtUtc = $evidence.CollectedAtUtc
+        DomainInventory = $inventory
+    }
+}
+
+function Test-DnsOwnerHandoffControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Evidence,
+        [Parameter(Mandatory)][string]$TenantId,
+        [datetimeoffset]$AsOfUtc = [datetimeoffset]::UtcNow,
+        [timespan]$MaximumProofAge = ([timespan]::FromDays(30))
+    )
+
+    $result = {
+        param([string]$Reason, [object]$Normalized = @())
+        [pscustomobject]@{ Status = 'Unverified'; Reason = $Reason; Normalized = $Normalized }
+    }
+    if ($null -eq $Evidence -or -not [bool](Get-BaselineRecordMember -Node $Evidence -Name 'Collected')) {
+        return & $result "DnsOwnerHandoffCollectionFailed: $([string](Get-BaselineRecordMember -Node $Evidence -Name 'FailureReason'))"
+    }
+
+    $page = Get-BaselineRecordMember -Node $Evidence -Name 'Value'
+    if ((Get-BaselineRecordMember -Node $page -Name 'Complete') -ne $true -or
+        -not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $page -Name 'NextLink'))) {
+        return & $result 'DnsOwnerHandoffPagingIncomplete: the injected handoff collection did not return a complete page.'
+    }
+
+    $normalizeDomain = { param($Value) ([string]$Value).Trim().TrimEnd('.').ToLowerInvariant() }
+    $items = @(Get-BaselineRecordMember -Node $page -Name 'Items')
+    $normalized = [System.Collections.Generic.List[object]]::new()
+    $identity = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($item in $items) {
+        if ('Domain' -cnotin @(Get-BaselineRecordMemberName -Node $item) -or
+            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $item -Name 'Domain'))) {
+            return & $result 'DnsOwnerHandoffIncomplete: every handoff record must carry its raw domain identity.'
+        }
+        $domain = & $normalizeDomain (Get-BaselineRecordMember -Node $item -Name 'Domain')
+        if (-not $identity.Add($domain)) {
+            return & $result "DnsOwnerHandoffIdentityAmbiguous: normalized domain '$domain' occurs more than once."
+        }
+
+        $mx = Get-BaselineRecordMember -Node $item -Name 'Mx'
+        if ([string](Get-BaselineRecordMember -Node $mx -Name 'Provenance') -cne 'MicrosoftProvided') {
+            return & $result "DnsMxProvenanceInvalid: '$domain' MX evidence is not explicitly Microsoft-provided."
+        }
+
+        $proof = Get-BaselineRecordMember -Node $item -Name 'OwnerProof'
+        if ($null -eq $proof) {
+            return & $result "DnsOwnerProofMissing: '$domain' carries no DNS-owner proof."
+        }
+        $proofDomain = & $normalizeDomain (Get-BaselineRecordMember -Node $proof -Name 'Domain')
+        if ($proofDomain -cne $domain -or [string](Get-BaselineRecordMember -Node $proof -Name 'TenantId') -cne $TenantId) {
+            return & $result "DnsOwnerProofBindingMismatch: '$domain' owner proof is bound to another domain or tenant."
+        }
+        $suppliedAt = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $proof -Name 'SuppliedAtUtc'), [ref]$suppliedAt) -or
+            $suppliedAt -gt $AsOfUtc -or ($AsOfUtc - $suppliedAt) -gt $MaximumProofAge) {
+            return & $result "DnsOwnerProofStale: '$domain' owner proof is outside the admitted age."
+        }
+
+        $dmarc = Get-BaselineRecordMember -Node $item -Name 'Dmarc'
+        if ((Get-BaselineRecordMember -Node $dmarc -Name 'Inherited') -eq $true) {
+            $inventoryRecord = @(Get-BaselineRecordMember -Node $Evidence -Name 'DomainInventory' | Where-Object {
+                    (& $normalizeDomain (Get-BaselineRecordMember -Node $_ -Name 'DomainName')) -ceq $domain
+                })
+            $parent = if ($inventoryRecord.Count -eq 1) { & $normalizeDomain (Get-BaselineRecordMember -Node $inventoryRecord[0] -Name 'ParentDomain') } else { '' }
+            if ([string]::IsNullOrWhiteSpace($parent) -or
+                (& $normalizeDomain (Get-BaselineRecordMember -Node $dmarc -Name 'PolicyDomain')) -cne $parent) {
+                return & $result "DnsDmarcInheritanceInvalid: '$domain' does not inherit DMARC from its declared parent."
+            }
+        }
+
+        $normalized.Add([pscustomobject][ordered]@{
+                Domain = $domain
+                TenantId = [string](Get-BaselineRecordMember -Node $item -Name 'TenantId')
+                Mx = $mx
+                Autodiscover = Get-BaselineRecordMember -Node $item -Name 'Autodiscover'
+                Spf = Get-BaselineRecordMember -Node $item -Name 'Spf'
+                Dmarc = $dmarc
+                MtaSts = Get-BaselineRecordMember -Node $item -Name 'MtaSts'
+                TlsRpt = Get-BaselineRecordMember -Node $item -Name 'TlsRpt'
+                Reporting = Get-BaselineRecordMember -Node $item -Name 'Reporting'
+                OwnerProof = $proof
+            })
+    }
+
+    $attestation = Get-BaselineRecordMember -Node $items[0] -Name 'Attestation'
+    $attestationAggregate = [pscustomobject][ordered]@{
+        StagedAtUtc = Get-BaselineRecordMember -Node $attestation -Name 'StagedAtUtc'
+        PropagationCheckedAtUtc = Get-BaselineRecordMember -Node $attestation -Name 'PropagationCheckedAtUtc'
+        CutoverApprovedAtUtc = Get-BaselineRecordMember -Node $attestation -Name 'CutoverApprovedAtUtc'
+        RollbackTestedAtUtc = Get-BaselineRecordMember -Node $attestation -Name 'RollbackTestedAtUtc'
+    }
+    $normalizedArray = $normalized.ToArray()
+    Add-Member -InputObject $normalizedArray -MemberType NoteProperty -Name 'Attestation' -Value $attestationAggregate
+
+    return & $result 'ExternalDnsPrerequisiteUnverified: RAID-D04 requires independent external DNS readiness evidence.' $normalizedArray
+}
+
 Export-ModuleMember -Function @(
     'Invoke-BaselineExchangeRawCollection'
     'Assert-BaselineExchangeMutationPlan'
@@ -16774,6 +17012,7 @@ Export-ModuleMember -Function @(
     'Get-ClientProtocolEvidence'
     'Resolve-BaselineEwsPolicy'
     'Test-BaselineEwsState'
+    'Test-BaselineEwsConsumerReadiness'
     'Test-ClientProtocolControl'
     'Get-ExchangeRoleAssignmentEvidence'
     'Test-ExchangeRoleAssignmentControl'
@@ -16845,6 +17084,8 @@ Export-ModuleMember -Function @(
     'Test-ChangeSafetyControl'
     'Get-IncidentExerciseEvidence'
     'Test-IncidentExerciseControl'
+    'Get-DnsOwnerHandoffEvidence'
+    'Test-DnsOwnerHandoffControl'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'
