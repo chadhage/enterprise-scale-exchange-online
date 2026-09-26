@@ -50,7 +50,7 @@ function Get-ApprovedAdapterDefinitions {
     $parameters = $Context.Parameters
     $options = $parameters['workflowOptions']
     if ($null -eq $options) { $options = @{} }
-    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
+    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules','fullAccessDelegations','sendOnBehalfDelegations','organizationAllowList','applicationAssignmentScope')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
@@ -70,6 +70,311 @@ function Get-ApprovedAdapterDefinitions {
     }
     foreach ($area in $Scope) {
         switch -CaseSensitive ($area) {
+            ApplicationAssignmentScope {
+                $settings = $options['applicationAssignmentScope']
+                if ($settings -isnot [System.Collections.IDictionary]) { throw 'ApplicationAuthorizationAssessmentMissing: EXR-007-A03-T01 assessment is required.' }
+                $tenantId = ([string](Get-BaselineRecordMember $settings tenantId)).Trim()
+                $applicationId = ([string](Get-BaselineRecordMember $settings applicationId)).Trim()
+                $servicePrincipalObjectId = ([string](Get-BaselineRecordMember $settings servicePrincipalObjectId)).Trim()
+                $inputHash = ([string](Get-BaselineRecordMember $settings inputHash)).Trim()
+                if ($tenantId -cne [string]$parameters.MICROSOFT_ENTRA_TENANT_GUID -or
+                    $tenantId -cne [string](Get-BaselineRecordMember (Get-BaselineRecordMember $parameters entitlement) tenantId) -or
+                    $tenantId -cne [string](Get-BaselineRecordMember (Get-BaselineRecordMember $parameters domainInventory) tenantId)) {
+                    throw 'ApplicationAuthorizationAssessmentMismatch: TenantId differs from the exact Exchange input tenant.'
+                }
+                if ($applicationId -notmatch '^[0-9a-fA-F-]{36}$' -or $servicePrincipalObjectId -notmatch '^[0-9a-fA-F-]{36}$' -or $inputHash -notmatch '^[0-9A-Fa-f]{64}$') { throw 'ApplicationAuthorizationAssessmentMismatch: exact ApplicationId, ServicePrincipalObjectId and InputHash are required.' }
+
+                $assessment = Get-BaselineRecordMember $settings assessment
+                if ($assessment -isnot [System.Collections.IDictionary]) { throw 'ApplicationAuthorizationAssessmentMissing: EXR-007-A03-T01 assessment is required.' }
+                if ([string](Get-BaselineRecordMember $assessment ControlId) -cne 'EXR-007-A03-T01' -or [string](Get-BaselineRecordMember $assessment Status) -cne 'Pass') { throw 'ApplicationAuthorizationAssessmentMismatch: EXR-007-A03-T01 must report Pass.' }
+                $assessedAt = [datetimeoffset]::MinValue
+                if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $assessment AssessedAtUtc), [ref]$assessedAt) -or $assessedAt -gt [datetimeoffset]::UtcNow -or $assessedAt -lt [datetimeoffset]::UtcNow.AddDays(-1)) { throw 'ApplicationAuthorizationAssessmentStale: EXR-007-A03-T01 must be current within 24 hours.' }
+                if ([string](Get-BaselineRecordMember $assessment InputHash) -cne $inputHash) { throw 'ApplicationAuthorizationAssessmentMismatch: InputHash differs from the assessed input.' }
+                if ([string](Get-BaselineRecordMember $assessment ExternalReadiness) -cne 'Unverified' -or (Get-BaselineRecordMember $assessment ReleaseReady) -isnot [bool] -or (Get-BaselineRecordMember $assessment ReleaseReady) -or
+                    'Exchange probes cannot prove absence of tenant-wide Entra grants.' -cnotin @((Get-BaselineRecordMember $assessment Limitations))) {
+                    throw 'ApplicationAuthorizationAssessmentMismatch: external readiness and Exchange probe limitations must remain explicit.'
+                }
+
+                $evidence = Get-BaselineRecordMember $settings additiveEntraEvidence
+                if ($evidence -isnot [System.Collections.IDictionary] -or (Get-BaselineRecordMember $evidence Complete) -isnot [bool] -or -not (Get-BaselineRecordMember $evidence Complete)) { throw 'AdditiveEntraEvidenceMissing: complete independent Entra evidence is required.' }
+                foreach ($binding in @{ TenantId = $tenantId; ApplicationId = $applicationId; ServicePrincipalObjectId = $servicePrincipalObjectId; InputHash = $inputHash }.GetEnumerator()) {
+                    if ([string](Get-BaselineRecordMember $evidence $binding.Key) -cne $binding.Value) { throw "AdditiveEntraEvidenceMismatch: $($binding.Key) differs from the assessed input." }
+                }
+                $suppliedAt = [datetimeoffset]::MinValue
+                if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $evidence SuppliedAtUtc), [ref]$suppliedAt) -or $suppliedAt -gt [datetimeoffset]::UtcNow -or $suppliedAt -lt [datetimeoffset]::UtcNow.AddDays(-1) -or
+                    [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $evidence SourceReference))) { throw 'AdditiveEntraEvidenceStale: current independently sourced evidence is required.' }
+                if ([string](Get-BaselineRecordMember $evidence ConsentType) -cne 'AdminConsent' -or
+                    (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $evidence ApplicationRoles))) -cne (ConvertTo-CanonicalJson @('Exchange.ManageAsApp')) -or
+                    (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $evidence ConsentedPermissions))) -cne (ConvertTo-CanonicalJson @('Exchange.ManageAsApp'))) {
+                    throw 'ApplicationAssignmentScopeRightsExpansion: only the additive Exchange.ManageAsApp prerequisite is recognized; no consent or grant is performed.'
+                }
+
+                $assignments = @((Get-BaselineRecordMember $settings assignments) | Where-Object { $null -ne $_ })
+                $scopes = @((Get-BaselineRecordMember $settings managementScopes) | Where-Object { $null -ne $_ })
+                if ($assignments.Count -ne 1 -or $scopes.Count -ne 1) { throw 'ApplicationAssignmentUnsupported: exactly one assignment and one custom recipient scope are required.' }
+                $assignment = $assignments[0]
+                $managementScope = $scopes[0]
+                $assignmentIdentity = ([string](Get-BaselineRecordMember $assignment identity)).Trim()
+                $scopeIdentity = ([string](Get-BaselineRecordMember $managementScope identity)).Trim()
+                $role = [string](Get-BaselineRecordMember $assignment role)
+                if ($role -cne 'Application Mail.Read') { throw "ApplicationAssignmentUnsupported: $role is not the approved least-privilege application role." }
+                if ([string]::IsNullOrWhiteSpace($assignmentIdentity) -or [string](Get-BaselineRecordMember $assignment roleAssignee) -cne $servicePrincipalObjectId -or
+                    [string](Get-BaselineRecordMember $assignment roleAssigneeType) -cne 'ServicePrincipal' -or (Get-BaselineRecordMember $assignment enabled) -isnot [bool] -or -not (Get-BaselineRecordMember $assignment enabled)) {
+                    throw 'ApplicationAssignmentUnsupported: assignment identity, service principal and enabled state must match the assessment.'
+                }
+                $recipientReadScope = [string](Get-BaselineRecordMember $assignment recipientReadScope)
+                $recipientWriteScope = [string](Get-BaselineRecordMember $assignment recipientWriteScope)
+                $customResourceScope = [string](Get-BaselineRecordMember $assignment customResourceScope)
+                if ($recipientReadScope -cne 'CustomRecipientScope') { throw "ApplicationAssignmentScopeRightsExpansion: RecipientReadScope '$recipientReadScope' must equal 'CustomRecipientScope'." }
+                if ($recipientWriteScope -cne 'None') { throw "ApplicationAssignmentScopeRightsExpansion: RecipientWriteScope '$recipientWriteScope' must equal 'None'." }
+                if ([string]::IsNullOrWhiteSpace($scopeIdentity)) { throw "ApplicationAssignmentScopeRightsExpansion: ManagementScope Identity '$scopeIdentity' must be non-empty." }
+                if ($customResourceScope -cne $scopeIdentity) { throw "ApplicationAssignmentScopeRightsExpansion: CustomResourceScope '$customResourceScope' must equal approved ManagementScope Identity '$scopeIdentity'." }
+                if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $managementScope recipientRoot)) -or
+                    [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $managementScope recipientRestrictionFilter)) -or
+                    $null -ne (Get-BaselineRecordMember $managementScope serverRestrictionFilter) -or (Get-BaselineRecordMember $managementScope exclusive) -isnot [bool] -or (Get-BaselineRecordMember $managementScope exclusive)) {
+                    throw 'ApplicationAssignmentScopeRightsExpansion: only a non-exclusive custom recipient scope with no server scope is supported.'
+                }
+                $normalized = Get-BaselineRecordMember $assessment Normalized
+                if ((ConvertTo-CanonicalJson @((Get-BaselineRecordMember $normalized Assignments))) -cne (ConvertTo-CanonicalJson @(@{ Identity = $assignmentIdentity; Role = $role; RoleAssignee = $servicePrincipalObjectId; RoleAssigneeType = 'ServicePrincipal'; Enabled = $true; RecipientReadScope = 'CustomRecipientScope'; RecipientWriteScope = 'None'; CustomResourceScope = $scopeIdentity })) -or
+                    (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $normalized ManagementScopes))) -cne (ConvertTo-CanonicalJson @(@{ Identity = $scopeIdentity; RecipientRoot = [string]$managementScope.recipientRoot; RecipientRestrictionFilter = [string]$managementScope.recipientRestrictionFilter; ServerRestrictionFilter = $null; Exclusive = $false }))) {
+                    throw 'ApplicationAuthorizationAssessmentMismatch: assignment or ManagementScope differs from the T01 normalized assessment.'
+                }
+
+                $allowedMailboxes = @((Get-BaselineRecordMember $settings allowedMailboxes))
+                $deniedMailboxes = @((Get-BaselineRecordMember $settings deniedMailboxes))
+                if ($allowedMailboxes.Count -ne 1 -or $deniedMailboxes.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$allowedMailboxes[0]) -or [string]::IsNullOrWhiteSpace([string]$deniedMailboxes[0]) -or [string]$allowedMailboxes[0] -ieq [string]$deniedMailboxes[0]) { throw 'ApplicationAssignmentScopeRightsExpansion: exactly one distinct allowed and denied mailbox probe is required.' }
+                $propagation = Get-BaselineRecordMember $settings propagation
+                $maximumDelay = [timespan]::Zero
+                if ($propagation -isnot [System.Collections.IDictionary] -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $propagation statement)) -or
+                    -not [timespan]::TryParse([string](Get-BaselineRecordMember $propagation maximumDelay), [ref]$maximumDelay) -or $maximumDelay -le [timespan]::Zero) { throw 'AuthorizationPropagationLimitMissing: a statement and positive maximum delay are required.' }
+
+                if (-not $DesiredOnly) {
+                    $servicePrincipals = Get-ApprovedAdapterCollection Get-ServicePrincipal @{ Identity = $servicePrincipalObjectId } @('Identity','ObjectId','AppId')
+                    if ($servicePrincipals.Count -ne 1 -or [string]$servicePrincipals[0].ObjectId -cne $servicePrincipalObjectId -or [string]$servicePrincipals[0].AppId -cne $applicationId) { throw 'AdditiveEntraEvidenceMismatch: ServicePrincipalObjectId or ApplicationId differs from Exchange readback.' }
+                    $null = Get-ApprovedAdapterCollection Get-ManagementScope @{ ResultSize = 'Unlimited' } @('Identity','RecipientRoot','RecipientRestrictionFilter','ServerRestrictionFilter','Exclusive')
+                    $null = Get-ApprovedAdapterCollection Get-ManagementRoleAssignment @{ ResultSize = 'Unlimited' } @('Identity','Name','Role','RoleAssignee','RoleAssigneeType','Enabled','RecipientReadScope','RecipientWriteScope','CustomResourceScope')
+                }
+
+                New-ApprovedAdapterDefinition ApplicationManagementScope ManagementScope @{ Identity = $scopeIdentity } @{
+                    RecipientRoot = [string]$managementScope.recipientRoot
+                    RecipientRestrictionFilter = [string]$managementScope.recipientRestrictionFilter
+                    ServerRestrictionFilter = $null
+                    Exclusive = $false
+                } @{ RecipientRoot = 'String'; RecipientRestrictionFilter = 'String'; ServerRestrictionFilter = 'NullableString'; Exclusive = 'Boolean' } -Create -CreateTarget @{ Name = $scopeIdentity }
+                New-ApprovedAdapterDefinition ApplicationRoleAssignment ManagementRoleAssignment @{ Identity = $assignmentIdentity } @{
+                    Name = $assignmentIdentity
+                    Role = $role
+                    RoleAssignee = $servicePrincipalObjectId
+                    RoleAssigneeType = 'ServicePrincipal'
+                    Enabled = $true
+                    RecipientReadScope = 'CustomRecipientScope'
+                    RecipientWriteScope = 'None'
+                    CustomResourceScope = $scopeIdentity
+                } @{ Name = 'String'; Role = 'String'; RoleAssignee = 'String'; RoleAssigneeType = 'String'; Enabled = 'Boolean'; RecipientReadScope = 'String'; RecipientWriteScope = 'String'; CustomResourceScope = 'String' } -Create -CreateTarget @{ Name = $assignmentIdentity }
+            }
+            OrganizationAllowList {
+                $settings = $options['organizationAllowList']
+                if ($settings -isnot [System.Collections.IDictionary]) { throw 'ChangeOptionsInvalid: OrganizationAllowList settings are required.' }
+                $connection = Get-BaselineRecordMember $settings connectionFilter
+                $antiSpam = Get-BaselineRecordMember $settings antiSpam
+                if ($connection -isnot [System.Collections.IDictionary] -or $antiSpam -isnot [System.Collections.IDictionary]) { throw 'ChangeOptionsInvalid: OrganizationAllowList connection-filter and anti-spam settings are required.' }
+                $connectionIdentity = ([string](Get-BaselineRecordMember $connection identity)).Trim()
+                $contentIdentity = ([string](Get-BaselineRecordMember $antiSpam identity)).Trim()
+                if ([string]::IsNullOrWhiteSpace($connectionIdentity) -or [string]::IsNullOrWhiteSpace($contentIdentity)) { throw 'ChangeOptionsInvalid: OrganizationAllowList policy identities are required.' }
+                if ((Get-BaselineRecordMember $connection enableSafeList) -isnot [bool]) { throw 'ChangeOptionsInvalid: OrganizationAllowList enableSafeList must be Boolean.' }
+
+                $validateApproval = {
+                    param($Entry, [string]$ExpectedKind)
+                    $value = ([string](Get-BaselineRecordMember $Entry value)).Trim()
+                    if ([string](Get-BaselineRecordMember $Entry kind) -cne $ExpectedKind -or [string]::IsNullOrWhiteSpace($value)) { throw 'ChangeOptionsInvalid: OrganizationAllowList entry kind and value are required.' }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $Entry owner))) { throw "OrganizationAllowListOwnerRequired: $value requires an accountable owner." }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $Entry approval))) { throw "OrganizationAllowListApprovalRequired: $value requires an approval reference." }
+                    $expiresOn = [datetimeoffset]::MinValue
+                    if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $Entry expiresOn), [ref]$expiresOn) -or $expiresOn -le [datetimeoffset]::UtcNow) { throw "OrganizationAllowListApprovalExpired: $value requires a future expiration." }
+                    $authentication = Get-BaselineRecordMember $Entry authentication
+                    if ($authentication -isnot [System.Collections.IDictionary] -or
+                        (Get-BaselineRecordMember $authentication required) -isnot [bool] -or
+                        -not (Get-BaselineRecordMember $authentication required) -or
+                        (Get-BaselineRecordMember $authentication verified) -isnot [bool] -or
+                        -not (Get-BaselineRecordMember $authentication verified) -or
+                        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $authentication evidence))) {
+                        throw "OrganizationAllowListAuthenticationRequired: $value requires independently verified authentication."
+                    }
+                    $value
+                }
+
+                $ipAllowList = @(
+                    foreach ($entry in @((Get-BaselineRecordMember $connection ipAllowEntries) | Where-Object { $null -ne $_ })) {
+                        $value = & $validateApproval $entry IpAddress
+                        $parts = $value -split '/', 2
+                        $address = $null
+                        $prefix = 0
+                        if ($parts.Count -ne 2 -or -not [Net.IPAddress]::TryParse($parts[0], [ref]$address) -or -not [int]::TryParse($parts[1], [ref]$prefix) -or
+                            ($address.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork -and $prefix -ne 32) -or
+                            ($address.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetworkV6 -and $prefix -ne 128)) {
+                            throw "OrganizationAllowListIpScopeTooBroad: $value must identify one exact IP address."
+                        }
+                        if ((Get-BaselineRecordMember $entry shared) -isnot [bool] -or (Get-BaselineRecordMember $entry shared)) { throw "OrganizationAllowListSharedIpTrust: $value cannot be shared by unrelated senders or tenants." }
+                        $value
+                    }
+                )
+                $allowedSenders = @(
+                    foreach ($entry in @((Get-BaselineRecordMember $antiSpam allowedSenders) | Where-Object { $null -ne $_ })) {
+                        & $validateApproval $entry Sender
+                    }
+                )
+                $allowedSenderDomains = @(
+                    foreach ($entry in @((Get-BaselineRecordMember $antiSpam allowedSenderDomains) | Where-Object { $null -ne $_ })) {
+                        & $validateApproval $entry Domain
+                    }
+                )
+
+                if (-not $DesiredOnly) {
+                    $null = Get-ApprovedAdapterCollection Get-HostedConnectionFilterPolicy @{ ResultSize = 'Unlimited' } @('Identity','IPAllowList','EnableSafeList')
+                    $null = Get-ApprovedAdapterCollection Get-HostedContentFilterPolicy @{ ResultSize = 'Unlimited' } @('Identity','AllowedSenders','AllowedSenderDomains')
+                }
+                & $fixed OrganizationAllowListConnection HostedConnectionFilterPolicy @{ Identity = $connectionIdentity } @{ IPAllowList = $ipAllowList; EnableSafeList = [bool]$connection.enableSafeList } @{ IPAllowList = 'Strings'; EnableSafeList = 'Boolean' }
+                & $fixed OrganizationAllowListContent HostedContentFilterPolicy @{ Identity = $contentIdentity } @{ AllowedSenders = $allowedSenders; AllowedSenderDomains = $allowedSenderDomains } @{ AllowedSenders = 'Strings'; AllowedSenderDomains = 'Strings' }
+            }
+            FullAccess {
+                $delegations = @($options['fullAccessDelegations'] | Where-Object { $null -ne $_ })
+                if ($delegations.Count -eq 0) { throw 'FullAccessApprovalRequired: at least one explicitly approved FullAccess delegation is required.' }
+                $approvedDelegation = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach ($delegation in $delegations) {
+                    $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                    $mailboxType = [string](Get-BaselineRecordMember $delegation mailboxType)
+                    $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
+                    $delegateType = [string](Get-BaselineRecordMember $delegation delegateType)
+                    if ($mailbox -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $mailboxType -cnotin @('UserMailbox','SharedMailbox')) { throw 'FullAccessMailboxInventoryIncomplete: every delegation requires one exact applicable user or shared mailbox.' }
+                    if ($delegate -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $delegateType -cnotin @('User','NestedGroup')) { throw 'FullAccessPrincipalOwnershipUnresolved: every delegate requires an exact supported principal classification.' }
+                    if (Test-BaselineNodeMember $delegation equivalentPermission) { throw 'FullAccessPermissionTypeBoundary: SendAs and SendOnBehalf are independent permissions and cannot authorize FullAccess.' }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $delegation owner))) { throw 'FullAccessOwnerRequired: every FullAccess delegation requires a current mailbox owner.' }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $delegation approval))) { throw 'FullAccessApprovalRequired: every FullAccess delegation requires an approval reference.' }
+                    $expiresOn = [datetimeoffset]::MinValue
+                    if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $delegation expiresOn), [ref]$expiresOn) -or $expiresOn -le [datetimeoffset]::UtcNow) { throw 'FullAccessApprovalExpired: every FullAccess approval requires a future expiration.' }
+                    $identityEvidence = Get-BaselineRecordMember $delegation identityEvidence
+                    if ($identityEvidence -isnot [System.Collections.IDictionary] -or (Get-BaselineRecordMember $identityEvidence resolved) -isnot [bool] -or -not (Get-BaselineRecordMember $identityEvidence resolved) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $identityEvidence source)) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $identityEvidence reference))) { throw "FullAccessPrincipalIdentityUnresolved: $delegate requires independently supplied resolved identity evidence." }
+                    $ownershipEvidence = Get-BaselineRecordMember $delegation ownershipEvidence
+                    if ($ownershipEvidence -isnot [System.Collections.IDictionary] -or (Get-BaselineRecordMember $ownershipEvidence resolved) -isnot [bool] -or -not (Get-BaselineRecordMember $ownershipEvidence resolved) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $ownershipEvidence source)) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $ownershipEvidence reference))) { throw "FullAccessPrincipalOwnershipUnresolved: $delegate requires independently supplied resolved ownership evidence." }
+                    if (-not $approvedDelegation.Add("$mailbox|$delegate")) { throw 'FullAccessApprovalRequired: duplicate FullAccess delegation approvals are ambiguous.' }
+                }
+                if (-not $DesiredOnly) {
+                    $mailboxes = Get-ApprovedAdapterCollection Get-Mailbox @{ ResultSize = 'Unlimited' } @('Identity','PrimarySmtpAddress','RecipientTypeDetails')
+                    $applicable = @($mailboxes | Where-Object RecipientTypeDetails -Cin @('UserMailbox','SharedMailbox'))
+                    foreach ($delegation in $delegations) {
+                        $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                        $mailboxType = [string](Get-BaselineRecordMember $delegation mailboxType)
+                        $match = @($applicable | Where-Object { [string]$_.PrimarySmtpAddress -ieq $mailbox -and [string]$_.RecipientTypeDetails -ceq $mailboxType })
+                        if ($match.Count -ne 1) { throw "FullAccessMailboxInventoryIncomplete: $mailbox is not present exactly once as $mailboxType." }
+                    }
+                    foreach ($mailbox in $applicable) {
+                        if (@($delegations | Where-Object { [string]$_.mailbox -ieq [string]$mailbox.PrimarySmtpAddress }).Count -eq 0) { throw "FullAccessMailboxInventoryIncomplete: $($mailbox.PrimarySmtpAddress) is an applicable mailbox omitted from the approved inventory." }
+                    }
+                    $rawPermissions = @(
+                        foreach ($mailbox in $applicable) {
+                            & Get-MailboxPermission -Identity $mailbox.PrimarySmtpAddress -ResultSize Unlimited -ErrorAction Stop
+                        }
+                    )
+                    $permissionIdentity = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                    foreach ($permission in $rawPermissions) {
+                        foreach ($field in @('Identity','Mailbox','User','AccessRights','IsInherited','Deny')) {
+                            if (-not (Test-BaselineNodeMember $permission $field) -or $null -eq $permission.$field) { throw "ChangeReadIncomplete: Get-MailboxPermission omitted $field." }
+                        }
+                        $normalizedIdentity = ([string]$permission.Identity).Trim().ToLowerInvariant()
+                        if ([string]::IsNullOrWhiteSpace($normalizedIdentity) -or -not $permissionIdentity.Add($normalizedIdentity)) { throw 'ChangeReadIncomplete: Get-MailboxPermission returned duplicate permission identity.' }
+                    }
+                    foreach ($permission in $rawPermissions) {
+                        if ([string]$permission.User -ieq 'NT AUTHORITY\SELF' -and $permission.IsInherited -isnot [bool] -or [string]$permission.User -ieq 'NT AUTHORITY\SELF' -and -not $permission.IsInherited) { throw "FullAccessEntryClassificationInvalid: NT AUTHORITY\SELF must remain an inherited system entry." }
+                        if ($permission.IsInherited -isnot [bool] -or $permission.Deny -isnot [bool]) { throw 'FullAccessEntryClassificationInvalid: permission inheritance and deny classification must be Boolean.' }
+                        if (-not $permission.IsInherited -and -not $permission.Deny -and 'FullAccess' -cin @($permission.AccessRights) -and -not $approvedDelegation.Contains("$(([string]$permission.Mailbox).Trim())|$(([string]$permission.User).Trim())")) { throw "FullAccessUnauthorized: $($permission.User) has an explicit FullAccess grant to $($permission.Mailbox) without approval." }
+                    }
+                }
+                foreach ($delegation in $delegations) {
+                    $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                    $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
+                    $definition = New-ApprovedAdapterDefinition FullAccess MailboxPermission @{ Identity = $mailbox; User = $delegate; AccessRights = @('FullAccess') } @{ AccessRights = @('FullAccess') } @{ AccessRights = 'Strings' } -Create
+                    $definition.Set = 'Add-MailboxPermission'
+                    $definition.New = 'Add-MailboxPermission'
+                    $definition.Remove = 'Remove-MailboxPermission'
+                    $definition
+                }
+            }
+            SendOnBehalf {
+                $delegations = @($options['sendOnBehalfDelegations'] | Where-Object { $null -ne $_ })
+                if ($delegations.Count -eq 0) { throw 'SendOnBehalfApprovalRequired: at least one explicitly approved SendOnBehalf delegation is required.' }
+                $approvedDelegation = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                $approvedByMailbox = @{}
+                foreach ($delegation in $delegations) {
+                    $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                    $mailboxType = [string](Get-BaselineRecordMember $delegation mailboxType)
+                    $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
+                    $delegateType = [string](Get-BaselineRecordMember $delegation delegateType)
+                    if ($mailbox -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $mailboxType -cnotin @('UserMailbox','SharedMailbox')) { throw 'SendOnBehalfMailboxInventoryIncomplete: every delegation requires one exact applicable user or shared mailbox.' }
+                    if ($delegate -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $delegateType -cnotin @('User','NestedGroup')) { throw 'SendOnBehalfPrincipalOwnershipUnresolved: every delegate requires an exact supported principal classification.' }
+                    if (Test-BaselineNodeMember $delegation equivalentPermission) { throw 'SendOnBehalfPermissionTypeBoundary: FullAccess and SendAs are independent permissions and cannot authorize SendOnBehalf.' }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $delegation owner))) { throw 'SendOnBehalfOwnerRequired: every SendOnBehalf delegation requires a current mailbox owner.' }
+                    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $delegation approval))) { throw 'SendOnBehalfApprovalRequired: every SendOnBehalf delegation requires an approval reference.' }
+                    $expiresOn = [datetimeoffset]::MinValue
+                    if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $delegation expiresOn), [ref]$expiresOn) -or $expiresOn -le [datetimeoffset]::UtcNow) { throw 'SendOnBehalfApprovalExpired: every SendOnBehalf approval requires a future expiration.' }
+                    $identityEvidence = Get-BaselineRecordMember $delegation identityEvidence
+                    if ($identityEvidence -isnot [System.Collections.IDictionary] -or (Get-BaselineRecordMember $identityEvidence resolved) -isnot [bool] -or -not (Get-BaselineRecordMember $identityEvidence resolved) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $identityEvidence source)) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $identityEvidence reference))) { throw "SendOnBehalfPrincipalIdentityUnresolved: $delegate requires independently supplied resolved identity evidence." }
+                    $ownershipEvidence = Get-BaselineRecordMember $delegation ownershipEvidence
+                    if ($ownershipEvidence -isnot [System.Collections.IDictionary] -or (Get-BaselineRecordMember $ownershipEvidence resolved) -isnot [bool] -or -not (Get-BaselineRecordMember $ownershipEvidence resolved) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $ownershipEvidence source)) -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $ownershipEvidence reference))) { throw "SendOnBehalfPrincipalOwnershipUnresolved: $delegate requires independently supplied resolved ownership evidence." }
+                    if (-not $approvedDelegation.Add("$mailbox|$delegate") -or $approvedByMailbox.ContainsKey($mailbox)) { throw 'SendOnBehalfApprovalRequired: duplicate SendOnBehalf delegation approvals are ambiguous.' }
+                    $approvedByMailbox[$mailbox] = $delegation
+                }
+
+                $currentByMailbox = @{}
+                if (-not $DesiredOnly) {
+                    $mailboxes = @(& Get-Mailbox -ResultSize Unlimited -ErrorAction Stop)
+                    $seenMailbox = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                    foreach ($mailboxRow in $mailboxes) {
+                        foreach ($field in @('Identity','PrimarySmtpAddress','RecipientTypeDetails','GrantSendOnBehalfTo')) {
+                            if (-not (Test-BaselineNodeMember $mailboxRow $field) -or $null -eq $mailboxRow.$field) { throw "ChangeReadIncomplete: Get-Mailbox omitted $field." }
+                        }
+                        $mailboxIdentity = ([string]$mailboxRow.PrimarySmtpAddress).Trim()
+                        if ([string]::IsNullOrWhiteSpace($mailboxIdentity) -or -not $seenMailbox.Add($mailboxIdentity)) { throw 'ChangeReadIncomplete: Get-Mailbox returned duplicate mailbox identities.' }
+                        $delegateSet = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                        $currentDelegates = @(
+                            foreach ($currentDelegateValue in @($mailboxRow.GrantSendOnBehalfTo)) {
+                                if ($currentDelegateValue -isnot [string] -or [string]::IsNullOrWhiteSpace($currentDelegateValue)) { throw 'ChangeReadIncomplete: Get-Mailbox returned an unresolved SendOnBehalf delegate identity.' }
+                                $currentDelegate = $currentDelegateValue.Trim()
+                                if (-not $delegateSet.Add($currentDelegate)) { throw 'ChangeReadIncomplete: Get-Mailbox returned duplicate normalized SendOnBehalf delegate identity.' }
+                                if ($currentDelegate -ieq 'NT AUTHORITY\SELF') { throw 'SendOnBehalfEntryClassificationInvalid: NT AUTHORITY\SELF is a system entry and cannot be an explicit SendOnBehalf delegate.' }
+                                $currentDelegate
+                            }
+                        )
+                        $currentByMailbox[$mailboxIdentity] = $currentDelegates
+                    }
+                    $applicable = @($mailboxes | Where-Object RecipientTypeDetails -Cin @('UserMailbox','SharedMailbox'))
+                    foreach ($delegation in $delegations) {
+                        $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                        $mailboxType = [string](Get-BaselineRecordMember $delegation mailboxType)
+                        $match = @($applicable | Where-Object { [string]$_.PrimarySmtpAddress -ieq $mailbox -and [string]$_.RecipientTypeDetails -ceq $mailboxType })
+                        if ($match.Count -ne 1) { throw "SendOnBehalfMailboxInventoryIncomplete: $mailbox is not present exactly once as $mailboxType." }
+                        $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
+                        $priorDelegates = @($currentByMailbox[$mailbox] | Where-Object { $_ -ine $delegate })
+                        if ($priorDelegates.Count -gt 1) { throw "SendOnBehalfUnauthorized: $($priorDelegates[1]) is an explicit SendOnBehalf delegate to $mailbox without approval." }
+                    }
+                    foreach ($mailboxRow in $applicable) {
+                        if (-not $approvedByMailbox.ContainsKey(([string]$mailboxRow.PrimarySmtpAddress).Trim())) { throw "SendOnBehalfMailboxInventoryIncomplete: $($mailboxRow.PrimarySmtpAddress) is an applicable mailbox omitted from the approved inventory." }
+                    }
+                }
+
+                foreach ($delegation in $delegations) {
+                    $mailbox = ([string](Get-BaselineRecordMember $delegation mailbox)).Trim()
+                    $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
+                    $target = @{ Identity = $mailbox }
+                    $priorDelegates = if (-not $DesiredOnly) { @($currentByMailbox[$mailbox]) } else {
+                        $identity = ConvertTo-CanonicalJson $target
+                        $operation = @($Approved | Where-Object { $_.Identity -ceq $identity })
+                        if ($operation.Count -ne 1) { throw "ChangeOperationMismatch: approved SendOnBehalf operation is required for $mailbox." }
+                        @($operation[0].Before.Value.GrantSendOnBehalfTo)
+                    }
+                    $desiredDelegates = @($priorDelegates + $delegate | Sort-Object -Unique)
+                    & $fixed SendOnBehalf Mailbox $target @{ GrantSendOnBehalfTo = $desiredDelegates } @{ GrantSendOnBehalfTo = 'Strings' }
+                }
+            }
             TransportBypass {
                 $exceptions = @($options['transportSclExceptions'] | Where-Object { $null -ne $_ })
                 $prefixRules = @($options['externalSubjectPrefixRules'] | Where-Object { $null -ne $_ })
@@ -575,6 +880,21 @@ function Get-ApprovedAdapterDefinitions {
 
 function Read-ApprovedAdapterState {
     param($Definition, [System.Collections.IDictionary]$Observation)
+    if ($Definition.Adapter -ceq 'FullAccess') {
+        $rows = @(& $Definition.Get -Identity $Definition.Target.Identity -ResultSize Unlimited -ErrorAction Stop | Where-Object {
+                [string]$_.Mailbox -ieq [string]$Definition.Target.Identity -and
+                [string]$_.User -ieq [string]$Definition.Target.User -and
+                -not $_.IsInherited -and -not $_.Deny -and 'FullAccess' -cin @($_.AccessRights)
+            })
+        if ($rows.Count -gt 1) { throw 'ChangeReadIncomplete: Get-MailboxPermission returned duplicate permission identity.' }
+        if ($rows.Count -eq 0) { return @{ Exists = $false; Value = $null } }
+        $value = @{ AccessRights = @('FullAccess') }
+        if ($null -ne $Observation) {
+            $bytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson (ConvertTo-BaselineHashableNode $rows[0])))
+            $Observation.ObjectFingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+        }
+        return @{ Exists = $true; Value = $value }
+    }
     $arguments = $Definition.Target.Clone()
     if ($Definition.New -and -not $Definition.Delete) {
         $arguments = @{}
@@ -593,6 +913,10 @@ function Read-ApprovedAdapterState {
     if ($rows.Count -gt 1 -or ($rows.Count -eq 0 -and -not $Definition.New)) { throw "ChangeReadIncomplete: $($Definition.Adapter) requires exactly one target." }
     if ($rows.Count -eq 0) { return @{ Exists = $false; Value = $null } }
     $row = $rows[0]
+    if ($Definition.Adapter -ceq 'ApplicationManagementScope' -and (Test-BaselineNodeMember $row ObservedAtUtc)) {
+        $observedAt = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string]$row.ObservedAtUtc, [ref]$observedAt) -or $observedAt -gt [datetimeoffset]::UtcNow -or $observedAt -lt [datetimeoffset]::UtcNow.AddDays(-1)) { throw 'ApplicationAssignmentScopeReadbackStale: independent raw scope readback is older than 24 hours.' }
+    }
     $guards = Get-BaselineRecordMember $Definition Guard
     if ($null -ne $guards) {
         foreach ($field in $guards.Keys) {
@@ -660,6 +984,18 @@ function Test-ApprovedPresetFieldOmission {
 function Assert-ApprovedAdapterCommands {
     param($Definitions)
     foreach ($definition in $Definitions) {
+        if ($definition.Adapter -ceq 'ApplicationRoleAssignment') {
+            foreach ($contract in @(
+                    @{ Command = $definition.Get; Fields = @('Identity') },
+                    @{ Command = $definition.New; Fields = @('Name','Role','App','CustomResourceScope') },
+                    @{ Command = $definition.Remove; Fields = @('Identity') }
+                )) {
+                $command = Get-Command -Name $contract.Command -ErrorAction SilentlyContinue
+                if ($null -eq $command) { throw "ChangeCommandUnavailable: $($contract.Command) is required for apply and restoration." }
+                foreach ($field in $contract.Fields) { if (-not $command.Parameters.ContainsKey($field)) { throw "ChangeCommandUnavailable: $($contract.Command) has no $field parameter." } }
+            }
+            continue
+        }
         $contracts = @(@{ Command = $definition.Get; Fields = @() })
         if ($definition.Toggle) {
             foreach ($verb in @('Enable','Disable')) { $contracts += @{ Command = "$verb-$($definition.Noun)"; Fields = @($definition.Target.Keys) } }
@@ -692,6 +1028,26 @@ function Assert-ApprovedAdapterCommands {
 function Invoke-BaselineConcreteOperation {
     param($Definition, $Current, $Desired, $Journal)
     if ((ConvertTo-CanonicalJson $Current) -ceq (ConvertTo-CanonicalJson $Desired)) { return }
+    if ($Definition.Adapter -ceq 'ApplicationRoleAssignment') {
+        if ($Current.Exists -and $Desired.Exists) { throw 'ApplicationAssignmentUnsupported: an existing application assignment cannot be expanded or rewritten.' }
+        if ($Desired.Exists) {
+            $null = New-ManagementRoleAssignment -Name $Desired.Value.Name -Role $Desired.Value.Role -App $Desired.Value.RoleAssignee -CustomResourceScope $Desired.Value.CustomResourceScope -Confirm:$false -ErrorAction Stop
+            $null = Read-ApprovedAdapterState $Definition -Observation $Journal
+        } else {
+            $null = Remove-ManagementRoleAssignment -Identity $Definition.Target.Identity -Confirm:$false -ErrorAction Stop
+        }
+        return
+    }
+    if ($Definition.Adapter -ceq 'FullAccess') {
+        $arguments = @{ Identity = $Definition.Target.Identity; User = $Definition.Target.User; AccessRights = @('FullAccess') }
+        if ($Desired.Exists) {
+            $null = Add-MailboxPermission @arguments -Confirm:$false -ErrorAction Stop
+            $null = Read-ApprovedAdapterState $Definition -Observation $Journal
+        } else {
+            $null = Remove-MailboxPermission @arguments -Confirm:$false -ErrorAction Stop
+        }
+        return
+    }
     if ($Definition.Adapter -ceq 'SecOpsOverride') {
         if (-not $Current.Exists -or -not $Desired.Exists) { throw 'ChangeReportingPrerequisite: SecOps policy creation and removal are not supported by this scoped adapter.' }
         $arguments = $Definition.Target.Clone()
@@ -749,5 +1105,43 @@ function Invoke-BaselineConcreteOperation {
     $null = & $command @arguments -Confirm:$false -ErrorAction Stop
     if (-not $Current.Exists -and $Desired.Exists) {
         $null = Read-ApprovedAdapterState $Definition -Observation $Journal
+    }
+}
+
+function Complete-ApprovedApplicationAssignmentScope {
+    param($Context, [string]$Stage, $Journal)
+    $settings = $Context.Parameters['workflowOptions']['applicationAssignmentScope']
+    if ($Stage -eq 'Rollback') { return @{ Status = 'RolledBack' } }
+
+    $applicationId = [string]$settings.applicationId
+    $allowedMailbox = [string]@($settings.allowedMailboxes)[0]
+    $deniedMailbox = [string]@($settings.deniedMailboxes)[0]
+    $allowed = @(Test-ServicePrincipalAuthorization -Identity $applicationId -Resource $allowedMailbox -ErrorAction Stop)
+    if ($allowed.Count -ne 1) { throw "AllowedMailboxReprobeMissing: $allowedMailbox returned no single conclusive authorization result." }
+    if (-not (Test-BaselineNodeMember $allowed[0] Authorized) -or $allowed[0].Authorized -isnot [bool] -or -not $allowed[0].Authorized -or [string]$allowed[0].ApplicationId -cne $applicationId -or [string]$allowed[0].Resource -cne $allowedMailbox) { throw "AllowedMailboxReprobeMissing: $allowedMailbox was not conclusively authorized." }
+    $denied = @(Test-ServicePrincipalAuthorization -Identity $applicationId -Resource $deniedMailbox -ErrorAction Stop)
+    if ($denied.Count -ne 1) { throw "DeniedMailboxReprobeMissing: $deniedMailbox returned no single conclusive authorization result." }
+    if (-not (Test-BaselineNodeMember $denied[0] Authorized) -or $denied[0].Authorized -isnot [bool] -or [string]$denied[0].ApplicationId -cne $applicationId -or [string]$denied[0].Resource -cne $deniedMailbox) { throw "DeniedMailboxReprobeMissing: $deniedMailbox was not conclusively denied." }
+    if ($denied[0].Authorized) { throw "UnintendedMailboxAuthorization: $deniedMailbox was authorized outside the approved custom recipient scope." }
+
+    $changed = @($Journal | Where-Object State -CEQ 'Succeeded').Count
+    @{
+        Status = $(if ($changed) { 'Applied' } else { 'NoOp' })
+        ExternalReadiness = 'Unverified'
+        ReleaseReady = $false
+        Propagation = @{ Statement = [string]$settings.propagation.statement; MaximumDelay = [string]$settings.propagation.maximumDelay }
+        Limitations = @('Exchange probes cannot prove absence of tenant-wide Entra grants.')
+    }
+}
+
+function Get-ApprovedSendOnBehalfOperationEvidence {
+    param($Context)
+    foreach ($delegation in @($Context.Parameters['workflowOptions']['sendOnBehalfDelegations'])) {
+        [pscustomobject]@{
+            ControlId = 'EXR-007-A05-T03'
+            Source = 'Get-Mailbox'
+            Evidence = "GrantSendOnBehalfTo read independently for $([string]$delegation.mailbox)."
+            Runbook = 'docs/EXCHANGE-ADMINISTRATOR-JOURNEY.md'
+        }
     }
 }

@@ -4113,7 +4113,7 @@ function Write-BaselineWorkflowFile {
 
 function Get-BaselineApprovedOperation {
     param($Context, [string[]]$Scope, [switch]$DesiredOnly, $Approved)
-    $supported = @('Transport','TransportBypass','Organization','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption')
+    $supported = @('Transport','TransportBypass','Organization','OrganizationAllowList','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','FullAccess','SendOnBehalf','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption','ApplicationAssignmentScope')
     if ($Scope.Count -eq 0 -or @($Scope | Select-Object -Unique).Count -ne $Scope.Count -or @($Scope | Where-Object { $_ -cnotin $supported }).Count) {
         throw ('ChangeScopeUnsupported: explicitly select supported reversible scopes: ' + ($supported -join ', ') + '.')
     }
@@ -4485,10 +4485,20 @@ function Invoke-BaselineApprovedChange {
             } else { Get-BaselineApprovedOperation -Context $context -Scope $Scope -Approved $approvedOperations })
             for ($index = 0; $index -lt $postOperations.Count; $index++) {
                 $expected = if ($Stage -eq 'Rollback') { $approvedOperations[$index].Before } else { $approvedOperations[$index].After }
-                if ((ConvertTo-CanonicalJson $postOperations[$index].Before) -cne (ConvertTo-CanonicalJson $expected)) { throw 'ChangePostStateMismatch: readback did not confirm the approved state.' }
+                if ((ConvertTo-CanonicalJson $postOperations[$index].Before) -cne (ConvertTo-CanonicalJson $expected)) {
+                    if ('ApplicationAssignmentScope' -cin $Scope -and $Stage -eq 'Apply') { throw 'ApplicationAssignmentScopeApplyReadbackMismatch: independent raw readback did not confirm the approved state.' }
+                    throw 'ChangePostStateMismatch: readback did not confirm the approved state.'
+                }
             }
         } catch { if (-not $fault) { $fault = $_.Exception.Message } }
         $receipt = @{ ChangeId = $ChangeId; Tenant = $tenant; DeploymentProfile = 'ExchangeOnly'; PreviewHash = $previewRecord.Hash; ConfigurationHash = $context.Hash; Status = $(if ($fault) { 'Failed' } else { 'Succeeded' }); Fault = $fault; Operation = @($journal.ToArray()); CompletedOn = [datetimeoffset]::UtcNow.ToString('o') }
+        if (-not $fault -and 'ApplicationAssignmentScope' -cin $Scope) {
+            $completion = Complete-ApprovedApplicationAssignmentScope -Context $context -Stage $Stage -Journal $journal
+            foreach ($key in $completion.Keys) { $receipt[$key] = $completion[$key] }
+        }
+        if (-not $fault -and 'SendOnBehalf' -cin $Scope) {
+            $receipt.Operations = @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
+        }
         if ($Stage -eq 'Apply') {
             $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
             $postReceipt = $receipt.Clone()
@@ -4513,7 +4523,10 @@ function Invoke-BaselineApprovedChange {
                 $reservationStream.Flush($true)
             }
         }
-        if ($fault) { throw "ChangeExecutionFailed: $fault. Preserve receipts; use the approved scoped rollback after investigating drift." }
+        if ($fault) {
+            if ('ApplicationAssignmentScope' -cin $Scope -and $Stage -eq 'Rollback') { throw "ChangeRollbackFailed: $fault. Preserve receipts and investigate the typed restoration failure." }
+            throw "ChangeExecutionFailed: $fault. Preserve receipts; use the approved scoped rollback after investigating drift."
+        }
         [pscustomobject]$receipt
     } finally { foreach ($handle in $handles) { $handle.Dispose() } }
 }
@@ -17231,6 +17244,249 @@ function Test-DnsOwnerHandoffControl {
     return & $result 'ExternalDnsPrerequisiteUnverified: RAID-D04 requires independent external DNS readiness evidence.' $normalizedArray
 }
 
+function Get-ExchangeApplicationAuthorizationEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$ApplicationEvidence,
+        [Parameter(Mandatory)][AllowNull()][object]$AdditiveEntraEvidence,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$RoleCollection,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$ServicePrincipalCollection,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$AssignmentCollection,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$ManagementScopeCollection,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$AuthorizationProbeCollection,
+        [Parameter(Mandatory)][AllowNull()][object]$PropagationEvidence
+    )
+
+    foreach ($required in @(
+            @{ Name = 'RoleCollection'; Value = $RoleCollection }
+            @{ Name = 'ServicePrincipalCollection'; Value = $ServicePrincipalCollection }
+            @{ Name = 'AssignmentCollection'; Value = $AssignmentCollection }
+            @{ Name = 'ManagementScopeCollection'; Value = $ManagementScopeCollection }
+            @{ Name = 'AuthorizationProbeCollection'; Value = $AuthorizationProbeCollection }
+        )) {
+        if ($null -eq $required.Value) {
+            throw "ApplicationAuthorizationCollectionRequired: '$($required.Name)' must be an injected read-only collection."
+        }
+    }
+
+    [pscustomobject][ordered]@{
+        ControlId = 'EXR-007-A03-T01'
+        Application = $ApplicationEvidence
+        AdditiveEntraEvidence = $AdditiveEntraEvidence
+        Roles = (& $RoleCollection)
+        ServicePrincipals = (& $ServicePrincipalCollection)
+        Assignments = (& $AssignmentCollection)
+        ManagementScopes = (& $ManagementScopeCollection)
+        AuthorizationProbes = (& $AuthorizationProbeCollection)
+        Propagation = $PropagationEvidence
+        CollectionMode = 'InjectedReadOnly'
+        TenantMutationPerformed = $false
+        ApplicationRegistrationPerformed = $false
+        ConsentMutationPerformed = $false
+        GrantMutationPerformed = $false
+        LiveTenantAuthorizationVerified = $false
+    }
+}
+
+function Test-ExchangeApplicationAuthorizationControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Evidence,
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$ApprovedApplications,
+        [Parameter(Mandatory)][string]$TenantId,
+        [datetimeoffset]$AsOfUtc = [datetimeoffset]::UtcNow,
+        [timespan]$MaximumEvidenceAge = ([timespan]::FromDays(1))
+    )
+
+    $limitations = @('Exchange probes cannot prove absence of tenant-wide Entra grants.')
+    $newResult = {
+        param(
+            [string]$Status,
+            [string]$Reason,
+            [AllowNull()][string]$InputHash,
+            [object]$Normalized,
+            [AllowNull()][object]$Propagation
+        )
+        [pscustomobject][ordered]@{
+            ControlId = 'EXR-007-A03-T01'
+            Status = $Status
+            Reason = $Reason
+            ExternalReadiness = 'Unverified'
+            ReleaseReady = $false
+            InputHash = $InputHash
+            Normalized = $Normalized
+            Propagation = $Propagation
+            Limitations = $limitations
+            CollectionMode = 'InjectedReadOnly'
+            TenantMutationPerformed = $false
+            ApplicationRegistrationPerformed = $false
+            ConsentMutationPerformed = $false
+            GrantMutationPerformed = $false
+            LiveTenantAuthorizationVerified = $false
+        }
+    }
+    $emptyNormalized = {
+        [pscustomobject][ordered]@{
+            Roles = @()
+            ServicePrincipals = @()
+            Assignments = @()
+            ManagementScopes = @()
+            AuthorizationProbes = @()
+        }
+    }
+    $refuse = {
+        param([string]$Reason, [AllowNull()][string]$InputHash = $null)
+        & $newResult 'Fail' $Reason $InputHash (& $emptyNormalized) $null
+    }
+    $read = { param($Node, [string]$Name) Get-BaselineRecordMember -Node $Node -Name $Name }
+    $normalize = { param($Value) ([string]$Value).Trim().ToLowerInvariant() }
+    $readPage = {
+        param($Node, [string]$Reason)
+        if ($null -eq $Node -or (& $read $Node 'Complete') -ne $true -or
+            -not [string]::IsNullOrWhiteSpace([string](& $read $Node 'NextLink'))) {
+            return [pscustomobject]@{ Complete = $false; Reason = $Reason; Items = @() }
+        }
+        return [pscustomobject]@{ Complete = $true; Reason = $null; Items = @(& $read $Node 'Items') }
+    }
+    $isCurrent = {
+        param($Node, [string]$TimestampName)
+        $timestamp = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](& $read $Node $TimestampName), [ref]$timestamp)) { return $false }
+        return $timestamp -le $AsOfUtc -and ($AsOfUtc - $timestamp) -le $MaximumEvidenceAge
+    }
+
+    $application = & $read $Evidence 'Application'
+    if ($null -eq $application) { return & $refuse 'ApplicationEvidenceMissing: current application-owner evidence is required.' }
+    $inputHash = [string](& $read $application 'InputHash')
+    if (-not (& $isCurrent $application 'SuppliedAtUtc')) {
+        return & $refuse 'ApplicationEvidenceStale: application-owner evidence is outside the admitted age.' $inputHash
+    }
+
+    $additive = & $read $Evidence 'AdditiveEntraEvidence'
+    if ($null -eq $additive) { return & $refuse 'AdditiveEntraEvidenceMissing: independent additive Entra and consent evidence is required.' $inputHash }
+    if (-not (& $isCurrent $additive 'SuppliedAtUtc')) {
+        return & $refuse 'AdditiveEntraEvidenceStale: independent additive Entra and consent evidence is outside the admitted age.' $inputHash
+    }
+
+    $applicationId = [string](& $read $application 'ApplicationId')
+    $servicePrincipalObjectId = [string](& $read $additive 'ServicePrincipalObjectId')
+    if ([string]::IsNullOrWhiteSpace($applicationId) -or [string]::IsNullOrWhiteSpace($inputHash) -or
+        (& $normalize (& $read $application 'TenantId')) -cne (& $normalize $TenantId) -or
+        (& $normalize (& $read $additive 'TenantId')) -cne (& $normalize $TenantId) -or
+        (& $normalize (& $read $additive 'ApplicationId')) -cne (& $normalize $applicationId) -or
+        (& $read $additive 'Complete') -ne $true -or
+        ([string](& $read $additive 'ConsentType')).Trim() -cne 'AdminConsent' -or
+        (& $normalize (& $read $additive 'InputHash')) -cne (& $normalize $inputHash)) {
+        return & $refuse 'AdditiveEntraEvidenceMismatch: independent Entra evidence is incomplete or not bound to the current tenant, application, consent, and inputs.' $inputHash
+    }
+
+    $pageByName = [ordered]@{
+        Roles = & $readPage (& $read $Evidence 'Roles') 'ApplicationRoleInventoryIncomplete: the application-role inventory is paged or incomplete.'
+        ServicePrincipals = & $readPage (& $read $Evidence 'ServicePrincipals') 'ServicePrincipalInventoryIncomplete: the service-principal inventory is paged or incomplete.'
+        Assignments = & $readPage (& $read $Evidence 'Assignments') 'ApplicationAssignmentInventoryIncomplete: the application-assignment inventory is paged or incomplete.'
+        ManagementScopes = & $readPage (& $read $Evidence 'ManagementScopes') 'ManagementResourceScopeInventoryIncomplete: the management-resource-scope inventory is paged or incomplete.'
+        AuthorizationProbes = & $readPage (& $read $Evidence 'AuthorizationProbes') 'AuthorizationProbeInventoryIncomplete: the authorization-probe inventory is paged or incomplete.'
+    }
+    foreach ($name in $pageByName.Keys) {
+        if (-not $pageByName[$name].Complete) { return & $refuse $pageByName[$name].Reason $inputHash }
+    }
+
+    $approval = @($ApprovedApplications | Where-Object {
+            (& $normalize (& $read $_ 'ApplicationId')) -ceq (& $normalize $applicationId)
+        })
+    if ($approval.Count -ne 1 -or
+        (& $normalize (& $read $approval[0] 'ServicePrincipalObjectId')) -cne (& $normalize $servicePrincipalObjectId) -or
+        (& $normalize (& $read $approval[0] 'InputHash')) -cne (& $normalize $inputHash)) {
+        return & $refuse 'ApplicationApprovalMissing: exactly one approval must bind the application, service principal, and current inputs.' $inputHash
+    }
+
+    $approvedRole = @((& $read $approval[0] 'Roles') | ForEach-Object { & $normalize $_ })
+    $approvedAssignment = @((& $read $approval[0] 'AssignmentIdentities') | ForEach-Object { & $normalize $_ })
+    $approvedScope = @((& $read $approval[0] 'ManagementScopes') | ForEach-Object { & $normalize $_ })
+    $roles = @($pageByName.Roles.Items)
+    foreach ($role in $roles) {
+        if ((& $normalize (& $read $role 'Name')) -cnotin $approvedRole -or (& $read $role 'RoleType') -cne 'Application') {
+            return & $refuse "ApplicationAccessExcessive: role '$(& $read $role 'Name')' is outside the approved least-privilege application set." $inputHash
+        }
+    }
+
+    $servicePrincipals = @($pageByName.ServicePrincipals.Items)
+    if (@($servicePrincipals | Where-Object {
+                (& $normalize (& $read $_ 'ObjectId')) -ceq (& $normalize $servicePrincipalObjectId) -and
+                (& $normalize (& $read $_ 'AppId')) -ceq (& $normalize $applicationId)
+            }).Count -ne 1) {
+        return & $refuse 'ServicePrincipalEvidenceMismatch: exactly one current service principal must bind the approved application.' $inputHash
+    }
+
+    $assignments = @($pageByName.Assignments.Items)
+    foreach ($assignment in $assignments) {
+        $identity = & $normalize (& $read $assignment 'Identity')
+        $scope = & $normalize (& $read $assignment 'CustomResourceScope')
+        if ((& $read $assignment 'Enabled') -ne $true -or
+            (& $normalize (& $read $assignment 'RoleAssignee')) -cne (& $normalize $servicePrincipalObjectId) -or
+            (& $normalize (& $read $assignment 'RoleAssigneeType')) -cne 'serviceprincipal' -or
+            $identity -cnotin $approvedAssignment) {
+            return & $refuse "ApplicationAccessExcessive: assignment '$(& $read $assignment 'Identity')' is not the approved application assignment." $inputHash
+        }
+        if ([string]::IsNullOrWhiteSpace($scope) -or $scope -cnotin $approvedScope -or
+            (& $normalize (& $read $assignment 'RecipientReadScope')) -ceq 'organization') {
+            return & $refuse "ApplicationAccessUnscoped: assignment '$(& $read $assignment 'Identity')' lacks its approved management resource scope." $inputHash
+        }
+    }
+
+    $managementScopes = @($pageByName.ManagementScopes.Items)
+    foreach ($scope in $managementScopes) {
+        if ((& $normalize (& $read $scope 'Identity')) -cnotin $approvedScope -or
+            [string]::IsNullOrWhiteSpace([string](& $read $scope 'RecipientRestrictionFilter'))) {
+            return & $refuse "ApplicationAccessUnscoped: management scope '$(& $read $scope 'Identity')' is not an approved constrained resource scope." $inputHash
+        }
+    }
+
+    $probes = @($pageByName.AuthorizationProbes.Items)
+    $allowedMailbox = @((& $read $approval[0] 'AllowedMailboxes') | ForEach-Object { & $normalize $_ })
+    $deniedMailbox = @((& $read $approval[0] 'DeniedMailboxes') | ForEach-Object { & $normalize $_ })
+    foreach ($probe in $probes) {
+        if ((& $normalize (& $read $probe 'ApplicationId')) -cne (& $normalize $applicationId) -or
+            (& $normalize (& $read $probe 'InputHash')) -cne (& $normalize $inputHash)) {
+            return & $refuse 'AuthorizationProbeInputMismatch: every mailbox probe must bind the current application and input hash.' $inputHash
+        }
+        $mailbox = & $normalize (& $read $probe 'Mailbox')
+        if ($mailbox -cin $deniedMailbox -and (& $read $probe 'Authorized') -ne $false) {
+            return & $refuse "UnintendedMailboxAuthorization: denied mailbox '$mailbox' was authorized." $inputHash
+        }
+    }
+    foreach ($mailbox in $allowedMailbox) {
+        $matches = @($probes | Where-Object { (& $normalize (& $read $_ 'Mailbox')) -ceq $mailbox -and (& $read $_ 'Expected') -ceq 'Allowed' })
+        if ($matches.Count -ne 1 -or $matches[0].Authorized -ne $true) {
+            return & $refuse "AllowedMailboxProbeMissing: approved mailbox '$mailbox' lacks one successful allowed probe." $inputHash
+        }
+    }
+    foreach ($mailbox in $deniedMailbox) {
+        $matches = @($probes | Where-Object { (& $normalize (& $read $_ 'Mailbox')) -ceq $mailbox -and (& $read $_ 'Expected') -ceq 'Denied' })
+        if ($matches.Count -ne 1) {
+            return & $refuse "DeniedMailboxProbeMissing: denied mailbox '$mailbox' lacks one explicit denied probe." $inputHash
+        }
+    }
+
+    $propagation = & $read $Evidence 'Propagation'
+    if ($null -eq $propagation -or
+        [string]::IsNullOrWhiteSpace([string](& $read $propagation 'Statement')) -or
+        [string]::IsNullOrWhiteSpace([string](& $read $propagation 'MaximumDelay')) -or
+        [string]::IsNullOrWhiteSpace([string](& $read $propagation 'ObservedAfter')) -or
+        [string]::IsNullOrWhiteSpace([string](& $read $propagation 'CheckedAtUtc'))) {
+        return & $refuse 'AuthorizationPropagationLimitMissing: assignment and scope propagation limits must be explicit.' $inputHash
+    }
+
+    $normalized = [pscustomobject][ordered]@{
+        Roles = $roles
+        ServicePrincipals = $servicePrincipals
+        Assignments = $assignments
+        ManagementScopes = $managementScopes
+        AuthorizationProbes = $probes
+    }
+    return & $newResult 'Pass' 'ApplicationAuthorizationScoped: one approved application is constrained to current inputs and declared mailbox scope; tenant-wide Entra grants remain unverified.' $inputHash $normalized $propagation
+}
+
 Export-ModuleMember -Function @(
     'Invoke-BaselineExchangeRawCollection'
     'Assert-BaselineExchangeMutationPlan'
@@ -17313,6 +17569,8 @@ Export-ModuleMember -Function @(
     'Test-ClientProtocolControl'
     'Get-ExchangeRoleAssignmentEvidence'
     'Test-ExchangeRoleAssignmentControl'
+    'Get-ExchangeApplicationAuthorizationEvidence'
+    'Test-ExchangeApplicationAuthorizationControl'
     'Get-SmtpAuthenticationEvidence'
     'Test-SmtpAuthenticationControl'
     'Get-DkimEvidence'

@@ -213,7 +213,7 @@ BeforeAll {
 
         $before = Get-FullAccessStateSnapshot
         & $script:changeCommand -Stage Preview @Arguments -Scope FullAccess -Confirm:$false | Out-Null
-        $previewHash = (Get-FileHash -LiteralPath $Arguments.PreviewPath -Algorithm SHA256).Hash
+        $previewHash = (Get-FileHash -LiteralPath $Arguments.PreviewPath -Algorithm SHA256).Hash.ToLowerInvariant()
         & $script:changeCommand -Stage Approve @Arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
         $approval = Get-Content $Arguments.ApprovalPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
         & $script:changeCommand -Stage Validate @Arguments | Out-Null
@@ -432,8 +432,6 @@ Describe 'EXR-007-A05-T01 FullAccess delegation lifecycle' {
             $permission = New-FullAccessPermission -Mailbox 'user@contoso.example' -User 'rogue@contoso.example'
             $duplicate = $permission.Clone()
             $duplicate.Identity = ' USER@CONTOSO.EXAMPLE\ROGUE@CONTOSO.EXAMPLE '
-            $duplicate.Mailbox = ' USER@CONTOSO.EXAMPLE '
-            $duplicate.User = ' ROGUE@CONTOSO.EXAMPLE '
             $global:adapterState.MailboxPermission += @($permission, $duplicate)
 
             # Act

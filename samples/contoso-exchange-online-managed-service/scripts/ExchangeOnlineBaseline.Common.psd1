@@ -91,6 +91,8 @@
         'Test-ClientProtocolControl'
         'Get-ExchangeRoleAssignmentEvidence'
         'Test-ExchangeRoleAssignmentControl'
+        'Get-ExchangeApplicationAuthorizationEvidence'
+        'Test-ExchangeApplicationAuthorizationControl'
         'Get-SmtpAuthenticationEvidence'
         'Test-SmtpAuthenticationControl'
         'Get-DkimEvidence'

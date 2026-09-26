@@ -1,6 +1,6 @@
 # Exchange Online Service RAID Register
 
-Updated: 2026-09-21 (remaining-parent child routing recorded; no external status or owner changed or confirmed). Owner: Exchange service owner (coordination only). Related: [Kanban](kanban.md), [backlog](backlog.md), [historical board](kanban-history-2026-09-19.md).
+Updated: 2026-09-26 (generation-231 Silver local rollback-comparison escalation recorded in governance; no external status or owner changed or confirmed). Owner: Exchange service owner (coordination only). Related: [Kanban](kanban.md), [backlog](backlog.md), [historical board](kanban-history-2026-09-19.md).
 
 Purpose: record tenant-level assumptions, risks, issues and dependencies without turning them into Exchange implementation cards. Proposed owner roles below are routing responsibilities, not claims that a named person has accepted work. No external assumption is confirmed by this planning update. No credentials or tenant identifiers belong here.
 
