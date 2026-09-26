@@ -104,6 +104,9 @@ BeforeAll {
                 [int]$Priority,
                 [bool]$StopRuleProcessing
             )
+            if ($PSBoundParameters.ContainsKey('SenderDomainIs')) {
+                $PSBoundParameters['SenderDomainIs'] = @($SenderDomainIs)
+            }
             Invoke-OfflineAdapterCommand 'Set' 'TransportRule' $PSBoundParameters
         }
         function global:New-TransportRule {
@@ -516,7 +519,7 @@ Describe 'EXR-007-A02-T01 transport bypass and external-tag lifecycle' {
             $result.RepeatedRollback.Status | Should -BeExactly 'Succeeded'
             $result.RepeatedRollbackWrites | Should -Be 0
             $global:adapterState.TransportRule[0].SetSCL | Should -BeOfType [int]
-            $global:adapterState.TransportRule[0].SenderDomainIs | Should -BeOfType [object[]]
+            ,$global:adapterState.TransportRule[0].SenderDomainIs | Should -BeOfType [object[]]
             @($global:adapterCalls | Where-Object Command -Match 'TenantAllowBlockList').Count | Should -Be 0
         }
     }

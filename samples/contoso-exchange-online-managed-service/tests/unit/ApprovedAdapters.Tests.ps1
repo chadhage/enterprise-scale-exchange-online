@@ -12,6 +12,13 @@ BeforeAll {
         $parameters.entitlement.verified = $true
         $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
         $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
+        $parameters.reportingEvidence = @{
+            dlp = @{
+                mailbox = 'secops@contoso.example'
+                status = 'NotApplicable'
+                approval = @{ reference = 'SYNTHETIC-OFFLINE-DLP-004'; owner = 'security'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+            }
+        }
         $parameterPath = Join-Path $directory 'parameters.json'
         $parameters | ConvertTo-Json -Depth 30 | Set-Content $parameterPath
         @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:root 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test' }
@@ -22,6 +29,16 @@ BeforeAll {
             [CmdletBinding()]param([string]$Identity, [string]$ResultSize, [string]$Mailbox, [switch]$IncludeHidden, [string]$ListType, [string]$Policy)
             if ($MyInvocation.MyCommand.Name -eq 'Get-ExoSecOpsOverrideRule') {
                 return [pscustomobject]@{ Identity = 'SecOpsRule'; Mode = 'Enforce' }
+            }
+            if ($MyInvocation.MyCommand.Name -eq 'Get-Mailbox') {
+                return [pscustomobject]@{
+                    Identity = $Identity
+                    PrimarySmtpAddress = $Identity
+                    RecipientTypeDetails = 'SharedMailbox'
+                    ForwardingAddress = $null
+                    ForwardingSmtpAddress = $null
+                    DeliverToMailboxAndForward = $false
+                }
             }
             $target = switch ($MyInvocation.MyCommand.Name) {
                 Get-AcceptedDomain { 'contoso.example' }

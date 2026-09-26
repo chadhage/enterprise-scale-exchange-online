@@ -24,7 +24,7 @@ function Initialize-AdapterDoubles {
         QuarantinePolicy = @(@{ Identity = 'Baseline-AdminOnlyAccess'; Name = 'Baseline-AdminOnlyAccess'; EndUserQuarantinePermissionsValue = 236 }, @{ Identity = 'Baseline-LimitedAccess'; Name = 'Baseline-LimitedAccess'; EndUserQuarantinePermissionsValue = 236 }, @{ Identity = 'DefaultGlobalTag'; Name = 'DefaultGlobalTag'; EndUserSpamNotificationFrequency = [timespan]::FromDays(3); IncludeMessagesFromBlockedSenderAddress = $true })
         HostedContentFilterPolicy = @(@{ Identity = 'Default'; HighConfidencePhishQuarantineTag = 'Old'; PhishQuarantineTag = 'Old'; HighConfidenceSpamQuarantineTag = 'Old'; SpamQuarantineTag = 'Old'; BulkQuarantineTag = 'Old'; SpoofQuarantineTag = 'Old' })
         MalwareFilterPolicy = @(@{ Identity = 'Default'; QuarantineTag = 'Old' })
-        Mailbox = @(@{ Identity = 'user@example.test'; PrimarySmtpAddress = 'user@example.test'; ForwardingAddress = $null; ForwardingSmtpAddress = 'smtp:external@example.net' })
+        Mailbox = @(@{ Identity = 'user@example.test'; PrimarySmtpAddress = 'user@example.test'; ForwardingAddress = $null; ForwardingSmtpAddress = 'smtp:external@example.net' }, @{ Identity = 'secops@contoso.example'; PrimarySmtpAddress = 'secops@contoso.example'; RecipientTypeDetails = 'SharedMailbox'; ForwardingAddress = $null; ForwardingSmtpAddress = $null; DeliverToMailboxAndForward = $false })
         InboxRule = @(@{ Identity = 'rule-1'; Mailbox = 'user@example.test'; Enabled = $true; ForwardTo = @('external@example.net'); ForwardAsAttachmentTo = @(); RedirectTo = @() })
         RoleAssignmentPolicy = @(@{ Identity = 'Default Policy'; IsDefault = $true })
         ManagementRoleAssignment = @(@{ Identity = 'GrantA'; Name = 'GrantA'; Role = 'My Custom Apps'; RoleAssignee = 'Default Policy'; RoleAssigneeType = 'RoleAssignmentPolicy'; Delegating = $false; RecipientWriteScope = 'Self'; ConfigWriteScope = 'None'; CustomRecipientWriteScope = $null; CustomConfigWriteScope = $null; ExclusiveRecipientWriteScope = $null; ExclusiveConfigWriteScope = $null })
@@ -135,6 +135,13 @@ function New-StatefulAdapterFixture {
         @{ address = "user@$($parameters.PRIMARY_SMTP_DOMAIN)"; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') }
         @{ address = $parameters.SECURITY_OPERATIONS_MAILBOX; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') }
     )
+    $parameters.reportingEvidence = @{
+        dlp = @{
+            mailbox = $parameters.SECURITY_OPERATIONS_MAILBOX
+            status = 'NotApplicable'
+            approval = @{ reference = 'SYNTHETIC-OFFLINE-DLP-004'; owner = 'security'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+        }
+    }
     $created = [datetimeoffset]::UtcNow
     $parameters.workflowOptions = @{ enableDkim = $true; tenantAllowBlockEntries = @(@{ entryType = 'Domain'; entryValue = 'blocked.example'; action = 'Block'; owner = 'SecOps'; ticket = 'CHG004'; createdDateTime = $created.ToString('o'); expirationDateTime = $created.AddDays(90).ToString('o'); justification = 'Approved test block' }) }
     $parameterPath = Join-Path $directory 'parameters.json'

@@ -2553,7 +2553,10 @@ function Test-BaselineDetachedCmsSignature {
         [object]$Signature,
 
         [Parameter(Mandatory)]
-        [scriptblock]$VerificationScript
+        [scriptblock]$VerificationScript,
+
+        [AllowNull()]
+        [object]$VerificationContext
     )
 
     $newResult = {
@@ -2600,7 +2603,7 @@ function Test-BaselineDetachedCmsSignature {
     }
 
     try {
-        $verification = & $VerificationScript $CanonicalBytes $signatureBytes
+        $verification = & $VerificationScript $CanonicalBytes $signatureBytes $VerificationContext
     }
     catch {
         return & $newResult $false 'ExternalEvidenceSignatureVerificationFailed' $null
@@ -4058,19 +4061,19 @@ function Test-BaselineChangeApproval {
             if ($property.Name -cne 'Signature') { $signed[$property.Name] = $property.Value }
         }
         $signedBytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $signed))
-        $verification = Test-BaselineDetachedCmsSignature -CanonicalBytes $signedBytes -Signature $signature -VerificationScript {
-            param($ContentBytes, $SignatureBytes)
+        $verification = Test-BaselineDetachedCmsSignature -CanonicalBytes $signedBytes -Signature $signature -VerificationContext $approvalInstant -VerificationScript {
+            param($ContentBytes, $SignatureBytes, $SigningTimeUtc)
             $cms = [System.Security.Cryptography.Pkcs.SignedCms]::new([System.Security.Cryptography.Pkcs.ContentInfo]::new($ContentBytes), $true)
             $cms.Decode($SignatureBytes)
             $cms.CheckSignature($true)
             if ($cms.SignerInfos.Count -ne 1) { throw 'Exactly one enterprise approver is required.' }
             $certificate = $cms.SignerInfos[0].Certificate
-            $chain = [System.Security.Cryptography.X509Certificates.X509Chain]::new()
+            $chain = New-BaselineEvidenceCertificateChain
             try {
                 $chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::Offline
                 $chain.ChainPolicy.DisableCertificateDownloads = $true
                 $trusted = $chain.Build($certificate)
-                @{ ContentMatched = $true; SignatureValid = $true; SignerSubject = $certificate.Subject; SigningTimeUtc = $approvalInstant; CertificateNotBeforeUtc = $certificate.NotBefore.ToUniversalTime(); CertificateNotAfterUtc = $certificate.NotAfter.ToUniversalTime(); ChainTrusted = $trusted; RevocationStatus = $(if ($trusted) { 'Good' } else { 'Unknown' }) }
+                @{ ContentMatched = $true; SignatureValid = $true; SignerSubject = $certificate.Subject; SigningTimeUtc = $SigningTimeUtc; CertificateNotBeforeUtc = $certificate.NotBefore.ToUniversalTime(); CertificateNotAfterUtc = $certificate.NotAfter.ToUniversalTime(); ChainTrusted = $trusted; RevocationStatus = $(if ($trusted) { 'Good' } else { 'Unknown' }) }
             }
             finally { $chain.Dispose() }
         }
@@ -16871,6 +16874,237 @@ function Test-IncidentExerciseControl {
     return Test-BaselineControl -ControlId 'OPS-002' -Evidence $Evidence -Evaluator $evaluator
 }
 
+function Get-AuthenticationAlignmentEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object[]]$DomainInventory,
+        [Parameter(Mandatory)][AllowNull()][object]$DkimEvidence,
+        [Parameter(Mandatory)][AllowNull()][object]$DnsOwnerHandoffEvidence,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$MessageProofCollection
+    )
+
+    if ($null -eq $DomainInventory -or @($DomainInventory).Count -eq 0) {
+        throw 'AuthenticationDomainInventoryRequired: authentication alignment evidence requires the resolved domain inventory.'
+    }
+    if ($null -eq $MessageProofCollection) {
+        throw 'AuthenticationMessageProofCollectionRequired: authentication alignment evidence requires an injected offline collection.'
+    }
+
+    $inventory = @($DomainInventory)
+    $collection = { & $MessageProofCollection }.GetNewClosure()
+    $evidence = Get-BaselineEvidence -ControlId 'EXR-011-A04' -Source 'OfflineReceivedHeaders' `
+        -Command 'Injected received-message authentication proof collection' -Collection $collection
+
+    [pscustomobject][ordered]@{
+        ControlId = $evidence.ControlId
+        Source = $evidence.Source
+        Command = $evidence.Command
+        Collected = $evidence.Collected
+        FailureReason = $evidence.FailureReason
+        Value = $evidence.Value
+        CollectedAtUtc = $evidence.CollectedAtUtc
+        DomainInventory = $inventory
+        DkimEvidence = $DkimEvidence
+        DnsOwnerHandoffEvidence = $DnsOwnerHandoffEvidence
+    }
+}
+
+function Test-AuthenticationAlignmentControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Evidence,
+        [Parameter(Mandatory)][string]$TenantId,
+        [datetimeoffset]$AsOfUtc = [datetimeoffset]::UtcNow,
+        [timespan]$MaximumProofAge = ([timespan]::FromDays(1))
+    )
+
+    $newResult = {
+        param([string]$Status, [AllowNull()][string]$Reason, [object[]]$Normalized = @())
+        [pscustomobject][ordered]@{
+            ControlId = 'EXR-011-A04'
+            Status = $Status
+            Reason = $Reason
+            Normalized = @($Normalized)
+            OfflineContractOnly = $true
+            LiveDeliveryVerified = $false
+            LiveVerificationOwner = 'EXR-016-A03/EXR-017-A01/A02'
+        }
+    }
+    $refuse = {
+        param([string]$Reason, [string]$Status = 'Fail')
+        & $newResult $Status $Reason @()
+    }
+    $normalizeDomain = { param($Value) ([string]$Value).Trim().TrimEnd('.').ToLowerInvariant() }
+
+    if ($null -eq $Evidence -or -not [bool](Get-BaselineRecordMember -Node $Evidence -Name 'Collected')) {
+        return & $refuse "AuthenticationAlignmentCollectionFailed: $([string](Get-BaselineRecordMember -Node $Evidence -Name 'FailureReason'))" 'Error'
+    }
+
+    $page = Get-BaselineRecordMember -Node $Evidence -Name 'Value'
+    if ((Get-BaselineRecordMember -Node $page -Name 'Complete') -ne $true -or
+        -not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $page -Name 'NextLink'))) {
+        return & $refuse 'AuthenticationAlignmentPagingIncomplete: the received-message collection did not return a complete page.' 'Error'
+    }
+
+    $denominator = [System.Collections.Generic.List[string]]::new()
+    $senderSourceByDomain = @{}
+    foreach ($entry in @(Get-BaselineRecordMember -Node $Evidence -Name 'DomainInventory')) {
+        if ((Get-BaselineRecordMember -Node $entry -Name 'Sending') -ne $true -or
+            ([string](Get-BaselineRecordMember -Node $entry -Name 'SendingSystem')).Trim() -cne 'ExchangeOnline') {
+            continue
+        }
+        $domain = & $normalizeDomain (Get-BaselineRecordMember -Node $entry -Name 'DomainName')
+        if ([string]::IsNullOrWhiteSpace($domain) -or $senderSourceByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationAlignmentIdentityAmbiguous: sending-domain identity '$domain' is blank or duplicated." 'Error'
+        }
+        $denominator.Add($domain)
+        $senderSourceByDomain[$domain] = Get-BaselineRecordMember -Node $entry -Name 'SenderSource'
+    }
+    if ($denominator.Count -eq 0) {
+        return & $refuse 'AuthenticationAlignmentEvidenceIncomplete: the inventory contains no Exchange Online sending domain.' 'Error'
+    }
+
+    $messageByDomain = @{}
+    foreach ($message in @(Get-BaselineRecordMember -Node $page -Name 'Items')) {
+        foreach ($required in @('Domain', 'MessageId', 'ReceivedAtUtc', 'ReceivedHeaders', 'Sender', 'AuthenticationResults')) {
+            if ($required -cnotin @(Get-BaselineRecordMemberName -Node $message) -or
+                ($required -in @('Domain', 'MessageId') -and [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $message -Name $required)))) {
+                return & $refuse "AuthenticationAlignmentEvidenceIncomplete: a received-message proof carries no complete '$required' identity." 'Error'
+            }
+        }
+        $domain = & $normalizeDomain (Get-BaselineRecordMember -Node $message -Name 'Domain')
+        if ($domain -cnotin $denominator) {
+            return & $refuse "AuthenticationAlignmentDomainMismatch: message proof domain '$domain' is outside the complete sending denominator."
+        }
+        if ($messageByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationAlignmentIdentityAmbiguous: normalized message identity '$domain' occurs more than once." 'Error'
+        }
+        $messageByDomain[$domain] = $message
+    }
+
+    $dkimEvidence = Get-BaselineRecordMember -Node $Evidence -Name 'DkimEvidence'
+    if ($null -eq $DkimEvidence -or (Get-BaselineRecordMember -Node $dkimEvidence -Name 'Collected') -ne $true) {
+        return & $refuse 'AuthenticationAlignmentEvidenceIncomplete: independent DKIM evidence was not collected.' 'Error'
+    }
+    $dkimByDomain = @{}
+    foreach ($entry in @(Get-BaselineRecordMember -Node $dkimEvidence -Name 'Value')) {
+        $domain = & $normalizeDomain (Get-BaselineRecordMember -Node $entry -Name 'Domain')
+        if ([string]::IsNullOrWhiteSpace($domain) -or $dkimByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationAlignmentIdentityAmbiguous: DKIM identity '$domain' is blank or duplicated." 'Error'
+        }
+        $dkimByDomain[$domain] = $entry
+    }
+
+    $dnsEvidence = Get-BaselineRecordMember -Node $Evidence -Name 'DnsOwnerHandoffEvidence'
+    if ($null -eq $dnsEvidence -or (Get-BaselineRecordMember -Node $dnsEvidence -Name 'Collected') -ne $true) {
+        return & $refuse 'AuthenticationAlignmentEvidenceIncomplete: independent DNS-owner evidence was not collected.' 'Error'
+    }
+    $dnsByDomain = @{}
+    foreach ($entry in @(Get-BaselineRecordMember -Node $dnsEvidence -Name 'Normalized')) {
+        $domain = & $normalizeDomain (Get-BaselineRecordMember -Node $entry -Name 'Domain')
+        if ([string]::IsNullOrWhiteSpace($domain) -or $dnsByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationAlignmentIdentityAmbiguous: DNS-owner identity '$domain' is blank or duplicated." 'Error'
+        }
+        $dnsByDomain[$domain] = $entry
+    }
+    $attestation = Get-BaselineRecordMember -Node $dnsEvidence -Name 'Attestation'
+    if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $attestation -Name 'CutoverApprovedAtUtc'))) {
+        return & $refuse 'AuthenticationCutoverEvidenceMissing: independent DNS cutover approval is absent.'
+    }
+
+    $normalized = [System.Collections.Generic.List[object]]::new()
+    foreach ($domain in $denominator) {
+        if (-not $messageByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationMessageProofMissing: sending domain '$domain' has no received-message proof."
+        }
+        if (-not $dkimByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationAlignmentEvidenceIncomplete: sending domain '$domain' has no independent DKIM state." 'Error'
+        }
+        if (-not $dnsByDomain.ContainsKey($domain)) {
+            return & $refuse "AuthenticationSpfEvidenceMismatch: sending domain '$domain' has no domain-bound independent SPF proof."
+        }
+
+        $message = $messageByDomain[$domain]
+        $dkim = $dkimByDomain[$domain]
+        $dns = $dnsByDomain[$domain]
+        $signing = Get-BaselineRecordMember -Node $dkim -Name 'SigningConfiguration'
+        if ((Get-BaselineRecordMember -Node $signing -Name 'Enabled') -ne $true -or
+            ([string](Get-BaselineRecordMember -Node $signing -Name 'Status')).Trim() -cne 'Valid') {
+            return & $refuse "AuthenticationDkimSigningStateInvalid: '$domain' is not enabled with valid Exchange DKIM signing state."
+        }
+
+        $authentication = Get-BaselineRecordMember -Node $message -Name 'AuthenticationResults'
+        $spf = Get-BaselineRecordMember -Node $authentication -Name 'Spf'
+        $dkimResult = Get-BaselineRecordMember -Node $authentication -Name 'Dkim'
+        $dmarc = Get-BaselineRecordMember -Node $authentication -Name 'Dmarc'
+        $selector = ([string](Get-BaselineRecordMember -Node $dkimResult -Name 'Selector')).Trim().ToLowerInvariant()
+        if ($selector -cnotin @('selector1', 'selector2')) {
+            return & $refuse "AuthenticationAlignmentSelectorMismatch: '$domain' used selector '$selector', which is outside its exact Exchange signing state."
+        }
+        $selectorDns = Get-BaselineRecordMember -Node $dkim -Name "$(if ($selector -ceq 'selector1') { 'Selector1Dns' } else { 'Selector2Dns' })"
+        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $selectorDns -Name 'CanonicalName'))) {
+            return & $refuse "AuthenticationAlignmentSelectorMismatch: '$domain' used selector '$selector' without matching Exchange selector proof."
+        }
+
+        $receivedAt = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember -Node $message -Name 'ReceivedAtUtc'), [ref]$receivedAt) -or
+            $receivedAt -gt $AsOfUtc -or ($AsOfUtc - $receivedAt) -gt $MaximumProofAge) {
+            return & $refuse "AuthenticationMessageProofStale: '$domain' proof is outside the admitted age."
+        }
+
+        foreach ($check in @(
+                @{ Node = $spf; Name = 'Spf'; Failed = 'AuthenticationSpfFailed'; Alignment = 'AuthenticationSpfAlignmentFailed' }
+                @{ Node = $dkimResult; Name = 'Dkim'; Failed = 'AuthenticationDkimFailed'; Alignment = 'AuthenticationDkimAlignmentFailed' }
+                @{ Node = $dmarc; Name = 'Dmarc'; Failed = 'AuthenticationDmarcFailed'; Alignment = 'AuthenticationDmarcAlignmentFailed' }
+            )) {
+            if (([string](Get-BaselineRecordMember -Node $check.Node -Name 'Result')).Trim().ToLowerInvariant() -cne 'pass') {
+                return & $refuse "$($check.Failed): '$domain' $($check.Name.ToUpperInvariant()) authentication did not pass."
+            }
+            if ((Get-BaselineRecordMember -Node $check.Node -Name 'Aligned') -ne $true) {
+                return & $refuse "$($check.Alignment): '$domain' $($check.Name.ToUpperInvariant()) identity is not aligned."
+            }
+        }
+
+        $sender = Get-BaselineRecordMember -Node $message -Name 'Sender'
+        $expectedSenderReference = [string](Get-BaselineRecordMember -Node $senderSourceByDomain[$domain] -Name 'Reference')
+        if ((Get-BaselineRecordMember -Node $sender -Name 'Authorized') -ne $true -or
+            ([string](Get-BaselineRecordMember -Node $sender -Name 'Scope')).Trim() -cne 'ExchangeOnline' -or
+            [string]::IsNullOrWhiteSpace($expectedSenderReference) -or
+            ([string](Get-BaselineRecordMember -Node $sender -Name 'Reference')).Trim() -cne $expectedSenderReference.Trim()) {
+            return & $refuse "AuthenticationSenderUnauthorized: '$domain' proof is outside the authorized Exchange sender scope."
+        }
+        if (@(Get-BaselineRecordMember -Node $message -Name 'ReceivedHeaders').Count -eq 0) {
+            return & $refuse "AuthenticationAlignmentEvidenceIncomplete: '$domain' proof carries no received headers." 'Error'
+        }
+
+        $independentSpf = Get-BaselineRecordMember -Node $dns -Name 'Spf'
+        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $independentSpf -Name 'Record')) -or
+            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $independentSpf -Name 'OwnerProof'))) {
+            return & $refuse "AuthenticationSpfEvidenceMismatch: '$domain' has no independently owned SPF proof."
+        }
+        $independentDmarc = Get-BaselineRecordMember -Node $dns -Name 'Dmarc'
+        if ((& $normalizeDomain (Get-BaselineRecordMember -Node $independentDmarc -Name 'PolicyDomain')) -cne $domain -or
+            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $independentDmarc -Name 'Record')) -or
+            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $independentDmarc -Name 'OwnerProof'))) {
+            return & $refuse "AuthenticationDmarcEvidenceMismatch: '$domain' has no domain-bound independently owned DMARC proof."
+        }
+
+        $normalized.Add([pscustomobject][ordered]@{
+                Domain = $domain
+                MessageId = [string](Get-BaselineRecordMember -Node $message -Name 'MessageId')
+                ReceivedAtUtc = $receivedAt.ToUniversalTime().ToString('o')
+                ReceivedHeaders = @(Get-BaselineRecordMember -Node $message -Name 'ReceivedHeaders')
+                Sender = $sender
+                AuthenticationResults = $authentication
+                IndependentSpf = $true
+                IndependentDmarc = $true
+                CutoverAttestation = $true
+            })
+    }
+
+    return & $newResult 'Pass' $null $normalized.ToArray()
+}
+
 function Get-DnsOwnerHandoffEvidence {
     [CmdletBinding()]
     param(
@@ -17147,6 +17381,8 @@ Export-ModuleMember -Function @(
     'Test-ChangeSafetyControl'
     'Get-IncidentExerciseEvidence'
     'Test-IncidentExerciseControl'
+    'Get-AuthenticationAlignmentEvidence'
+    'Test-AuthenticationAlignmentControl'
     'Get-DnsOwnerHandoffEvidence'
     'Test-DnsOwnerHandoffControl'
     'Get-BaselineParameterHash'

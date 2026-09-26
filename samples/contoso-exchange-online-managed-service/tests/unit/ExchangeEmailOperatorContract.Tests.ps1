@@ -63,8 +63,8 @@ BeforeAll {
         if ($EmailContract -notmatch '(?is)ExchangeOnly[^\r\n]*(exclude|not applicable)[^\r\n]*MDO-004[^\r\n]*MDO-005') {
             $violation.Add('ExchangeOnlyExclusionMissing:MDO-004,MDO-005')
         }
-        if ($Catalog -notmatch '(?im)^\| MDO-004 \| External \| Excluded \|' -or
-            $Catalog -notmatch '(?im)^\| MDO-005 \| External \| Excluded \|' -or
+        if ($Catalog -notmatch '(?im)^\| MDO-004 \| MUST \| Excluded \| External owner \|' -or
+            $Catalog -notmatch '(?im)^\| MDO-005 \| SHOULD \| Excluded \| External owner \|' -or
             $EmailContract -notmatch '(?is)MicrosoftRecommendation.*LocalPolicy.*ApprovedException') {
             $violation.Add('CatalogParityProfileOrValueClassMissing')
         }

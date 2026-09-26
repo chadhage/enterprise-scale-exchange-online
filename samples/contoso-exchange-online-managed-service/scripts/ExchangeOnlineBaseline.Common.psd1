@@ -159,6 +159,8 @@
         'Test-ChangeSafetyControl'
         'Get-IncidentExerciseEvidence'
         'Test-IncidentExerciseControl'
+        'Get-AuthenticationAlignmentEvidence'
+        'Test-AuthenticationAlignmentControl'
         'Get-DnsOwnerHandoffEvidence'
         'Test-DnsOwnerHandoffControl'
         'Get-BaselineParameterHash'

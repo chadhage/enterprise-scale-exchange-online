@@ -9,13 +9,14 @@ BeforeAll {
         param(
             [byte[]]$CanonicalBytes,
             [AllowNull()][object]$Signature,
-            [scriptblock]$VerificationScript
+            [scriptblock]$VerificationScript,
+            [AllowNull()][object]$VerificationContext
         )
 
         & $script:CommonModule {
-            param($Bytes, $DetachedSignature, $Verifier)
-            Test-BaselineDetachedCmsSignature -CanonicalBytes $Bytes -Signature $DetachedSignature -VerificationScript $Verifier
-        } $CanonicalBytes $Signature $VerificationScript
+            param($Bytes, $DetachedSignature, $Verifier, $Context)
+            Test-BaselineDetachedCmsSignature -CanonicalBytes $Bytes -Signature $DetachedSignature -VerificationScript $Verifier -VerificationContext $Context
+        } $CanonicalBytes $Signature $VerificationScript $VerificationContext
     }
 
     function Invoke-ExternalEvidenceSignerTest {
@@ -152,6 +153,28 @@ Describe 'EVD-008 detached CMS verification' {
             $result.Verified | Should -BeTrue
             $result.Reason | Should -BeExactly 'DetachedCmsSignatureValid'
             $result.SignerSubject | Should -BeExactly 'CN=Contoso Evidence Approver'
+        }
+
+        It 'passes optional verification context to the Common-bound verifier' {
+            # Arrange
+            $canonicalBytes = [System.Text.Encoding]::UTF8.GetBytes('{"controlId":"EXO-001"}')
+            $signature = New-SignatureMetadata
+            $sentinel = [datetimeoffset]'2026-09-19T11:58:37Z'
+            $verificationScript = {
+                param([byte[]]$ContentBytes, [byte[]]$SignatureBytes, $VerificationContext)
+                [pscustomobject]@{
+                    SignatureValid = $true
+                    ContentMatched = $true
+                    SigningTimeUtc = $VerificationContext
+                }
+            }
+
+            # Act
+            $result = Invoke-DetachedCmsSignatureTest -CanonicalBytes $canonicalBytes -Signature $signature -VerificationScript $verificationScript -VerificationContext $sentinel
+
+            # Assert
+            $result.Verified | Should -BeTrue
+            $result.SigningTimeUtc | Should -Be $sentinel
         }
     }
 }
