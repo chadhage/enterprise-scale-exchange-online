@@ -570,6 +570,14 @@ ExceptIfSentToMemberOf    :
 
 Excluded from ExchangeOnly. The collaboration workload owner handles this independently through RAID-I04. No collaboration-workload setup or write is part of this walkthrough.
 
+**Verify**
+
+Obtain the current RAID-I04 handoff from the collaboration workload owner. Confirm it identifies MDO-004, the covered tenant and workload scope, the accountable owner, an approval or evidence reference, the observation date, and current status. This is an evidence review only; do not open a Graph session or change SharePoint, OneDrive, Teams, or Safe Attachments settings from the Exchange procedure.
+
+**Expected**
+
+The handoff is current, owner-bound, tenant-bound, and independently accepted for its stated collaboration scope. ExchangeOnly continues to report MDO-004 as `Excluded` and external readiness as `Unverified`; absent, expired, unresolved, or scope-mismatched evidence is returned to the external owner and is never converted into Exchange conformance.
+
 ---
 
 ### R-MDO-005 Safe Documents

@@ -4110,7 +4110,7 @@ function Write-BaselineWorkflowFile {
 
 function Get-BaselineApprovedOperation {
     param($Context, [string[]]$Scope, [switch]$DesiredOnly, $Approved)
-    $supported = @('Transport','Organization','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption')
+    $supported = @('Transport','TransportBypass','Organization','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption')
     if ($Scope.Count -eq 0 -or @($Scope | Select-Object -Unique).Count -ne $Scope.Count -or @($Scope | Where-Object { $_ -cnotin $supported }).Count) {
         throw ('ChangeScopeUnsupported: explicitly select supported reversible scopes: ' + ($supported -join ', ') + '.')
     }
@@ -10460,6 +10460,67 @@ function Test-ExternalSenderTagControl {
     }
 
     return Test-BaselineControl -ControlId 'EXO-007' -Evidence $Evidence -Evaluator $evaluator
+}
+
+function Get-TransportBypassEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$Collection
+    )
+
+    return Get-BaselineEvidence -ControlId 'BAD-001' -Source 'ExchangeOnline' -Command 'Get-TransportRule' -Collection $Collection
+}
+
+function Test-TransportBypassControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$ApprovedExceptions
+    )
+
+    if ($null -eq $ApprovedExceptions) { throw 'TransportBypassApprovalRequired: approved exceptions are required.' }
+    $approved = @($ApprovedExceptions)
+    $evaluator = {
+        param($Record)
+
+        $rules = @(Get-BaselineRecordMember -Node $Record -Name 'Value')
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($rule in $rules) {
+            foreach ($member in @('Identity','State','Mode','SenderDomainIs','SenderIpRanges','HeaderContainsMessageHeader','HeaderContainsWords','SetSCL','PrependSubject')) {
+                if (-not (Test-BaselineNodeMember $rule $member)) { return [pscustomobject]@{ Status = 'Error'; Reason = "TransportBypassEvidenceIncomplete: TransportRule omitted $member." } }
+            }
+            if (-not $seen.Add([string]$rule.Identity)) { return [pscustomobject]@{ Status = 'Error'; Reason = 'TransportBypassEvidenceIncomplete: duplicate normalized transport identities.' } }
+        }
+        if (@($rules | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.PrependSubject) }).Count) {
+            return [pscustomobject]@{ Status = 'Fail'; Reason = 'ExternalSubjectPrefixDuplicate: an external subject-prefix transport rule remains enabled.' }
+        }
+        $sclRules = @($rules | Where-Object { [long]$_.SetSCL -eq -1 })
+        if ($sclRules.Count -ne $approved.Count) { return [pscustomobject]@{ Status = 'Fail'; Reason = 'TransportBypassScopeMismatch: live SCL exceptions differ from the approved set.' } }
+        foreach ($exception in $approved) {
+            $match = @($sclRules | Where-Object { [string]$_.Identity -ieq [string]$exception.identity })
+            if ($match.Count -ne 1) { return [pscustomobject]@{ Status = 'Fail'; Reason = "TransportBypassScopeMismatch: '$($exception.identity)' is not the one approved rule." } }
+            $rule = $match[0]
+            $normalize = { param($Value) @($Value | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique) }
+            if ($rule.State -cne 'Enabled' -or $rule.Mode -cne 'Enforce' -or
+                (ConvertTo-CanonicalJson (& $normalize $rule.SenderDomainIs)) -cne (ConvertTo-CanonicalJson (& $normalize $exception.senderDomains)) -or
+                (ConvertTo-CanonicalJson (& $normalize $rule.SenderIpRanges)) -cne (ConvertTo-CanonicalJson (& $normalize $exception.senderIpRanges)) -or
+                [string]$rule.HeaderContainsMessageHeader -cne [string]$exception.authentication.header -or
+                (ConvertTo-CanonicalJson (& $normalize $rule.HeaderContainsWords)) -cne (ConvertTo-CanonicalJson (& $normalize $exception.authentication.requiredResults))) {
+                return [pscustomobject]@{ Status = 'Fail'; Reason = "TransportBypassAuthenticationRequired: '$($exception.identity)' is not restricted to its approved authenticated sender scope." }
+            }
+        }
+        [pscustomobject]@{ Status = 'Pass' }
+    }
+
+    return Test-BaselineControl -ControlId 'BAD-001' -Evidence $Evidence -Evaluator $evaluator
 }
 
 # EXO-008: the remote domains the tenant actually holds. Every domain is recorded whole rather than
@@ -17006,6 +17067,8 @@ Export-ModuleMember -Function @(
     'Test-MailboxAuditingControl'
     'Get-ExternalSenderTagEvidence'
     'Test-ExternalSenderTagControl'
+    'Get-TransportBypassEvidence'
+    'Test-TransportBypassControl'
     'Get-RemoteDomainEvidence'
     'Resolve-BaselineRemoteDomainOofType'
     'Test-RemoteDomainControl'

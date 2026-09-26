@@ -79,6 +79,8 @@
         'Test-MailboxAuditingControl'
         'Get-ExternalSenderTagEvidence'
         'Test-ExternalSenderTagControl'
+        'Get-TransportBypassEvidence'
+        'Test-TransportBypassControl'
         'Get-RemoteDomainEvidence'
         'Resolve-BaselineRemoteDomainOofType'
         'Test-RemoteDomainControl'

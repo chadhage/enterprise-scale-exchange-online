@@ -2,6 +2,44 @@
 
 Scope: retained ExchangeOnly controls MDO-001/002/003/006/007/008/009 and OPS-002. Source review: 2026-09-21. This contract does not configure Safe Documents, SharePoint, OneDrive, Teams, licensing, Graph consent or global Purview. ExternalReadiness remains Unverified.
 
+## Operator Contract
+
+The active procedure evaluates the 25-control ExchangeOnly profile. The 43-control Historical profile remains available only for explicit regression and reference use; it is not the active deployment default.
+
+| Profile | Control denominator | Collaboration treatment |
+| --- | ---: | --- |
+| Historical | 43 | MDO-004 and MDO-005 remain opt-in reference controls for historical regression only. |
+| ExchangeOnly | 25 | Excludes MDO-004 and MDO-005 as not applicable to the active Exchange deployment. |
+
+Catalogue values retain their declared provenance: `MicrosoftRecommendation` is a sourced Microsoft value, `LocalPolicy` is an approved local choice, and `ApprovedException` is a separately authorized deviation. Never relabel a local value or exception as a Microsoft recommendation.
+
+### Inputs
+
+Supply the versioned ExchangeOnly configuration and complete raw collection, the exact tenant and recipient matrix, and a current tenant- and recipient-bound entitlement handoff from the licensing owner. The handoff must name its owner and approval reference, cover every evaluated recipient, list exact enabled service plans, and have a future expiry. Also supply current approval, setting exceptions, domain inventory, reporting evidence, and the independently owned DLP or other external handoffs required by the selected retained controls. Missing, stale, malformed, unresolved, or scope-mismatched input stops the procedure; the Exchange operator does not query Graph, grant consent, assign licenses, or configure excluded collaboration workloads to repair it.
+
+### Set
+
+Initialize Microsoft-managed Standard and Strict preset objects in the Defender portal, then use the signed Exchange approved-change workflow to preview only supported existing-object scope, state, and named setting changes. Bind the preview to the exact collected before-state and current approval before using `-Apply`. Apply only retained Exchange controls for entitled recipients. Do not recreate preset backing policies, add MDO-004 or MDO-005 to ExchangeOnly, or substitute a local value for a `MicrosoftRecommendation`.
+
+### Verify
+
+Recollect the complete raw Exchange evidence after the approved change and evaluate it against the same configuration, recipient matrix, entitlement handoff, profile, and catalogue version used for preview. Confirm exact effective-recipient precedence, policy/rule bindings, quarantine permissions, report routing, independent Junk/NotJunk/Phish observations, and every expected/observed catalogue value. Preserve external handoffs as independently owned evidence with readiness `Unverified`; an Exchange readback does not certify licensing, DLP, Safe Documents, SharePoint, OneDrive, or Teams.
+
+### Expected Output
+
+The ExchangeOnly evaluation reports 25 of 25 retained controls with no missing or unknown controls and keeps `Pass`, `NotEntitled`, `ApprovedException`, `Fail`, and `Error` distinct. Historical regression evidence and the public result retain the complete denominator and exit contract:
+
+| Artifact | Profile | Controls | Exit |
+| --- | --- | ---: | ---: |
+| TST-006 evidence | Historical | 43/43 | n/a |
+| TST-006 result | Historical | 43/43 | 0 |
+
+The Historical result preserves MDO-004 and MDO-005 as opt-in references. It does not make them ExchangeOnly defaults or certify those external workloads.
+
+### Recovery
+
+On input, preview, apply, collection, or verification failure, stop and retain all artifacts. Use the signed workflow rollback to restore the captured Exchange before-state, recollect the same full matrix, and record the failed step and owner. Route entitlement, DLP, identity, consent, or excluded-workload gaps back to the named external owner; do not broaden Exchange scope or perform collaboration writes as recovery.
+
 ## Effective Settings
 
 1. Obtain a current tenant- and recipient-bound entitlement handoff from the licensing owner. EOP Standard/Strict checks run independently of Defender. Safe Links, Safe Attachments and targeted impersonation require supplied Defender P1/P2 capability; suite labels are not evidence. Tabletop cadence has no Defender P2 requirement.

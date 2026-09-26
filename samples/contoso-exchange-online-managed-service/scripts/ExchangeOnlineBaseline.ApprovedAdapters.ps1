@@ -50,7 +50,7 @@ function Get-ApprovedAdapterDefinitions {
     $parameters = $Context.Parameters
     $options = $parameters['workflowOptions']
     if ($null -eq $options) { $options = @{} }
-    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
+    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
@@ -70,6 +70,57 @@ function Get-ApprovedAdapterDefinitions {
     }
     foreach ($area in $Scope) {
         switch -CaseSensitive ($area) {
+            TransportBypass {
+                $exceptions = @($options['transportSclExceptions'] | Where-Object { $null -ne $_ })
+                $prefixRules = @($options['externalSubjectPrefixRules'] | Where-Object { $null -ne $_ })
+                if ($exceptions.Count -eq 0) { throw 'TransportBypassAuthenticationRequired: at least one explicitly authenticated SCL exception is required.' }
+                $seenException = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach ($exception in $exceptions) {
+                    if ([string]::IsNullOrWhiteSpace([string]$exception.identity) -or -not $seenException.Add([string]$exception.identity)) { throw 'TransportBypassScopeTooBroad: every exception requires one unique exact transport rule identity.' }
+                    if (@($exception.senderDomains).Count -eq 0 -or @($exception.senderIpRanges).Count -eq 0 -or
+                        [string]$exception.authentication.header -cne 'Authentication-Results' -or
+                        @('spf=pass','dkim=pass','dmarc=pass' | Where-Object { $_ -cnotin @($exception.authentication.requiredResults) }).Count) {
+                        throw 'TransportBypassAuthenticationRequired: an exception requires sender domain, sender IP and SPF, DKIM and DMARC pass results.'
+                    }
+                    foreach ($range in @($exception.senderIpRanges)) {
+                        $parts = [string]$range -split '/', 2
+                        $address = $null
+                        $prefix = 0
+                        if ($parts.Count -ne 2 -or -not [Net.IPAddress]::TryParse($parts[0], [ref]$address) -or -not [int]::TryParse($parts[1], [ref]$prefix) -or
+                            ($address.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetwork -and $prefix -lt 24) -or
+                            ($address.AddressFamily -eq [Net.Sockets.AddressFamily]::InterNetworkV6 -and $prefix -lt 64)) {
+                            throw 'TransportBypassScopeTooBroad: sender IP ranges must be explicit narrow CIDR ranges.'
+                        }
+                    }
+                    if ([string]::IsNullOrWhiteSpace([string]$exception.owner)) { throw 'TransportBypassOwnerRequired: every exception requires an accountable owner.' }
+                    if ([string]::IsNullOrWhiteSpace([string]$exception.approval)) { throw 'TransportBypassApprovalRequired: every exception requires an approval reference.' }
+                    $expiry = [datetimeoffset]::MinValue
+                    if (-not [datetimeoffset]::TryParse([string]$exception.expiresOn, [ref]$expiry) -or $expiry -le [datetimeoffset]::UtcNow) { throw 'TransportBypassApprovalExpired: every exception requires a future expiration.' }
+                    if ($exception.setScl -isnot [int] -and $exception.setScl -isnot [long] -or [long]$exception.setScl -ne -1) { throw 'TransportBypassScopeTooBroad: the approved exception action must be SCL -1.' }
+                }
+                foreach ($prefix in $prefixRules) {
+                    if ([string]::IsNullOrWhiteSpace([string]$prefix.identity) -or [string]::IsNullOrWhiteSpace([string]$prefix.prefix) -or $prefix.action -cne 'Remove') { throw 'ChangeOptionsInvalid: external subject-prefix removal requires identity, prefix and action Remove.' }
+                }
+                if (-not $DesiredOnly) {
+                    $transportRows = Get-ApprovedAdapterCollection Get-TransportRule @{ ResultSize = 'Unlimited' } @('Identity','SetSCL')
+                    $livePrefixes = @($transportRows | Where-Object { Test-BaselineNodeMember $_ PrependSubject } | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_.PrependSubject) })
+                    if ($livePrefixes.Count -gt 1) { throw 'ExternalSubjectPrefixDuplicate: remove redundant external subject-prefix rules before applying the approved state.' }
+                }
+                foreach ($exception in $exceptions) {
+                    $definition = & $fixed TransportBypassScl TransportRule @{ Identity = [string]$exception.identity } @{
+                        SenderDomainIs = @($exception.senderDomains)
+                        SenderIpRanges = @($exception.senderIpRanges)
+                        HeaderContainsMessageHeader = [string]$exception.authentication.header
+                        HeaderContainsWords = @($exception.authentication.requiredResults)
+                        SetSCL = [int]$exception.setScl
+                    } @{ SenderDomainIs = 'Strings'; SenderIpRanges = 'Strings'; HeaderContainsMessageHeader = 'String'; HeaderContainsWords = 'Strings'; SetSCL = 'Integer' }
+                    $definition.Guard = @{ State = 'Enabled'; Mode = 'Enforce' }
+                    $definition
+                }
+                foreach ($prefix in $prefixRules) {
+                    & $fixed TransportBypassPrefix TransportRule @{ Identity = [string]$prefix.identity } @{ PrependSubject = $null } @{ PrependSubject = 'NullableString' }
+                }
+            }
             GovernanceMailboxPolicy {
                 $settings = $controls['EXO-010']
                 Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $settings approval) ([datetimeoffset]::UtcNow)
