@@ -31,7 +31,7 @@ Describe 'PP-006 shipped profile parity' {
 
     It 'declares exact PP applicability without overlap or omission' {
         # Arrange
-        $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+        $registry = @(Get-BaselineControlRegistry)[0]
         $pp = @($registry | Where-Object ControlId -Like 'PP-*')
         # Act
         $fold = @($pp | ForEach-Object { '{0}:{1}' -f $_.ControlId, (@($_.ApplicableProfile) -join '+') })

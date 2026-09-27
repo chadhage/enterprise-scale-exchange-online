@@ -307,7 +307,7 @@ Describe 'EVD-006-A control registry resolution' {
 
         It 'resolves every registered control with no half-shipped and no unexported entry' {
             # Arrange
-            $registry = Get-BaselineControlRegistry -Profile Historical
+            $registry = Get-BaselineControlRegistry
             $exported = Get-ShippedCommandSurface
             $defined = Get-DefinedCommandSurface
 

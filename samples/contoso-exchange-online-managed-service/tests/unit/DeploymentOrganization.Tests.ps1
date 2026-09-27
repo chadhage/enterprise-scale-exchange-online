@@ -3,7 +3,6 @@
 BeforeAll {
     $script:SampleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:DeploymentScriptPath = Join-Path $script:SampleRoot 'scripts' 'Deploy-ExchangeOnlineBaseline.ps1'
-    Import-Module (Join-Path $script:SampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force
 
     function Get-DeploymentFunctionText {
         param([Parameter(Mandatory)][string[]]$Name)
@@ -34,7 +33,6 @@ function Set-HostedOutboundSpamFilterPolicy { param($Identity, $AutoForwardingMo
 function Set-OrganizationConfig { param($AuditDisabled, $EwsEnabled, $EwsAllowList, $WhatIf) }
 function Set-ExternalInOutlook { param($Enabled, $AllowList, $WhatIf) }
 function Set-RemoteDomain { param($Identity, $AutoForwardEnabled, $AutoReplyEnabled, $AllowedOOFType, $DeliveryReportEnabled, $NDREnabled, $WhatIf) }
-function Get-RemoteDomain { [pscustomobject]@{ Identity = 'Default'; DomainName = '*'; AllowedOOFType = 'None' } }
 function Get-CASMailboxPlan { param($ResultSize) }
 function Set-CASMailboxPlan { param($Identity, $PopEnabled, $ImapEnabled, $WhatIf) }
 function Set-QuarantinePolicy { param($Identity, $EndUserSpamNotificationFrequency, $WhatIf) }
@@ -75,7 +73,7 @@ Export-ModuleMember -Function *
                     remoteDomainDefault = [pscustomobject]@{
                         autoForwardEnabled = $false
                         autoReplyEnabled = $false
-                        allowedOOFType = 'None'
+                        allowedOOFType = 'ExternalLegacy'
                         deliveryReportEnabled = $false
                         nonDeliveryReportEnabled = $false
                     }
@@ -304,7 +302,7 @@ Describe 'TST-002 organization-control deployment' {
             }
             Should -Invoke Set-RemoteDomain -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {
                 $Identity -eq 'Default' -and $AutoForwardEnabled -eq $false -and
-                $AutoReplyEnabled -eq $false -and $AllowedOOFType -eq 'None' -and
+                $AutoReplyEnabled -eq $false -and $AllowedOOFType -eq 'ExternalLegacy' -and
                 $DeliveryReportEnabled -eq $false -and $NDREnabled -eq $false -and $WhatIf -eq $false
             }
             Should -Invoke Get-CASMailboxPlan -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {

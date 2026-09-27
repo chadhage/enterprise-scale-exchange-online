@@ -220,13 +220,12 @@
       "remoteDomainDefault": {
         "autoForwardEnabled": false,
         "autoReplyEnabled": false,
-        "allowedOOFType": "None",
+        "allowedOOFType": "InternalLegacy",
         "deliveryReportEnabled": false,
         "nonDeliveryReportEnabled": false
       },
       "protocolRestriction": {
         "ewsEnabled": false,
-        "ewsApplicationAccessPolicy": "EnforceAllowList",
         "ewsAllowList": [],
         "popEnabledByDefault": false,
         "imapEnabledByDefault": false,

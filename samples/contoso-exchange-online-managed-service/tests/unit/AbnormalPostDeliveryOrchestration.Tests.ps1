@@ -149,7 +149,7 @@ Describe 'ABN-003 Gateway-only applicability' {
         It 'assigns both controls only to Gateway and emits only Native NotApplicable results' {
             # Arrange
             Import-Module $script:ModulePath -Force -DisableNameChecking
-            $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+            $registry = @(Get-BaselineControlRegistry)[0]
             $gateway = Get-Content -LiteralPath $script:GatewayProfilePath -Raw | ConvertFrom-Json -Depth 100
             $native = Get-Content -LiteralPath $script:NativeProfilePath -Raw | ConvertFrom-Json -Depth 100
             $fold = Get-AbnormalPostDeliveryFold

@@ -15,9 +15,7 @@ param(
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ParameterPath,
 
-    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-only.v1.json'),
-
-    [switch]$AllowHistoricalProfile,
+    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.json'),
 
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.schema.json'),
 
@@ -28,22 +26,6 @@ param(
     # without being asked to decide, and a gate that every run is forced through is a gate that
     # gets switched off. None of them is read until GATE-003 wires the decision.
     [switch]$GoLive,
-
-    [switch]$SignEvidence,
-
-    [System.Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate,
-
-    [string]$EvidenceSignerIdentity,
-
-    [string]$AuthorizedSignerPath,
-
-    [string]$ExpectedEvidenceHash,
-
-    [string]$EvidencePath,
-
-    [string]$EvidenceSignaturePath,
-
-    [string]$EvidenceSignerSubject,
 
     [string]$RiskAcceptancePath,
 
@@ -67,71 +49,11 @@ $ErrorActionPreference = 'Stop'
 
 Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
 
-$exitCode = Get-BaselineExitCodeContract
-
-try {
-    $selectedProfile = Get-BaselineDeploymentProfile -ConfigurationPath $ConfigurationPath -AllowHistoricalProfile:$AllowHistoricalProfile
-}
-catch {
-    Write-Error "ConfigurationUnusable: $($_.Exception.Message)" -ErrorAction Continue
-    exit $exitCode.Configuration
-}
-if ($selectedProfile -ceq 'ExchangeOnly') {
-    try {
-        $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
-    }
-    catch {
-        Write-Error "ConfigurationUnusable: $($_.Exception.Message)" -ErrorAction Continue
-        exit $exitCode.Configuration
-    }
-    if ($GoLive -or $SignEvidence) {
-        try {
-            if (($GoLive -and $SignEvidence) -or $RiskAcceptancePath) { throw 'ExchangeGoLiveInputsRequired: select either -GoLive or -SignEvidence; separate risk-acceptance imports are not supported for this frozen Exchange artifact.' }
-            $exchangeGate = Invoke-BaselineExchangeGoLive -Context $exchangeContext -EvidencePath $EvidencePath `
-                -SignaturePath $EvidenceSignaturePath -SignerSubject $EvidenceSignerSubject -MaximumEvidenceAge $MaximumEvidenceAge `
-                -SignerIdentity $EvidenceSignerIdentity -AuthorizedSignerPath $AuthorizedSignerPath `
-                -ExpectedEvidenceHash $ExpectedEvidenceHash -ExpectedConfigurationHash $ExpectedConfigurationHash `
-                -SignEvidence:$SignEvidence -SigningCertificate $SigningCertificate
-            $exchangeGate.Decision | ConvertTo-Json -Depth 30 | Write-Output
-            $outcome = $exchangeGate.Outcome
-            exit $outcome.ExitCode
-        }
-        catch {
-            $message = $_.Exception.Message
-            Write-Error $message -ErrorAction Continue
-            switch -Regex ($message) {
-                '^(ExchangeGoLiveInputsRequired|GoLiveMaximumEvidenceAgeNotPositive|ExpectedConfigurationHashMismatch):' { exit $exitCode.Configuration }
-                '^(EvidenceUnreadable|GoLiveCheckRequired):' { exit $exitCode.Collection }
-                '^(EvidenceHashMismatch|ExchangeSignatureUnverified|ExternalEvidenceSigner|SigningCertificateRequired|SignatureAlreadyExists|EvidenceSigningFailed)' { exit $exitCode.Approval }
-                default { exit $exitCode.Internal }
-            }
-        }
-    }
-    try {
-        if (-not $SkipConnection) {
-            Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-            Connect-ExchangeOnline -ShowBanner:$false
-        }
-    }
-    catch {
-        Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
-        exit $exitCode.Connection
-    }
-    try {
-        $outcome = Invoke-BaselineExchangeEvidence -Context $exchangeContext -OutputPath $OutputPath
-        exit $outcome.ExitCode
-    }
-    catch {
-        Write-Error "EvidenceUnreadable: $($_.Exception.Message)" -ErrorAction Continue
-        exit $exitCode.Collection
-    }
-}
-if ($SignEvidence) { Write-Error 'SignEvidence requires the ExchangeOnly profile.' -ErrorAction Continue; exit $exitCode.Configuration }
-
 # GATE-004: every exit this command produces is resolved from the one contract, so an automation
 # caller can tell a configuration it can fix from a connection it can retry, a collection it can
 # rerun, a compliance gap it must escalate, an approval it must obtain, and a defect in this tool.
 # A run that reported all six as `1` told the caller none of that.
+$exitCode = Get-BaselineExitCodeContract
 
 # A fault nothing below anticipated is a defect in this tool rather than a finding about the
 # tenant, and reporting it as a finding sends the operator to fix a tenant that was never at fault.
@@ -202,11 +124,10 @@ try {
         }
         acceptedDomain     = Get-AcceptedDomain -Identity $domain | Select-Object Name, DomainName, DomainType
         transport          = Get-TransportConfig | Select-Object SmtpClientAuthenticationDisabled, ExternalPostmasterAddress
-        organization       = Get-OrganizationConfig -RetrieveEwsOperationAccessPolicy -ErrorAction Stop | Select-Object AuditDisabled, EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, EwsAllowedAppIDs
+        organization       = Get-OrganizationConfig | Select-Object AuditDisabled, EwsEnabled, EwsAllowList
         externalInOutlook  = @(Get-ExternalInOutlook | Select-Object Enabled, AllowList)
-        remoteDomain       = @(Get-RemoteDomain -ErrorAction Stop | Select-Object Identity, DomainName, Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled)
+        remoteDomain       = Get-RemoteDomain -Identity Default | Select-Object Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled
         casMailboxPlans    = @(Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, PopEnabled, ImapEnabled)
-        casMailboxes       = @(Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop | Select-Object Identity, EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, PopEnabled, ImapEnabled)
         outboundSpam       = Get-HostedOutboundSpamFilterPolicy -Identity Default | Select-Object Name, AutoForwardingMode
         quarantineGlobal   = Get-QuarantinePolicy -Identity DefaultGlobalTag | Select-Object Name, EndUserSpamNotificationFrequency
         quarantinePolicies = @(Get-QuarantinePolicy | Select-Object Name, EndUserQuarantinePermissionsValue, ESNEnabled)
@@ -730,15 +651,15 @@ Add-Check 'EXO-004 automaticForwardingOff' $outboundForwardingResult.Status $out
 Add-Result 'EXO-005 externalPostmasterSet' ([bool]$evidence.transport.ExternalPostmasterAddress)
 Add-Result 'EXO-006 mailboxAuditingOn' (-not [bool]$evidence.organization.AuditDisabled)
 Add-Result 'EXO-007 externalSenderTagging' ([bool]($evidence.externalInOutlook | Where-Object { $_.Enabled }))
-$remoteDomainEvidence = Get-RemoteDomainEvidence -Collection { $evidence.remoteDomain }
-$remoteDomainResult = Test-RemoteDomainControl -Evidence $remoteDomainEvidence `
-    -DesiredState $configuration.desiredState.exchangeOnline.remoteDomainDefault
-Add-Check 'EXO-008 remoteDomainHardened' $remoteDomainResult.Status $remoteDomainResult.Reason
-$clientProtocolEvidence = Get-ClientProtocolEvidence -OrganizationConfigCollection { $evidence.organization } `
-    -CasMailboxPlanCollection { $evidence.casMailboxPlans } -CasMailboxCollection { $evidence.casMailboxes }
-$clientProtocolResult = Test-ClientProtocolControl -Evidence $clientProtocolEvidence `
-    -DesiredState $configuration.desiredState.exchangeOnline.protocolRestriction
-Add-Check 'EXO-009 legacyProtocolsRestricted' $clientProtocolResult.Status $clientProtocolResult.Reason
+Add-Result 'EXO-008 remoteDomainHardened' (
+    -not $evidence.remoteDomain.AutoForwardEnabled -and
+    -not $evidence.remoteDomain.AutoReplyEnabled -and
+    -not $evidence.remoteDomain.NDREnabled
+)
+Add-Result 'EXO-009 legacyProtocolsRestricted' (
+    -not [bool]$evidence.organization.EwsEnabled -and
+    -not ($evidence.casMailboxPlans | Where-Object { $_.PopEnabled -or $_.ImapEnabled })
+)
 $rbacPimFallback = $null
 if (-not [string]::IsNullOrWhiteSpace($RbacPimFallbackPath)) {
     if (-not (Test-Path -LiteralPath $RbacPimFallbackPath -PathType Leaf)) {
@@ -781,7 +702,7 @@ if (-not [string]::IsNullOrWhiteSpace($RbacPimFallbackPath)) {
         -TenantId ([string]$configuration.administratorInputs.tenantId) `
         -DeploymentProfile ([string]$configuration.deploymentProfile) `
         -ConfigurationHash $resolvedConfigurationHash `
-        -Registry (Get-BaselineControlRegistry -Profile Historical) `
+        -Registry (Get-BaselineControlRegistry) `
         -MaximumAge $MaximumRbacPimFallbackAge `
         -AsOf ([datetimeoffset]::UtcNow) `
         -CmsVerificationScript $fallbackCmsVerification `
@@ -905,7 +826,7 @@ $dmarcResult = Test-DmarcControl -Evidence $dmarcEvidence `
 Add-Check 'AUTH-003 evaluated' $dmarcResult.Status $dmarcResult.Reason
 
 $selectedRegistryProfile = if ($gatewayDeclared) { 'Gateway' } else { 'Native' }
-$ppRegistry = @(@(Get-BaselineControlRegistry -Profile Historical)[0] | Where-Object ControlId -Like 'PP-*')
+$ppRegistry = @(@(Get-BaselineControlRegistry)[0] | Where-Object ControlId -Like 'PP-*')
 foreach ($excludedControl in @(Get-BaselineProfileExclusion -Registry $ppRegistry -SelectedProfile $selectedRegistryProfile)) {
     Add-Check "$($excludedControl.ControlId) profileExcluded" $excludedControl.Status $excludedControl.Reason
 }
@@ -1131,7 +1052,7 @@ $observation = [ordered]@{
     'EXO-006'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-OrganizationConfig'; Key = @('organization') }
     'EXO-007'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-ExternalInOutlook'; Key = @('externalInOutlook') }
     'EXO-008'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-RemoteDomain'; Key = @('remoteDomain') }
-    'EXO-009'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-OrganizationConfig; Get-CASMailboxPlan; Get-CASMailbox'; Key = @('organization', 'casMailboxPlans', 'casMailboxes') }
+    'EXO-009'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-CASMailboxPlan'; Key = @('organization', 'casMailboxPlans') }
     'EXO-010'  = [ordered]@{ Source = 'ExchangeOnline'; Command = 'Get-RoleGroup'; Key = @('roleGroups') }
     'MDO-001'  = [ordered]@{ Source = 'Defender'; Command = 'Get-EOPProtectionPolicyRule'; Key = @('standardEop', 'standardAtp') }
     'MDO-002'  = [ordered]@{ Source = 'Defender'; Command = 'Get-EOPProtectionPolicyRule'; Key = @('strictEop', 'strictAtp') }
@@ -1190,7 +1111,7 @@ $observed = foreach ($id in @($observation.Keys)) {
 
 # The registry is returned as one collection, so it is enumerated through a variable: iterating the
 # command itself binds the whole registry to `$control` and the run faults before it decides anything.
-$registry = Get-BaselineControlRegistry -Profile Historical
+$registry = Get-BaselineControlRegistry
 
 $uncollected = foreach ($control in $registry) {
     if ($observation.Contains($control.ControlId)) { continue }

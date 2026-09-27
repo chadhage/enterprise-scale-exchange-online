@@ -56,7 +56,7 @@ Describe 'AUTH-002 SPF authentication' {
     Context 'Negative: the registered SPF surface must be shipped and callable' {
         It 'exports the SPF collector' {
             # Arrange
-            $registered = (@(Get-BaselineControlRegistry -Profile Historical)[0] | Where-Object ControlId -CEQ 'AUTH-002').Collector
+            $registered = (@(Get-BaselineControlRegistry)[0] | Where-Object ControlId -CEQ 'AUTH-002').Collector
 
             # Act
             $command = @(Get-Command -Module ExchangeOnlineBaseline.Common -Name $registered -ErrorAction SilentlyContinue)
@@ -67,7 +67,7 @@ Describe 'AUTH-002 SPF authentication' {
 
         It 'exports the SPF evaluator' {
             # Arrange
-            $registered = (@(Get-BaselineControlRegistry -Profile Historical)[0] | Where-Object ControlId -CEQ 'AUTH-002').Evaluator
+            $registered = (@(Get-BaselineControlRegistry)[0] | Where-Object ControlId -CEQ 'AUTH-002').Evaluator
 
             # Act
             $command = @(Get-Command -Module ExchangeOnlineBaseline.Common -Name $registered -ErrorAction SilentlyContinue)

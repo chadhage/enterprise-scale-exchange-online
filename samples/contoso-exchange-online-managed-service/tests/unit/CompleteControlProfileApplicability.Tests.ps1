@@ -27,7 +27,7 @@ BeforeAll {
     }
 
     function Get-PpRegistry {
-        @(@(Get-BaselineControlRegistry -Profile Historical)[0] | Where-Object ControlId -Like 'PP-*')
+        @(@(Get-BaselineControlRegistry)[0] | Where-Object ControlId -Like 'PP-*')
     }
 }
 

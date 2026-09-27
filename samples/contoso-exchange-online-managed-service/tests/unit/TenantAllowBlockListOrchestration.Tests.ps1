@@ -131,7 +131,7 @@ Describe 'MDO-009 TABL public orchestration and phase-exit parity' {
     Context 'Negative: every applicable MDO operation has exact identity and scope' {
         It 'rejects a missing, duplicate, unknown, wrongly scoped or wrongly operated MDO declaration' {
             # Arrange
-            $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+            $registry = @(Get-BaselineControlRegistry)[0]
 
             # Act
             $actual = @(Get-MdoOperationFold -Registry $registry)
@@ -146,7 +146,7 @@ Describe 'MDO-009 TABL public orchestration and phase-exit parity' {
     Context 'Positive: one complete compliant MDO result set' {
         It 'emits every applicable MDO identity, scope and operation once with MDO-007 evaluated' {
             # Arrange
-            $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+            $registry = @(Get-BaselineControlRegistry)[0]
             $text = Get-Content -LiteralPath $script:EvidenceCommandPath -Raw
 
             # Act

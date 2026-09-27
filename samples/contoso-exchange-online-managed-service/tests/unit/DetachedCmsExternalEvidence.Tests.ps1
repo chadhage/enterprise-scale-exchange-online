@@ -9,14 +9,13 @@ BeforeAll {
         param(
             [byte[]]$CanonicalBytes,
             [AllowNull()][object]$Signature,
-            [scriptblock]$VerificationScript,
-            [AllowNull()][object]$VerificationContext
+            [scriptblock]$VerificationScript
         )
 
         & $script:CommonModule {
-            param($Bytes, $DetachedSignature, $Verifier, $Context)
-            Test-BaselineDetachedCmsSignature -CanonicalBytes $Bytes -Signature $DetachedSignature -VerificationScript $Verifier -VerificationContext $Context
-        } $CanonicalBytes $Signature $VerificationScript $VerificationContext
+            param($Bytes, $DetachedSignature, $Verifier)
+            Test-BaselineDetachedCmsSignature -CanonicalBytes $Bytes -Signature $DetachedSignature -VerificationScript $Verifier
+        } $CanonicalBytes $Signature $VerificationScript
     }
 
     function Invoke-ExternalEvidenceSignerTest {
@@ -154,28 +153,6 @@ Describe 'EVD-008 detached CMS verification' {
             $result.Reason | Should -BeExactly 'DetachedCmsSignatureValid'
             $result.SignerSubject | Should -BeExactly 'CN=Contoso Evidence Approver'
         }
-
-        It 'passes optional verification context to the Common-bound verifier' {
-            # Arrange
-            $canonicalBytes = [System.Text.Encoding]::UTF8.GetBytes('{"controlId":"EXO-001"}')
-            $signature = New-SignatureMetadata
-            $sentinel = [datetimeoffset]'2026-09-19T11:58:37Z'
-            $verificationScript = {
-                param([byte[]]$ContentBytes, [byte[]]$SignatureBytes, $VerificationContext)
-                [pscustomobject]@{
-                    SignatureValid = $true
-                    ContentMatched = $true
-                    SigningTimeUtc = $VerificationContext
-                }
-            }
-
-            # Act
-            $result = Invoke-DetachedCmsSignatureTest -CanonicalBytes $canonicalBytes -Signature $signature -VerificationScript $verificationScript -VerificationContext $sentinel
-
-            # Assert
-            $result.Verified | Should -BeTrue
-            $result.SigningTimeUtc | Should -Be $sentinel
-        }
     }
 }
 
@@ -273,127 +250,6 @@ Describe 'EVD-008 external-evidence signer authority' {
             $result.Authorized | Should -BeTrue
             $result.Reason | Should -BeExactly 'ExternalEvidenceSignerAuthorized'
             $result.Identity | Should -BeExactly 'evidence-approver@contoso.example'
-        }
-    }
-}
-
-Describe 'A12-F01 direct contract fixture' {
-    Context 'Verification-context handoff and signer certificate boundaries' {
-        It 'A12-F01 direct contract 01 preserves the explicit same-instant verification context' {
-            # Arrange
-            $canonicalBytes = [System.Text.Encoding]::UTF8.GetBytes('{"controlId":"EXO-010-A12"}')
-            $signature = New-SignatureMetadata
-            $approvalInstant = [datetimeoffset]'2026-09-26T22:36:08.6886336Z'
-            $verificationScript = {
-                param([byte[]]$ContentBytes, [byte[]]$SignatureBytes, $VerificationContext)
-                [pscustomobject]@{
-                    SignatureValid = $true
-                    ContentMatched = $true
-                    SigningTimeUtc = $VerificationContext
-                }
-            }
-
-            # Act
-            $result = Invoke-DetachedCmsSignatureTest -CanonicalBytes $canonicalBytes -Signature $signature -VerificationScript $verificationScript -VerificationContext $approvalInstant
-
-            # Assert
-            $result.Verified | Should -BeTrue
-            $result.SigningTimeUtc | Should -BeOfType ([datetimeoffset])
-            ([datetimeoffset]$result.SigningTimeUtc).UtcTicks | Should -Be $approvalInstant.UtcTicks
-        }
-
-        It 'A12-F01 direct contract 02 accepts a decision later than the preserved signing instant' {
-            # Arrange
-            $approvalInstant = [datetimeoffset]'2026-09-26T22:36:08.6886336Z'
-            $decisionInstant = $approvalInstant.AddMinutes(1)
-            $verification = New-VerifiedSignature -NotBeforeUtc $approvalInstant.AddDays(-1) -NotAfterUtc $approvalInstant.AddDays(1) -SigningTimeUtc $approvalInstant
-            $authorizedSigner = @(New-AuthorizedSigner)
-
-            # Act
-            $result = Invoke-ExternalEvidenceSignerTest -SignatureVerification $verification -AuthorizedSigner $authorizedSigner -DecisionTimeUtc $decisionInstant
-
-            # Assert
-            $decisionInstant | Should -BeGreaterThan $approvalInstant
-            $result.Authorized | Should -BeTrue
-            $result.Reason | Should -BeExactly 'ExternalEvidenceSignerAuthorized'
-        }
-
-        It 'A12-F01 direct contract 03 refuses a missing explicit verification context' {
-            # Arrange
-            $canonicalBytes = [System.Text.Encoding]::UTF8.GetBytes('{"controlId":"EXO-010-A12"}')
-            $signature = New-SignatureMetadata
-            $verificationScript = {
-                param([byte[]]$ContentBytes, [byte[]]$SignatureBytes, $VerificationContext)
-                if ($null -eq $VerificationContext) {
-                    throw 'Verification context is required.'
-                }
-            }
-
-            # Act
-            $result = Invoke-DetachedCmsSignatureTest -CanonicalBytes $canonicalBytes -Signature $signature -VerificationScript $verificationScript -VerificationContext $null
-
-            # Assert
-            $result.Verified | Should -BeFalse
-            $result.Reason | Should -BeExactly 'ExternalEvidenceSignatureVerificationFailed'
-        }
-
-        It 'A12-F01 direct contract 04 refuses signing before the certificate lower bound' {
-            # Arrange
-            $notBefore = [datetimeoffset]'2026-09-26T22:35:00Z'
-            $verification = New-VerifiedSignature -NotBeforeUtc $notBefore -NotAfterUtc $notBefore.AddDays(1) -SigningTimeUtc $notBefore.AddTicks(-1)
-            $authorizedSigner = @(New-AuthorizedSigner)
-
-            # Act
-            $result = Invoke-ExternalEvidenceSignerTest -SignatureVerification $verification -AuthorizedSigner $authorizedSigner -DecisionTimeUtc $notBefore.AddMinutes(1)
-
-            # Assert
-            $result.Authorized | Should -BeFalse
-            $result.Reason | Should -BeExactly 'ExternalEvidenceSigningTimeInvalid'
-        }
-
-        It 'A12-F01 direct contract 05 refuses signing after the certificate upper bound' {
-            # Arrange
-            $notAfter = [datetimeoffset]'2026-09-27T22:35:00Z'
-            $verification = New-VerifiedSignature -NotBeforeUtc $notAfter.AddDays(-1) -NotAfterUtc $notAfter -SigningTimeUtc $notAfter.AddSeconds(1)
-            $authorizedSigner = @(New-AuthorizedSigner)
-
-            # Act
-            $result = Invoke-ExternalEvidenceSignerTest -SignatureVerification $verification -AuthorizedSigner $authorizedSigner -DecisionTimeUtc $notAfter.AddMinutes(-1)
-
-            # Assert
-            $result.Authorized | Should -BeFalse
-            $result.Reason | Should -BeExactly 'ExternalEvidenceSigningTimeInvalid'
-        }
-
-        It 'A12-F01 direct contract 06 admits the valid detached handoff and signer path' {
-            # Arrange
-            $canonicalBytes = [System.Text.Encoding]::UTF8.GetBytes('{"controlId":"EXO-010-A12"}')
-            $signature = New-SignatureMetadata
-            $approvalInstant = [datetimeoffset]'2026-09-26T22:36:08.6886336Z'
-            $verificationScript = {
-                param([byte[]]$ContentBytes, [byte[]]$SignatureBytes, $VerificationContext)
-                [pscustomobject]@{
-                    SignatureValid          = $true
-                    ContentMatched          = [System.Text.Encoding]::UTF8.GetString($ContentBytes) -ceq '{"controlId":"EXO-010-A12"}'
-                    SignerSubject           = 'CN=Contoso Evidence Approver'
-                    SigningTimeUtc          = $VerificationContext
-                    CertificateNotBeforeUtc = ([datetimeoffset]$VerificationContext).AddDays(-1)
-                    CertificateNotAfterUtc  = ([datetimeoffset]$VerificationContext).AddDays(1)
-                    ChainTrusted            = $true
-                    RevocationStatus        = 'Good'
-                }
-            }
-            $authorizedSigner = @(New-AuthorizedSigner)
-
-            # Act
-            $verification = Invoke-DetachedCmsSignatureTest -CanonicalBytes $canonicalBytes -Signature $signature -VerificationScript $verificationScript -VerificationContext $approvalInstant
-            $result = Invoke-ExternalEvidenceSignerTest -SignatureVerification $verification -AuthorizedSigner $authorizedSigner -DecisionTimeUtc $approvalInstant.AddMinutes(1)
-
-            # Assert
-            $verification.Verified | Should -BeTrue
-            $verification.SigningTimeUtc | Should -Be $approvalInstant
-            $result.Authorized | Should -BeTrue
-            $result.Reason | Should -BeExactly 'ExternalEvidenceSignerAuthorized'
         }
     }
 }

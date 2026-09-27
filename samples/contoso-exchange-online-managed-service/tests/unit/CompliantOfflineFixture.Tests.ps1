@@ -20,7 +20,7 @@ BeforeAll {
         $profile = 'MicrosoftNative'
         $configurationHash = 'sha256:' + ('6' * 64)
         $collectedAtUtc = '2026-09-19T12:00:00Z'
-        $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+        $registry = @(Get-BaselineControlRegistry)[0]
 
         $fixture = [pscustomobject][ordered]@{
             SchemaVersion = '1.0.0'
@@ -170,7 +170,7 @@ BeforeAll {
         if ([string]$Fixture.Binding.ConfigurationHash -cnotmatch '^sha256:[0-9a-f]{64}$') { $violation.Add('ConfigurationHashInvalid') }
         if ([string]$Fixture.Binding.CollectedAtUtc -cnotmatch '^2026-09-19T12:00:00Z$') { $violation.Add('CollectionTimeInvalid') }
 
-        $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+        $registry = @(Get-BaselineControlRegistry)[0]
         $expectedId = @($registry | ForEach-Object ControlId)
         $actualId = @($Fixture.Controls | ForEach-Object ControlId)
         foreach ($id in $expectedId | Where-Object { $_ -cnotin $actualId }) { $violation.Add("CatalogControlMissing:$id") }

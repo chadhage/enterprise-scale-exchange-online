@@ -13,9 +13,7 @@ param(
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ParameterPath,
 
-    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-only.v1.json'),
-
-    [switch]$AllowHistoricalProfile,
+    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.json'),
 
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.schema.json'),
 
@@ -27,10 +25,6 @@ param(
 
     [string]$ArtifactRoot,
 
-    [string]$AuthorizedSignerPath,
-
-    [string]$RequestedBy,
-
     [switch]$Apply,
 
     [switch]$EnableDkim,
@@ -41,24 +35,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -DisableNameChecking
-
-$selectedProfile = Get-BaselineDeploymentProfile -ConfigurationPath $ConfigurationPath -AllowHistoricalProfile:$AllowHistoricalProfile
-
-if ($selectedProfile -ceq 'ExchangeOnly' -and $Apply) {
-    if ($EnableDkim) { throw 'ChangeScopeUnsupported: use workflowOptions.enableDkim in the parameter JSON and obtain a new approved preview with scope Dkim; the historical -EnableDkim switch is not a signed workflow option.' }
-    if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath)) {
-        throw 'ApplyRefused: ChangeSigningPrerequisite: supply -AuthorizedSignerPath from RAID-D05 and follow docs/APPROVED-CHANGE.md; no historical fallback is permitted.'
-    }
-    $workflowArguments = @{
-        Stage = 'Apply'; ParameterPath = $ParameterPath; ConfigurationPath = $ConfigurationPath
-        ArtifactRoot = $ArtifactRoot; ChangeId = $ChangeId; RequestedBy = $RequestedBy; PreviewPath = $PreviewPath
-        ApprovalPath = $ApprovalPath; AuthorizedSignerPath = $AuthorizedSignerPath; Apply = $true; WhatIf = $WhatIfPreference
-    }
-    if ($PSBoundParameters.ContainsKey('Confirm')) { $workflowArguments.Confirm = $PSBoundParameters.Confirm }
-    Invoke-BaselineApprovedChange @workflowArguments
-    return
-}
+Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
 
 $script:Outcomes = [System.Collections.Generic.List[object]]::new()
 
@@ -834,36 +811,10 @@ function Get-BaselineMdoPostChangeEvidence {
 
 function Set-OrganizationControls {
     [CmdletBinding(SupportsShouldProcess)]
-    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight, [switch]$ExchangeOnly)
+    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight)
 
     $state = $Configuration.desiredState
     $verb = if ($UseWhatIf) { 'Planned' } else { 'Applied' }
-
-    $protocols = $state.exchangeOnline.protocolRestriction
-    $ewsPolicy = Resolve-BaselineEwsPolicy -DesiredState $protocols
-    if ($ewsPolicy.EwsEnabled) {
-        $ewsProposedState = @{
-            OrganizationConfig = $ewsPolicy
-            CasMailbox = @(Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop)
-        }
-        $ewsAdmission = Test-BaselineEwsState -DesiredState $protocols -ObservedState $ewsProposedState
-        if ($ewsAdmission.Status -ne 'Pass') { throw $ewsAdmission.Reason }
-    }
-
-    $remote = $state.exchangeOnline.remoteDomainDefault
-    $remoteOofType = Resolve-BaselineRemoteDomainOofType -DesiredState $remote
-    $remoteDomains = @(Get-RemoteDomain -ErrorAction Stop)
-    if (@($remoteDomains | Where-Object { $_.Identity -ieq 'Default' -and [string]$_.DomainName -eq '*' }).Count -ne 1) {
-        throw 'RemoteDomainDefaultMissing: exactly one wildcard Default must be collected before deployment.'
-    }
-    foreach ($domain in $remoteDomains) {
-        if ([string]::IsNullOrWhiteSpace([string]$domain.Identity) -or [string]::IsNullOrWhiteSpace([string]$domain.DomainName)) {
-            throw 'RemoteDomainEvidenceIncomplete: remote-domain Identity and DomainName are required before deployment.'
-        }
-        if ($domain.Identity -ine 'Default' -and ([string]$domain.AllowedOOFType).Trim() -ine $remoteOofType) {
-            throw "RemoteDomainOverrideConflict: '$($domain.Identity)' ($($domain.DomainName)) has AllowedOOFType '$($domain.AllowedOOFType)', expected '$remoteOofType'. Obtain a scoped approved change for this override before deploying Default."
-        }
-    }
 
     if ($null -ne (Get-Command -Name Set-BaselineAcceptedDomainState -ErrorAction SilentlyContinue)) {
         Set-BaselineAcceptedDomainState -Configuration $Configuration -UseWhatIf $UseWhatIf
@@ -909,7 +860,7 @@ function Set-OrganizationControls {
     $remote = $state.exchangeOnline.remoteDomainDefault
     if ($PSCmdlet.ShouldProcess('Default remote domain', 'Harden forwarding, auto-reply, and reporting')) {
         Set-RemoteDomain -Identity Default -AutoForwardEnabled $remote.autoForwardEnabled `
-            -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remoteOofType `
+            -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remote.allowedOOFType `
             -DeliveryReportEnabled $remote.deliveryReportEnabled -NDREnabled $remote.nonDeliveryReportEnabled `
             -WhatIf:$UseWhatIf
     }
@@ -918,7 +869,7 @@ function Set-OrganizationControls {
 
     $protocols = $state.exchangeOnline.protocolRestriction
     if ($PSCmdlet.ShouldProcess('Organization configuration', 'Restrict Exchange Web Services')) {
-        Set-OrganizationConfig @ewsPolicy -WhatIf:$UseWhatIf
+        Set-OrganizationConfig -EwsEnabled $protocols.ewsEnabled -EwsAllowList $protocols.ewsAllowList -WhatIf:$UseWhatIf
     }
     if ($PSCmdlet.ShouldProcess('Every CAS mailbox plan', 'Disable POP and IMAP for new mailboxes')) {
         Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {
@@ -926,8 +877,8 @@ function Set-OrganizationControls {
                 -ImapEnabled $protocols.imapEnabledByDefault -WhatIf:$UseWhatIf
         }
     }
-    Add-Outcome -Control 'EXO-009' -Status $verb -Detail 'Approved EWS policy enforced; POP/IMAP restricted for new mailboxes' `
-        -Operation @('exo-organization-config', 'exo-cas-mailbox-plan')
+    Add-Outcome -Control 'EXO-009' -Status $verb -Detail 'EWS off, POP/IMAP off for new mailboxes' `
+        -Operation @('exo-cas-mailbox-plan')
 
     if ($null -ne (Get-Command -Name Set-BaselineAddInAcquisitionState -ErrorAction SilentlyContinue)) {
         Set-BaselineAddInAcquisitionState -Configuration $Configuration -UseWhatIf $UseWhatIf
@@ -959,7 +910,6 @@ function Set-OrganizationControls {
             -Operation @('mdo-quarantine-policy-set')
     }
 
-    if ($ExchangeOnly) { return }
     if ($Entitlement.SafeAttachmentsSpo) {
         $atpParameters = @{
             EnableATPForSPOTeamsODB = $state.defenderForOffice365.safeAttachmentsForSharePointOneDriveTeams
@@ -1395,35 +1345,13 @@ $MutationPlan = @(
 # preview and approval are files - so nothing is connected and nothing is changed to reach it. An
 # audit run never enters this block: a read-only run that demands an approval before it may look
 # at a tenant makes the audit harder to run than the change.
-$exchangeContext = $null
-$runtimeMutationPlan = @($MutationPlan | ForEach-Object {
-    $entry = [ordered]@{}
-    foreach ($key in $_.Keys) { $entry[$key] = $_[$key] }
-    $entry
-})
-if ($selectedProfile -ceq 'ExchangeOnly') {
-    $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -ForActionPlanning
-    $runtimeMutationPlan = @($runtimeMutationPlan | Where-Object { $_.OperationId -notlike 'pp-*' -and $_.OperationId -cne 'mdo-atp-policy-o365' })
-    $null = Assert-BaselineExchangeMutationPlan -Operation $runtimeMutationPlan
-    if (-not $Apply) {
-        [pscustomobject]@{
-            Kind = 'ExchangeOnlyPlan'; Status = 'Planned'; DeploymentProfile = 'ExchangeOnly'; ProfileVersion = $exchangeContext.Manifest.Version
-            TenantId = $exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID; ConfigurationHash = $exchangeContext.Hash
-            ControlId = $exchangeContext.Manifest.ControlId
-            Operation = @($runtimeMutationPlan | ForEach-Object { [pscustomobject]@{ OperationId = $_.OperationId; Command = $_.Command; Identity = $_.Identity } })
-            ExternalReadiness = $exchangeContext.Manifest.ExternalReadiness
-        }
-        return
-    }
-    if ('EXCHANGE_S_ENTERPRISE' -cnotin @($exchangeContext.Entitlement.servicePlans)) { throw 'ExchangeApplyNotEntitled: Exchange entitlement is required before any mutation.' }
-}
 if ($Apply) {
-    $applyResolution = if ($null -ne $exchangeContext) { [pscustomobject]@{ Configuration = $exchangeContext.DeploymentConfiguration; DeploymentProfile = 'ExchangeOnly' } } else { Resolve-BaselineConfiguration -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath }
+    $applyResolution = Resolve-BaselineConfiguration -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
     $applyInputs = $applyResolution.Configuration.administratorInputs
 
     $approvalDecision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath `
         -Tenant $applyInputs.initialDomain -DeploymentProfile $applyResolution.DeploymentProfile `
-        -ConfigurationHash $(if ($null -ne $exchangeContext) { $exchangeContext.Hash } else { (Get-BaselineConfigurationHash -Resolution $applyResolution).Hash }) `
+        -ConfigurationHash (Get-BaselineConfigurationHash -Resolution $applyResolution).Hash `
         -RequestedBy $applyResolution.Configuration.metadata.configurationOwner
 
     $applyDecision = Test-BaselineApplyPrerequisite -Apply $true -PreviewPath $PreviewPath `
@@ -1450,30 +1378,17 @@ if (-not $SkipConnection) {
     Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
     Connect-ExchangeOnline -ShowBanner:$false
 
-    if ($selectedProfile -cne 'ExchangeOnly') {
     Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
     Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome
     $graphRequest = {
         param($Resource)
         Invoke-MgGraphRequest -Method GET -Uri "https://graph.microsoft.com/v1.0/$Resource" -OutputType PSObject
     }
-    }
 }
 
-$context = if ($null -ne $exchangeContext) { $exchangeContext } else { Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest }
-$configuration = if ($null -ne $exchangeContext) { $exchangeContext.DeploymentConfiguration } else { $context.Configuration }
-$entitlement = if ($null -ne $exchangeContext) { $exchangeContext.DeploymentEntitlement } else { $context.Entitlement }
-
-$ewsDesired = $configuration.desiredState.exchangeOnline.protocolRestriction
-$ewsPolicy = Resolve-BaselineEwsPolicy -DesiredState $ewsDesired
-if ($ewsPolicy.EwsEnabled) {
-    $ewsProposedState = @{
-        OrganizationConfig = $ewsPolicy
-        CasMailbox = @(Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop)
-    }
-    $ewsAdmission = Test-BaselineEwsState -DesiredState $ewsDesired -ObservedState $ewsProposedState
-    if ($ewsAdmission.Status -ne 'Pass') { throw $ewsAdmission.Reason }
-}
+$context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
+$configuration = $context.Configuration
+$entitlement = $context.Entitlement
 
 $impersonation = $configuration.desiredState.defenderForOffice365.impersonationProtection
 $impersonationDesired = [ordered]@{
@@ -1484,7 +1399,7 @@ $impersonationDesired = [ordered]@{
     ExcludedSenders = @($impersonation.approvedExceptions | Where-Object { $_.exceptionType -ceq 'TrustedSender' } | ForEach-Object { [string]$_.value })
     ExcludedDomains = @($impersonation.approvedExceptions | Where-Object { $_.exceptionType -ceq 'TrustedDomain' } | ForEach-Object { [string]$_.value })
 }
-foreach ($operation in @($runtimeMutationPlan | Where-Object { $_.OperationId -like 'mdo-impersonation-policy-*' })) {
+foreach ($operation in @($MutationPlan | Where-Object { $_.OperationId -like 'mdo-impersonation-policy-*' })) {
     $operation.Desired = $impersonationDesired
 }
 
@@ -1547,7 +1462,7 @@ $changeRollback = $null
 if ($Apply) {
     $changeTenant = [string]$configuration.administratorInputs.initialDomain
     $priorState = @(
-        foreach ($operation in $runtimeMutationPlan) {
+        foreach ($operation in $MutationPlan) {
             $observed = & $operation.Read
 
             [ordered]@{
@@ -1587,9 +1502,9 @@ else {
 }
 
 Set-PresetProtection -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement
-Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement -SafeDocumentsPreflight $safeDocumentsPreflight -ExchangeOnly:($selectedProfile -ceq 'ExchangeOnly')
+Set-OrganizationControls -Configuration $configuration -UseWhatIf $useWhatIf -Entitlement $entitlement -SafeDocumentsPreflight $safeDocumentsPreflight
 Set-DomainAuthentication -Configuration $configuration -UseWhatIf $useWhatIf -ActivateDkim $EnableDkim
-if ($selectedProfile -cne 'ExchangeOnly') { Write-ManualControlPlan -Configuration $configuration -Entitlement $entitlement }
+Write-ManualControlPlan -Configuration $configuration -Entitlement $entitlement
 
 # SAFE-007-A3: what the run actually left behind. The journal is built from the status each
 # declared mutation reported at the site it ran, the application reconciles that journal against
@@ -1598,7 +1513,7 @@ if ($selectedProfile -cne 'ExchangeOnly') { Write-ManualControlPlan -Configurati
 # accepted, and an intended change and a confirmed one are not the same claim.
 if ($Apply) {
     $appliedOperation = @(
-        $runtimeMutationPlan | Where-Object {
+        $MutationPlan | Where-Object {
             $script:MutationStatus.Contains($_.OperationId) -and $script:MutationStatus[$_.OperationId] -eq 'Applied'
         }
     )

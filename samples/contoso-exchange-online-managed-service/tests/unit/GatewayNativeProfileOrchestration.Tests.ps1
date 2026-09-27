@@ -71,7 +71,7 @@ Describe 'PP-006 profile orchestration' {
 
     It 'produces one complete non-Manual PP result set for each shipped profile' {
         # Arrange
-        $registry = @(Get-BaselineControlRegistry -Profile Historical)[0]
+        $registry = @(Get-BaselineControlRegistry)[0]
         $gateway = @($registry | Where-Object { $_.ControlId -like 'PP-*' -and 'Gateway' -cin $_.ApplicableProfile })
         $native = @($registry | Where-Object { $_.ControlId -like 'PP-*' -and 'Native' -cin $_.ApplicableProfile })
         # Act
