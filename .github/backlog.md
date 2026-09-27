@@ -1,6 +1,120 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 231. Updated: 2026-09-26. Executable cards: 60; To Do 28, In Progress 3, Done 29; 13 summary parents excluded.
+Canonical generation: 256. Updated: 2026-09-26. Executable cards: 83; To Do 50, In Progress 0, Done 33; 24 summary parents excluded.
+
+Generation 256 override: **ATOMIC OPEN-CARD RESTRUCTURE; NO EXECUTION GRANT**. Audit all **32** generation-255 open executable cards. Retain **24** already-atomic cards unchanged: EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T02, EXR-007-A05-T03-D01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03, EXR-012-A01, EXR-012-A02, EXR-012-A03, EXR-012-A04, EXR-013-A01, EXR-014-A01, EXR-015-A01, EXR-015-A02, EXR-015-A03, EXR-016-A01, EXR-016-A03, EXR-017-A03 and EXR-018. Transform **8** bundled sources into **26** executable leaves: EXR-010-A12-L01 -> R01/R02/F01/D01/V01/C01; EXR-007-A05-T03-F01 -> A01/R01; EXR-007-A05-T03-L01 -> A01/R01/C01; EXR-013-A02 -> E01/W01; EXR-014-A02 -> W01/R01; EXR-016-A02 -> C01/G01/R01/T01; EXR-017-A01 -> C01/M01/P01/G01; EXR-017-A02 -> N01/R01/T01. The eight sources are non-executable summaries and completed history remains unchanged. All **50** resulting open executable cards are To Do with future affinity only. Generation-255 authority is superseded; no worker/path/output/attempt/review/test/edit/process/live/Git/transition grant is issued. Counts are **50/0/33 = 83**, affinities **14/15/12/9**, excluded parents **24**, RAID unchanged.
+
+## Generation 256 Atomic Audit
+
+| Measure | Result |
+| --- | ---: |
+| Original open executable cards audited | 32 |
+| Unchanged atomic cards | 24 |
+| Transformed source cards | 8 |
+| New executable leaf IDs | 26 |
+| Resulting open executable cards | 50 |
+
+Transformed mappings: `EXR-010-A12-L01 -> EXR-010-A12-L01-R01, -R02, -F01, -D01, -V01, -C01`; `EXR-007-A05-T03-F01 -> EXR-007-A05-T03-F01-A01, -R01`; `EXR-007-A05-T03-L01 -> EXR-007-A05-T03-L01-A01, -R01, -C01`; `EXR-013-A02 -> EXR-013-A02-E01, -W01`; `EXR-014-A02 -> EXR-014-A02-W01, -R01`; `EXR-016-A02 -> EXR-016-A02-C01, -G01, -R01, -T01`; `EXR-017-A01 -> EXR-017-A01-C01, -M01, -P01, -G01`; `EXR-017-A02 -> EXR-017-A02-N01, -R01, -T01`.
+
+### Missing-Field Inventory
+
+Each item below is atomic but still lacks information that cannot be safely inferred. Items not listed have all atomic-card fields at the current planning level.
+
+| Card | Exact missing information |
+| --- | --- |
+| EXR-010-A12-L01-R02 | Exact identity/path/hash of the invalid-launch 5,846-test/208-file manifest needed for a name-level 29-test comparison. |
+| EXR-010-A12-L01-F01 | Proved defect owner, writable repository path, focused command/count and affected suite/count; all remain conditional on R01/R02. |
+| EXR-010-A12-L01-V01 | Future independent reviewer identity and external review-output root. |
+| EXR-007-A02-T03 | Exact owning code/test paths and focused executable command/count for Safe Senders. |
+| EXR-007-A02-T04 | Exact owning code/test paths and focused executable command/count for connector trust. |
+| EXR-007-A04-T01 | Exact owning code/test paths and focused executable command/count for sharing policy/bindings. |
+| EXR-007-A04-T02 | Exact owning code/test paths and focused executable command/count for calendar publication. |
+| EXR-007-A05-T02 | Exact owning code/test paths and focused executable command/count for SendAs. |
+| EXR-007-A05-T03-D01 | Exact temporary instrumentation location/output root for operand capture; the focused test identity is known, but the diagnostic surface is not selected. |
+| EXR-007-A05-T03-F01-A01 | Proved Common/ApprovedAdapters/fixture owner and exact writable path; blocked on D01 and maintainer selection. |
+| EXR-007-A05-T03-F01-R01 | Future independent reviewer identity and output root. |
+| EXR-007-A05-T03-L01-A01 | Exact affected test files and counts after the correction is known. |
+| EXR-007-A05-T03-L01-R01 | Future independent reviewer identity and output root. |
+| EXR-007-A06 | Exact owning code/test paths and focused executable command/count for organization relationships. |
+| EXR-007-A07 | Exact owning code/test paths and focused executable command/count for mailbox audit actions. |
+| EXR-007-A08-T01 | Exact owning code/test paths and focused executable command/count for CAS mailbox/plan flags. |
+| EXR-007-A08-T02 | Exact owning code/test paths and focused executable command/count for mobile policy bindings/settings. |
+| EXR-007-A08-T03 | Exact owning code/test paths and focused executable command/count for OWA policy bindings/settings. |
+| EXR-012-A01 | Exact documentation/sample paths to change and executable example command/count. |
+| EXR-012-A02 | Exact runbook/catalog paths to change and executable example command/count. |
+| EXR-012-A03 | Exact approval/go-live documentation paths to change and executable example command/count. |
+| EXR-012-A04 | Exact evidence-viewer/operator presentation paths and focused status-fixture command/count. |
+| EXR-013-A01 | Exact parser/inventory artifact path and expected command-block denominator; discovery must establish both. |
+| EXR-013-A02-E01 | Exact execution runner/test path and command count, pending A01 inventory. |
+| EXR-013-A02-W01 | Exact combined workflow runner/test path and affected suite/count, pending E01. |
+| EXR-014-A01 | Exact fixture/manifest files requiring edits and focused reconciliation command/count. |
+| EXR-014-A02-W01 | Exact workflow runner/test surface and expected focused count, pending A01. |
+| EXR-015-A01 | Actual maintainer approver identity/reference/date, selected branch-capable tool/version, numeric threshold, exact code scope and justified exclusions. |
+| EXR-015-A02 | Exact local/CI configuration paths and commands, pending A01's approved contract. |
+| EXR-015-A03 | Approved current discovery denominator, exact baseline artifact path and guard implementation/test paths, pending A01. |
+| EXR-016-A01 | Exact harness/config/test paths and discriminator count; external D01-D05 values remain intentionally unconfirmed. |
+| EXR-016-A02-C01 | Owning implementation/test paths and focused command/count. |
+| EXR-016-A02-G01 | Owning implementation/test paths and focused command/count. |
+| EXR-016-A02-R01 | Owning implementation/test paths and focused command/count. |
+| EXR-016-A02-T01 | Owning implementation/test paths and focused command/count. |
+| EXR-016-A03 | Exact probe implementation/test paths, probe inventory and focused command/count. |
+| EXR-017-A01-C01 | Confirmed applicable D01-D05 evidence, explicit permission, frozen target identity and exact ledger-owned Exchange objects. |
+| EXR-017-A01-M01 | Approved test domains, senders, recipients and report destinations. |
+| EXR-017-A01-P01 | Approved encryption recipients/decryption identities and client matrix. |
+| EXR-017-A01-G01 | Authorized protected raw-evidence location and enterprise signing/reviewer metadata. |
+| EXR-017-A02-N01 | Continued explicit permission and exact frozen A01 target/revision/config identity at execution time. |
+| EXR-017-A02-R01 | Approved controlled mutation/failure scenario and exact ledger-owned objects. |
+| EXR-017-A02-T01 | Exact owned-object inventory to restore/remove after R01. |
+| EXR-017-A03 | Actual independent reviewer identity/date/authority and the two completed packet/raw-proof references. |
+| EXR-018 | Exact release-manifest artifact path/schema, release decision command and actual external-risk acknowledgers. |
+
+Generation 255 override: **ACCEPT PURPLE L01 FULL-REGRESSION RED EVIDENCE; RELEASE THE WORKER; DO NOT CLOSE L01 OR ACTIVATE SILVER**. Accept generation 254 as one PowerShell **7.6.6** / Pester **5.7.1** invocation at **5,817 discovered / 5,817 selected / 5,817 total / 5,682 passed / 135 failed / 0 skipped / 0 not-run**, with **23 failed containers**, **206 container-error records**, null invocation exception, child/native/outer exit **1**, empty stderr, launches/invocations/retries **1/1/0**, byte-identical repository manifests, repository mutations **0** and final process zero. The observed **5,817** is authoritative; invalid-launch **5,846 / 208 files** remains reference-only, with its **29-test variance** still unexplained under the grant's reconciliation requirement but not asserted as a regression. The result does not satisfy L01 closure because neither that variance nor the 135 failures and container errors has exact owner-by-owner reconciliation; independent review remains deferred. Release Purple/Coworker-1 and supersede all generation-254 grants/reservations. Gold is Ready for a future generation-bound assignment; Purple is Not Ready because L01 retains its WIP slot; Silver is Not Ready and cannot activate until Purple closes. Grant no remediation or new card. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 254 override: **ACCEPT PURPLE L01 AFFECTED 747/747; GRANT ONE ZERO-EDIT FULL OFFLINE REGRESSION**. Accept generation 253 as eight serial exact-once PowerShell **7.6.6** / Pester **5.7.1** suites at Matrix **337/337**, Licensing **281/281**, Safety **6/6**, ReportingContract **30/30**, ReportingAdapters **10/10**, LiveContract **68/68**, LiveAdapters **6/6** and LiveSignedRoundTrip **9/9**, aggregate **747/747**, with every child exit **0**, no failure/skip/not-run/container/invocation anomaly, empty stderr, stable inputs and zero mutations/retries/process residue. Release Coworker-3. Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g254/coworker-1-A12-L01-zero-edit-full-regression`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g254-A12-L01-zero-edit-full-regression-sole-canonical-writer\coworker-1`, no writable repository path and exactly one PowerShell 7/Pester **5.7.1** invocation against literal `samples/contoso-exchange-online-managed-service/tests`. No exact current full-suite baseline is verified; report observed discovery/total authoritatively and reconcile all outcomes and any delta from the reference-only **5,846 tests / 208 files** discovery. No retry. L01 remains In Progress; independent review, Done and Silver activation remain deferred. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 253 override: **ACCEPT PURPLE L01 EXACT 6/6; GRANT ONLY ZERO-EDIT AFFECTED 747/747**. Accept generation 252 as PowerShell **7.6.6** / Pester **5.7.1** exact **6 discovered / 6 selected / 6 total / 6 passed**, exit **0**, stable focused-test SHA-256 `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, one invocation and no retry, post-run edit or other mutation. The anchored regex correction is accepted; all five negatives and the integrated positive pass with exact authorized transport writes, zero prohibited writes, admitted detached signing/verification, exact rollback and ExternalReadiness Unverified. Release Coworker-2. Purple/Coworker-3 alone owns ACK `sole-canonical-writer/Purple/batch8/g253/coworker-3-A12-L01-zero-edit-affected-747`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g253-A12-L01-zero-edit-affected-747-sole-canonical-writer\coworker-3`, no writable repository path and serial exact-once Matrix **337/337**, Licensing **281/281**, Safety **6/6**, ReportingContract **30/30**, ReportingAdapters **10/10**, LiveContract **68/68**, LiveAdapters **6/6** and LiveSignedRoundTrip **9/9**, aggregate **747/747**, stopping before the next suite on any anomaly. Require complete clean evidence and zero mutations. L01 remains In Progress; full offline regression, independent review, Done and Silver activation remain deferred. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 252 override: **ACCEPT PURPLE L01 EXACT 6/5/1 WITH AUTHORIZED TRANSPORT-WRITE ASSERTIONS GREEN; ANCHOR ONLY THE PROHIBITED-COMMAND REGEX**. Accept generation 251 as PowerShell **7.6.6** / Pester **5.7.1** exact **6/5/1**, one invocation, no retry/post-edit, empty stderr and final process zero. Exactly two `Set-TransportConfig` calls and zero other commands are proved. The retained case-insensitive regex alone fails because unanchored `SPO` matches inside `Transport`; no prohibited command ran. Release Coworker-1. Purple/Coworker-2 alone owns ACK `sole-canonical-writer/Purple/batch8/g252/coworker-2-A12-L01-prohibited-command-regex-boundary`, its fresh generation-252 root, and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Replace only `Mg|SPO|Teams|Graph|AtpPolicyForO365|License` in the final adapter-call assertion with `(?:^|-)(?:Mg|SPO|Teams|Graph|AtpPolicyForO365|License)`, then invoke the six-case leaf exactly once requiring **6/6**. Preserve both allowed-call assertions, the observation assertion, all fixture/product/signature/rollback behavior and zero external writes. No retry, second edit/run, broader validation, review or Done. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 251 override: **ACCEPT PURPLE L01 KEY-SAFE RELOCATION AND EXACT 6/5/1; CORRECT ONLY THE STALE POSITIVE ZERO-WRITE ASSERTION**. Accept generation 250 as PowerShell **7.6.6** / Pester **5.7.1** exact **6/5/1**, one invocation, no retry/post-edit, with all five negatives green including tampered evidence reaching `ExchangeSignatureUnverified`. Retain the key-safe anti-phish rule-scope fixture relocation. The positive completes admission, verification, rollback and state restoration, then fails only because a stale total-call assertion expects zero while the authorized `Transport` lifecycle records two `Set-TransportConfig` writes. Static inspection confirms apply and rollback own those two calls; the immediately adjacent prohibited `Mg`/`SPO`/`Teams`/`Graph`/`AtpPolicyForO365`/`License` filter already remains zero. Release Coworker-3. Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g251/coworker-1-A12-L01-exchange-write-assertion`, its fresh generation-251 root, and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Remove the stale positive zero-total assertion if present and assert exactly two `Set-TransportConfig` calls plus zero calls with any other command; preserve the existing prohibited-external-call assertion unchanged. Invoke the six-case leaf exactly once requiring **6/6**. No retry, second edit/run, product/Common/helper/config change, broader validation, review or Done. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 250 override: **ACCEPT PURPLE L01 EXACT 6/0/6 AS TEST-FIXTURE HASHTABLE-KEY SERIALIZATION DEBT; MOVE THE SOLE LINE TO THE RULE WITH KEY-SAFE ACCESS**. Accept generation 249 as PowerShell **7.6.6** / Pester **5.7.1** exact **6/0/6**, one invocation, no retry/post-edit, child exit **1**, empty stderr, stable test hash and process counts **0/0**. All six cases stop while serializing `New-IntegratedEmailFixture`, before admission and before the tampered assertion, because the authorized assignment was inserted inside each reporting-delivery hashtable literal and its evaluated value became a non-string key. Static construction confirms both the malformed delivery object and the target anti-phish rule row are `System.Collections.Hashtable` instances. Release Coworker-2. Purple/Coworker-3 alone owns ACK `sole-canonical-writer/Purple/batch8/g250/coworker-3-A12-L01-key-safe-rule-scope-fixture`, its fresh generation-250 root, and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Remove the misplaced statement and add exactly `$fixture.Raw['Get-AntiPhishRule'].Items[0]['SentTo'] = @()` immediately after the existing anti-phish policy binding, then invoke the six-case leaf exactly once requiring **6/6** and tamper verification. Preserve every other fixture line, product, guard and assertion; no retry, second behavioral edit/run, broader validation, review or Done. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 249 override: **ACCEPT PURPLE L01 MDO-009-ONLY 6/4/2 AND CORRECT ONLY THE INHERITED RULE SCOPE**. Accept generation 248 as PowerShell **7.6.6** / Pester **5.7.1** exact **6/4/2**, one invocation, no retry/post-edit, stable test hash and process counts **0/0**. Both failures stop at the retained admission guard solely on `MDO-009 Error`; the generation-248 MON/OPS/GOV fixture additions are effective. Static inspection proves the enabled rule is bound to `Custom email` but inherits `SentTo = custom@contoso.example`, which MDO-009 correctly rejects as incomplete approved-domain scope before coverage evaluation. Existing active/default policy protection and exception values match the resolved MDO-009 configuration. Purple/Coworker-2 alone owns ACK `sole-canonical-writer/Purple/batch8/g249/coworker-2-A12-L01-mdo009-rule-scope-fixture`, its fresh generation-249 root, and one exact A12 line setting that rule's `SentTo` to `@()`, followed by one exact-six run requiring **6/6** and tamper verification. Product, guard, assertions and all other paths remain frozen; no filtering, retry, broader validation, review or Done.
+
+Generation 248 override: **ACCEPT PURPLE L01 EXACT 6/4/2 AND COMPLETE THE INTEGRATED FIXTURE WITHOUT WEAKENING ADMISSION OR HIDING FAILURES**. Accept generation 247 as one exact PowerShell 7/Pester **5.7.1** invocation with **6 discovered / 6 selected / 6 total / 4 passed / 2 failed**, no retry and no second edit. One negative and the positive both expose `EvidenceSigningNotAdmitted`; the decision correctly reports `ControlNotPassed` for `MDO-009 Error`, `MON-003 Error`, `OPS-001 Error`, `OPS-002 Error` and `GOV-005 Fail`, including uncollected/missing MON/OPS payloads. Static source proves the signature path and fail-closed product contract are correct. The integrated fixture is incomplete: its active anti-phish rule references a policy replaced during fixture construction, it omits GOV-005 recipient-flow evidence, and it supplies no signed operational artifacts. Release Coworker-3. Purple/Coworker-1 alone receives ACK `sole-canonical-writer/Purple/batch8/g248/coworker-1-A12-L01-complete-envelope-fixture`, the fresh generation-248 root and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Make one cohesive fixture correction in `New-IntegratedEmailFixture`: bind the enabled anti-phish rule to `Custom email`; add one current successful `LegalAdvice` recipient flow; create and register context-bound, locally signed MON-003/OPS-001/OPS-002 documents using `$script:evidenceCertificate`, its local root/hash and the established complete payloads from `ExchangeEvidenceSigning.Tests.ps1`. Do not filter, replace or relabel registry results. Retain the immediate admission guard so the tampered test first obtains a known-admitted signed envelope, then mutates bytes and reaches `ExchangeSignatureUnverified`. Invoke the six-case leaf exactly once requiring **6/6**. No retry, second edit/run, product/Common/helper/config/certificate change, weaker admission/assertion, broader validation, review, Done or Silver authority. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 247 override: **ACCEPT PURPLE L01 EXACT 6/5/1 AFTER THE ADAPTER-CERTIFICATE FIX; SURFACE THE NON-ADMITTED SIGN DECISION BEFORE VERIFYING ITS ABSENT OUTPUT**. Accept generation 246 as PowerShell **7.6.6** / Pester **5.7.1** exact **6 discovered / 6 selected / 6 total / 5 passed / 1 failed**, five negatives green, one positive failing on absent `exchange-email-evidence.p7s`, launches/invocations/retries **1/1/0**, exits **1/1**, empty stderr, stable run-time test SHA-256 `5743A00CB11357C791A849DA4B9E60D8B91E01E52E39DE731AA5D05F749F899D` and final process zero. The authorized adapter-certificate lower-bound change is retained and `ExternalEvidenceSigningTimeInvalid` is cleared. `New-FrozenEmailEvidence` supplies one identical signature path to sign and verify but does not inspect the sign result. Product creates the detached signature only when `Invoke-BaselineExchangeGoLive -SignEvidence` returns an admitted decision, so immediate verification masks the unrecorded upstream finding as a missing file. This is test-fixture control-flow/error-surfacing debt, not signature-path or product-write debt. Release Coworker-2. Purple/Coworker-3 alone receives ACK `sole-canonical-writer/Purple/batch8/g247/coworker-3-A12-L01-sign-stage-admission-guard`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g247-A12-L01-sign-stage-admission-guard-sole-canonical-writer\coworker-3`, and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Add exactly one immediate post-sign guard: `if (-not $signed.Decision.Admitted) { throw "EvidenceSigningNotAdmitted: $($signed.Decision.Finding -join '; ')" }`. Run the six-case leaf exactly once, require exact **6 discovered / 6 selected / 6 total**, and retain the observed split and surfaced sign-stage finding. Common/product/evidence certificate and all assertions remain frozen. No retry, second edit, broader suite, review or Done. Counts **31/1/33**; affinities **8/9/10/4**; Silver waits and RAID remains unchanged.
+
+Generation 246 override: **ACCEPT PURPLE L01 ZERO-EDIT 6/5/1; CORRECT ONLY THE SYNTHETIC ADAPTER CERTIFICATE'S NARROW LOWER MARGIN; RERUN THE SIX-CASE LEAF ONCE**. Accept generation 245 as Pester **5.7.1** exact **6 discovered / 6 selected / 6 total / 5 passed / 1 failed**, sole positive `ExternalEvidenceSigningTimeInvalid`, no retry/edit, stderr **0**, stable test identity and final process **0**. F01's direct contract remains **6/6**, proving generic context handoff/parser behavior. Static source shows adapter approval creates exact round-trip `ApprovalTimeUtc`, but its verifier supplies UTC `DateTime` certificate bounds that pass through string projection; the A12 adapter certificate starts only one minute earlier. The separate evidence-signing path emits all times with `ToString('o')`. Classify a synthetic adapter-certificate validity-window fixture defect, not authority to weaken Common. Release Coworker-1. Purple/Coworker-2 alone receives ACK `sole-canonical-writer/Purple/batch8/g246/coworker-2-A12-L01-adapter-certificate-window-fixture`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g246-A12-L01-adapter-certificate-window-fixture-sole-canonical-writer\coworker-2`, and only `ExchangeEmailIntegratedWorkflow.Tests.ps1`. Replace exactly the adapter certificate's `[datetimeoffset]::UtcNow.AddMinutes(-1)` with `[datetimeoffset]::UtcNow.AddDays(-1)`, leaving the evidence certificate, Common/product and assertions unchanged; then run the leaf exactly once requiring **6/6** and complete clean evidence. No retry, broader suite, review or Done. Counts **31/1/33**; affinities **8/9/10/4**; Silver waits and RAID remains unchanged.
+
+Generation 245 override: **CLOSE PURPLE F01 ON EXACT FILTERED 18/6/6/0/12; ACTIVATE ONLY L01 FOR ONE ZERO-EDIT FOCUSED RUN**. Accept the generation-244 Pester **5.7.1** result as file discovery/total **18**, selected/executed **6**, passed **6**, failed **0**, not-run **12**, one invocation and no retry. The outer exit **1** occurred only after result persistence because the wrapper mis-evaluated an empty `ErrorRecord`; it does not erase the authoritative child result. Accept the one-line `$notAfter.AddSeconds(1)` fixture correction; Product/Common remained untouched. Close F01 bounded offline and release Coworker-3. Purple/Coworker-1 alone receives ACK `sole-canonical-writer/Purple/batch8/g245/coworker-1-A12-L01-zero-edit-integrated-focused`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g245-A12-L01-zero-edit-integrated-focused-sole-canonical-writer\coworker-1`, no writable repository path, and one literal PowerShell 7/Pester **5.7.1** invocation of `ExchangeEmailIntegratedWorkflow.Tests.ps1` requiring exact **6 discovered / 6 selected / 6 total / 6 passed** with complete evidence, zero mutations and final process zero. No edit, retry, affected/full regression, independent review, Done, Git/live/tenant action or other authority. Counts **31/1/33**; affinities **8/9/10/4**; RAID unchanged.
+
+Generation 244 override: **ACCEPT PURPLE F01 FILTERED 18/6/5/1/12; CORRECT ONLY CASE 05'S SUB-SECOND FIXTURE STIMULUS; RERUN THE SAME SIX FILTERED CASES ONCE**. Accept the generation-243 Pester **5.7.1** result as file discovery **18**, selected/executed **6**, total **18**, passed **5**, failed **1**, not-run **12**, exits **1/1**, stderr **0**, final processes **0**, one invocation/no retry and zero mutations. `FullNameFilter` selects six after discovering all 18 file tests, so exact six discovery was an incompatible prior requirement. Case 05 alone expected false and observed true. Common still rejects signing after certificate expiry, but the fixture's one-tick difference is erased by the existing `[string]` `DateTimeOffset` projection before parsing; the effective signing time equals the upper bound. This is test-fixture precision debt, not product debt, and expected false remains correct for a representable out-of-window time. Release Coworker-2. Purple/Coworker-3 alone receives ACK `sole-canonical-writer/Purple/batch8/g244/coworker-3-A12-F01-case05-fixture-precision-correction`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g244-A12-F01-case05-fixture-precision-correction-sole-canonical-writer\coworker-3`, and only `DetachedCmsExternalEvidence.Tests.ps1`. Replace exactly `$notAfter.AddTicks(1)` with `$notAfter.AddSeconds(1)`, then run the same single `FullNameFilter` value once. Require **18 discovered / 6 selected / 18 total / 6 passed / 0 failed / 12 not-run**, clean evidence, zero other mutations and final process zero. No product/Common edit, retry, broader suite, review or Done. Counts **32/1/32**; affinities **9/9/10/4**; RAID unchanged.
+
+Generation 243 override: **KEEP PURPLE F01 IN PROGRESS AFTER A LAUNCHER-ONLY FAILURE; RETAIN THE SIX TESTS; REGRANT ONLY A ZERO-EDIT EXACT-SIX RUN TO COWORKER-2**. Conflicting duplicate `stdout.txt` redirections stopped the generation-242 launcher before Pester. Launches/Pester invocations/retries are **1/0/0**; discovery/results are absent; exit is **1**; stdout/stderr are **0/0 bytes**; final processes are **0**; evidence was persisted and no retry occurred. This is launcher-only, not test/product evidence. Retain exactly the six authorized `A12-F01 direct contract 01` through `06` cases; Common/product were untouched. Release Coworker-1. Purple/Coworker-2 alone receives ACK `sole-canonical-writer/Purple/batch8/g243/coworker-2-A12-F01-zero-edit-exact-six`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g243-A12-F01-zero-edit-exact-six-sole-canonical-writer\coworker-2`, no writable repository path, and one literal PowerShell 7/Pester **5.7.1** invocation with one `FullNameFilter` value `*A12-F01 direct contract 0*`. Require exact **6 discovered / 6 selected / 6 total / 6 passed**, one stdout and one stderr redirection, complete evidence, zero mutations and final process zero. No edit, retry, second run, broader suite, review or Done. Counts **32/1/32**; affinities **9/9/10/4**; RAID unchanged.
+
+Generation 242 override: **CLOSE PURPLE D01 AS A BOUNDED DIAGNOSTIC-FIXTURE OWNERSHIP DECISION; ACTIVATE F01 ONLY FOR A NON-INSTRUMENTED DIRECT-CONTRACT TEST CORRECTION**. Accept the exact **6/4/2** run, one invocation/no retry, clean stderr/processes and exact A12/Common restoration. Approval `2026-09-26T22:36:08.6886336Z` and the same-instant `DateTimeOffset` context parse true/true and compare equal, with decision later. Zero delegations/returns, null verifier/returned/certificate fields, missing tampered `ApprovalTimeUtc` and changed tampered `ExternalEvidenceSignatureUnverified` prove the interception changed behavior before the signer predicate. Static source confirms explicit third-parameter binding, existing sentinel coverage and certificate bounds of UTC-now minus one minute through plus one day; no precision/window defect is evidenced. Close D01 bounded diagnostic and activate only F01 for Purple/Coworker-1 under ACK `sole-canonical-writer/Purple/batch8/g242/coworker-1-A12-F01-direct-contract-fixture` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g242-A12-F01-direct-contract-fixture-sole-canonical-writer\coworker-1`. Only `DetachedCmsExternalEvidence.Tests.ps1` is writable: add exactly six uniquely prefixed direct-contract cases using the existing module invocation and explicit context parameter, then invoke only those six once with exact **6 discovered / 6 selected**. No interception, A12/Common/product edit, product attempt, retry, broader suite or other authority. Counts **32/1/32**; affinities **9/9/10/4**; RAID unchanged.
+
+Generation 241 override: **KEEP PURPLE D01 IN PROGRESS AFTER THE SECOND PRELAUNCH ENVELOPE FAILURE; KEEP DIAGNOSTIC/PRODUCT ATTEMPTS ZERO; GRANT ONLY THE SCALAR-ONLY RECOVERY TO COWORKER-3**. Accept generation-240 status `STOPPED_PRELAUNCH_ENVELOPE_FAILURE`: `repositoryBefore` held a nested `Object[]`, so `$entry['Bytes']` attempted integer-array indexing before child creation. Launches/invocations/retries/product attempts are **0/0/0/0**; discovery, Pester result and diagnostic operands are absent; runner/outer exits are **1/1**; stdout/stderr are **0/482 bytes**; final processes are **0**. The temporary A12 test restored byte-identically at **15,828 bytes**, SHA-256 `9B66FB0313A22033F32AB2EE20EC1C8701F3562FBEE7E6A84AEA10CC287FE50B`. Release Coworker-2. Purple/Coworker-3 alone receives ACK `sole-canonical-writer/Purple/batch8/g241/coworker-3-A12-D01-scalar-diagnostic-regrant` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g241-A12-D01-scalar-diagnostic-regrant-sole-canonical-writer\coworker-3`. Capture only scalar path/byte/hash values for A12 and Common, use `try/finally` restoration, keep interception test-local, run one exact **6 discovered / 6 selected** child, and persist one simple `PSCustomObject` evidence record only after child completion. No generic repository snapshot array/dictionary is permitted. If interception remains too fragile before launch, one standalone `tests/unit` diagnostic may call exported functions directly and must be removed in cleanup after its single exact-six run. No product edit, attempt, retry, broader validation or correction. Counts remain **33/1/31**; affinities **10/9/10/4**; RAID unchanged.
+
+Generation 240 override: **KEEP PURPLE D01 IN PROGRESS AFTER A PRELAUNCH WRAPPER FAILURE; CONSUME NO ATTEMPT; REGRANT THE CORRECTED WRAPPER ONLY TO COWORKER-2**. Accept generation-239 status `STOPPED_PRELAUNCH_ENVELOPE_FAILURE`: the parent failed before child launch on ordered-dictionary `.Bytes` property assignment. Counts are launches/invocations/retries/product attempts **0/0/0/0**; Pester and diagnostic outputs are absent; runner/outer exit is **1**. The temporary test was restored byte-identically at **15,828 bytes**, SHA-256 `9B66FB0313A22033F32AB2EE20EC1C8701F3562FBEE7E6A84AEA10CC287FE50B`, with final process zero. Release Coworker-1 and keep rank 21 D01 In Progress. Purple/Coworker-2 receives ACK `sole-canonical-writer/Purple/batch8/g240/coworker-2-A12-D01-owning-boundary-diagnostic-wrapper-regrant` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g240-A12-D01-owning-boundary-diagnostic-wrapper-regrant-sole-canonical-writer\coworker-2`. The generation-239 diagnostic, exact one-six-case invocation, restoration and prohibitions remain unchanged. Correct only wrapper record mutation by using `IDictionary` key assignment or writable `PSCustomObject` properties. No product change/attempt, retry, broader suite, correction or other worker authority. Counts remain **33/1/31**; affinities **10/9/10/4**; RAID unchanged.
+
+Generation 239 override: **CLOSE GOLD L01 BOUNDED OFFLINE AND ACTIVATE ONLY PURPLE D01 FOR ONE TEST-ONLY OWNING-BOUNDARY DIAGNOSTIC**. Accept the generation-238 granted-root `review.md` and `review.json` as matching `CLOSE/ACCEPT/PASS`, `Pass=true`, `ScopeCompliant=true`, `ClosureEligible=true`, findings `[]`, all severity counts zero and only the two authorized artifacts. The review reconciles exact parser/nullable/test changes, **19 negative + 1 positive**, focused **20/20**, affected **209/209**, hashes, zero affected mutations/process residue, exceptional recovery, exhausted ordinary attempts **3/3**, no attempt **4/3**, and external readiness limits. Move rank 35 L01 In Progress -> Done bounded offline and release Gold. Move only rank 21 D01 To Do -> In Progress for Purple. Purple/Coworker-1 receives ACK `sole-canonical-writer/Purple/batch8/g239/coworker-1-A12-D01-owning-boundary-diagnostic`, root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g239-A12-D01-owning-boundary-diagnostic-sole-canonical-writer\coworker-1`, and temporary exclusive ownership only of `tests/unit/ExchangeEmailIntegratedWorkflow.Tests.ps1` under the sample. Use module-scoped `InModuleScope`/Pester mocks with saved original scriptblocks, not global delegation. Intercept `Test-BaselineDetachedCmsSignature` to capture canonical approval `ApprovalTimeUtc`, exact `VerificationContext` type/value, exact third `VerificationScript` parameter type/value, returned `SigningTimeUtc`, and certificate bounds; intercept `Test-BaselineExternalEvidenceSigner` to capture independent parse booleans, parsed values and comparisons for signing before/after the certificate window, signing after decision time (future skew), and decision before/at-or-after the certificate window at its owning boundary. Delegate each original exactly once and return unchanged results. Persist external evidence, invoke only A12 once with exact **6 discovered / 6 selected**, retain the observed split, and restore the test byte-identically. No product attempt/edit, retry, broader suite, correction, review, global/private-helper probe, Git/live/tenant action. Counts **33/1/31**; affinities **10/9/10/4**; RAID unchanged.
+
+Generation 238 override: **ACCEPT GOLD'S EXACT ZERO-EDIT AFFECTED 209/209; CLASSIFY OUTER EXIT 1 AS A FINAL ASSERTION DEFECT; GRANT DIFFERENT-WORKER INDEPENDENT STATIC REVIEW; KEEP PURPLE INACTIVE**. Accept generation-237 ACK `sole-canonical-writer/Gold/batch8/g237/coworker-2-A03-T02-L01-affected-regression`, assigned root and user-supplied evidence SHA-256 `FC2793...A628`. Serial Pester **5.7.1** passed ModuleManifest **17/17**, ApprovedAdapters **21/21** and ApprovedAdapterRoundTrip **171/171**, aggregate **209/209**, with anomaly counts **0**, null invocation exceptions, launches/invocations/retries **3/3/0**, child exits **0/0/0**, empty stderr, stable direct inputs, repository mutations **0** and observed final processes **0**. The outer wrapper exited **1** only because its final success predicate incorrectly expected `$postProcesses.Count -eq 1`; all authoritative results and evidence were already persisted. Keep L01 In Progress solely for independent review. Gold/Coworker-3 alone receives ACK `sole-canonical-writer/Gold/batch8/g238/coworker-3-A03-T02-L01-independent-static-closure-review`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch8-g238-A03-T02-L01-independent-static-closure-review-sole-canonical-writer\coworker-3`, no repository write path, no tests/execution, and only `review.md`/`review.json` output authority. Review the exact parser, nullable-read and focused-test changes, focused **20/20**, affected **209/209**, identities, attempt/exception ledger, quiescence and bounded-offline limits. Return **CLOSE/ACCEPT/PASS** or **REJECT/FAIL** with exact blockers, `ScopeCompliant` and closure eligibility. No Done or Purple activation is inferred. Counts remain **34/1/30**; affinities **11/9/10/4**; RAID unchanged.
+
+Generation 237 override: **ACCEPT GOLD'S EXACT 20/20 FOCUSED RECOVERY; GRANT ONLY ZERO-EDIT AFFECTED REGRESSION; DEFER INDEPENDENT REVIEW; DO NOT ACTIVATE PURPLE**. Accept generation-236 evidence as PowerShell 7/Pester **5.7.1** **20 discovered / 20 selected / 20 total / 20 passed**, zero anomalies, launches/invocations/retries **1/1/0**, child/outer exits **0/0**, empty stderr and final process zero. The sole repository mutation is exactly the two authorized expectation replacements in `ExchangeApplicationAssignmentScopeLifecycle.Tests.ps1`, hash `6210E229B6C109AAFF12D45C439579AF8AB06923EBF4A92A15483FBE6748BF4F` -> `7EED25AE12B6EC8D81CB0DBF12BE708A1C56580C2C50F7D2D8ACBCD762164ABA`; ApprovedAdapters/Common remain frozen at `5FFCA99235AD5EE15395BAA263458F836243C849941581FF04E171DD722251F7` / `FC845B769CC19749AB1457DE0B94421681AFE5E24250F54E71FF37F00BF91221`. Gold/Coworker-2 alone receives ACK `sole-canonical-writer/Gold/batch8/g237/coworker-2-A03-T02-L01-affected-regression` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch8-g237-A03-T02-L01-affected-regression-sole-canonical-writer\coworker-2`. With no edits or focused rerun, execute fresh serial Pester **5.7.1** children exactly once and stop on first anomaly: `ModuleManifest.Tests.ps1` **17/17**, `ApprovedAdapters.Tests.ps1` **21/21**, `ApprovedAdapterRoundTrip.Tests.ps1` **171/171**, aggregate **209/209**. Persist complete command/process/result/stream/exit/hash/mutation evidence, zero mutations and final process zero. This is affected regression only: no retry, full suite, independent review, Done, Purple, Silver, Git/live/tenant action. Preserve **EXCEPTIONAL RECOVERY**, ordinary attempts **3/3 exhausted**, and no attempt **4/3**. Counts remain **34/1/30**; affinities **11/9/10/4**; external RAID status unchanged.
+
+Generation 236 override: **ACCEPT GOLD'S EXACT 20/18/2 TEST-ONLY RECOVERY; GRANT ONLY TWO CANONICAL-REASON EXPECTATION REPLACEMENTS AND ONE FINAL FOCUSED RUN**. Accept generation-235 evidence as Pester **5.7.1** **20 discovered / 20 selected / 20 total / 18 passed / 2 failed**, zero skipped/not-run/failed-container/container-error records, null invocation exception, launches/invocations/retries **1/1/0**, exits **1/1/1**, empty stderr, final process zero, frozen ApprovedAdapters/Common and only the granted focused-test mutation `623455D24EAF197DE2FEAB5C379F06868E92C1711F6B9860EAF1F3D8A48BCB25` -> `6210E229B6C109AAFF12D45C439579AF8AB06923EBF4A92A15483FBE6748BF4F`. No retry or post-edit occurred. The two remaining assertions are stale: Common canonically emits `ChangeApprovalTimeInvalid` for approval outside the preview/current decision interval and `ChangeApprovalPreviewTampered` for signed preview-hash mismatch, and dedicated approval-gate tests assert those names. Gold/Coworker-1 alone receives ACK `sole-canonical-writer/Gold/batch8/g236/coworker-1-A03-T02-L01-final-expectation-only-recovery`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch8-g236-A03-T02-L01-final-expectation-only-sole-canonical-writer\coworker-1`, and only the focused test. Replace exactly `'*ChangeApproval*Stale*'` -> `'*ChangeApprovalTimeInvalid*'` and `'*ChangeApproval*PreviewHash*'` -> `'*ChangeApprovalPreviewTampered*'`, then run that leaf exactly once through literal PowerShell 7/Pester **5.7.1**, requiring exact **20/20**, clean counters/exits/streams, frozen products, only the exact test mutation and final process zero. No retry, post-edit, broader validation, review or Done. This is **EXCEPTIONAL RECOVERY**, ordinary attempts remain **3/3 exhausted**, and no attempt **4/3** exists. Purple and Silver remain inactive until Gold completion is accepted. Counts remain **34/1/30**; affinities **11/9/10/4**; RAID external status unchanged.
+
+Generation 235 override: **RETAIN GOLD'S APPROVEDADAPTERS NULLABLE CORRECTION; KEEP L01 IN PROGRESS; AUTHORIZE ONLY THE PROVED FOCUSED-TEST CONTRACT RECOVERY**. Accept generation-234 exact Pester **5.7.1** **20/9/11**, zero skipped/not-run/failed-container/container-error records, null invocation exception, one invocation/no retry, exits **1/1/1**, empty stderr, final process zero, frozen test/Common and sole authorized ApprovedAdapters mutation `5FFCA99235AD5EE15395BAA263458F836243C849941581FF04E171DD722251F7`. The nullable-required implementation preserves absent/non-nullable refusal and opts in only management-scope `ServerRestrictionFilter`. The remaining failures are test debt: seven null-to-empty coercions in the create double, two invalid CMS signatures after payload rewrites, one obsolete missing-approval reason and one incorrect writes-greater-than-zero assertion after a pre-write collection refusal. Gold/Coworker-1 alone owns only `ExchangeApplicationAssignmentScopeLifecycle.Tests.ps1` under ACK `sole-canonical-writer/Gold/batch8/g235/coworker-1-A03-T02-L01-focused-test-contract-recovery` and root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch8-g235-A03-T02-L01-test-contract-sole-canonical-writer\coworker-1`. Correct exactly those contracts, re-sign altered approval payloads so semantic stale/hash gates are exercised, and run the focused 20-case leaf exactly once requiring **20/20** and complete clean evidence. ApprovedAdapters/Common remain frozen at `5FFCA99235AD5EE15395BAA263458F836243C849941581FF04E171DD722251F7` / `FC845B769CC19749AB1457DE0B94421681AFE5E24250F54E71FF37F00BF91221`. This remains **EXCEPTIONAL RECOVERY**, ordinary attempts remain **3/3 exhausted**, and no attempt **4/3**, retry, broader validation, review, Done, Git/live/tenant action, Purple or Silver authority exists. Counts remain **34/1/30**; affinities remain **11/9/10/4**; RAID external status is unchanged.
+
+Generation 234 override: **CLOSE GOLD F01 ON DIRECT PARSER EVIDENCE; ACTIVATE ONLY GOLD L01 FOR THE PROVED NULLABLE READ-CONTRACT PRODUCT DEFECT**. Accept generation-233 exact Pester **5.7.1** **20/7/13**, one invocation/no retry, exits **1/1/1**, empty stderr, frozen test/Common, sole ApprovedAdapters mutation and final process zero. The bounded `XmlConvert.ToTimeSpan` parser accepts the contract's `PT2H`, retains that exact string and preserves invalid/non-positive refusal; all thirteen former parser failures advanced. F01 is Done bounded offline. The next uniform stop is not fixture debt: the static `Get-ManagementScope` state contains `ServerRestrictionFilter = $null`, ApprovedAdapters declares the field `NullableString`, but `Get-ApprovedAdapterCollection` rejects every null required field as omitted. Rank 35 L01 is In Progress for Gold/Coworker-1 under ACK `sole-canonical-writer/Gold/batch8/g234/coworker-1-A03-T02-L01-nullable-read-contract-recovery` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch8-g234-A03-T02-L01-nullable-read-contract-sole-canonical-writer\coworker-1`. ApprovedAdapters alone is writable: add explicit nullable-required-field handling that still rejects absent members and preserves all non-nullable checks, and mark only management-scope `ServerRestrictionFilter` nullable; then run the frozen 20-case leaf exactly once requiring **20/20** and complete clean evidence. This remains **EXCEPTIONAL RECOVERY**, ordinary attempts remain exhausted at **3/3**, and no attempt **4/3**, retry, second edit/run, affected/full regression, review, L01 Done, Git/live/tenant action, Purple or Silver authority exists. Counts **34/1/30**; To Do affinities **11 Purple / 9 Silver / 10 Gold / 4 shared**; RAID unchanged.
+
+Generation 233 override: **ACTIVATE GOLD RANK 34 F01 AS A SEPARATELY LABELED EXCEPTIONAL RECOVERY; NO OTHER CARD OR ACTION**. Explicit maintainer authorization satisfies only EXR-007-A03-T02-F01's exceptional gate. Historical ordinary product attempts **1/3**, **2/3** and **3/3** remain consumed and exhausted; this grant is not attempt **4/3**. Gold/Coworker-1 alone owns ApprovedAdapters and the generation-233 external root under ACK `sole-canonical-writer/Gold/batch8/g233/coworker-1-A03-T02-F01-exceptional-iso8601-parser-recovery`. Correct only ISO-8601 `maximumDelay` admission with `[System.Xml.XmlConvert]::ToTimeSpan`, preserve positive-duration refusal and exact returned `PT2H`, then run only the frozen 20-case focused leaf exactly once requiring **20/20** and a complete fresh evidence envelope. Purple rank 21 and Silver rank 40 are ordered after accepted Gold completion but receive no present authority. Counts are **35 To Do / 1 In Progress / 29 Done = 65**; To Do affinities are **11 Purple / 9 Silver / 11 Gold / 4 shared**; RAID is unchanged.
+
+Generation 232 override: **RESTRUCTURE ALL NON-DONE GOVERNANCE; RELEASE ALL WORKERS; NO EXECUTION GRANT**. The sole canonical writer audited every non-Done card for Exchange scope, viable dependencies, duplication and staleness. All 28 prior To Do outcomes remain relevant and nonduplicative and are retained with recalculated ranks. The three escalated umbrellas EXR-010-A12, EXR-007-A03-T02 and EXR-007-A05-T03 become excluded summaries and are replaced by eight executable diagnostic/fix/lifecycle leaves. Gold's potential evidence-envelope repair is not created: the historical Common run-time hash cannot be reconstructed, the accepted child evidence already proves the parser defect, and the required fresh parser-fix validation must provide a complete new envelope. Every generation-231 worker/path/output/execution reservation is released; no new ACK or repository execution exists. Current buckets are **36/0/29**, queues **11/10/11/4**, excluded parents **16**, and external RAID status is unchanged.
 
 Generation 231 override: **ACCEPT SILVER EXR-007-A05-T03 ATTEMPT 1/3 AT 12/11/1; RETAIN BOTH PRODUCT MUTATIONS; ESCALATE WITHOUT ATTEMPT 2**. Canonical ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Kanban/g231/adjudicate-Silver-A05-T03-attempt1-and-escalate`. Accept the generation-230 root and reconstructed evidence as one PowerShell 7/Pester **5.7.1** focused run at exact **12 discovered / 12 selected / 12 total / 11 passed / 1 failed**, skipped/not-run/failed-containers **0/0/0**, invocations/retries **1/0**, exits **1/1/1**, empty stderr and final process zero. Retain frozen test `9D1ED0BB...42CDD1`, Common `FC845B76...F91221` and ApprovedAdapters `7D3D582E...76326B`; only Common and ApprovedAdapters changed, with no retry or post-validation edit. Consume and retain product attempt **1/3**. All eleven fail-closed contracts pass. The positive alone stops at the generic Common rollback drift comparison. Static inspection proves the fixture restores the applied user/shared delegate state after its separate drift-refusal check, and both preview and readback normalize `GrantSendOnBehalfTo` as sorted unique `Strings`; no obvious test-double, ordering or actual-intervening-change defect remains. Because the packet did not retain the exact three comparison operands, neither Common nor ApprovedAdapters nor the test is proved to own the mismatch. Silver is escalated/quiescent with attempts **2/3** and **3/3** unspent and ungranted; no blind edit, probe, retry, affected regression, review or Done. Purple and Gold remain escalated/quiescent. Counts and external RAID status are unchanged.
 
@@ -197,16 +311,16 @@ Each card inherits the board's test-first, ownership, WIP, evidence, and no-live
 
 ## Persisted Future Lane Affinities
 
-Generation 130 defines two distinct states. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; the card remains To Do and receives no owner, WIP slot, repository/output path lock, attempt, ACK, dependency credit, worker grant or execution authority. An **executable reservation/active ownership** is available only for dependency-eligible work after the sole canonical writer issues a fresh generation-bound ACK following force-rank, dependency, external-prerequisite, WIP, quiescence and conflict checks; only that state controls WIP, paths/outputs, attempts and execution. This supersedes the older dependency-ineligible-unreserved rule. Active ranks 19, 24 and 26 are excluded.
+Generation 130 defines two distinct states. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; the card remains To Do and receives no owner, WIP slot, repository/output path lock, attempt, ACK, dependency credit, worker grant or execution authority. An **executable reservation/active ownership** is available only for dependency-eligible work after the sole canonical writer issues a fresh generation-bound ACK following force-rank, dependency, external-prerequisite, WIP, quiescence and conflict checks; only that state controls WIP, paths/outputs, attempts and execution. This supersedes the older dependency-ineligible-unreserved rule. Generation 256 has no active rank; every executable open leaf is in the To Do affinity table.
 
 | Affinity | Force-ranked, dependency-aware To Do queue | Count |
 | --- | --- | ---: |
-| Purple | 20 EXR-010-A11; 21 EXR-010-A12; 27 EXR-007-A02-T01; 30 EXR-007-A02-T04; 33 EXR-007-A04-T01; 36 EXR-007-A05-T02; 39 EXR-007-A07; 42 EXR-007-A08-T03; 43 EXR-012-A01; 47 EXR-013-A01; 48 EXR-013-A02 | 11 |
-| Silver | 25 EXR-011-A04; 28 EXR-007-A02-T02; 31 EXR-007-A03-T01; 34 EXR-007-A04-T02; 37 EXR-007-A05-T03; 40 EXR-007-A08-T01; 44 EXR-012-A02; 51 EXR-015-A01; 52 EXR-015-A02; 53 EXR-015-A03; 55 EXR-016-A02 | 11 |
-| Gold | 29 EXR-007-A02-T03; 32 EXR-007-A03-T02; 35 EXR-007-A05-T01; 38 EXR-007-A06; 41 EXR-007-A08-T02; 45 EXR-012-A03; 46 EXR-012-A04; 49 EXR-014-A01; 50 EXR-014-A02; 54 EXR-016-A01; 56 EXR-016-A03 | 11 |
-| Shared live/release blocked | 57 EXR-017-A01; 58 EXR-017-A02; 59 EXR-017-A03; 60 EXR-018 | 4 |
+| Purple | 23.1 EXR-010-A12-L01-R01; 23.2 EXR-010-A12-L01-R02; 23.3 EXR-010-A12-L01-F01; 23.4 EXR-010-A12-L01-D01; 23.5 EXR-010-A12-L01-V01; 23.6 EXR-010-A12-L01-C01; 31 EXR-007-A02-T03; 32 EXR-007-A02-T04; 36 EXR-007-A04-T01; 39 EXR-007-A05-T02; 44 EXR-007-A07; 47 EXR-007-A08-T03; 48 EXR-012-A01; 52 EXR-013-A01 | 14 |
+| Silver | 37 EXR-007-A04-T02; 40 EXR-007-A05-T03-D01; 41.1 EXR-007-A05-T03-F01-A01; 41.2 EXR-007-A05-T03-F01-R01; 42.1 EXR-007-A05-T03-L01-A01; 42.2 EXR-007-A05-T03-L01-R01; 42.3 EXR-007-A05-T03-L01-C01; 45 EXR-007-A08-T01; 49 EXR-012-A02; 56 EXR-015-A01; 57 EXR-015-A02; 60.1 EXR-016-A02-C01; 60.2 EXR-016-A02-G01; 60.3 EXR-016-A02-R01; 60.4 EXR-016-A02-T01 | 15 |
+| Gold | 43 EXR-007-A06; 46 EXR-007-A08-T02; 50 EXR-012-A03; 51 EXR-012-A04; 53.1 EXR-013-A02-E01; 53.2 EXR-013-A02-W01; 54 EXR-014-A01; 55.1 EXR-014-A02-W01; 55.2 EXR-014-A02-R01; 58 EXR-015-A03; 59 EXR-016-A01; 61 EXR-016-A03 | 12 |
+| Shared live/release blocked | 62.1 EXR-017-A01-C01; 62.2 EXR-017-A01-M01; 62.3 EXR-017-A01-P01; 62.4 EXR-017-A01-G01; 63.1 EXR-017-A02-N01; 63.2 EXR-017-A02-R01; 63.3 EXR-017-A02-T01; 64 EXR-017-A03; 65 EXR-018 | 9 |
 
-Rank 51 still requires genuine repository-maintainer approval; its affinity cannot satisfy or simulate that gate. Ranks 57-59 still require their stated RAID confirmations, live prerequisites and explicit permission; rank 60 still requires all release dependencies. Shared entries have no execution owner before canonical assignment.
+Rank 56 still requires genuine repository-maintainer approval; its affinity cannot satisfy or simulate that gate. Ranks 62.1-64 still require their stated RAID confirmations, live prerequisites and explicit permission; rank 65 still requires all release dependencies. Shared entries have no execution owner before canonical assignment.
 
 If one lane blocks, stops or waits on an external dependency, other cohorts may continue only with valid current-generation ACKs and disjoint reservations. The blocked lane retains active ownership only while safe and quiescent; otherwise the canonical writer parks/requeues it, preserves evidence and selects that cohort's next dependency-safe reserved card. Only the canonical writer transitions or rebalances; workers never self-authorize. Shared paths and integrated validation remain serialized.
 
@@ -238,7 +352,7 @@ Review dated 2026-09-21: split unfinished cards only when they contain independe
 | EXR-017 | Split authorized first walkthrough, consecutive repeat/recovery proof and independent acceptance review; none can close on synthetic proof. |
 | EXR-018 | Retain: one machine-checkable release decision consuming all evidence; it must not absorb missing upstream implementation. |
 
-At decomposition, this review allocated existing scope only: twelve remaining To Do cards were replaced with 35 To Do children, giving 37 - 12 + 35 = 60 executable cards and 30 - 12 + 35 = 53 To Do; zero In Progress and seven Done were unchanged at that point. Historical generation-17 startup counts were 47 To Do / 3 In Progress / 10 Done; see [generation 25](cohorts.md#generation-25-closure-rebalance-and-bounded-grants) for current state and authority. Thirteen non-counted parents include the retained EXR-010 parent and twelve retired executable parents. EXR-010's twelve children/ranks 10-21 stay intact; ranks 22-60 below are the agreed replacement sequence. The current full run has 28 exactly owned failures: EXR-010-A11 nine, EXR-010-A02 two and EXR-010-A03 seventeen. EXR-001/004 failures are cleared; no unowned failure, waiver or full-green claim. Earlier counts remain dated provenance. Cross-document integration must not duplicate scoped repairs. External prerequisites remain independently owned in RAID, not new provisioning tasks. Current allocation/ranks supersede prior scheduling prose; decomposition itself added no completion credit.
+At the original decomposition, twelve remaining To Do cards were replaced with 35 To Do children. Generation 232 replaced three blocked executable umbrellas with eight leaves. Generation 256 audits all 32 then-open executable cards, retains 24 atomic cards and replaces 8 bundled sources with 26 leaves, producing **83 executable cards: 50 To Do / 0 In Progress / 33 Done**, plus **24 non-counted parents**. No completion credit is created. Current allocation/ranks supersede prior scheduling prose. Cross-document integration must not duplicate scoped repairs, and external prerequisites remain independently owned in RAID.
 
 ### Shared Atomic Completion Contract
 
@@ -451,7 +565,8 @@ Original acceptance retained for traceability; the allocation below is the execu
 | C15: mailbox prerequisites, three routes, binding, feedback and independently supplied receipt/DLP evidence validation | A09 reporting input/readback contract |
 | C15: enforce pre-write mailbox prerequisites, configure routes/feedback and exact SecOps Advanced Delivery exception | A10 reporting change lifecycle |
 | Remove active excluded-workload setup; correct operator instructions, mappings and nine documentation/legacy regressions | A11 email documentation reconciliation |
-| Licensed public collection/evaluation/evidence plus approved-change walkthrough; zero excluded writes and full regression | A12 bounded email integration |
+| Evidence-signing predicate diagnosis and owner-specific correction | [EXR-010-A12-D01](#exr-010-a12-d01), then [EXR-010-A12-F01](#exr-010-a12-f01) |
+| Licensed public collection/evaluation/evidence plus approved-change walkthrough; zero excluded writes and full regression | [EXR-010-A12-L01](#exr-010-a12-l01) |
 
 EXR007-C10/A08/S14,S10,S13 traces through A01-A07, A11-A12; EXR007-C15/A15/S11 traces through A09-A12. A08 preserves the original TABL clause. EXR-012 consumes these completed procedures for whole-guide reconciliation; EXR-013 executes the wider command set. Neither receives unfinished child acceptance.
 
@@ -459,7 +574,7 @@ EXR007-C10/A08/S14,S10,S13 traces through A01-A07, A11-A12; EXR007-C15/A15/S11 t
 
 Each child below has one deliverable and owns its negative-first Arrange-Act-Assert checks plus one positive per behavioral unit. Close it on complete scoped acceptance and relevant affected regression tests with recorded commands/counts/revision. Unrelated already-recorded failures do not force every child to wait for A12, but no new unowned regression may be introduced. A12 alone owns the final combined email workflow and full-suite gate; it does not substitute for missing child assertions. For change tasks, the lifecycle is one outcome: approved preview, exact-byte approval binding, apply, independent raw readback, no-op repeat, drift refusal and typed scoped rollback. Required external inputs are synthetic in offline tests, never fabricated production approval.
 
-All children: parent EXR-010; scope Exchange recipients only; source/control/evidence/runbook mapping must be updated for the touched contract before closure. A01 is Done at g16, A03 at g42, A02 at g46, A08 at g51, A04 at g70, A05 at g85, A06 at g93, A07 at g107, A09 at g113 and A10 at g150; A11 is In Progress at g162 and A12 remains To Do. Named worker invocation is authorized only within registry phases/paths, not for this parent or all children. Historical tests at checkpoint 0269862 are not current child acceptance.
+All children: parent EXR-010; scope Exchange recipients only; source/control/evidence/runbook mapping must be updated for the touched contract before closure. A01 through A11 are Done with their recorded bounded evidence. A12 is now an excluded summary over D01/F01/L01. Named worker invocation requires a fresh registry ACK. Historical tests at checkpoint 0269862 are not current child acceptance.
 
 ### EXR-010-A01
 
@@ -809,14 +924,122 @@ Rank 20 - Reconcile email operator guidance and legacy contracts.
 - Generation 173 handoff acceptance/focused-barrier grant: accept Purple/Coworker-1's sole add of `tests/unit/ExchangeEmailIntegratedWorkflow.Tests.ps1` at SHA-256 `A572B4D4A21F5BD7A900527E016DC2E396D5EC4E73AB94C0085BB1D5FDE65A6E`. Static inspection confirms five negative AAA cases followed by one licensed mixed-recipient positive, using shipped public commands/raw synthetic boundaries and asserting ApprovedException, external readiness `Unverified`, successful rollback/restored state and zero excluded writes. Parser/editor diagnostics are zero; no Pester, tenant connection or out-of-scope edit occurred and final matching processes are zero. Coworker-2 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/batch7/g173/coworker-2-A12-zero-edit-focused-red`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch7-g173-A12-zero-edit-focused-red-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-2`, no writable repository path, and one fresh natural-lifetime Pester **5.7.1** child targeting only this file. Require exact **6 discovered / 6 selected**, complete scalar/per-test/exit/stream/hash/mutation/process evidence, stable direct inputs and final process zero; retain the observed split without retry or edit. No implementation attempt, affected/full regression, review, Done, Git, live or tenant action.
 - Generation 172 start: all dependencies are Done with bounded evidence. Rank 21 moves To Do -> In Progress under `Cohort Purple / f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/batch7`. Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/batch7/g172/coworker-1-A12-tests-first`, exclusive ownership of absent-before-creation `tests/unit/ExchangeEmailIntegratedWorkflow.Tests.ps1`, and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch7-g172-A12-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`. Author five named negative-first AAA cases for tampered frozen evidence/signature, recipient drift, scope drift, missing reporting proof and unsupported capability, then one licensed mixed-recipient approved workflow positive through shipped public commands and raw synthetic boundaries. Assert preserved ApprovedException, Unverified external readiness, rollback and zero excluded writes. Return only test diff/hash, parser/editor diagnostics, mutation inventory and quiescence. No Pester, product/config/helper/documentation edit, implementation attempt, full suite, Git, live or tenant action; Coworker-2/-3 wait.
 
-Rank 21 - Prove the integrated email workflow.
-
-- Dependencies: EXR-001, EXR-004, EXR-006, EXR-008, EXR-010-A01, EXR-010-A02, EXR-010-A03, EXR-010-A04, EXR-010-A05, EXR-010-A06, EXR-010-A07, EXR-010-A08, EXR-010-A09, EXR-010-A10, EXR-010-A11. Owner: Cohort Purple / f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/batch7. Workstream: Email verification. Updated: 2026-09-26. Status: In Progress.
+- Generation 232 disposition: non-executable summary parent; no bucket or rank, not Done. All Purple workers, paths, output roots and execution authority are released. Historical attempts, diagnostics and accepted evidence remain above. Parent acceptance requires D01, F01 and L01 completion.
 - Deliverable: one reproducible offline email-protection workflow acceptance packet using the shipped commands and raw synthetic boundaries.
 - Acceptance: consume documented inputs; run approved email changes, raw effective matrix/reporting collection, frozen evidence/signature verification and rollback. Preserve ApprovedException and Unverified external readiness; assert zero excluded writes. Reconcile every parent clause and both C10/C15 proposals to completed child evidence. Do not substitute precomputed Pass objects, new generic writers or tenant operations.
 - Verification: named integration refusals for tampering, recipient/scope drift, missing reporting proof and unsupported capability; one licensed mixed-recipient approved workflow passes. Run a fresh full offline suite on final frozen files with zero unexplained failures/skips/discovery loss and record exact counts/revision. Child-specific defects return to their owning child; this task is not an unbounded implementation catch-all.
 - Existing evidence / remaining: matrix, reporting, signed-adapter and journey fixtures exist separately; no complete green final acceptance packet exists. Reference 4,160-test discovery and all 13 known failures; explain any legitimate discovery change. EXR-014 remains the later whole-service offline workflow, EXR-016/017 actual delivery/live compatibility.
 - RAID: RAID-D01 through D05 remain external and unconfirmed; no live action authorized.
+
+### EXR-010-A12-D01
+
+Rank 21 - Evidence-signing predicate diagnostic.
+
+- Dependencies: EXR-001, EXR-004, EXR-006, EXR-008 and EXR-010-A01 through A11. Owner: Cohort Purple / sole-canonical-writer/Purple/batch8 at completion. Workstream: Email verification. Updated: 2026-09-26. Status: Done (bounded diagnostic ownership decision).
+- Deliverable: one bounded diagnostic packet retaining the exact signing time, certificate not-before/not-after, decision time, runtime types, parse outcomes and each lower/upper/future-skew predicate from one unchanged evaluation.
+- Acceptance: instrument without replacing signer verification, trust, authorization or result behavior; delegate exactly once; retain tampered-negative behavior; restore temporary diagnostic bytes. Name the exact owner as Common, fixture, or invocation boundary, or explicitly report that the evidence disconfirms each candidate.
+- Verification: exact six-case discovery/selection, complete scalar/operand/delegation/stream/exit/hash/mutation/process evidence and byte-identical cleanup. No product correction, retry or broader suite belongs to this leaf.
+- Generation 242 completion: exact Pester **5.7.1** **6/4/2**, one invocation/no retry, clean stderr/processes and byte-identical A12/Common restoration. Approval `2026-09-26T22:36:08.6886336Z` and same-instant `DateTimeOffset` verification context parse true/true and compare equal; decision is later. The interceptor recorded zero delegations/returns and null verifier-third-parameter/return/certificate fields, removed `ApprovalTimeUtc` from the tampered case and changed its result to `ExternalEvidenceSignatureUnverified`. This proves the interception perturbed behavior before the owning signer predicate. Static source establishes valid explicit third-parameter binding and minute/day fixture certificate margins, so no Common handoff or precision/window defect is evidenced. Ownership is the diagnostic approach/fixture; D01 closes bounded without authorizing another interception.
+- Generation 241 regrant: generation 240 stopped before launch because `repositoryBefore` contained a nested `Object[]`; `$entry['Bytes']` therefore attempted integer-array indexing and failed. The assigned-root packet records launches/invocations/retries/product attempts **0/0/0/0**, no discovery or diagnostic operands, runner/outer exits **1/1**, stdout/stderr **0/482 bytes**, final process zero, and exact restoration at **15,828 bytes** / SHA-256 `9B66FB0313A22033F32AB2EE20EC1C8701F3562FBEE7E6A84AEA10CC287FE50B`. Purple/Coworker-2 is released. Purple/Coworker-3 alone owns ACK `sole-canonical-writer/Purple/batch8/g241/coworker-3-A12-D01-scalar-diagnostic-regrant` and root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g241-A12-D01-scalar-diagnostic-regrant-sole-canonical-writer\coworker-3`. The wrapper must use only explicit scalar test/Common paths, byte counts and hashes, retain original test bytes, restore in `finally`, keep interception test-local, invoke exactly one six-case child, and persist one simple `PSCustomObject` evidence record after the child. Generic repository snapshot arrays/dictionaries are forbidden. If interception remains too fragile, one temporary standalone unit diagnostic may directly call exported functions and must be deleted during cleanup. No product edit, retry, second invocation or product attempt is authorized.
+- Generation 240 regrant: generation 239 stopped before launch because `run-once.ps1` attempted writable-property syntax against ordered-dictionary entries. Its envelope records `STOPPED_PRELAUNCH_ENVELOPE_FAILURE`, launches/invocations/retries/product attempts **0/0/0/0**, absent Pester/diagnostic results, restored test bytes **15,828** at SHA-256 `9B66FB0313A22033F32AB2EE20EC1C8701F3562FBEE7E6A84AEA10CC287FE50B`, and final process zero. Purple/Coworker-1 is released. Purple/Coworker-2 alone owns the unchanged temporary-test diagnostic under ACK `sole-canonical-writer/Purple/batch8/g240/coworker-2-A12-D01-owning-boundary-diagnostic-wrapper-regrant` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g240-A12-D01-owning-boundary-diagnostic-wrapper-regrant-sole-canonical-writer\coworker-2`. Correct only ordered-dictionary population/update with key assignment, or use writable `PSCustomObject` records; then execute the original one-six-case contract once. This remains attempt zero and grants no retry, product edit/correction or broader validation.
+- Generation 239 grant: Purple/Coworker-1 alone owns one temporary edit to `ExchangeEmailIntegratedWorkflow.Tests.ps1` under ACK `sole-canonical-writer/Purple/batch8/g239/coworker-1-A12-D01-owning-boundary-diagnostic` and root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g239-A12-D01-owning-boundary-diagnostic-sole-canonical-writer\coworker-1`. Inside `InModuleScope ExchangeOnlineBaseline.Common`, save the original `Test-BaselineDetachedCmsSignature` and `Test-BaselineExternalEvidenceSigner` function scriptblocks in module-scoped test variables. Mock the detached verifier only to decode the existing canonical approval bytes, record exact `ApprovalTimeUtc`, record `VerificationContext` at entry, wrap the supplied `VerificationScript` to record its exact third parameter and returned timestamp/certificate fields, and delegate once to the saved original. Mock the signer evaluator only to record its exact input and decision time, perform three independent invariant timestamp parses, record parsed values and all lower/upper/future comparisons, and delegate once to its saved original. Both mocks return the original result unchanged. Use no global delegation variable, private Common helper, replacement result or modified predicate. Persist `diagnostic.json` plus the single-run envelope externally, run only this six-case leaf once, then restore and hash-prove exact original test bytes. Any delegation count other than one per reached wrapper, absent operand/artifact, changed tampered behavior, input mutation, restoration mismatch or launcher/evidence anomaly stops without retry or correction.
+
+### EXR-010-A12-F01
+
+Rank 22 - Evidence-signing correction.
+
+- Dependencies: EXR-010-A12-D01 and explicit maintainer selection of the proved owner, writable path and bounded recovery authority. Owner: Cohort Purple / sole-canonical-writer/Purple/batch8 at completion. Workstream: Email verification. Updated: 2026-09-26. Status: Done (bounded offline acceptance).
+- Deliverable: the smallest owner-specific correction supported by D01, preserving detached CMS, exactly-one-signer, custom trust, offline revocation, authorization, certificate validity and timestamp checks.
+- Acceptance: no blind fourth ordinary attempt and no unrelated workflow repair. Add or update only the discriminator needed for the proved defect and retain the existing five negative contracts.
+- Verification: focused evidence-signing checks and exact A12 six-case result on frozen inputs, complete envelope, zero unapproved mutations and independent static review before closure.
+- Generation 245 completion: accept the corrected filtered run as Pester **5.7.1** **18 discovered / 6 selected / 18 total / 6 passed / 0 failed / 12 not-run**, one invocation and no retry. The outer exit **1** is isolated to the wrapper's post-result empty-`ErrorRecord` predicate after authoritative result persistence. The sole retained mutation is the authorized one-line `AddSeconds(1)` fixture stimulus; Product/Common remained untouched. This closes F01 bounded offline without a broader regression, live-readiness or parent-completion claim.
+- Generation 243 regrant: generation 242 stopped before Pester because the launcher specified conflicting duplicate `stdout.txt` redirections. The packet records launches/Pester invocations/retries **1/0/0**, no discovery/result counts, exit **1**, stdout/stderr **0/0 bytes**, persisted evidence, no retry and final process zero. Retain the six authorized uniquely prefixed direct-contract tests; Common/product were untouched. Purple/Coworker-1 is released. Purple/Coworker-2 alone owns zero-edit execution under ACK `sole-canonical-writer/Purple/batch8/g243/coworker-2-A12-F01-zero-edit-exact-six` and root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g243-A12-F01-zero-edit-exact-six-sole-canonical-writer\coworker-2`. Invoke literal PowerShell 7/Pester **5.7.1** exactly once with one `FullNameFilter` value `*A12-F01 direct contract 0*`, exactly one stdout and one stderr redirection, and require exact **6 discovered / 6 selected / 6 total / 6 passed**, complete evidence, zero mutations and final process zero. No repository edit, retry, second invocation, broader suite, review or Done.
+- Generation 244 correction grant: accept generation 243 as **18 discovered / 6 selected / 18 total / 5 passed / 1 failed / 12 not-run**, one invocation/no retry, exits **1/1**, empty stderr, zero mutations and final process zero. Exact six discovery is incompatible with filtered file execution. Case 05's expected false matches Common's upper-bound refusal, but `$notAfter.AddTicks(1)` loses its one-tick distinction through the contract's `[string]` projection and therefore supplies an effective boundary-equal value. Purple/Coworker-3 alone owns ACK `sole-canonical-writer/Purple/batch8/g244/coworker-3-A12-F01-case05-fixture-precision-correction`, the fresh generation-244 root and exactly one test-line replacement to `$notAfter.AddSeconds(1)`, followed by one same-filter run requiring **18 discovered / 6 selected / 18 total / 6 passed / 12 not-run**. No product/Common edit, retry, broader suite, review or Done.
+- Generation 242 grant: Purple/Coworker-1 alone receives ACK `sole-canonical-writer/Purple/batch8/g242/coworker-1-A12-F01-direct-contract-fixture`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g242-A12-F01-direct-contract-fixture-sole-canonical-writer\coworker-1`, and exclusive ownership only of `tests/unit/DetachedCmsExternalEvidence.Tests.ps1`. Add exactly six uniquely prefixed tests through the existing `Invoke-DetachedCmsSignatureTest`/Common module contract, with no mock or interception of `Test-BaselineDetachedCmsSignature` or `Test-BaselineExternalEvidenceSigner`. Exercise explicit third-parameter same-instant preservation, later-decision compatibility, missing context refusal, lower/upper certificate-bound refusal and one valid path. Run only those six once under literal PowerShell 7/Pester **5.7.1**, requiring exact **6 discovered / 6 selected** and complete clean evidence. Stop after the run. No A12/Common/product/helper/config/documentation edit, product attempt, retry, second invocation, broader regression, review or Done.
+
+### EXR-010-A12-L01
+
+Non-executable summary - Integrated workflow completion.
+
+- Dependencies: terminal leaf EXR-010-A12-L01-C01. Owner: unassigned summary. Workstream: Email verification. Updated: 2026-09-26. Status: excluded summary.
+- Disposition: generation 256 replaces the bundled reconciliation/correction/disposition/review/closure lifecycle with six atomic leaves below. Historical evidence remains authoritative and unchanged.
+
+### EXR-010-A12-L01-R01
+
+Rank 23.1 - Full-regression failure/container ownership reconciliation.
+
+- Dependencies: EXR-010-A12-F01. Owner: future Purple assignment; no current grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: map all **135** failed tests, **23** failed containers and **206** container-error records from the accepted 5,817-test packet to exact current owners without correction or waiver.
+- Writable surface: none; read-only accepted generation-254 artifacts and current governance ownership records. Exact artifact root is retained in generation-255 history.
+- Acceptance: every failure/container/error is listed once with owning card or explicit `unknown`; totals reconcile exactly and no record is silently collapsed.
+- Discriminator: static count/identity reconciliation of retained machine-readable records to **135/23/206**.
+- Evidence required: owner-by-record ledger, source artifact identities, reconciled totals, unresolved-owner list and reviewer-readable derivation.
+
+### EXR-010-A12-L01-R02
+
+Rank 23.2 - Discovery variance explanation.
+
+- Dependencies: EXR-010-A12-L01-R01. Owner: future Purple assignment; no current grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: explain the observed **5,817** discovery against the invalid-launch reference **5,846 / 208 files** without calling the reference a baseline or a regression.
+- Writable surface: none; read-only retained launch manifests and current test inventory. Missing information: exact 5,846-test name/file manifest is not recorded in canonical governance and must be located or declared unavailable.
+- Acceptance: account for the **29-test** delta by exact identities where evidence exists and mark every irreducible difference unknown; preserve 5,817 as authoritative for the accepted tree.
+- Discriminator: deterministic set/count comparison when both manifests exist; otherwise a static evidence-sufficiency decision proving why exact comparison is unavailable.
+- Evidence required: compared manifest hashes/paths, added/removed identity sets or explicit unavailable-manifest finding, and exact arithmetic.
+
+### EXR-010-A12-L01-F01
+
+Rank 23.3 - Conditional L01-owned correction and validation.
+
+- Dependencies: EXR-010-A12-L01-R01 and R02; activate only if those leaves prove an L01-owned defect and a maintainer selects the exact owner/path. Owner: future Purple assignment; conditional and ungranted. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: apply the smallest proved L01-owned correction, then run its focused and directly affected validation. If no L01 defect is proved, close this leaf as NotActivated with evidence and no edit.
+- Writable surface: **missing until reconciliation proves the owner**; no repository path or edit authority exists now.
+- Acceptance: no change outside the proved owner; preserve five negatives, licensed mixed-recipient positive, ApprovedException, external readiness Unverified, rollback and zero excluded writes.
+- Discriminator: exact focused check and affected set named by the future owner/path decision; expected counts are intentionally unknown until that decision and must not be fabricated.
+- Evidence required: activation decision, exact path/diff if activated, commands/counts/exits/hashes/mutations/process state, or a no-activation decision tied to R01/R02.
+
+### EXR-010-A12-L01-D01
+
+Rank 23.4 - Remaining-failure disposition.
+
+- Dependencies: EXR-010-A12-L01-R01 and R02; EXR-010-A12-L01-F01 if activated. Owner: future Purple assignment; no current grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: classify every remaining non-pass as known/owned/unrelated or attach a formal waiver; do not remediate or review closure.
+- Writable surface: governance evidence only; a waiver, if any, requires an externally supplied authority/reference and is not assumed.
+- Acceptance: every R01 record has exactly one supported disposition; unknown ownership or absent waiver keeps the leaf incomplete.
+- Discriminator: static one-to-one reconciliation against the R01 ledger with zero unclassified records.
+- Evidence required: disposition matrix, owning-card evidence or dated waiver authority/scope/expiry, and exact remaining totals.
+
+### EXR-010-A12-L01-V01
+
+Rank 23.5 - Independent closure review.
+
+- Dependencies: EXR-010-A12-L01-D01. Owner: future independent Purple assignment; no current review grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: independently decide whether focused **6/6**, affected **747/747**, regression reconciliation and all original L01 behavior support closure.
+- Writable surface: external review artifacts only; exact output root is missing until assignment. Repository is read-only.
+- Acceptance: reviewer is independent of any activated F01 correction and returns ACCEPT or REJECT with exact blockers, scope compliance and evidence identities.
+- Discriminator: static review of frozen evidence; no test execution.
+- Evidence required: matching review records, reviewer identity/independence, evidence hashes, findings and closure eligibility.
+
+### EXR-010-A12-L01-C01
+
+Rank 23.6 - Final canonical acceptance/Done transition.
+
+- Dependencies: EXR-010-A12-L01-V01. Owner: future canonical steward assignment; no current transition grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: perform the single canonical acceptance decision and, only on supported ACCEPT evidence, transition this leaf Done and satisfy the L01 summary.
+- Writable surface: `.github/kanban.md`, `.github/backlog.md`, `.github/cohorts.md`; no product/test path.
+- Acceptance: exact review verdict, tested working-tree identity, all prior leaf statuses/evidence and counts reconcile; REJECT leaves the card To Do with blockers.
+- Discriminator: static cross-file ID/status/rank/dependency/count check.
+- Evidence required: canonical decision record, bucket/queue recount, activity entry and generation-bound authority statement.
+- Generation 255 full-regression adjudication: accept the generation-254 packet as exact PowerShell **7.6.6** / Pester **5.7.1** **5,817 discovered / selected / total, 5,682 passed, 135 failed, 0 skipped/not-run, 23 failed containers and 206 container-error records**, with null invocation exception, exits **1/1/1**, empty stderr, one invocation/no retry, byte-identical repository manifests, zero mutations and final process zero. The observed discovery is authoritative for this tree; **5,846 / 208 files** remains invalid-launch reference only, with its **29-test variance** unexplained but not asserted as a regression. This is valid completed red evidence but cannot close L01: no owner-by-owner reconciliation establishes that every failed test/container error is known and unrelated, and the required count reconciliation is incomplete, so independent review and Done remain unavailable. Release Coworker-1 and all generation-254 execution/output authority. Purple retains L01 and is not ready for new work; Silver remains activation-gated on Purple closure; Gold is released and ready for a future generation-bound assignment. No remediation or new card is granted.
+- Generation 254 full-regression grant: accept generation 253 as eight serial exact-once PowerShell **7.6.6** / Pester **5.7.1** children totaling **747/747**, all exits **0**, zero failures/skips/not-run/failed containers/container errors/invocation exceptions, empty stderr, stable test hashes, repository mutations **0**, retries **0**, process counts **0/0** and no anomaly. Evidence is retained beneath the assigned generation-253 root. Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g254/coworker-1-A12-L01-zero-edit-full-regression` and the fresh generation-254 root, with no repository write authority. Invoke literal `samples/contoso-exchange-online-managed-service/tests` exactly once in one natural-lifetime PowerShell 7/Pester **5.7.1** child. No exact current full-suite count is verified; retain **5,846 tests / 208 files** only as the latest discovery reference from an invalid repository-wide launch, make the new observed discovery/total authoritative, and explain every delta and all failures/skips/not-run/failed containers against current owners. Require stable input identity, zero mutations, no retry and final process zero. Independent review, Done and Silver activation remain deferred.
+- Generation 253 affected-regression grant: accept generation 252 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/6**, one invocation, exit **0**, stable focused-test SHA-256 `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, and no retry, post-run edit or other mutation. Purple/Coworker-3 alone owns the fresh generation-253 root and no repository path. Run serially and exactly once each: ProtectionMatrix **337/337**, ProtectionLicensing **281/281**, ProtectionSafety **6/6**, ReportingContract **30/30**, ReportingAdapters **10/10**, LiveContract **68/68**, LiveAdapters **6/6** and LiveSignedRoundTrip **9/9**, aggregate **747/747**; stop before the next suite on any anomaly and retain complete zero-mutation evidence. Full offline regression, independent review, Done and Silver activation remain deferred.
+- Generation 252 regex-boundary grant: accept generation 251 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/5/1**, one invocation, no retry/post-edit, empty stderr and final process zero. The new assertions prove exactly two `Set-TransportConfig` calls and no other commands. The retained case-insensitive prohibited regex alone fails because `SPO` occurs inside `Transport`; this is a substring false positive, not an excluded-service write. Purple/Coworker-2 alone owns the generation-252 ACK/root and one assertion-only replacement: use `(?:^|-)(?:Mg|SPO|Teams|Graph|AtpPolicyForO365|License)` so each prohibited family/token begins at command start or after a hyphen. Run the leaf exactly once requiring **6/6**. Preserve both allowed-call assertions, the observation assertion, all fixture/product/signature/rollback behavior and zero external writes; no retry, second edit/run, broader validation, review or Done.
+- Generation 251 assertion-correction grant: accept generation 250 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/5/1**, one invocation and no retry/post-edit. The key-safe fixture relocation works; all five negatives pass and tampered evidence reaches `ExchangeSignatureUnverified`. The positive reaches its final write assertion after admitted signing, verification, rollback and exact state restoration, where a stale zero-total assertion observes two authorized Exchange lifecycle writes. Static inspection identifies both as `Set-TransportConfig`, one for apply and one for rollback; the existing prohibited external-call filter remains zero. Purple/Coworker-1 alone owns the generation-251 ACK/root and one positive assertion correction: remove the stale zero-total assertion if present, assert exactly two `Set-TransportConfig` calls and zero calls with any other command, and preserve the existing `Mg|SPO|Teams|Graph|AtpPolicyForO365|License` zero assertion unchanged. Run the leaf exactly once requiring **6/6**. No retry, second edit/run, product/Common/helper/config change, broader validation, review or Done.
+- Generation 250 key-safe fixture grant: accept generation 249 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/0/6**, one invocation, no retry/post-edit, stable test hash, empty stderr and zero residual processes. Every case fails before admission because the authorized assignment sits inside the reporting-delivery hashtable literal, creating a non-string dictionary key that `ConvertTo-Json` rejects. Static construction confirms the target anti-phish row is a `System.Collections.Hashtable`. Purple/Coworker-3 alone owns the generation-250 ACK/root and one exact relocation: remove the misplaced statement and add `$fixture.Raw['Get-AntiPhishRule'].Items[0]['SentTo'] = @()` immediately after the existing policy binding, followed by one exact-six run requiring **6/6** and tamper verification. Preserve every other fixture addition, guard, assertion and product path; no retry, broader validation, review or Done.
+- Generation 249 MDO-009 rule-scope fixture grant: accept generation 248 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/4/2**, one invocation, no retry/post-edit, stable test hash and zero residual processes. Both failures are solely `EvidenceSigningNotAdmitted` for `MDO-009 Error`; MON-003, OPS-001, OPS-002 and GOV-005 are cleared. The retained enabled rule is correctly bound to `Custom email` but inherits `SentTo = custom@contoso.example`, which triggers `ExchangeAntiPhishScopeUnverified`; its policies already carry the required user/domain and empty exceptions. Purple/Coworker-2 alone owns the generation-249 ACK/root and one line setting `SentTo = @()`, followed by one exact-six run requiring **6/6** and the tampered case reaching `ExchangeSignatureUnverified`. Preserve the guard and all prior fixture additions; no product, filtering, retry, broader validation, review or Done.
+- Generation 248 complete-envelope fixture grant: accept generation 247 as exact Pester **5.7.1** **6/4/2**, one invocation, no retry and no second edit. One negative and the positive both expose the same fail-closed sign-stage refusal over `MDO-009`, `MON-003`, `OPS-001`, `OPS-002` and `GOV-005`; this proves the guard and signature path and identifies unrelated incomplete frozen inputs. Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g248/coworker-1-A12-L01-complete-envelope-fixture`, the fresh generation-248 root and one cohesive edit only to this test. Correct the active anti-phish policy binding, GOV-005 recipient-flow handoff and signed MON/OPS operational artifacts using existing proved fixture shapes, without filtering/substituting outcomes or changing product admission. The retained guard must establish admission before either caller continues, so the tampered negative signs an admitted envelope before mutation and then exercises `ExchangeSignatureUnverified`. Run the leaf exactly once requiring **6/6**; no retry, second edit/run, broader validation, review or Done.
+- Generation 247 admission-guard grant: accept the generation-246 one-line adapter-certificate correction and exact **6/5/1** run. All five negatives pass and `ExternalEvidenceSigningTimeInvalid` clears; the positive reaches verification and fails because `exchange-email-evidence.p7s` is absent. Static inspection proves the helper uses one path, while product writes that path only after an admitted sign-stage decision. The helper currently ignores non-admission and masks its finding. Purple/Coworker-3 alone owns ACK `sole-canonical-writer/Purple/batch8/g247/coworker-3-A12-L01-sign-stage-admission-guard`, the fresh generation-247 root and exactly one test line immediately after the sign call: `if (-not $signed.Decision.Admitted) { throw "EvidenceSigningNotAdmitted: $($signed.Decision.Finding -join '; ')" }`. Run the leaf once requiring exact **6 discovered / 6 selected / 6 total** and retain the observed split and exact finding. Freeze Common/product/evidence certificate and assertions; no retry, second edit, broader suite, review or Done.
+- Generation 246 fixture-correction grant: accept generation 245 as exact Pester **5.7.1** **6/5/1**, with the sole positive failing `ExternalEvidenceSigningTimeInvalid`, no retry/edit, empty stderr, stable test identity and final process zero. F01's green direct contract proves generic context handoff/parser behavior. Static A12 tracing isolates the narrow synthetic adapter certificate: it starts at UTC-now minus one minute, approval is generated later as exact round-trip text, and the approval verifier returns certificate bounds as UTC `DateTime` values before generic string projection; the evidence-signing path instead emits exact round-trip timestamp strings. Purple/Coworker-2 alone owns ACK `sole-canonical-writer/Purple/batch8/g246/coworker-2-A12-L01-adapter-certificate-window-fixture` and the fresh generation-246 root. Only this test is writable, for exactly one replacement of adapter-certificate `AddMinutes(-1)` with `AddDays(-1)`, followed by one exact focused **6/6** run. The evidence certificate, Common/product, assertions and all other paths remain frozen. No private interception, retry, broader validation, review or Done.
+- Generation 245 focused grant: Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g245/coworker-1-A12-L01-zero-edit-integrated-focused` and root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g245-A12-L01-zero-edit-integrated-focused-sole-canonical-writer\coworker-1`. No repository path is writable. Invoke `ExchangeEmailIntegratedWorkflow.Tests.ps1` exactly once through literal PowerShell 7/Pester **5.7.1**, requiring exact **6 discovered / 6 selected / 6 total / 6 passed**, complete command/version/test/stream/exit/hash/mutation/process evidence, zero mutations and final process zero. Stop on any anomaly. Affected regression and independent closure review require later canonical grants; no retry, edit, broader/full suite, Done, Git/live/tenant action or other worker authority exists.
 
 ### EXR-011
 
@@ -841,7 +1064,7 @@ Parent summary - Correct domain authentication and DNS handoffs.
 
 ### EXR-011-A01
 
-Rank 22 - Domain applicability denominator.
+Rank 24 - Domain applicability denominator.
 
 - Dependencies: EXR-007, EXR-008 (Done; bounded offline evidence retained). Owner: Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold. Workstream: Domain protection. Updated: 2026-09-22. Status: Done (bounded offline acceptance, g13).
 - Canonical acceptance (2026-09-22, g13): inspected Gold-3 independent review, final identity and writer-artifact verification plus Gold-2 result headers/commands against the unchanged scoped closure contract. No unresolved bounded A01 issue remains. Root confirms all 290 inputs stable and all Gold workers/test processes quiescent at 07:06:41Z; final identity timestamp is `2026-09-22T07:06:41.2989037+00:00`, StableInputs true. ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Purple/g13/accept-Gold-A01-Silver-tests-first`. Release Gold's reservations including Common; no new Gold claim. This is not parent EXR-011 acceptance, live/DNS readiness, a full-suite-green claim or release approval. Eleven unrelated failures (EXR-004 two, EXR-010-A11 nine) plus Silver red remain owned/unwaived.
@@ -862,7 +1085,7 @@ Rank 22 - Domain applicability denominator.
 
 ### EXR-011-A02
 
-Rank 23 - Exchange DKIM lifecycle.
+Rank 25 - Exchange DKIM lifecycle.
 
 - Dependencies: EXR-007, EXR-008, EXR-011-A01 (Done). Owner: Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch5 at completion; released. Workstream: Domain protection. Updated: 2026-09-25. Status: Done (generation-126 bounded offline closure; adapter attempt capacity exhausted at 3/3).
 - Generation 126 completion: canonical Gold/Kanban accepts Coworker-3's independent `review.json` **ACCEPT/PASS** verdict with no blockers from `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-generation125-independent-closure-review-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-3`. The reviewer executed no tests/imports/dot-sources/product code, made no repository/governance/Git/live/tenant/RAID action, and confirmed every acceptance/verification clause; ten negative AAA cases plus one positive; exact authorized changed paths; attempts **1/3**, **2/3** and **3/3** consumed with no fourth attempt; non-substantive fixture correction diff `8E3B2528...`; final adapter `889CEF6D...2875F686`; generation124 physical exact-once **306/306** and logical correction **182/182**, affected **295/295**, combined **477/477**; fixed input hashes; handoff `618DA322...`; unchanged tested dirty working-tree identity; zero mutations/processes; and quiescence. Gold batch5 is completed and all owners/reservations are released. Closure is bounded offline only: RAID-D04/D05 remain Unconfirmed; no DNS publication, live compatibility, external readiness, parent, release or full-suite-green claim is made.
@@ -895,7 +1118,7 @@ Rank 23 - Exchange DKIM lifecycle.
 
 - Generation 141 automatic continuation: Purple's generation-140 failure is independently classified test-fixture debt and does not block Silver's accepted focused-product **10/10** gate. Silver/Coworker-3 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch6/g141/coworker-3-A03-zero-edit-affected-225` and fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-batch6-g141-A03-zero-edit-affected-regression-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-3`. Freeze Common `.psm1`/`.psd1` at `7979C164D93DBD96ACAF0E8EDFB4647B6AA6C08230EBC20ED9F82F187922FD4` / `91B2BE520926EE669FB3CB27C45F2361B9A8B53F66C1FC98628DF9656341B8E7` and every direct test input. Run one fresh natural-lifetime child per suite, serially and exactly once: ModuleManifest **17/17**, AcceptedDomain **17/17**, DomainInventory **102/102**, ExchangeOnlyDeployment **6/6**, ExchangeLiveContract **68/68**, ExchangeLiveAdapters **6/6**, ExchangeLiveSignedRoundTrip **9/9**, aggregate **225/225**. Record complete durable command/PID/stream/result/exit/hash/mutation/process/quiescence evidence and stop before the next suite on any anomaly; no retry, rerun, timeout, kill or edit. This chain executes before any Purple fixture edit or rerun. Common remains locked and Gold inactive pending canonical adjudication.
 
-Rank 24 - DNS-owner handoff validation.
+Rank 26 - DNS-owner handoff validation.
 
 - Dependencies: EXR-007, EXR-008, EXR-011-A01 (Done). Owner: Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch6 at completion; released. Workstream: Domain protection. Updated: 2026-09-25. Status: Done (generation-143 bounded offline closure; focused 10/10, affected 225/225, attempts 3/3 consumed; RAID-D04 remains Unconfirmed).
 - Generation 139 conditional affected-chain continuation: no Silver suite ran in generation 138 because preflight stopped before any child launch; its exact-once budget remains unused. The generation-139 coordinator may enter Silver only after its new runner hash/preflight prove the Purple test plus actual ApprovedAdapters/Common paths at fixed hashes, and only after Purple durably proves exact **10/10** under every retained evidence gate. Then run the unchanged seven Pester **5.7.1** suites serially and exactly once in the unchanged order/counts **17/17, 17/17, 102/102, 6/6, 68/68, 6/6, 9/9**, aggregate **225/225**. Every generation-138 evidence and stop-first-anomaly rule remains binding. No timeout, kill, retry, rerun, repository/product edit, product attempt, live, Git, publish or release action is authorized. Common remains locked and Gold inactive until canonical adjudication.
@@ -943,7 +1166,7 @@ Rank 24 - DNS-owner handoff validation.
 - Generation 163 handoff acceptance/red-barrier grant: accept add-from-absent `tests/unit/ExchangeAuthenticationAlignmentEvidence.Tests.ps1` at SHA-256 `7BE48739E304DD981233F778D5B38216BC1E12F317C0EF71EFE4824BA77A2672`. Static inspection confirms nineteen ordered negative fixture rows plus one complete synthetic positive. The table-driven negative `It` is accepted as independently discriminating because each expanded case has a unique name, direct fixture mutation and exact expected reason covering domain/selector/signing-state, missing/stale proof, SPF/DKIM/DMARC failure/alignment, sender authorization, incomplete/error/paged/ambiguous identity, independent SPF/DMARC binding and cutover proof. Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7/g163/coworker-1-A04-zero-edit-focused-red`, fresh external root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-batch7-g163-A04-zero-edit-focused-red-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, no writable repository path, and one exact Pester **5.7.1** invocation requiring **20 discovered / 20 selected**. Static expected split is **0/20** at the absent owning collector; preserve and classify any different split without retry or edit. Freeze all direct inputs and record complete counters, expanded failures, terminal, hash, mutation and process-zero evidence. Coworker-2/-3 wait; no product/Common/manifest/test correction, implementation attempt, DNS/live/Git action or regression is authorized.
 - Start (g162): status In Progress; owner `Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7`. ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7/g162/coworker-1-A04-tests-first`. Coworker-1 alone owns absent-before-creation `tests/unit/ExchangeAuthenticationAlignmentEvidence.Tests.ps1` under the sample and external root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-batch7-g162-A04-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`. Author negative-first AAA coverage for domain/selector mismatch, missing/stale proof, failed alignment and incomplete/error/paged/ambiguous inputs, followed by a complete synthetic positive. No Pester, product, DNS or live action is authorized. Coworker-2 waits for an accepted barrier and later exact owning-path grant; Coworker-3 waits for independent review. All other repository paths are read-only.
 
-Rank 25 - Message authentication/alignment evidence.
+Rank 27 - Message authentication/alignment evidence.
 
 - Dependencies: EXR-007, EXR-008, EXR-011-A01, EXR-011-A02, EXR-011-A03. Owner: completed; Cohort Silver released. Workstream: Domain protection. Updated: 2026-09-26. Status: Done (generation-201 bounded offline closure).
 - Deliverable: offline received-header proof bound to complete domain, DKIM and DNS evidence.
@@ -954,7 +1177,7 @@ Rank 25 - Message authentication/alignment evidence.
 
 ### EXR-007-A01
 
-Rank 26 - Reconcile EWS consumer and migration readiness.
+Rank 28 - Reconcile EWS consumer and migration readiness.
 
 - Dependencies: EXR-007, EXR-003 (Done). Owner: completed; Cohort Gold released. Workstream: Protocol readiness. Updated: 2026-09-25. Status: Done (generation-160 bounded offline closure).
 - Generation 160 closure: accept Gold/Coworker-1's generation-159 independent `review.json` and matching `review.md` as **ACCEPT/PASS** with blockers `[]`. The static no-execution review reconciles the complete consumer, approved-exception, mailbox-readback, cloud, migration owner/date, expiry and retirement-notice contract; all 13 focused cases; attempts **3/3** with no fourth attempt; final Common `.psm1`/`.psd1`/test hashes `1FED7C051961C9DE6725D7A54CC2B56CF58FB097C9CB0839CF6AEC4B986A6FE1` / `D53837F9CED6A485CECC93E919438D6955109F1174589696432CD39A63662297` / `D80C5976A8C811E1FD7747E1B8D94992D27465112389956A304B1F5376FBF0CF`; focused **13/13**; affected **17/17 + 75/75 = 92/92**; stable tested dirty-tree identity; preserved EXR-003 enforcement; and separate `ExternalMigrationReadiness = 'Unverified'`. Gold and every repository/output reservation are released. Closure does not establish live compatibility, application migration, registration, consent, external readiness, release acceptance or full-suite green. RAID-R03 remains Open and RAID-D02/D03 remain Unconfirmed. The exact accumulated batch6 publication authorization is recorded in `.github/cohorts.md`; no Git, Pages or live action occurred during closure.
@@ -1015,7 +1238,7 @@ Parent summary - Enforce non-TABL filtering bypass boundaries.
 - Generation 163 handoff acceptance/red-barrier grant: accept add-from-absent `tests/unit/ExchangeTransportBypassLifecycle.Tests.ps1` at SHA-256 `6C91382760CF175E72A5E96CDEEF0DBD0E05E40CA687AA0609D7EA38248675FE`. Static inspection confirms seventeen explicit AAA tests ordered as fifteen negatives then two positives, covering unauthenticated/broad/unowned/unapproved/expired exceptions, incomplete/ambiguous/paged/error raw reads, duplicate prefixes, transport/external-tag drift, typed rollback failures, independent raw readback, signed apply/no-op/drift/rollback and explicit zero TABL operations. Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g163/coworker-1-T01-zero-edit-focused-red`, fresh external root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g163-T01-zero-edit-focused-red-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, no writable repository path, and one exact Pester **5.7.1** invocation requiring **17 discovered / 17 selected**. Static expected split is **0/17** at the absent new scope/public transport boundary; preserve and classify any different split without retry or edit. Freeze all direct imports and record complete counters, failures, terminal, hash, mutation and process-zero evidence. Coworker-2/-3 wait; no product/adapter/Common/helper/config/test correction, implementation attempt, regression, vendor/live/Git action is authorized.
 - Start (g162): status In Progress; owner `Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7`. ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g162/coworker-1-T01-tests-first`. Coworker-1 alone owns absent-before-creation `tests/unit/ExchangeTransportBypassLifecycle.Tests.ps1` under the sample and external root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g162-T01-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`. Author negative-first AAA coverage for unauthenticated sender-domain bypass, broad/unowned/expired rules, duplicate prefixes and incomplete raw rules, followed by authenticated narrow-rule and external-tag positives with lifecycle expectations. No Pester or product/live/vendor action is authorized. Coworker-2 waits for an accepted barrier and later exact owning-path grant; Coworker-3 waits for independent review. All other repository paths are read-only.
 
-Rank 27 - Transport bypass and external-tag rules.
+Rank 29 - Transport bypass and external-tag rules.
 
 - Generation 176 helper-edit adjudication/zero-edit recovery grant: accept Gold/Coworker-2's sole authorized `tests/helpers/ApprovedAdapterDoubles.ps1` mutation as exact **+8/-1**, helper SHA-256 `CCEB271FB32C82FBB8850EBBCBF8A6526C7C2AC6E2767ED84D5C9F5A3F89EC0C` and diff SHA-256 `D9729AE856AE04D2826BD48D2ED5B1B171F04FA03DFC50900001A5FAF0B285ED`. Current bytes contain the complete unforwarded `secops@contoso.example` SharedMailbox row and valid unexpired NotApplicable DLP evidence; parser/editor diagnostics and final matching processes are zero. The wrapper stopped before pre-run hashes, streams, result, envelope or child launch; Pester executions are **0**, no retry occurred and no RoundTrip verdict exists. Coworker-3 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g176/coworker-3-roundtrip-zero-edit-recovery`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g176-roundtrip-zero-edit-recovery-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-3`, and no writable repository path. Freeze the helper at the accepted hash and RoundTrip at `AED3CE9F253B9B2297B3BC1A6CB27A5A69E08EAFDB34195BF61578C984666E9A`, persist and parser-check the complete runner/child and prelaunch command before execution, prove process zero, then launch exactly one fresh natural-lifetime Pester **5.7.1** child invoking only ApprovedAdapterRoundTrip once. Require exact **171 discovered / 171 selected / 171 total / 171 passed**, zero failed/skipped/not-run/container-error records, null invocation exception, native child exit **0**, outer exit **0**, complete stdout/stderr and result/envelope artifacts, stable inputs, repository mutations **0** and final matching processes **0**. Stop without retry, edit, broader regression, review or Done. Product attempt **2/3** remains unspent; Gold retains Common `.psm1`, `.psd1` and ApprovedAdapters locks and Silver remains dormant.
 - Generation 169 sender-domain type-debt adjudication/correction grant: accept Gold/Coworker-1's root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g168-T01-canonical-string-order-focused-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, exact authorized T01 SHA-256 transition `56B0559FBC88D683CB17713F50B766521755F997321A2789F2A7386B6EA17DB4` -> `438793E21C1B4CC5C73B963AF0A821B0CBC08E80681CE802BC0F0D06A1B46FDC`, and sole Pester **5.7.1** child PID **39252** at **17 discovered / 17 selected / 17 total / 16 passed / 1 failed**, natural exit **91**, zero skipped/not-run/container errors, null invocation exception, empty stderr, stable 26 production inputs, no out-of-scope mutation despite the harness `OnlyAssignedTestMutated=false` scalar artifact, and final matching processes **0**. The sole line-519 assertion observes `SenderDomainIs` as scalar string `partner.example`. Production's `Strings` capture/rollback is canonical and correct; T01's custom `Set-TransportRule` forwards a one-member bound parameter to the generic double, which stores the scalar. Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g169/coworker-1-T01-senderdomain-array-fixture-focused`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g169-T01-senderdomain-array-fixture-focused-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, and exclusive ownership only of T01. In the custom `Set-TransportRule`, immediately before `Invoke-OfflineAdapterCommand`, set `$PSBoundParameters['SenderDomainIs'] = @($SenderDomainIs)` only when that key is bound. Preserve strict restored/before equality, the `[object[]]` assertion, every other fixture/assertion and all product files. Run T01 once in one fresh natural-lifetime Pester **5.7.1** child requiring exact **17/17**, clean counters, null invocation exception, native exit **0**, stable 26 production inputs, mutation limited to T01 and final processes **0**. Stop without retry, second edit, affected regression, review or Done. Product attempt **2/3** remains unspent; Silver remains dormant until later accepted green and explicit lock release.
@@ -1048,7 +1271,7 @@ Rank 27 - Transport bypass and external-tag rules.
 
 - Generation 168 ordering-debt adjudication/correction grant: accept Gold/Coworker-1's root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g167-T01-fixture-correction-focused-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1` as exact Pester **5.7.1** **17 discovered / 17 selected / 17 total / 16 passed / 1 failed**, zero skipped/not-run/container errors, natural native exit **1**, stable 26 production inputs, only T01 changed from SHA-256 `6C913827...` to `56B0559F...` and final matching processes **0**. The sole failure is line 515's strict restored-versus-before snapshot. Production `ConvertTo-ApprovedAdapterValue` intentionally applies `Sort-Object -Unique` to every `Strings` field when capturing approved Before/After state; therefore rollback restores `HeaderContainsWords` as `dkim=pass,dmarc=pass,spf=pass`, while `New-AuthenticatedSclRule` seeds the same semantic set as `spf=pass,dkim=pass,dmarc=pass`. This is order-only fixture debt, not authority to weaken equality or product rollback. Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g168/coworker-1-T01-canonical-string-order-focused`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g168-T01-canonical-string-order-focused-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, and exclusive ownership only of T01. Change only the default `HeaderContainsWords` array in `New-AuthenticatedSclRule` to `@('dkim=pass', 'dmarc=pass', 'spf=pass')`; preserve strict `-BeExactly`, all other fixtures/assertions and every product file. Then run T01 once in one fresh natural-lifetime Pester **5.7.1** child, requiring exact **17/17**, zero anomaly counters, null invocation exception, stable production inputs, mutation limited to T01 and final process zero. Stop without retry, second edit, affected regression, review or Done. Product attempt **2/3** remains unspent; Silver remains dormant until later accepted green and explicit release.
 
-Rank 28 - Organization filtering allow lists.
+Rank 30 - Organization filtering allow lists.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7 at completion; released. Workstream: Email protection. Updated: 2026-09-26. Status: Done (generation-212 bounded offline closure; attempt 1/3 retained, attempts 2/3 and 3/3 unspent).
 - Deliverable: complete connection-filter IP and spam sender/domain allow inventory with narrow approved lifecycle.
@@ -1059,7 +1282,7 @@ Rank 28 - Organization filtering allow lists.
 
 ### EXR-007-A02-T03
 
-Rank 29 - Mailbox Safe Senders.
+Rank 31 - Mailbox Safe Senders.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
 - Deliverable: per-mailbox Safe Senders collection, evaluation and approved narrow change contract.
@@ -1070,7 +1293,7 @@ Rank 29 - Mailbox Safe Senders.
 
 ### EXR-007-A02-T04
 
-Rank 30 - Connector trust boundaries.
+Rank 32 - Connector trust boundaries.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Email protection. Updated: 2026-09-21. Status: To Do.
 - Deliverable: approved inbound/outbound Exchange connector trust assessment and bounded change lifecycle.
@@ -1095,14 +1318,15 @@ Parent summary - Bound Exchange application mailbox access.
 | --- | --- |
 | Exchange application roles, service-principal references, assignments and management/resource scopes; complete raw inventory | [EXR-007-A03-T01](#exr-007-a03-t01) |
 | Current additive Entra/consent evidence; allowed AND denied mailbox authorization; propagation limits and named negative/positive assessment | [EXR-007-A03-T01](#exr-007-a03-t01) |
-| Approved Exchange-only assignment/scope changes, independent readback and rollback, no registration or Graph consent writes | [EXR-007-A03-T02](#exr-007-a03-t02) |
-| Public integration, source/control/runbook mapping and external-readiness separation | Both children for their own outcome under the shared atomic contract |
+| Approved Exchange-only assignment/scope parser correction | [EXR-007-A03-T02-F01](#exr-007-a03-t02-f01) |
+| Assignment/scope readback, probes, propagation, rollback and integration closure | [EXR-007-A03-T02-L01](#exr-007-a03-t02-l01) |
+| Public integration, source/control/runbook mapping and external-readiness separation | T01 and T02-L01 for their own outcomes under the shared atomic contract |
 
 ### EXR-007-A03-T01
 
 - Start (g212): after rank 28 accepted closure, Silver's WIP slot is free. Lower dependency-safe ranks 29 and 30 retain Purple affinity, but Purple's one WIP slot remains occupied by mandatorily escalated rank 21. Rank 31 is Silver's next persisted affinity and EXR-007/004/005 are Done, so move To Do -> In Progress for `Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7`. Silver/Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7/g212/coworker-1-A03-T01-tests-first`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-batch7-g212-A03-T01-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, and exclusive absent-before-creation ownership of `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeApplicationAuthorization.Tests.ps1`. Author negative-first AAA cases for missing/stale application and additive-Entra/consent evidence, incomplete roles/service-principal/assignment/management-resource-scope inventory, excessive/unscoped access, unintended mailbox authorization, absent allowed or denied mailbox probes and unstated propagation limits, followed by one scoped positive bound to current inputs. Explicitly preserve the limit that local Exchange probes cannot prove absence of tenant-wide Entra grants and keep external readiness Unverified. No Pester, import, dot-source, execution, product/Common/adapter/helper/config/documentation/governance edit, Git, app registration, consent, credential, tenant grant, Exchange assignment, live or tenant action. Return only test hash/diff, case inventory, parser/editor diagnostics, mutation inventory and quiescence. Coworker-2/-3 wait; no implementation attempt is created or consumed.
 
-Rank 31 - Effective application authorization.
+Rank 33 - Effective application authorization.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7. Workstream: Authorization. Updated: 2026-09-26. Status: Done.
 - Deliverable: effective Exchange application authorization assessment with independent additive-Entra evidence.
@@ -1125,14 +1349,33 @@ Rank 31 - Effective application authorization.
 - Generation 220 adjudication: accept the sole 733-line tests-first add at user-supplied SHA-256 prefix `59032A...` as a compliant **19 negative + 1 positive** handoff with complete required coverage, parser/editor diagnostics **0/0**, no execution/process/other mutation action and attempts **0/3**. Gold/Coworker-2 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g220/coworker-2-A03-T02-zero-edit-focused-red`, no writable repository path, and one fresh natural-lifetime Pester **5.7.1** child against the literal A03-T02 test leaf. Require exact **20 discovered / 20 selected** and retain the observed total/pass/fail split. No implementation, retry, edit, affected regression, review or later phase is authorized.
 - Start (g219): after rank 31 accepted closure, all dependencies are Done. Lower ranks 29 and 30 retain Purple affinity but cannot start while mandatorily escalated rank 21 occupies Purple's WIP slot. Gold is quiescent with a free WIP slot, rank 32 is its next persisted affinity, and the absent tests-first file is disjoint from released shared paths. Move To Do -> In Progress for `Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7`. Gold/Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g219/coworker-1-A03-T02-tests-first`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g219-A03-T02-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, and exclusive absent-before-creation ownership of `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeApplicationAssignmentScopeLifecycle.Tests.ps1`. Author negative-first AAA cases for approval/T01 mismatch, unbound additive evidence, unsupported or rights-expanding scope, incomplete/stale independent readback, unintended mailbox access, absent allowed/denied re-probes, missing propagation limits, apply/readback mismatch, repeat writes, drift and rollback failure, then one positive proving exact signed preview/apply, independent raw readback, allowed/denied re-probes, propagation reporting, repeat no-op, drift refusal and prior typed-scope restoration. Preserve external readiness Unverified and prohibit app registration, Graph consent and rights expansion. No Pester, import, dot-source, execution, product/Common/adapter/helper/config/documentation/governance edit, Git, assignment, live or tenant action. Return only test hash/diff, case inventory, parser/editor diagnostics, mutation inventory and quiescence. Coworker-2/-3 wait; attempts remain 0/3.
 
-Rank 32 - Approved application assignment/scope lifecycle.
-
-- Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A03-T01. Owner: Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7. Workstream: Authorization. Updated: 2026-09-26. Status: In Progress.
+- Generation 232 disposition: non-executable summary parent; no bucket or rank, not Done. All Gold workers, paths, outputs and execution authority are released. Historical attempts **3/3** and accepted evidence remain above. Parent acceptance requires F01 and L01 completion.
 - Deliverable: supported approved Exchange assignment/scope change and recovery contract consuming T01 assessment.
 - Acceptance: bind exact authorized assignments/scopes to signed preview/apply, independent raw readback, allowed/denied re-probes and propagation reporting, repeat no-op, drift refusal and typed rollback. Do not expand rights beyond original approved scope; no app registration or Graph consent.
 - Verification: shared atomic contract; reject approval/scope mismatch, unbound additive evidence, unintended mailbox access and stale readback; positive approved lifecycle restores the prior typed scope and preserves external Unverified state.
 - Existing evidence / remaining: generic approval infrastructure exists; no application-specific lifecycle packet was found. C03/A05/S25 mappings and scoped regression must be recorded independently.
 - RAID: RAID-D02, RAID-D03, RAID-D05; consume externally supplied capability only.
+
+### EXR-007-A03-T02-F01
+
+Rank 34 - ISO-8601 propagation parser correction.
+
+- Dependencies: EXR-007, EXR-004, EXR-005 and EXR-007-A03-T01 are Done; explicit exceptional-recovery authorization was satisfied by the user's generation-233 direction. Owner: Cohort Gold / sole-canonical-writer/Gold/batch8. Workstream: Authorization. Updated: 2026-09-26. Status: Done bounded offline.
+- Deliverable: correct only ApprovedAdapters propagation-duration admission so the existing ISO-8601 `PT2H` contract is parsed as a positive duration without broadening accepted evidence.
+- Acceptance: in ApprovedAdapters only, parse the exact propagation `maximumDelay` string through `[System.Xml.XmlConvert]::ToTimeSpan` with bounded failure handling, reject invalid or non-positive durations with the existing fail-closed outcome, and continue emitting the unchanged original `PT2H` string. Preserve exact lowercase fields, required statement, external readiness Unverified, release readiness false, the tenant-wide Entra limitation and all other behavior. Historical ordinary attempts **3/3** remain exhausted; label this **EXCEPTIONAL RECOVERY**, never attempt **4/3**. The historical null Common hash is not reconstructed and has no standalone repair card.
+- Verification: accepted generation-233 evidence records exact Pester **5.7.1** **20 discovered / 20 selected / 20 total / 7 passed / 13 failed**, zero skipped/not-run/failed-container/container-error records, null invocation exception, launches/invocations/retries **1/1/0**, exits **1/1/1**, empty stderr, frozen focused test/Common, only the authorized ApprovedAdapters mutation and final matching-process count zero. Static source confirms the exact bounded parser, positive-duration refusal and unchanged returned `PT2H`; all thirteen former `AuthorizationPropagationLimitMissing` failures advanced to a distinct later read-contract defect. This is sufficient bounded evidence for the parser leaf only, not lifecycle green, affected regression, review, parent closure or release readiness.
+- Prohibitions: ordinary attempts **3/3** remain exhausted and no attempt **4/3** exists. No live/tenant/registration/consent/rights-expansion claim follows from this bounded closure.
+
+### EXR-007-A03-T02-L01
+
+Rank 35 - Application assignment/scope lifecycle completion.
+
+- Dependencies: EXR-007-A03-T02-F01 Done bounded offline. Owner: Cohort Gold / sole-canonical-writer/Gold/batch8 at completion; ownership released. Workstream: Authorization. Updated: 2026-09-26. Status: Done bounded offline.
+- Deliverable: complete the remaining original application assignment/scope lifecycle after parser admission.
+- Acceptance: retain the proved ApprovedAdapters nullable read contract and generation-235 focused-test corrections: absent required members and all non-nullable nulls remain fail closed, only application management-scope `ServerRestrictionFilter` is nullable, null survives the management-scope doubles, missing approval uses `ChangeApprovalNotFound`, mutated approval payloads are freshly signed, and pre-mutation collection refusal records zero writes. Replace only the two stale reason expectations with canonical `ChangeApprovalTimeInvalid` and `ChangeApprovalPreviewTampered`. Then prove signed exact assignment/scope, independent readback, allowed and denied mailbox re-probes, propagation reporting, repeat no-op, drift refusal and typed restoration; no registration, consent or rights expansion.
+- Verification: generation 236 evidence is exact PowerShell 7/Pester **5.7.1** **20 discovered / 20 selected / 20 total / 20 passed**, zero anomalies, one launch/invocation, no retry, child/outer exits **0/0**, empty stderr, frozen ApprovedAdapters/Common, only the two authorized expectation replacements and final process zero. Focused SHA-256 is `7EED25AE12B6EC8D81CB0DBF12BE708A1C56580C2C50F7D2D8ACBCD762164ABA`. Generation 237 grants Gold/Coworker-2 only a zero-edit serial affected regression: `ModuleManifest.Tests.ps1` **17/17**, `ApprovedAdapters.Tests.ps1` **21/21**, and `ApprovedAdapterRoundTrip.Tests.ps1` **171/171**, aggregate **209/209**, each exactly once in a fresh literal-host Pester **5.7.1** child with complete evidence, stable product/focused-test identities, zero mutations and final process zero. Stop before the next suite on any anomaly. No retry, focused rerun, full suite, independent review or Done is granted; independent review requires a separate later canonical generation. Preserve **EXCEPTIONAL RECOVERY**, ordinary attempts **3/3** exhausted and no attempt **4/3**.
+- Generation 238 accepts the generation-237 affected packet as exact serial **17/17 + 21/21 + 171/171 = 209/209**, with zero anomaly counts, null invocation exceptions, three child exits **0**, empty stderr, stable inputs, repository mutations **0**, retries **0** and observed residual processes **0**. Outer exit **1** is solely the runner's incorrect final expectation of one residual process, after evidence persistence. Gold/Coworker-3 independently reviews the exact parser, nullable-read and focused-test changes plus focused **20/20** and affected **209/209** under ACK `sole-canonical-writer/Gold/batch8/g238/coworker-3-A03-T02-L01-independent-static-closure-review`, with no repository edit or test/execution authority. L01 remains In Progress pending canonical review adjudication; Purple remains inactive.
+- Generation 239 closure: accept the granted-root matching `review.md`/`review.json` as `CLOSE/ACCEPT/PASS`, `Pass=true`, `ScopeCompliant=true`, `ClosureEligible=true`, findings `[]` and all severity counts zero. The reviewer independently reconciles the exact parser and nullable-read mutations, test-only prerequisite and approval corrections, canonical reason names, **19 negative + 1 positive**, focused **20/20**, affected **209/209**, exact hashes, zero affected mutations/residual processes, the post-result outer-assertion defect, **EXCEPTIONAL RECOVERY**, ordinary attempts **3/3 exhausted**, no attempt **4/3**, and `ExternalReadiness = Unverified` / `ReleaseReady = false` / tenant-wide Entra limitation. Close bounded offline and release all Gold paths/roots/workers. RAID-D02/D03/D05 remain Unconfirmed and continue to block live or release readiness.
 
 ### EXR-007-A04
 
@@ -1154,7 +1397,7 @@ Parent summary - Bound sharing policies and calendar publication.
 
 ### EXR-007-A04-T01
 
-Rank 33 - Sharing policies and mailbox bindings.
+Rank 36 - Sharing policies and mailbox bindings.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
 - Deliverable: approved sharing policy and default/explicit mailbox binding contract.
@@ -1165,7 +1408,7 @@ Rank 33 - Sharing policies and mailbox bindings.
 
 ### EXR-007-A04-T02
 
-Rank 34 - Calendar publication.
+Rank 37 - Calendar publication.
 
 - Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A04-T01. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
 - Deliverable: separate calendar publication state assessment and approved disclosure lifecycle.
@@ -1190,9 +1433,10 @@ Parent summary - Verify recipient delegation independently.
 | --- | --- |
 | FullAccess inventory, access-only semantics and least-privilege lifecycle | [EXR-007-A05-T01](#exr-007-a05-t01) |
 | SendAs independent send permission inventory/lifecycle | [EXR-007-A05-T02](#exr-007-a05-t02) |
-| SendOnBehalf independent send permission inventory/lifecycle | [EXR-007-A05-T03](#exr-007-a05-t03) |
-| Applicable user/shared mailboxes and recipients; inherited/system/nested principals; external identity/ownership, no global provisioning | T01-T03 each for its permission type |
-| Unauthorized grants, missing classes, incomplete collection and unresolved ownership negatives; least-privilege positive, independent readback/rollback and mappings | T01-T03 each under the shared atomic contract; no access-to-send equivalence |
+| SendOnBehalf rollback operand diagnosis and owner-specific correction | [EXR-007-A05-T03-D01](#exr-007-a05-t03-d01), then [EXR-007-A05-T03-F01](#exr-007-a05-t03-f01) |
+| SendOnBehalf independent send permission lifecycle closure | [EXR-007-A05-T03-L01](#exr-007-a05-t03-l01) |
+| Applicable user/shared mailboxes and recipients; inherited/system/nested principals; external identity/ownership, no global provisioning | T01, T02 and T03-L01 for their permission types |
+| Unauthorized grants, missing classes, incomplete collection and unresolved ownership negatives; least-privilege positive, independent readback/rollback and mappings | T01, T02 and T03-L01 under the shared atomic contract; no access-to-send equivalence |
 
 ### EXR-007-A05-T01
 
@@ -1204,7 +1448,7 @@ Parent summary - Verify recipient delegation independently.
 
 - Generation 190 red-barrier acceptance/implementation hold: accept Gold/Coworker-2's generation-189 root as exact Pester **5.7.1** **12 discovered / 12 selected / 0 passed / 12 failed**, PID **73344**, zero skipped/not-run/failed-container/container-error records, null invocation exception, exits **91/1**, empty stderr, stable direct inputs, mutations **0**, stable Git status and process counts **0/0**. Every case reaches `Get-BaselineApprovedOperation` and stops at `ChangeScopeUnsupported` because `FullAccess` is absent from supported reversible scopes. This is a coherent Common-owned product red, not fixture or harness debt. Gold is implementation-ready but receives no path, execution or attempt grant while Purple owns Common; preserve the barrier without rerun and queue Gold immediately after accepted Purple recovery, quiescence and explicit Common release.
 - Focused execution grant (g189): Common is frozen at SHA-256 `BE318B4649603B83FB67B204777AAEF2564566EB22ABAB82C1548B0DA347225B`; Purple's only concurrent action is static and has no repository or process authority. Gold/Coworker-2 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g189/coworker-2-A05-T01-zero-edit-focused`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g189-A05-T01-zero-edit-focused-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-2`, and no writable repository path. Freeze the accepted FullAccess test, Common and all direct inputs; invoke only `ExchangeFullAccessDelegationLifecycle.Tests.ps1` exactly once in one fresh natural-lifetime Pester **5.7.1** child. Require exact **12 discovered / 12 selected**, retain the observed result without retry or edit, and record complete counters, failures, streams, child/outer exits, identities, repository mutation arrays and final matching-process zero. No product/test/helper/config/documentation edit, implementation attempt, affected regression, review or Done transition is authorized.
-Rank 35 - FullAccess delegation.
+Rank 38 - FullAccess delegation.
 
 - Handoff (g181): accept Gold/Coworker-1's sole added test at user-supplied SHA-256 prefix `23BA21B...`. Static inspection confirms exactly eleven negative `It` cases followed by one positive, twelve complete Arrange/Act/Assert marker sets, all required FullAccess refusal cases, and the signed user/shared readback, no-op, drift, typed rollback and access-not-send positive lifecycle. Editor diagnostics are zero. The generation-180 evidence root is absent, so the full hash/diff, mutation inventory and no-execution statement are not independently recomputed. Gold waits without execution until Purple A12 is accepted and Common is explicitly released.
 - Start (g180): dependencies EXR-007, EXR-004 and EXR-005 are Done with bounded evidence. Gold's lower affinity rank 32 remains dependency-ineligible behind rank 31, while ranks 28-34 are reserved to already-active Purple/Silver lanes or dependency-gated. No writable path overlaps Purple's exclusive Common correction. Move To Do -> In Progress for `Cohort Gold / f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7`. Gold/Coworker-1 alone receives ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Gold/batch7/g180/coworker-1-A05-T01-tests-first`, fresh root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-batch7-g180-A05-T01-tests-first-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`, and exclusive absent-before-creation ownership of `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeFullAccessDelegationLifecycle.Tests.ps1`. Author eleven explicit negative-first AAA cases for unauthorized explicit FullAccess, omitted shared mailbox, unresolved nested-principal ownership, inherited/system-entry misclassification, missing owner, missing approval, expired approval, partial/paged read, collection error, duplicate permission identity and any access-to-send equivalence; follow with one complete least-privilege positive covering applicable user/shared recipients, independent raw readback, signed apply, repeat no-op, drift refusal, typed rollback and zero SendAs/SendOnBehalf mutation. Preserve external identity/ownership as supplied evidence and perform no directory provisioning. No Pester, import, dot-source, product/Common/helper/config/documentation/governance edit or execution is authorized. Return exact file hash/diff, case inventory, parser/editor diagnostics, repository mutation inventory and quiescence, then stop for canonical adjudication. Gold/Coworker-2/-3 wait without path, root or execution authority.
@@ -1217,7 +1461,7 @@ Rank 35 - FullAccess delegation.
 
 ### EXR-007-A05-T02
 
-Rank 36 - SendAs delegation.
+Rank 39 - SendAs delegation.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-21. Status: To Do.
 - Deliverable: independent SendAs inventory and least-privilege approved lifecycle.
@@ -1228,21 +1472,93 @@ Rank 36 - SendAs delegation.
 
 ### EXR-007-A05-T03
 
-Rank 37 - SendOnBehalf delegation.
-
+- Generation 232 disposition: non-executable summary parent; no bucket or rank, not Done. All Silver workers, paths, outputs and execution authority are released. Historical attempt **1/3**, exact **12/11/1** evidence and retained product hashes remain above. Parent acceptance requires D01, F01 and L01 completion.
 - Generation 231 adjudication: accept Silver/Coworker-2's generation-230 packet as exact Pester **5.7.1** **12/11/1**, with all eleven negative contracts passing and only the positive stopping at `ChangeStateDrift: rollback would overwrite an unreviewed intervening change.` Retain product attempt **1/3**, Common final SHA-256 `FC845B769CC19749AB1457DE0B94421681AFE5E24250F54E71FF37F00BF91221`, ApprovedAdapters final SHA-256 `7D3D582EFA708A4B913D743C1BCC667BD2055D7BECE4470C3741D615BB76326B`, frozen test SHA-256 `9D1ED0BB971E7E151A74C930D521D00D05BEE9984740CC610C29BA14BA42CDD1`, no retry/post-validation edit and final process zero. Static inspection disconfirms obvious fixture ordering or actual-drift ownership: the test restores the applied values and both sides use sorted unique `Strings` normalization. The failed canonical operands were not retained, so no exact correction is proved. Escalate and quiesce Silver; attempts **2/3** and **3/3** remain unspent and ungranted. No attempt-2 worker/file/edit/check grant exists.
 - Generation 230 adjudication: accepted the generation-229 durable child-native packet as exact Pester **5.7.1** **12/0/12**, with all twelve cases stopping at Common's `ChangeScopeUnsupported` gate because `SendOnBehalf` is absent from Common and ApprovedAdapters. The missing post-result envelope fields remain explicitly unknown, but retained result/stdout/stderr, static source and the user's exact scope statement are sufficient; no evidence-only repair is required. Silver/Coworker-2 alone owns Common `.psm1` and ApprovedAdapters for bounded product attempt **1/3**, admitting only `SendOnBehalf` and implementing the complete fail-closed/readback/apply/no-op/drift/typed-rollback contract while preserving FullAccess and SendAs. One exact focused **12/12** invocation is authorized under the generation-230 ACK; no retry, affected regression, review or closure.
 - Generation 229 start: dependencies EXR-007, EXR-004 and EXR-005 are Done with bounded evidence; lower Silver-affinity rank 34 remains gated by unfinished rank 33. Under ACK `f587f950-d93e-44ac-afcc-20bfb37576b9/Kanban/g229/start-Silver-A05-T03-tests-first-focused-red`, move this card To Do -> In Progress for `Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7`. Silver/Coworker-1 alone owns absent-before-creation `tests/unit/ExchangeSendOnBehalfDelegationLifecycle.Tests.ps1` under the supported sample and fresh external root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-batch7-g229-A05-T03-tests-first-focused-red-f587f950-d93e-44ac-afcc-20bfb37576b9\coworker-1`. Author exactly eleven uniquely named negative-first AAA cases for unauthorized explicit delegates, omitted shared recipient, unresolved nested ownership, inherited/system misclassification, missing owner evidence, missing approval, expired approval, partial/paged read, collection error, duplicate normalized delegate identity and FullAccess/SendAs equivalence, then one complete positive signed SendOnBehalf lifecycle with independent raw readback, repeat no-op, drift refusal, typed rollback and zero other-permission mutation. After parser/editor-clean completion, run only this literal leaf exactly once through literal `C:\Program Files\PowerShell\7\pwsh.exe` and Pester **5.7.1**, requiring exact **12 discovered / 12 selected** and retaining the observed result without retry or edit. Persist complete evidence and stop. Product attempts remain **0/3**; Coworker-2/-3 wait. No product/Common/adapter/helper/config/documentation/governance edit, affected/full regression, review, Done, Git, live, tenant, credential, registration, consent, grant or directory provisioning is authorized. Purple and Gold escalations remain untouched.
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: Cohort Silver / f587f950-d93e-44ac-afcc-20bfb37576b9/Silver/batch7. Workstream: Recipient permissions. Updated: 2026-09-26. Status: In Progress.
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned summary. Workstream: Recipient permissions. Updated: 2026-09-26. Status: excluded summary.
 - Deliverable: independent SendOnBehalf inventory and least-privilege approved lifecycle.
 - Acceptance: reconcile applicable user/shared mailboxes and recipients, inherited/system entries and nested principals with supplied ownership/identity approval. Preserve SendOnBehalf semantics separately from SendAs and mailbox access.
 - Verification: shared atomic contract; reject unapproved delegates, omitted shared recipients, unresolved nested ownership and incomplete evidence; positive approved delegate set proves signed exact change, independent readback and typed scoped rollback without modifying other permission types.
 - Existing evidence / remaining: no complete C05/A03/S24 SendOnBehalf evidence packet was found; source/control/runbook mapping and affected regression are required before closure.
 - RAID: RAID-D02, RAID-D03; no tenant directory provisioning.
 
+### EXR-007-A05-T03-D01
+
+Rank 40 - Rollback operand-capture diagnostic.
+
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Deliverable: one non-corrective diagnostic retaining exact canonical `operation.Before`, `approved.After`, `approved.Before`, raw mailbox state and normalization/runtime types at the rollback guard.
+- Acceptance: preserve the current eleven passing negatives and positive behavior, delegate unchanged, capture each operand before comparison, and restore any temporary diagnostic bytes. Determine exact Common, ApprovedAdapters or fixture ownership; no blind attempt **2/3**.
+- Verification: one focused exact **12 discovered / 12 selected** run with complete operand, stream, exit, identity, mutation and process evidence and byte-identical diagnostic cleanup.
+
+### EXR-007-A05-T03-F01
+
+Non-executable summary - Owner-specific rollback correction.
+
+- Dependencies: terminal leaf EXR-007-A05-T03-F01-R01. Owner: unassigned summary. Updated: 2026-09-26. Status: excluded summary.
+
+### EXR-007-A05-T03-F01-A01
+
+Rank 41.1 - Owner-specific rollback correction and focused validation.
+
+- Dependencies: EXR-007-A05-T03-D01 and explicit maintainer selection of the proved Common, ApprovedAdapters or fixture owner/path. Owner: future Silver assignment; no current grant. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: make the smallest proved correction and establish focused behavior; validation belongs to this correction outcome.
+- Writable surface: missing until D01 and maintainer selection identify Common, ApprovedAdapters or fixture ownership.
+- Acceptance: preserve sorted-unique `Strings`, generic drift protection, SendOnBehalf semantics and zero FullAccess/SendAs mutation; product change consumes retained attempt **2/3**, test-only change does not.
+- Discriminator: exact focused **12/12** on frozen non-owned inputs, no retry.
+- Evidence required: owner/path decision, exact diff, command/count/exit/hash/mutation/process envelope and attempt accounting.
+
+### EXR-007-A05-T03-F01-R01
+
+Rank 41.2 - Independent correction review.
+
+- Dependencies: EXR-007-A05-T03-F01-A01. Owner: future independent Silver assignment; no current review grant. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: independently accept or reject correction ownership, scope and focused evidence.
+- Writable surface: external review artifacts only; exact root is missing until assignment.
+- Acceptance/discriminator: static review returns ACCEPT or REJECT with exact blockers and confirms no other permission type changed.
+- Evidence required: reviewer identity/independence, source/evidence hashes, attempt reconciliation and closure eligibility for the correction summary.
+
+### EXR-007-A05-T03-L01
+
+Non-executable summary - SendOnBehalf lifecycle completion.
+
+- Dependencies: terminal leaf EXR-007-A05-T03-L01-C01. Owner: unassigned summary. Updated: 2026-09-26. Status: excluded summary.
+
+### EXR-007-A05-T03-L01-A01
+
+Rank 42.1 - SendOnBehalf lifecycle and affected validation.
+
+- Dependencies: EXR-007-A05-T03-F01-R01. Owner: future Silver assignment; no current grant. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: establish the original independent SendOnBehalf behavior after accepted correction.
+- Writable surface: no planned correction surface; validation artifacts only. Exact affected test files/counts are missing until impact inspection after F01-R01 and must not be invented.
+- Acceptance: all eleven fail-closed contracts and one user/shared signed lifecycle pass with independent readback, no-op, drift refusal, typed rollback and zero other-permission mutation.
+- Discriminator: focused **12/12** plus the impact-derived affected set.
+- Evidence required: commands/counts/exits, frozen identities, affected-set derivation, mutations/processes and external identity/ownership remaining Unverified.
+
+### EXR-007-A05-T03-L01-R01
+
+Rank 42.2 - Independent lifecycle closure review.
+
+- Dependencies: EXR-007-A05-T03-L01-A01. Owner: future independent Silver assignment; no current grant. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: independently review lifecycle and affected evidence only.
+- Writable surface: external review artifacts only; exact root missing until assignment.
+- Acceptance/discriminator: static ACCEPT or REJECT with exact blockers, independence, scope compliance and tested identity.
+- Evidence required: review records and evidence/hash reconciliation.
+
+### EXR-007-A05-T03-L01-C01
+
+Rank 42.3 - Final lifecycle acceptance transition.
+
+- Dependencies: EXR-007-A05-T03-L01-R01. Owner: future canonical steward assignment. Workstream: Recipient permissions. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: one canonical Done/reject decision for the lifecycle summary.
+- Writable surface: governance files only.
+- Acceptance/discriminator: static cross-file reconciliation; ACCEPT review and all predecessor evidence are mandatory.
+- Evidence required: transition record, updated counts/queues and generation authority statement.
+
 ### EXR-007-A06
 
-Rank 38 - Bound organization-relationship disclosure.
+Rank 43 - Bound organization-relationship disclosure.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Sharing. Updated: 2026-09-21. Status: To Do.
 - Provenance: EXR007-C06, A02, S23 reviewed 2026-09-21; child delivery contract applies. EXR-002 remote-domain OOF correctness does not cover organization relationships.
@@ -1252,7 +1568,7 @@ Rank 38 - Bound organization-relationship disclosure.
 
 ### EXR-007-A07
 
-Rank 39 - Verify per-mailbox audit action coverage.
+Rank 44 - Verify per-mailbox audit action coverage.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Auditing. Updated: 2026-09-21. Status: To Do.
 - Provenance: EXR007-C07, A10, S05 reviewed 2026-09-21; child delivery contract applies. EXR-009 retains organization auditing/bypass reconciliation; no duplicate ownership of those fixes.
@@ -1282,7 +1598,7 @@ Parent summary - Verify mailbox client access applicability.
 
 ### EXR-007-A08-T01
 
-Rank 40 - Mailbox/plan client flags.
+Rank 45 - Mailbox/plan client flags.
 
 - Dependencies: EXR-007, EXR-004, EXR-005. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
 - Deliverable: approved mailbox-class ActiveSync/MAPI/OWA CAS mailbox/plan flag contract.
@@ -1293,7 +1609,7 @@ Rank 40 - Mailbox/plan client flags.
 
 ### EXR-007-A08-T02
 
-Rank 41 - Mobile-device mailbox policy bindings/settings.
+Rank 46 - Mobile-device mailbox policy bindings/settings.
 
 - Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A08-T01. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
 - Deliverable: Exchange mobile-device mailbox policy settings/bindings reconciled with T01 class/client decisions.
@@ -1304,7 +1620,7 @@ Rank 41 - Mobile-device mailbox policy bindings/settings.
 
 ### EXR-007-A08-T03
 
-Rank 42 - OWA mailbox policy bindings/settings.
+Rank 47 - OWA mailbox policy bindings/settings.
 
 - Dependencies: EXR-007, EXR-004, EXR-005, EXR-007-A08-T01. Owner: unassigned. Workstream: Client access. Updated: 2026-09-21. Status: To Do.
 - Deliverable: Exchange OWA mailbox policy settings/bindings reconciled with T01 client impact decisions.
@@ -1317,7 +1633,7 @@ Rank 42 - OWA mailbox policy bindings/settings.
 
 Parent summary - Reconcile all Exchange operator documentation.
 
-- Owner: unassigned for traceability. Workstream: Documentation. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-006/008/009, EXR-010-A12, EXR-011 and all eight admitted EXR-007 children are expanded to executable leaves on every child below. Parent acceptance awaits all four child evidence packets.
+- Owner: unassigned for traceability. Workstream: Documentation. Updated: 2026-09-26. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-006/008/009, EXR-010-A12, EXR-011 and all admitted EXR-007 scopes resolve through terminal executable leaves, including EXR-010-A12-L01, EXR-007-A03-T02-L01 and EXR-007-A05-T03-L01. Parent acceptance awaits all four child evidence packets.
 - Acceptance: reconcile README, solution summary, implementation guide, runbooks, license-prerequisite guidance, control catalog, sample inputs, and evidence-viewer wording with the Exchange profile. Publish exact set/verify/expected-output steps, complete approval and go-live examples, current status/exit meanings, and recovery instructions. Every non-Exchange dependency points to RAID. Explain which values are Microsoft recommendations, administrator input, or approved business policy; remove universal 100% and accepted-exception-equals-Pass claims.
 - Verification: sanitized examples resolve every input and link; operator outputs match actual status/exit contracts; no active procedure configures excluded services. Do not mark this Done on keyword checks alone; EXR-013 provides full executable walkthrough regression.
 - RAID: RAID-R02, RAID-I03, RAID-I04.
@@ -1334,9 +1650,9 @@ Parent summary - Reconcile all Exchange operator documentation.
 
 ### EXR-012-A01
 
-Rank 43 - Operator entry points and input provenance.
+Rank 48 - Operator entry points and input provenance.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: reconciled Exchange operator entry and input provenance across README, solution summary, implementation guide and samples.
 - Acceptance: resolve working directories, explicit Exchange profile/config paths, complete administrator inputs and their authorities, supplied license prerequisites and external handoffs to RAID. Distinguish Microsoft recommendations, administrator input and approved business policy without excluded-service setup.
 - Verification: shared atomic contract; reject unresolved inputs/links, stale defaults, suite-label entitlement assumptions and embedded tenant provisioning; positive sanitized entry examples execute with documented inputs and actual prerequisite responses, not keyword checks.
@@ -1345,9 +1661,9 @@ Rank 43 - Operator entry points and input provenance.
 
 ### EXR-012-A02
 
-Rank 44 - Configuration runbook reconciliation.
+Rank 49 - Configuration runbook reconciliation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: consistent configuration runbooks and control catalog for the completed Exchange contracts.
 - Acceptance: exact set/verify/expected-output steps, current source sections and dates, parameter/config names and declared Microsoft versus local/business choices. Label external handoffs explicitly; do not reintroduce excluded workload procedures or enlarge writer permissions.
 - Verification: shared atomic contract; reject missing verify steps, mismatched names/values and unbound sources; positive scoped examples execute actual documented commands through raw offline boundaries and match outputs. Every touched control maps to source/evidence/runbook.
@@ -1356,9 +1672,9 @@ Rank 44 - Configuration runbook reconciliation.
 
 ### EXR-012-A03
 
-Rank 45 - Approval/go-live recovery procedures.
+Rank 50 - Approval/go-live recovery procedures.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: exact operator approval, frozen go-live and scoped recovery procedures.
 - Acceptance: publish complete arguments, working directory, paths, artifact formats/bindings, status and exit meanings for preview/approval/apply/readback/no-op/drift refusal/typed rollback and collect/freeze/sign/verify. Consume external signing capability; never substitute WhatIf or newly regenerated evidence bytes.
 - Verification: shared atomic contract; execute touched examples against raw offline boundaries, rejecting missing/mismatched/expired inputs and stale exit/recovery directions; positive exact-byte round trip proves documented recovery without hidden prerequisites.
@@ -1367,9 +1683,9 @@ Rank 45 - Approval/go-live recovery procedures.
 
 ### EXR-012-A04
 
-Rank 46 - Evidence/status presentation.
+Rank 51 - Evidence/status presentation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: evidence viewer and operator wording faithful to actual Exchange status/exit semantics.
 - Acceptance: keep ApprovedException separate from Pass and external readiness Unverified unless independently evidenced; show explicit exclusions and scoped denominator. Remove universal 100%/tenant-certification claims; map every external prerequisite to RAID and sources/local choices to the right authority.
 - Verification: shared atomic contract; feed real public evidence/status outputs into presentation checks, rejecting unknown/missing/NotEntitled status laundering, exception-as-Pass and unsupported compliance claims; positive per status demonstrates actual output, not keyword presence alone.
@@ -1394,7 +1710,7 @@ Parent summary - Execute documented command contracts.
 
 ### EXR-013-A01
 
-Rank 47 - Executable command inventory.
+Rank 52 - Executable command inventory.
 
 - Dependencies: EXR-012-A01, EXR-012-A02, EXR-012-A03, EXR-012-A04. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
 - Deliverable: exhaustive executable-block discovery and input contract inventory for active Exchange guidance.
@@ -1405,14 +1721,30 @@ Rank 47 - Executable command inventory.
 
 ### EXR-013-A02
 
-Rank 48 - Exhaustive documented command execution.
+Non-executable summary - Exhaustive documented command execution. Terminal leaf: EXR-013-A02-W01. Updated: 2026-09-26.
 
-- Dependencies: EXR-013-A01. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
-- Deliverable: execution evidence for every command in A01's complete inventory and the combined documented workflow.
-- Acceptance: run actual shipped commands using only documented inputs, cwd, signatures and artifacts through raw synthetic Exchange boundaries. No hidden variable/prerequisite injection, precomputed desired-state result or silent omitted block; preserve public collector/evaluator/evidence integration.
-- Verification: shared atomic contract; missing approval arguments, wrong profile, stale cmdlet/parameter, runbook/config mismatch, stale exits and hidden prerequisites fail for exact reasons. One complete sanitized workflow plus per-behavior positives proves exhaustive execution and affected regression with accountable discovery.
-- Existing evidence / remaining: bounded journey tests exist, but full command coverage is unproved; A01 supplies all EXR-012 leaf inputs transitively. No live contact or later gate substitutes for a failed command contract.
-- RAID: RAID-R01, RAID-I03; external services remain supplied offline handoffs.
+### EXR-013-A02-E01
+
+Rank 53.1 - Per-command documented execution.
+
+- Dependencies: EXR-013-A01. Owner: future Gold assignment. Workstream: Verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute every A01 inventory entry independently through its shipped/raw synthetic boundary.
+- Writable surface: execution evidence only; exact test/runner path is missing until A01 establishes the inventory implementation surface.
+- Acceptance: only documented inputs/cwd/signatures/artifacts; no hidden injection, precomputed result or omitted block.
+- Discriminator: one result per inventory item with exact missing-argument/profile/signature/name/exit/prerequisite failures and positive behavior.
+- Evidence required: inventory-to-result bijection, commands, counts, streams, exits, identities, mutations and process state.
+
+### EXR-013-A02-W01
+
+Rank 53.2 - Combined documented workflow execution.
+
+- Dependencies: EXR-013-A02-E01. Owner: future Gold assignment. Workstream: Verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute one complete sanitized documented workflow after every command is independently proved.
+- Writable surface: evidence only; exact runner/test path remains missing until E01 establishes it.
+- Acceptance: public collector/evaluator/evidence integration succeeds with no hidden prerequisite or live contact.
+- Discriminator: one end-to-end offline workflow plus impact-derived affected regression.
+- Evidence required: frozen inventory/config/revision, exact command chain, results, affected-set derivation and zero unexplained omission.
+- RAID: RAID-R01, RAID-I03.
 
 ### EXR-014
 
@@ -1433,9 +1765,9 @@ Parent summary - Prove Exchange-only offline workflow.
 
 ### EXR-014-A01
 
-Rank 49 - Raw fixture/manifest reconciliation.
+Rank 54 - Raw fixture/manifest reconciliation.
 
-- Dependencies: EXR-002, EXR-003, EXR-013-A02. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-002, EXR-003, EXR-013-A02-W01. Owner: unassigned. Workstream: Verification. Updated: 2026-09-26. Status: To Do.
 - Deliverable: retained TST-006 raw fixtures and manifest reconciliation for the declared Exchange profile.
 - Acceptance: define explicit profile denominator and one result/evidence record per in-scope control, with tenant/profile/hash/time binding; separate legacy coverage without silently dropping assertions. Use raw observations, not evaluated success wrappers, preserving completeness/errors/paging/identity semantics.
 - Verification: shared atomic contract; reject missing/duplicate/out-of-profile records, wrong bindings and hidden legacy defaults; positive focused fixture/reconciliation cases cover the complete current Exchange manifest with source/control/runbook mappings.
@@ -1444,14 +1776,30 @@ Rank 49 - Raw fixture/manifest reconciliation.
 
 ### EXR-014-A02
 
-Rank 50 - Whole-service offline workflow.
+Non-executable summary - Whole-service offline workflow and regression. Terminal leaf: EXR-014-A02-R01. Updated: 2026-09-26.
 
-- Dependencies: EXR-014-A01. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
-- Deliverable: complete shipped-command offline Exchange workflow and accountable full regression packet.
-- Acceptance: consume reconciled raw fixtures through actual public adapters, evaluator and evidence, exact manifest/binding and documented approval/go-live/recovery steps. No live contact, credentials or service mutations; identify synthetic success as offline only. Child-specific defects return to their owners, not a catchall implementation scope.
-- Verification: shared atomic contract; assert named workflow failures rather than nonzero-only exits, one complete positive workflow and fresh full offline regression on frozen files. Account for every discovery addition/removal/reclassification against current 4,160-test audit and preserved historical baselines; no unexplained failure/skip/loss.
-- Existing evidence / remaining: separate signed/raw/journey fixtures do not close whole-service acceptance. The recorded 13 failures remain two EXR-001, two EXR-004 and nine EXR-010-A11 until those owners provide repair evidence.
-- RAID: RAID-R01; no inference of live adapter compatibility or external readiness.
+### EXR-014-A02-W01
+
+Rank 55.1 - Whole-service offline workflow.
+
+- Dependencies: EXR-014-A01. Owner: future Gold assignment. Workstream: Verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: run one complete shipped-command Exchange workflow through reconciled raw fixtures and actual public adapters/evaluator/evidence.
+- Writable surface: evidence only; exact runner/test surface is missing until A01 reconciliation identifies it.
+- Acceptance: exact manifest/binding and documented approval/go-live/recovery, named failures, synthetic-only label, no credentials/live mutation.
+- Discriminator: one complete positive workflow and negative named-reason contracts.
+- Evidence required: command/result/identity/mutation/process envelope and scoped defect routing.
+
+### EXR-014-A02-R01
+
+Rank 55.2 - Accountable full-regression reconciliation.
+
+- Dependencies: EXR-014-A02-W01. Owner: future Gold assignment. Workstream: Verification. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: produce one fresh full offline regression packet and reconcile discovery/non-pass ownership; no implementation.
+- Writable surface: evidence only.
+- Acceptance: every addition/removal/reclassification, failure, skip and loss is explained against current discovery; historical **3,072** and **4,160** counts remain references, not fabricated baselines.
+- Discriminator: exact full-suite count/identity reconciliation on frozen files.
+- Evidence required: test/file manifest, commands/counts/exits, owner matrix, hashes, mutations and process state.
+- RAID: RAID-R01.
 
 ### EXR-015
 
@@ -1472,9 +1820,9 @@ Parent summary - Enforce scoped coverage and regression guards.
 
 ### EXR-015-A01
 
-Rank 51 - Maintainer-approved coverage contract.
+Rank 56 - Maintainer-approved coverage contract.
 
-- Dependencies: EXR-014-A02. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-014-A02-R01. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-26. Status: To Do.
 - Deliverable: independently maintainer-approved branch coverage contract, not enforcement yet.
 - Acceptance: record actual approver identity/reference/date for branch-capable tool and version, numeric threshold, Exchange code scope and justified exclusions. Do not invent a threshold, tool capability or approval; define accountable discovery/legacy classification inputs for A03.
 - Verification: shared atomic contract; reject absent/unauthorized approval, unsupported branch tooling, nonnumeric threshold and unexplained exclusions; positive contract validation binds the real approval to exact policy bytes. Synthetic validation tests do not substitute for maintainer approval at closure.
@@ -1483,7 +1831,7 @@ Rank 51 - Maintainer-approved coverage contract.
 
 ### EXR-015-A02
 
-Rank 52 - Branch coverage enforcement.
+Rank 57 - Branch coverage enforcement.
 
 - Dependencies: EXR-015-A01. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
 - Deliverable: local and CI enforcement of the exact approved branch coverage contract.
@@ -1494,7 +1842,7 @@ Rank 52 - Branch coverage enforcement.
 
 ### EXR-015-A03
 
-Rank 53 - Discovery and isolation guards.
+Rank 58 - Discovery and isolation guards.
 
 - Dependencies: EXR-015-A01. Owner: unassigned. Workstream: Test quality. Updated: 2026-09-21. Status: To Do.
 - Deliverable: reviewed Exchange discovery baseline and external-call isolation guards with accountable legacy classification.
@@ -1523,9 +1871,9 @@ Parent summary - Author opt-in Exchange live acceptance harness.
 
 ### EXR-016-A01
 
-Rank 54 - Live opt-in target and artifact safety.
+Rank 59 - Live opt-in target and artifact safety.
 
-- Dependencies: EXR-014-A02. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-014-A02-R01. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: offline-authored opt-in, isolated-target and sanitized-artifact admission contract.
 - Acceptance: require explicit opt-in, supplied disposable-target isolation and named D01-D05 prerequisites; refuse production and missing/ambiguous target evidence before calls. Offline CI skips live execution explicitly. Sanitize identifiers/secrets while retaining protected raw-proof references. No tenant, identities/licenses, DNS, Purview, SIEM, vendor or PKI provisioning.
 - Verification: shared atomic contract with synthetic fixtures only; no opt-in, production/unknown target, missing prerequisites, accidental external calls and leaking artifacts fail for named reasons. Positive authorized synthetic target/admission and sanitization cases prove control flow without contacting a tenant.
@@ -1534,18 +1882,52 @@ Rank 54 - Live opt-in target and artifact safety.
 
 ### EXR-016-A02
 
-Rank 55 - Live change and recovery harness.
+Non-executable summary - Live change and recovery harness. Terminal leaf: EXR-016-A02-T01. Updated: 2026-09-26.
 
-- Dependencies: EXR-016-A01. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
-- Deliverable: offline-authored live change/recovery harness behind A01's admission and artifact safety.
-- Acceptance: drive documented preview/apply, no-op idempotency, raw response compatibility, exact frozen signed go-live, drift/partial-failure recovery and typed rollback. Maintain an owned-object ledger of created/changed Exchange objects and their before/after identities; teardown restores/removes only those owned Exchange objects, never unrelated or externally provisioned resources.
-- Verification: shared atomic contract using synthetic boundaries only; reject unapproved/tampered bytes, drift, partial/incomplete raw observations, unknown ownership and attempted unrelated cleanup. Positive change/repeat/recovery cases verify readback, receipts and ledger-bound teardown; actual live calls remain disabled during authoring.
-- Existing evidence / remaining: approval/raw adapters are partial building blocks; no complete opt-in recovery harness or live compatibility packet exists. Do not expand writer rights or duplicate product repairs to close this harness.
-- RAID: RAID-D01 through RAID-D05; environment/PKI teardown stays with external owners.
+### EXR-016-A02-C01
+
+Rank 60.1 - Preview/apply/idempotency harness.
+
+- Dependencies: EXR-016-A01. Owner: future Silver assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: offline-author preview/apply/raw-response/readback and no-op repeat control flow behind A01 admission.
+- Writable surface: missing until implementation ownership inspection; no path grant now.
+- Acceptance/discriminator: synthetic negative-first contracts reject unapproved/tampered bytes and incomplete raw state; positive proves approved apply and zero-write repeat without tenant contact.
+- Evidence required: exact future paths/diff, focused static/executable checks, receipts, identities and zero external calls.
+
+### EXR-016-A02-G01
+
+Rank 60.2 - Frozen signed go-live harness.
+
+- Dependencies: EXR-016-A02-C01. Owner: future Silver assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: offline-author exact frozen-byte signed go-live invocation and verification.
+- Writable surface: missing until ownership inspection.
+- Acceptance/discriminator: tampered/regenerated/mismatched evidence refuses; one exact frozen signed synthetic packet passes without live calls.
+- Evidence required: path/diff, byte/hash binding, signer/trust test records and zero external calls.
+
+### EXR-016-A02-R01
+
+Rank 60.3 - Drift/partial-failure recovery harness.
+
+- Dependencies: EXR-016-A02-G01. Owner: future Silver assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: offline-author drift, partial-failure and typed rollback behavior.
+- Writable surface: missing until ownership inspection.
+- Acceptance/discriminator: synthetic drift/incomplete state refuses before unsafe overwrite; controlled failure yields ledger-bound rollback and receipts.
+- Evidence required: path/diff, negative/positive checks, before/after ledger identities and zero live calls.
+
+### EXR-016-A02-T01
+
+Rank 60.4 - Owned-object teardown harness.
+
+- Dependencies: EXR-016-A02-R01. Owner: future Silver assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: offline-author cleanup limited to ledger-owned Exchange objects.
+- Writable surface: missing until ownership inspection.
+- Acceptance/discriminator: unknown/unrelated/external objects are refused; positive removes/restores only recorded objects and never provisions or tears down external infrastructure.
+- Evidence required: path/diff, ownership-ledger fixtures, cleanup command assertions and zero external calls.
+- RAID: RAID-D01 through RAID-D05.
 
 ### EXR-016-A03
 
-Rank 56 - Mail-flow and client probes.
+Rank 61 - Mail-flow and client probes.
 
 - Dependencies: EXR-016-A01. Owner: unassigned. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
 - Deliverable: real mail-flow/client probe implementation authored and verified offline behind A01 safety.
@@ -1575,31 +1957,89 @@ Parent summary - Verify the documented Exchange service journey.
 
 ### EXR-017-A01
 
-Rank 57 - Authorized first administrator walkthrough.
+Non-executable summary - Authorized first administrator walkthrough. Terminal leaf: EXR-017-A01-G01. Owner: Exchange service owner; not started. Updated: 2026-09-26.
 
-- Dependencies: EXR-016-A01, EXR-016-A02, EXR-016-A03. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
-- Deliverable: first authorized actual administrator walkthrough packet on frozen revision/configuration and supplied isolated target.
-- Acceptance: independently confirm applicable D01-D05 and explicit testing permission before execution. Follow only published instructions and the opt-in harness, with no hidden repairs; prove approved configuration/apply/readback, effective security, domain/report delivery, encryption/client behavior and exact frozen evidence/go-live. Retain protected raw adapter proof and sanitized packet with target/revision/config identity.
-- Verification: shared atomic contract; previously authored negative-first checks must pass before authorized actual execution, then retain named real prerequisite/failure outcomes and positive walkthrough evidence. Missing prerequisites stop and route to RAID, never success; no offline fixture can close this child.
-- Existing evidence / remaining: no authorized live packet exists and D01-D05 remain unconfirmed. Any needed code/docs repair is routed to its owner and requires a new A01 evidence run; no tenant provisioning or concealed operator repair.
-- RAID: RAID-R01, RAID-D01 through RAID-D05; this To Do card grants no live permission.
+### EXR-017-A01-C01
+
+Rank 62.1 - Authorized configuration walkthrough.
+
+- Dependencies: EXR-016-A01, EXR-016-A02-T01, EXR-016-A03; applicable RAID-D01-D05 independently confirmed and explicit permission. Owner: Exchange service owner; future assignment, not started. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute published configuration/apply/readback on one frozen revision/config/isolated target without hidden repair.
+- Writable surface: live Exchange objects named by the future approved ledger; exact objects are missing until external target/permission evidence exists. No authority now.
+- Acceptance/discriminator: prerequisite checks pass, actual apply/readback proves effective settings, and any missing prerequisite stops to RAID.
+- Evidence required: explicit permission, D01-D05 confirmations, target/revision/config identity, raw adapter proof, sanitized receipts and mutation ledger.
+
+### EXR-017-A01-M01
+
+Rank 62.2 - Actual mail-flow/report-delivery proof.
+
+- Dependencies: EXR-017-A01-C01 and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: prove actual domain send/receive authentication/alignment and report delivery.
+- Writable surface: no planned configuration writes; exact test domains/recipients are missing until external approval.
+- Acceptance/discriminator: real receipts/raw headers match approved domain and reporting expectations; synthetic evidence cannot pass.
+- Evidence required: sanitized raw proof references, identities/times/config binding and named failures.
+
+### EXR-017-A01-P01
+
+Rank 62.3 - Actual encryption/client proof.
+
+- Dependencies: EXR-017-A01-M01 and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: prove authorized encryption recipient/decryption and client behavior.
+- Writable surface: no planned configuration writes; exact recipients/clients are missing until external approval.
+- Acceptance/discriminator: real recipient/decryption and client outcomes match approved scope; readback or synthetic fixtures cannot pass.
+- Evidence required: sanitized raw proof, approved identities, timestamps and failure records.
+
+### EXR-017-A01-G01
+
+Rank 62.4 - Frozen evidence/go-live packet.
+
+- Dependencies: EXR-017-A01-P01 and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: freeze and verify the first complete live walkthrough packet.
+- Writable surface: protected external evidence location is missing until authorization; no repository credential/private evidence.
+- Acceptance/discriminator: exact immutable configuration/revision/target and prior leaf evidence bind to signed go-live; mismatch/tampering refuses.
+- Evidence required: protected raw references, sanitized packet, signature/trust verification and exact identity manifest.
+- RAID: RAID-R01, RAID-D01 through RAID-D05; no live permission is granted here.
 
 ### EXR-017-A02
 
-Rank 58 - Consecutive repeat and recovery proof.
+Non-executable summary - Consecutive repeat and recovery proof. Terminal leaf: EXR-017-A02-T01. Owner: Exchange service owner; not started. Updated: 2026-09-26.
 
-- Dependencies: EXR-017-A01. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
-- Deliverable: second consecutive authorized pass and scoped recovery evidence paired with A01.
-- Acceptance: retain the same frozen code/docs revision, configuration and isolated target; record all controlled mutations. Prove no-op second apply, continued settings/delivery/client/evidence correctness, then authorized drift/partial-failure/typed rollback and owned-object cleanup through the documented harness. Code or documentation changes invalidate the pair and restart A01 evidence, not merely A02.
-- Verification: shared atomic contract; verify actual expected refusal/recovery outcomes and a second positive pass with raw proof, approval/readback/no-op receipts and ledger-bound cleanup. Reject mismatched pair identity, unexplained mutations, unrelated teardown or synthetic stand-ins.
-- Existing evidence / remaining: no consecutive pair or actual recovery proof exists. Original two-run requirement is retained, not two unrelated green runs; independent review belongs to A03.
-- RAID: RAID-R01, RAID-D01 through RAID-D05; continued explicit authorization and readiness required.
+### EXR-017-A02-N01
+
+Rank 63.1 - Consecutive no-op repeat proof.
+
+- Dependencies: EXR-017-A01-G01; same frozen revision/config/target and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute the second consecutive pass and prove no-op apply plus continued settings/delivery/client/evidence correctness.
+- Writable surface: no expected configuration mutation; exact target is missing until A01 authorization.
+- Acceptance/discriminator: zero writes on second apply and exact pair identity; any code/docs/config/target mismatch invalidates the pair.
+- Evidence required: second raw/sanitized packet, no-op receipts and pair-identity comparison.
+
+### EXR-017-A02-R01
+
+Rank 63.2 - Authorized recovery proof.
+
+- Dependencies: EXR-017-A02-N01 and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute one approved drift/partial-failure scenario and typed rollback.
+- Writable surface: exact controlled mutation objects are missing until an approved scenario/ledger is supplied.
+- Acceptance/discriminator: expected refusal/recovery occurs, approved before state is restored and unrelated objects remain unchanged.
+- Evidence required: approval, mutation ledger, raw observations, rollback receipts and before/after identities.
+
+### EXR-017-A02-T01
+
+Rank 63.3 - Owned-object cleanup proof.
+
+- Dependencies: EXR-017-A02-R01 and continued permission. Owner: Exchange service owner; future assignment. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
+- Bounded outcome: execute ledger-bound cleanup of only Exchange objects owned by the walkthrough.
+- Writable surface: exact owned objects are missing until C01/R01 evidence exists; external tenant/infrastructure teardown is excluded.
+- Acceptance/discriminator: all owned objects are restored/removed, zero unrelated teardown occurs and the final ledger closes exactly.
+- Evidence required: final object ledger, cleanup commands/results, residual inventory and sanitized packet.
+- RAID: RAID-R01, RAID-D01 through RAID-D05; continued permission required.
 
 ### EXR-017-A03
 
-Rank 59 - Independent walkthrough acceptance.
+Rank 64 - Independent walkthrough acceptance.
 
-- Dependencies: EXR-017-A01, EXR-017-A02. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-017-A01-G01, EXR-017-A02-T01. Owner: Exchange service owner; not started. Workstream: Live validation. Updated: 2026-09-26. Status: To Do.
 - Deliverable: actual independent reviewer acceptance of the retained two-run live evidence pair.
 - Acceptance: retain two sanitized packets and protected raw-output proof references; reviewer independently attests published-command fidelity, same frozen revision/config/target, real settings/delivery/client results, immutable approvals/evidence and recovery/owned cleanup. Record actual reviewer identity/date/authority; never fabricate approval or treat the operator's self-attestation as independent review.
 - Verification: shared atomic contract; reject absent/non-independent attestation, missing raw proof, mismatched or interrupted pair, hidden repairs and offline-only substitutes. Positive release input requires the real signed/attested review over both actual packets, not synthetic approval tests alone.
@@ -1608,7 +2048,7 @@ Rank 59 - Independent walkthrough acceptance.
 
 ### EXR-018
 
-Rank 60 - Enforce the Exchange release acceptance gate.
+Rank 65 - Enforce the Exchange release acceptance gate.
 
 - Dependencies: EXR-015-A01, EXR-015-A02, EXR-015-A03, EXR-017-A03. Owner: unassigned. Workstream: Release. Updated: 2026-09-21. Status: To Do.
 - Acceptance: release requires dated complete Exchange traceability, correct settings, all documented command tests, scoped regression/coverage, default live adapter compatibility, immutable approval/evidence verification, rollback/idempotency, and independent live walkthrough evidence. Report Exchange conformance, approved deviations, and external readiness separately; no tenant-wide 100% claim. Any newly identified applicable gap is force-ranked before this card can close.

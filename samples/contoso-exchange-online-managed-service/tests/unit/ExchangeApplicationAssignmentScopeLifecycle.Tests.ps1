@@ -205,7 +205,7 @@ BeforeAll {
                 [Parameter(Mandatory)][string]$Name,
                 [string]$RecipientRoot,
                 [string]$RecipientRestrictionFilter,
-                [string]$ServerRestrictionFilter,
+                [object]$ServerRestrictionFilter,
                 [switch]$Exclusive
             )
 
@@ -225,7 +225,7 @@ BeforeAll {
                 [Parameter(Mandatory)][string]$Identity,
                 [string]$RecipientRoot,
                 [string]$RecipientRestrictionFilter,
-                [string]$ServerRestrictionFilter,
+                [object]$ServerRestrictionFilter,
                 [bool]$Exclusive
             )
 
@@ -424,7 +424,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
 
             # Assert
-            $invoke | Should -Throw '*ChangeApprovalMissing*'
+            $invoke | Should -Throw '*ChangeApprovalNotFound*'
             $global:adapterCalls.Count | Should -Be 0
         }
 
@@ -434,13 +434,19 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             Approve-ApplicationAssignmentScopeFixture -Arguments $arguments
             $approval = Get-Content $arguments.ApprovalPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
             $approval.ApprovalTimeUtc = [datetimeoffset]::UtcNow.AddDays(-8).ToString('o')
+            $approval.Remove('Signature')
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new([Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $approval))), $true)
+            $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($script:adapterCertificate)
+            $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $cms.ComputeSignature($signer, $true)
+            $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
             $approval | ConvertTo-Json -Depth 30 | Set-Content $arguments.ApprovalPath
 
             # Act
             $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
 
             # Assert
-            $invoke | Should -Throw '*ChangeApproval*Stale*'
+            $invoke | Should -Throw '*ChangeApprovalTimeInvalid*'
             $global:adapterCalls.Count | Should -Be 0
         }
 
@@ -450,13 +456,19 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             Approve-ApplicationAssignmentScopeFixture -Arguments $arguments
             $approval = Get-Content $arguments.ApprovalPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
             $approval.PreviewHash = 'F' * 64
+            $approval.Remove('Signature')
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new([Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $approval))), $true)
+            $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($script:adapterCertificate)
+            $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $cms.ComputeSignature($signer, $true)
+            $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
             $approval | ConvertTo-Json -Depth 30 | Set-Content $arguments.ApprovalPath
 
             # Act
             $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
 
             # Assert
-            $invoke | Should -Throw '*ChangeApproval*PreviewHash*'
+            $invoke | Should -Throw '*ChangeApprovalPreviewTampered*'
             $global:adapterCalls.Count | Should -Be 0
         }
 
@@ -562,7 +574,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
 
             # Assert
             $invoke | Should -Throw '*ChangeReadIncomplete*ManagementRoleAssignment*'
-            @($global:adapterCalls).Count | Should -BeGreaterThan 0
+            @($global:adapterCalls).Count | Should -Be 0
         }
 
         It 'refuses stale independent raw scope readback' {

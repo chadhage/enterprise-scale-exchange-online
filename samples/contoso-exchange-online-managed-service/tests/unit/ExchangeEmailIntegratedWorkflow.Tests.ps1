@@ -17,7 +17,7 @@ BeforeAll {
         [Security.Cryptography.RSASignaturePadding]::Pkcs1
     )
     $script:adapterCertificate = $adapterRequest.CreateSelfSigned(
-        [datetimeoffset]::UtcNow.AddMinutes(-1),
+        [datetimeoffset]::UtcNow.AddDays(-1),
         [datetimeoffset]::UtcNow.AddDays(1)
     )
 
@@ -43,6 +43,7 @@ BeforeAll {
         $chain
     }
 
+
     function New-IntegratedEmailFixture {
         $fixture = New-ProtectionFixture
         foreach ($recipient in $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix) {
@@ -53,6 +54,9 @@ BeforeAll {
         foreach ($kind in @('EOP','ATP')) {
             $fixture.Raw["Get-${kind}ProtectionPolicyRule"].ByIdentity['Standard Preset Security Policy'][0].ExceptIfSentTo = @('custom@contoso.example')
         }
+        $fixture.Raw['Get-AntiPhishRule'].Items[0].State = 'Enabled'
+        $fixture.Raw['Get-AntiPhishRule'].Items[0].AntiPhishPolicy = 'Custom email'
+        $fixture.Raw['Get-AntiPhishRule'].Items[0]['SentTo'] = @()
         $fixture.Raw['Get-SafeLinksPolicy'].Items[2].DisableURLRewrite = $true
         $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'custom@contoso.example'
@@ -92,6 +96,17 @@ BeforeAll {
                 }
             })
         }
+        $fixture.Context.Parameters.governanceEvidence = @{
+            recipientFlows = @(@{
+                Class = 'LegalAdvice'
+                Recipient = 'user@contoso.example'
+                Protected = $true
+                AuthorizedDecryption = $true
+                UnauthorizedRejected = $true
+                EvidenceReference = 'OFFLINE-FLOW-A12'
+                ObservedAtUtc = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
+            })
+        }
         $fixture.Raw['Get-Mailbox'].ByIdentity['secops@contoso.example'] = @(@{
             Identity = 'secops@contoso.example'
             PrimarySmtpAddress = 'secops@contoso.example'
@@ -114,6 +129,33 @@ BeforeAll {
         $fixture.Context.Parameters | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $parameterPath
         $fixture.Context = Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath
         $fixture.Context.Parameters.reportingEvidence = $fixture.Context.Parameters.reportingEvidence
+        $rootPath = Join-Path $directory 'operational-root.cer'
+        [IO.File]::WriteAllBytes($rootPath, $script:evidenceCertificate.RawData)
+        $generated = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
+        $payloads = @{
+            'MON-003' = @{ Complete = $true; Refused = @(); GeneratedAtUtc = $generated; ScheduledCollection = $true; CollectionFrequencyHours = 1; RetentionDays = 3650; DriftDetected = $false; Findings = @() }
+            'OPS-001' = @{ Complete = $true; Refused = @(); ChangeId = 'OFFLINE-A12'; GeneratedAtUtc = $generated }
+            'OPS-002' = @{ ExerciseId = 'OFFLINE-A12'; CompletedAtUtc = $generated; ExerciseTypes = @($fixture.Context.Configuration.controls['OPS-002'].exerciseTypes); Owners = @($fixture.Context.Configuration.controls['OPS-002'].owners); Actions = @(@{ ActionId = 'OFFLINE-A12-A1'; Owner = $fixture.Context.Parameters.SECURITY_OPERATIONS_MAILBOX; Status = 'Closed'; TrackingReference = 'OFFLINE-A12' }) }
+        }
+        foreach ($phase in @('Preview','Pilot','Approval','Rollback','PostChange')) {
+            $payloads['OPS-001'][$phase] = @{ Completed = $true; ChangeId = 'OFFLINE-A12' }
+        }
+        $fixture.Context.Parameters.operationalEvidence = @{}
+        foreach ($controlId in $payloads.Keys) {
+            $document = @{ ControlId = $controlId; TenantId = $fixture.Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = $fixture.Context.Hash; ManifestHash = $fixture.Context.Manifest.Hash; GeneratedAtUtc = $generated; Payload = $payloads[$controlId] }
+            $content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $document))
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($content), $true)
+            $cms.ComputeSignature([Security.Cryptography.Pkcs.CmsSigner]::new($script:evidenceCertificate))
+            $document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
+            $artifactPath = Join-Path $directory "$controlId.json"
+            $document | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $artifactPath
+            $fixture.Context.Parameters.operationalEvidence[$controlId] = @{
+                path = $artifactPath
+                signerIdentity = 'offline-email-reviewer'
+                authorizedSigner = @(@{ Identity = 'offline-email-reviewer'; Subject = $script:evidenceCertificate.Subject; Authority = 'ExchangeOnlineChangeApproval' })
+                trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash -LiteralPath $rootPath -Algorithm SHA256).Hash }
+            }
+        }
         $fixture.Directory = $directory
         $fixture.ParameterPath = $parameterPath
         $fixture
@@ -160,6 +202,7 @@ BeforeAll {
             MaximumEvidenceAge = [timespan]::FromHours(1)
         }
         $signed = Invoke-BaselineExchangeGoLive @arguments -SignEvidence -SigningCertificate $script:evidenceCertificate
+        if (-not $signed.Decision.Admitted) { throw "EvidenceSigningNotAdmitted: $($signed.Decision.Finding -join '; ')" }
         @{ Arguments = $arguments; Envelope = $envelope; Signed = $signed }
     }
 }
@@ -294,6 +337,8 @@ Describe 'EXR-010-A12 integrated email workflow' {
         $rollback.Status | Should -BeExactly 'Succeeded'
         (Get-AdapterSnapshot) | Should -BeExactly $before
         @($execution.Evidence.Observation.Command | Where-Object { $_ -match '^(Set|New|Remove|Enable|Disable)-|^[^-]+-(Mg|SPO|Teams)|Graph|AtpPolicyForO365|License' }).Count | Should -Be 0
-        @($global:adapterCalls | Where-Object Command -Match 'Mg|SPO|Teams|Graph|AtpPolicyForO365|License').Count | Should -Be 0
+        @($global:adapterCalls | Where-Object { $_.Command -CEQ 'Set-TransportConfig' }).Count | Should -Be 2
+        @($global:adapterCalls | Where-Object { $_.Command -CNE 'Set-TransportConfig' }).Count | Should -Be 0
+        @($global:adapterCalls | Where-Object Command -Match '(?:^|-)(?:Mg|SPO|Teams|Graph|AtpPolicyForO365|License)').Count | Should -Be 0
     }
 }

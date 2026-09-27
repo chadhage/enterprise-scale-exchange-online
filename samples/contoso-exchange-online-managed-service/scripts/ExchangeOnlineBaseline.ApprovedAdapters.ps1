@@ -32,12 +32,12 @@ function New-ApprovedAdapterDefinition {
 }
 
 function Get-ApprovedAdapterCollection {
-    param([string]$Command, [hashtable]$Arguments = @{}, [string[]]$Required = @('Identity'))
+    param([string]$Command, [hashtable]$Arguments = @{}, [string[]]$Required = @('Identity'), [string[]]$NullableRequired = @())
     $rows = @(& $Command @Arguments -ErrorAction Stop)
     $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($row in $rows) {
         foreach ($field in $Required) {
-            if (-not (Test-BaselineNodeMember $row $field) -or [string]::IsNullOrWhiteSpace([string]$row.$field)) { throw "ChangeReadIncomplete: $Command omitted $field." }
+            if (-not (Test-BaselineNodeMember $row $field) -or ($field -notin $NullableRequired -and [string]::IsNullOrWhiteSpace([string]$row.$field))) { throw "ChangeReadIncomplete: $Command omitted $field." }
         }
         if ($Required.Count -gt 0 -and -not $seen.Add([string]$row.($Required[0]))) { throw "ChangeReadIncomplete: $Command returned duplicate identities." }
     }
@@ -145,13 +145,15 @@ function Get-ApprovedAdapterDefinitions {
                 if ($allowedMailboxes.Count -ne 1 -or $deniedMailboxes.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$allowedMailboxes[0]) -or [string]::IsNullOrWhiteSpace([string]$deniedMailboxes[0]) -or [string]$allowedMailboxes[0] -ieq [string]$deniedMailboxes[0]) { throw 'ApplicationAssignmentScopeRightsExpansion: exactly one distinct allowed and denied mailbox probe is required.' }
                 $propagation = Get-BaselineRecordMember $settings propagation
                 $maximumDelay = [timespan]::Zero
-                if ($propagation -isnot [System.Collections.IDictionary] -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $propagation statement)) -or
-                    -not [timespan]::TryParse([string](Get-BaselineRecordMember $propagation maximumDelay), [ref]$maximumDelay) -or $maximumDelay -le [timespan]::Zero) { throw 'AuthorizationPropagationLimitMissing: a statement and positive maximum delay are required.' }
+                if ($propagation -isnot [System.Collections.IDictionary] -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $propagation statement))) { throw 'AuthorizationPropagationLimitMissing: a statement and positive maximum delay are required.' }
+                try { $maximumDelay = [System.Xml.XmlConvert]::ToTimeSpan([string](Get-BaselineRecordMember $propagation maximumDelay)) }
+                catch { throw 'AuthorizationPropagationLimitMissing: a statement and positive maximum delay are required.' }
+                if ($maximumDelay -le [timespan]::Zero) { throw 'AuthorizationPropagationLimitMissing: a statement and positive maximum delay are required.' }
 
                 if (-not $DesiredOnly) {
                     $servicePrincipals = Get-ApprovedAdapterCollection Get-ServicePrincipal @{ Identity = $servicePrincipalObjectId } @('Identity','ObjectId','AppId')
                     if ($servicePrincipals.Count -ne 1 -or [string]$servicePrincipals[0].ObjectId -cne $servicePrincipalObjectId -or [string]$servicePrincipals[0].AppId -cne $applicationId) { throw 'AdditiveEntraEvidenceMismatch: ServicePrincipalObjectId or ApplicationId differs from Exchange readback.' }
-                    $null = Get-ApprovedAdapterCollection Get-ManagementScope @{ ResultSize = 'Unlimited' } @('Identity','RecipientRoot','RecipientRestrictionFilter','ServerRestrictionFilter','Exclusive')
+                    $null = Get-ApprovedAdapterCollection Get-ManagementScope @{ ResultSize = 'Unlimited' } @('Identity','RecipientRoot','RecipientRestrictionFilter','ServerRestrictionFilter','Exclusive') @('ServerRestrictionFilter')
                     $null = Get-ApprovedAdapterCollection Get-ManagementRoleAssignment @{ ResultSize = 'Unlimited' } @('Identity','Name','Role','RoleAssignee','RoleAssigneeType','Enabled','RecipientReadScope','RecipientWriteScope','CustomResourceScope')
                 }
 
