@@ -133,6 +133,8 @@ BeforeAll {
         & $script:changeCommand -Stage Validate @Arguments | Out-Null
         $apply = & $script:changeCommand -Stage Apply @Arguments -Apply -Confirm:$false
         $readback = Invoke-OrganizationRelationshipDecision -Approval (New-OrganizationRelationshipApproval)
+        $approvedState = @($global:organizationRelationshipState | ConvertTo-Json -Depth 10)
+        $applied = @($approvedState | ConvertFrom-Json | Where-Object Identity -CEQ 'Approved partner')[0]
         $writesAfterApply = $global:adapterCalls.Count
 
         $repeatArguments = New-OrganizationRelationshipLifecycleFixture -ChangeId 'EXR007-A06-REPEAT'
@@ -141,7 +143,6 @@ BeforeAll {
         $repeat = & $script:changeCommand -Stage Apply @repeatArguments -Apply -Confirm:$false
         $repeatWrites = $global:adapterCalls.Count - $writesAfterApply
 
-        $approvedState = @($global:organizationRelationshipState | ConvertTo-Json -Depth 10)
         $global:organizationRelationshipState[0].FreeBusyAccessScope = 'Drifted sharing group'
         $writesBeforeDrift = $global:adapterCalls.Count
         $drift = $null
@@ -153,7 +154,7 @@ BeforeAll {
         [pscustomobject]@{
             ApplyStatus = $apply.Status
             Readback = $readback
-            Applied = @($global:organizationRelationshipState | Where-Object Identity -CEQ 'Approved partner')[0]
+            Applied = $applied
             RepeatStatus = $repeat.Status
             RepeatWrites = $repeatWrites
             DriftMessage = $drift.Exception.Message

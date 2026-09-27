@@ -10607,9 +10607,33 @@ function Test-OrganizationRelationshipControl {
         throw 'OrganizationRelationshipEvidenceRequired: organization relationships cannot be decided without evidence.'
     }
 
+    $newOrganizationRelationshipResult = {
+        param(
+            [Parameter(Mandatory)]
+            [string]$Status,
+
+            [string]$Reason
+        )
+
+        $result = New-ControlResult -ControlId 'EXR-007-A06' -Status $Status -Reason $Reason -Evidence $Evidence
+        $partnerReadiness = [string](Get-BaselineRecordMember -Node $Evidence -Name 'PartnerReadiness')
+        $member = [ordered]@{
+            ControlId       = $result.ControlId
+            Status          = $result.Status
+            Normalized      = $result.Normalized
+            GoLiveSuccess   = if ($partnerReadiness -ceq 'Unverified') { $false } else { $result.GoLiveSuccess }
+            Reason          = $result.Reason
+            Evidence        = $result.Evidence
+            EvaluatedAtUtc  = $result.EvaluatedAtUtc
+            PartnerReadiness = $partnerReadiness
+        }
+
+        return , (ConvertTo-ImmutableBaselineNode -Node $member)
+    }
+
     if (-not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $Evidence -Name 'Error'))) {
-        return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Error' `
-            -Reason 'OrganizationRelationshipEvidenceIncomplete' -Evidence $Evidence
+        return & $newOrganizationRelationshipResult -Status 'Error' `
+            -Reason 'OrganizationRelationshipEvidenceIncomplete'
     }
 
     $approvedDomains = @(
@@ -10626,27 +10650,27 @@ function Test-OrganizationRelationshipControl {
         foreach ($domain in @((Get-BaselineRecordMember -Node $relationship -Name 'DomainNames'))) {
             $normalizedDomain = ([string]$domain).Trim().TrimEnd('.').ToLowerInvariant()
             if ($normalizedDomain -notin $approvedDomains) {
-                return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
-                    -Reason 'OrganizationRelationshipDomainUnapproved' -Evidence $Evidence
+                return & $newOrganizationRelationshipResult -Status 'Fail' `
+                    -Reason 'OrganizationRelationshipDomainUnapproved'
             }
         }
 
         $observedLevel = [string](Get-BaselineRecordMember -Node $relationship -Name 'FreeBusyAccessLevel')
         if (-not $levelRank.ContainsKey($observedLevel) -or -not $levelRank.ContainsKey($approvedLevel) -or
             $levelRank[$observedLevel] -gt $levelRank[$approvedLevel]) {
-            return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
-                -Reason 'OrganizationRelationshipFreeBusyDetailExcessive' -Evidence $Evidence
+            return & $newOrganizationRelationshipResult -Status 'Fail' `
+                -Reason 'OrganizationRelationshipFreeBusyDetailExcessive'
         }
 
         $observedScope = [string](Get-BaselineRecordMember -Node $relationship -Name 'FreeBusyAccessScope')
         if (-not [string]::IsNullOrWhiteSpace($approvedScope) -and
             ([string]::IsNullOrWhiteSpace($observedScope) -or $observedScope -cne $approvedScope)) {
-            return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
-                -Reason 'OrganizationRelationshipScopeOverbroad' -Evidence $Evidence
+            return & $newOrganizationRelationshipResult -Status 'Fail' `
+                -Reason 'OrganizationRelationshipScopeOverbroad'
         }
     }
 
-    return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Pass' -Evidence $Evidence
+    return & $newOrganizationRelationshipResult -Status 'Pass'
 }
 
 # EXO-008: the five values a remote domain is decided by, each paired with the name the baseline
