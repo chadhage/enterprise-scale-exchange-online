@@ -50,7 +50,7 @@ function Get-ApprovedAdapterDefinitions {
     $parameters = $Context.Parameters
     $options = $parameters['workflowOptions']
     if ($null -eq $options) { $options = @{} }
-    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules','fullAccessDelegations','sendOnBehalfDelegations','organizationAllowList','applicationAssignmentScope')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
+    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules','fullAccessDelegations','sendOnBehalfDelegations','organizationAllowList','organizationRelationships','applicationAssignmentScope')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
@@ -237,6 +237,63 @@ function Get-ApprovedAdapterDefinitions {
                 }
                 & $fixed OrganizationAllowListConnection HostedConnectionFilterPolicy @{ Identity = $connectionIdentity } @{ IPAllowList = $ipAllowList; EnableSafeList = [bool]$connection.enableSafeList } @{ IPAllowList = 'Strings'; EnableSafeList = 'Boolean' }
                 & $fixed OrganizationAllowListContent HostedContentFilterPolicy @{ Identity = $contentIdentity } @{ AllowedSenders = $allowedSenders; AllowedSenderDomains = $allowedSenderDomains } @{ AllowedSenders = 'Strings'; AllowedSenderDomains = 'Strings' }
+            }
+            OrganizationRelationship {
+                $relationships = @($options['organizationRelationships'] | Where-Object { $null -ne $_ })
+                if ($relationships.Count -eq 0) { throw 'OrganizationRelationshipApprovalRequired: at least one explicitly approved local relationship is required.' }
+                $approvedIdentities = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach ($relationship in $relationships) {
+                    $identity = ([string](Get-BaselineRecordMember $relationship identity)).Trim()
+                    $domains = @((Get-BaselineRecordMember $relationship partnerDomains) | Where-Object { $null -ne $_ } | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
+                    $enabled = Get-BaselineRecordMember $relationship enabled
+                    $freeBusyEnabled = Get-BaselineRecordMember $relationship freeBusyAccessEnabled
+                    $level = [string](Get-BaselineRecordMember $relationship freeBusyAccessLevel)
+                    $accessScope = ([string](Get-BaselineRecordMember $relationship freeBusyAccessScope)).Trim()
+                    if ([string]::IsNullOrWhiteSpace($identity) -or -not $approvedIdentities.Add($identity) -or $domains.Count -eq 0 -or
+                        @($domains | Where-Object { $_ -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$' }).Count) {
+                        throw 'OrganizationRelationshipApprovalRequired: every local relationship requires one unique identity and exact partner domains.'
+                    }
+                    if ($enabled -isnot [bool] -or $freeBusyEnabled -isnot [bool] -or -not $enabled -or -not $freeBusyEnabled -or
+                        $level -cne 'AvailabilityOnly' -or [string]::IsNullOrWhiteSpace($accessScope)) {
+                        throw 'OrganizationRelationshipScopeOverbroad: only enabled AvailabilityOnly access to one explicit local scope is supported.'
+                    }
+                    $approval = Get-BaselineRecordMember $relationship approval
+                    $expiresOn = [datetimeoffset]::MinValue
+                    if ($approval -isnot [System.Collections.IDictionary] -or
+                        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $approval reference)) -or
+                        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $approval owner)) -or
+                        -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $approval expiresOn), [ref]$expiresOn) -or
+                        $expiresOn -le [datetimeoffset]::UtcNow) {
+                        throw 'OrganizationRelationshipApprovalRequired: current owner, approval reference and future expiration are required.'
+                    }
+                    $attestation = Get-BaselineRecordMember $relationship partnerAttestation
+                    if ($attestation -isnot [System.Collections.IDictionary] -or [string](Get-BaselineRecordMember $attestation status) -cne 'Unverified') {
+                        throw 'OrganizationRelationshipPartnerReadinessInvalid: partner readiness must remain Unverified until external attestation exists.'
+                    }
+                }
+
+                if (-not $DesiredOnly) {
+                    $currentRelationships = Get-ApprovedAdapterCollection Get-OrganizationRelationship @{ ResultSize = 'Unlimited' } @('Identity','Enabled','DomainNames','FreeBusyAccessEnabled','FreeBusyAccessLevel','FreeBusyAccessScope') @('FreeBusyAccessScope')
+                    foreach ($current in $currentRelationships) {
+                        if ($current.Enabled -isnot [bool] -or $current.FreeBusyAccessEnabled -isnot [bool]) { throw 'ChangeReadIncomplete: Get-OrganizationRelationship returned invalid enabled state.' }
+                        if ($current.Enabled -and -not $approvedIdentities.Contains(([string]$current.Identity).Trim())) { throw "OrganizationRelationshipDomainUnapproved: enabled relationship '$($current.Identity)' has no local approval." }
+                    }
+                    foreach ($relationship in $relationships) {
+                        $identity = ([string](Get-BaselineRecordMember $relationship identity)).Trim()
+                        if (@($currentRelationships | Where-Object { [string]$_.Identity -ieq $identity }).Count -ne 1) { throw "ChangeReadIncomplete: OrganizationRelationship requires exactly one target '$identity'." }
+                    }
+                }
+
+                foreach ($relationship in $relationships) {
+                    $identity = ([string](Get-BaselineRecordMember $relationship identity)).Trim()
+                    & $fixed OrganizationRelationship OrganizationRelationship @{ Identity = $identity } @{
+                        Enabled = [bool](Get-BaselineRecordMember $relationship enabled)
+                        DomainNames = @((Get-BaselineRecordMember $relationship partnerDomains) | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object -Unique)
+                        FreeBusyAccessEnabled = [bool](Get-BaselineRecordMember $relationship freeBusyAccessEnabled)
+                        FreeBusyAccessLevel = [string](Get-BaselineRecordMember $relationship freeBusyAccessLevel)
+                        FreeBusyAccessScope = ([string](Get-BaselineRecordMember $relationship freeBusyAccessScope)).Trim()
+                    } @{ Enabled = 'Boolean'; DomainNames = 'Strings'; FreeBusyAccessEnabled = 'Boolean'; FreeBusyAccessLevel = 'String'; FreeBusyAccessScope = 'NullableString' }
+                }
             }
             FullAccess {
                 $delegations = @($options['fullAccessDelegations'] | Where-Object { $null -ne $_ })

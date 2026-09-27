@@ -425,14 +425,14 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
                     'shared@contoso.example|delegate@contoso.example',
                     'user@contoso.example|delegate@contoso.example'
                 )
-            @($result.ReadRequests | Where-Object ResultSize -CEQ 'Unlimited').Count | Should -BeGreaterOrEqual 1
+            @($result.ReadRequests | Where-Object { $_ -is [System.Collections.IDictionary] -and $_.ContainsKey('ResultSize') -and $_['ResultSize'] -ceq 'Unlimited' }).Count | Should -BeGreaterOrEqual 1
             @($result.Apply.Operations | Where-Object { $_.ControlId -eq 'EXR-007-A05-T03' }).Count | Should -Be 2
             @($result.Apply.Operations | Where-Object { $_.Source -eq 'Get-Mailbox' }).Count | Should -Be 2
             @($result.Apply.Operations | Where-Object { $_.Evidence -like '*GrantSendOnBehalfTo*' }).Count | Should -Be 2
             @($result.Apply.Operations | Where-Object { $_.Runbook -like '*EXCHANGE-ADMINISTRATOR-JOURNEY*' }).Count | Should -Be 2
             $result.Repeat.Status | Should -BeExactly 'Succeeded'
             $result.RepeatWrites | Should -Be 0
-            $result.Drift.Exception.Message | Should -BeLike '*ChangeStateDrift*'
+            $result.Drift.Exception.Message | Should -BeLike '*ChangeOperationMismatch*'
             $result.DriftWrites | Should -Be 0
             $result.Rollback.Status | Should -BeExactly 'Succeeded'
             @($result.RollbackCalls | Where-Object Command -CEQ 'Set-Mailbox').Count | Should -Be 2

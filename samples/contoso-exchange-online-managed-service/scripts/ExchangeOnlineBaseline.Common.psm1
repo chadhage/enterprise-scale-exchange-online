@@ -4113,7 +4113,7 @@ function Write-BaselineWorkflowFile {
 
 function Get-BaselineApprovedOperation {
     param($Context, [string[]]$Scope, [switch]$DesiredOnly, $Approved)
-    $supported = @('Transport','TransportBypass','Organization','OrganizationAllowList','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','FullAccess','SendOnBehalf','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption','ApplicationAssignmentScope')
+    $supported = @('Transport','TransportBypass','Organization','OrganizationAllowList','OrganizationRelationship','ExternalSender','RemoteDomains','MailboxProtocols','MailboxPlans','OutboundSpam','AcceptedDomains','ReportSubmission','SecOpsOverride','Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Forwarding','FullAccess','SendOnBehalf','AddInAcquisition','Dkim','TenantAllowBlockList','GovernanceMailboxPolicy','GovernanceMrm','GovernanceEncryption','ApplicationAssignmentScope')
     if ($Scope.Count -eq 0 -or @($Scope | Select-Object -Unique).Count -ne $Scope.Count -or @($Scope | Where-Object { $_ -cnotin $supported }).Count) {
         throw ('ChangeScopeUnsupported: explicitly select supported reversible scopes: ' + ($supported -join ', ') + '.')
     }

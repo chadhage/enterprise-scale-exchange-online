@@ -65,7 +65,7 @@ BeforeAll {
                 [string[]]$DomainNames,
                 [bool]$FreeBusyAccessEnabled,
                 [string]$FreeBusyAccessLevel,
-                [AllowNull()][string]$FreeBusyAccessScope
+                [AllowNull()][object]$FreeBusyAccessScope
             )
 
             $global:adapterCalls.Add(@{ Command = 'Set-OrganizationRelationship'; Parameters = @{} + $PSBoundParameters })
