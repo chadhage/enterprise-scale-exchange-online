@@ -82,6 +82,8 @@
         'Get-TransportBypassEvidence'
         'Test-TransportBypassControl'
         'Get-RemoteDomainEvidence'
+        'Get-OrganizationRelationshipEvidence'
+        'Test-OrganizationRelationshipControl'
         'Resolve-BaselineRemoteDomainOofType'
         'Test-RemoteDomainControl'
         'Get-ClientProtocolEvidence'

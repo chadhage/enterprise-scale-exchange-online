@@ -373,7 +373,7 @@ function Get-ApprovedAdapterDefinitions {
                         if ($operation.Count -ne 1) { throw "ChangeOperationMismatch: approved SendOnBehalf operation is required for $mailbox." }
                         @($operation[0].Before.Value.GrantSendOnBehalfTo)
                     }
-                    $desiredDelegates = @($priorDelegates + $delegate | Sort-Object -Unique)
+                    $desiredDelegates = @(@($priorDelegates; $delegate) | Sort-Object -Unique)
                     & $fixed SendOnBehalf Mailbox $target @{ GrantSendOnBehalfTo = $desiredDelegates } @{ GrantSendOnBehalfTo = 'Strings' }
                 }
             }

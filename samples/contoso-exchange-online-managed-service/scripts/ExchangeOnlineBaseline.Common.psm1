@@ -10554,6 +10554,101 @@ function Get-RemoteDomainEvidence {
     return Get-BaselineEvidence -ControlId 'EXO-008' -Source 'ExchangeOnline' -Command 'Get-RemoteDomain' -Collection $Collection
 }
 
+function Get-OrganizationRelationshipEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$Collection
+    )
+
+    if ($null -eq $Collection) {
+        throw 'OrganizationRelationshipCollectionRequired: organization relationships cannot be observed without a collection.'
+    }
+
+    $raw = [Collections.Generic.List[object]]::new()
+    $errorMessage = $null
+    try {
+        & $Collection | ForEach-Object { $raw.Add($_) }
+    }
+    catch {
+        $errorMessage = $_.Exception.Message
+    }
+
+    $evidence = [ordered]@{
+        ControlId       = 'EXR-007-A06'
+        Source          = 'ExchangeOnline'
+        Command         = 'Get-OrganizationRelationship'
+        Collected       = [string]::IsNullOrWhiteSpace($errorMessage)
+        FailureReason   = $errorMessage
+        Value           = $raw.ToArray()
+        CollectedAtUtc  = [datetime]::UtcNow
+        Raw             = $raw.ToArray()
+        Error           = $errorMessage
+        PartnerReadiness = 'Unverified'
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $evidence)
+}
+
+function Test-OrganizationRelationshipControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Evidence,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Approval
+    )
+
+    if ($null -eq $Evidence) {
+        throw 'OrganizationRelationshipEvidenceRequired: organization relationships cannot be decided without evidence.'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $Evidence -Name 'Error'))) {
+        return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Error' `
+            -Reason 'OrganizationRelationshipEvidenceIncomplete' -Evidence $Evidence
+    }
+
+    $approvedDomains = @(
+        Get-BaselineRecordMember -Node $Approval -Name 'PartnerDomains' |
+            ForEach-Object { ([string]$_).Trim().TrimEnd('.').ToLowerInvariant() }
+    )
+    $approvedLevel = [string](Get-BaselineRecordMember -Node $Approval -Name 'FreeBusyAccessLevel')
+    $approvedScope = [string](Get-BaselineRecordMember -Node $Approval -Name 'FreeBusyAccessScope')
+    $levelRank = @{ None = 0; AvailabilityOnly = 1; LimitedDetails = 2 }
+
+    foreach ($relationship in @((Get-BaselineRecordMember -Node $Evidence -Name 'Raw'))) {
+        if ((Get-BaselineRecordMember -Node $relationship -Name 'Enabled') -ne $true) { continue }
+
+        foreach ($domain in @((Get-BaselineRecordMember -Node $relationship -Name 'DomainNames'))) {
+            $normalizedDomain = ([string]$domain).Trim().TrimEnd('.').ToLowerInvariant()
+            if ($normalizedDomain -notin $approvedDomains) {
+                return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
+                    -Reason 'OrganizationRelationshipDomainUnapproved' -Evidence $Evidence
+            }
+        }
+
+        $observedLevel = [string](Get-BaselineRecordMember -Node $relationship -Name 'FreeBusyAccessLevel')
+        if (-not $levelRank.ContainsKey($observedLevel) -or -not $levelRank.ContainsKey($approvedLevel) -or
+            $levelRank[$observedLevel] -gt $levelRank[$approvedLevel]) {
+            return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
+                -Reason 'OrganizationRelationshipFreeBusyDetailExcessive' -Evidence $Evidence
+        }
+
+        $observedScope = [string](Get-BaselineRecordMember -Node $relationship -Name 'FreeBusyAccessScope')
+        if (-not [string]::IsNullOrWhiteSpace($approvedScope) -and
+            ([string]::IsNullOrWhiteSpace($observedScope) -or $observedScope -cne $approvedScope)) {
+            return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Fail' `
+                -Reason 'OrganizationRelationshipScopeOverbroad' -Evidence $Evidence
+        }
+    }
+
+    return New-ControlResult -ControlId 'EXR-007-A06' -Status 'Pass' -Evidence $Evidence
+}
+
 # EXO-008: the five values a remote domain is decided by, each paired with the name the baseline
 # resolves it under. Exchange Online reports the non-delivery report switch as `NDREnabled` while
 # the baseline declares it as `nonDeliveryReportEnabled`, so the pairing is declared once here
@@ -17560,6 +17655,8 @@ Export-ModuleMember -Function @(
     'Get-TransportBypassEvidence'
     'Test-TransportBypassControl'
     'Get-RemoteDomainEvidence'
+    'Get-OrganizationRelationshipEvidence'
+    'Test-OrganizationRelationshipControl'
     'Resolve-BaselineRemoteDomainOofType'
     'Test-RemoteDomainControl'
     'Get-ClientProtocolEvidence'
