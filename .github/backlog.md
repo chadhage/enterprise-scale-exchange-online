@@ -1,6 +1,8 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 283. Updated: 2026-09-27. Executable cards: 83; To Do 44, In Progress 0, Done 39; 24 summary parents excluded.
+Canonical generation: 284. Updated: 2026-09-27. Executable cards: 90; To Do 51, In Progress 0, Done 39; 24 summary parents excluded.
+
+Generation 284 override: **SEVEN ATOMIC RELEASE-VERIFICATION LEAVES ARE ADDED TO MAKE BACKLOG AUTHORITY, CARD ATOMICITY, CURRENT FAILURE OWNERSHIP, ZERO-FLAKE DETERMINISM, THE VERSIONED RECOMMENDATION DENOMINATOR AND BOARD CONSISTENCY EXECUTABLE RELEASE CONTRACTS**. Add ranks 64.1 through 64.7 as EXR-018-A01 through EXR-018-A07. All remain To Do and unclaimed; no product/test implementation, test execution, ownership reservation, external readiness or prior Done evidence is implied. EXR-018 now requires terminal EXR-018-A07 in addition to its existing coverage and live-acceptance prerequisites. The legacy `.github/kanban.md` is a historical compatibility view and is not an independent status authority. Counts are **51 To Do / 0 In Progress / 39 Done**.
 
 Generation 283 override: **EXR-007-A05-T03-F01-R01 REMAINS TO DO WITH SILVER QUEUE AFFINITY; INDEPENDENCE IS NOT WAIVED**. The maintainer stated at `2026-09-27T06:39:32.774Z`, **"I acknowledge ownership for EXR-007-A05-T03-F01-R01 by Silver."** This is accepted solely as authorization to record planned Silver stewardship/queue affinity. It is not executable reservation, active ownership, a WIP claim or review authority. Coworker-1 implemented the underlying correction and Coworker-2/-3 changed the focused test; therefore none of Silver's registered workers is a genuinely independent reviewer. The previously proposed Coworker-2 independence waiver was declined and remains unavailable. Acceptance still requires a genuinely independent reviewer identity and an exclusive review-output root. No reviewer, file, output, evidence root, test, process or attempt is reserved or granted; no test ran. Preserve all accepted F01-A01 evidence, existing dirty governance files and accepted A06 Common/test work. Status/counts remain **44 To Do / 0 In Progress / 39 Done**.
 
@@ -2130,16 +2132,86 @@ Rank 64 - Independent walkthrough acceptance.
 - Existing evidence / remaining: no independent live acceptance packet exists. A01/A02 changes invalidate approval and require re-review; unresolved external risks stay separately reported.
 - RAID: RAID-R01, RAID-D01 through RAID-D05; no new tenant work or readiness assertion.
 
+### EXR-018-A01
+
+Rank 64.1 - Assert one canonical backlog authority.
+
+- Dependencies: none. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-CanonicalBacklogAuthority.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/CanonicalBacklogAuthority.Tests.ps1`; read only `.github/backlog.md`, `.github/kanban.md` and declared generated/historical metadata.
+- Acceptance: the validator identifies exactly one canonical status source. Negative cases independently reject multiple authorities, no authority, an unarchived writable legacy authority, mismatched canonical identity, and a legacy view claiming independent current generation/count/status authority. Exactly one positive accepts `.github/backlog.md` as canonical with every other board explicitly historical, generated or read-only and linked to it.
+- Verification: first accepted red fresh-process run records focused count `N` and input hashes using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/CanonicalBacklogAuthority.Tests.ps1' -Output Detailed -PassThru`; closure requires unchanged test/validator inputs, total=passed=`N`, zero failed/skipped/not-run/failed containers, child/native/outer exits 0, no retry and no repository mutation.
+- Closure evidence: command, discovered/selected/total/pass counts, all exits, canonical and legacy hashes, diff identity and process state. Passing may not be obtained by deleting a board without preserving its history or by making both files silently authoritative.
+
+### EXR-018-A02
+
+Rank 64.2 - Assert execution-ready atomic card completeness.
+
+- Dependencies: EXR-018-A01. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-BacklogAtomicity.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/BacklogAtomicity.Tests.ps1`; consume the canonical backlog and its Missing-Field Inventory without changing product behavior.
+- Acceptance: every canonical executable card has a unique ID, status, rank, dependency set, accountable owner or explicit external gate, bounded writable/read-only surface, explicit negative cases, exactly one positive behavioral case, focused command with exact expected count or deterministic red count-discovery contract, affected validation, required reviewer/evidence root and closure evidence. Negative cases independently remove each required field, leave a Missing-Field Inventory entry unresolved, count a summary as executable, make an executable leaf summary-only, or make dependencies unsafe. Exactly one positive accepts a frozen canonical fixture with every missing field resolved and all summary parents excluded.
+- Verification: first accepted red fresh-process run records `N` and fixture/validator hashes using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/BacklogAtomicity.Tests.ps1' -Output Detailed -PassThru`; closure requires total=passed=`N`, zero failed/skipped/not-run/failed containers, exits 0, no retry and no mutation.
+- Closure evidence: complete field report, resolved Missing-Field Inventory, command/counts/exits, hashes and diff identity. This card validates atomicity; implementation remains with each scoped owner.
+
+### EXR-018-A03
+
+Rank 64.3 - Assert current full-suite failure ownership.
+
+- Dependencies: EXR-018-A01, EXR-018-A02, EXR-014-A02-W01. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-FullSuiteFailureOwnership.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/FullSuiteFailureOwnership.Tests.ps1`; define an immutable sanitized current-run manifest and canonical owner mapping without repairing product failures.
+- Acceptance: bind discovered test IDs, selected/total/pass/fail/skip/not-run counts, failed containers, invocation errors, root-cause signatures, frozen input hashes and process exits to the current run. Negative cases independently reject an unmapped failure/container/invocation, duplicate owners, unknown or summary-only owners, a Done owner without fresh passing evidence, count/test-ID loss, stale hashes, a historical snapshot substituted for current results, and post-run mutation. Exactly one positive reconciles every non-pass result and signature to one canonical executable repair card while all passing IDs remain accounted for.
+- Verification: first accepted red fresh-process focused run records `N` using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/FullSuiteFailureOwnership.Tests.ps1' -Output Detailed -PassThru`; closure requires total=passed=`N`, zero other outcomes, exits 0, no retry and stable validator/fixture hashes. The authoritative full-suite manifest is produced once on frozen inputs by EXR-014-A02-W01 and is not rerun merely to weaken ownership assertions.
+- Closure evidence: sanitized run and ownership manifests, one-to-one reconciliation report, commands/counts/exits, hashes, process state and zero mutation.
+
+### EXR-018-A04
+
+Rank 64.4 - Assert three-run zero-flake determinism.
+
+- Dependencies: EXR-018-A03, EXR-015-A03. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-FullSuiteDeterminism.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/FullSuiteDeterminismGate.Tests.ps1`; consume three immutable full-suite run manifests produced from identical frozen inputs.
+- Acceptance: require three consecutive, independently spawned, retry-free full-suite runs with identical discovery/selection/total/pass counts, identical test-ID and order-independent outcome sets, zero failed/skipped/not-run/failed containers/invocation errors, every child/native/outer exit 0, stable tracked-input and contract hashes, and zero residual processes/files/modules/environment state. Negative cases independently mutate every count/hash/outcome/exit, remove or add a test ID, inject a retry, reorder-dependent outcome, residue or changed input, and supply fewer/more than three runs. Exactly one positive accepts three complete matching manifests.
+- Verification: first accepted red focused run records `N` using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/FullSuiteDeterminismGate.Tests.ps1' -Output Detailed -PassThru`. Closure then runs the full suite exactly three times in separate fresh processes with no retry at EXR-014-A02-R01's authoritative full count `F`, followed by the unchanged focused gate; require each full run total=passed=`F`, focused total=passed=`N`, all other outcomes zero, exits 0, stable hashes and no residue.
+- Closure evidence: three run manifests, process trees, input/output hashes, order/outcome comparison, focused command/counts and zero-retry/zero-residue attestation. One green run cannot close this card.
+
+### EXR-018-A05
+
+Rank 64.5 - Assert the final versioned recommendation denominator.
+
+- Dependencies: EXR-018-A01, EXR-018-A02 and every executable leaf in the EXR-007 fifteen-proposal admission ledger. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeRecommendationRelease.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/RecommendationReleaseDenominator.Tests.ps1`; extend, but do not weaken, `ExchangeRecommendationInventory.Tests.ps1`.
+- Acceptance: validate 100% final disposition of the approved dated/versioned Exchange Online Microsoft recommendation denominator, with Microsoft recommendations distinguished from local policy and external obligations. Negative cases independently reject stale/missing/duplicate/unsupported sources, universal or tenant-wide claims, missing applicability/license rationale, unowned applicable gaps, Proposed/Partial/Gap offered as final, missing implementation/evaluator/evidence/runbook/live links, unauthorized exception, and a valid declared-manifest inventory offered as release readiness. Exactly one positive accepts every applicable item as implemented and verified, explicitly not applicable with rationale, bounded authorized exception, or current independently verified external prerequisite, with zero unowned applicable gaps and external readiness reported separately.
+- Verification: first accepted red fresh-process run records `N` and denominator hash using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/RecommendationReleaseDenominator.Tests.ps1' -Output Detailed -PassThru`; closure requires unchanged final denominator hash, total=passed=`N`, zero failed/skipped/not-run/failed containers, exits 0, no retry and zero unowned gaps.
+- Closure evidence: approved source/version/review identity, final disposition report, proposal-to-leaf and implementation/evidence/runbook/live mappings, command/counts/exits and hashes.
+
+### EXR-018-A06
+
+Rank 64.6 - Assert canonical board and release consistency.
+
+- Dependencies: EXR-018-A01, EXR-018-A02, EXR-018-A03, EXR-018-A05. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/scripts/Test-BoardReleaseConsistency.ps1` and `samples/contoso-exchange-online-managed-service/tests/unit/BoardReleaseConsistency.Tests.ps1`; parse canonical governance and frozen release metadata only.
+- Acceptance: negative cases independently reject incorrect executable/summary/bucket counts, duplicate IDs or executable ranks, unknown/self/cyclic dependencies, executable/summary misclassification, stale or ownerless In Progress claims, Done evidence invalidated by changed tested files, missing atomic fields, conflicting canonical files, unknown/missing release leaves, summary status substituted for child completion, and EXR-018 closure with any executable prerequisite incomplete. Exactly one positive accepts a frozen board whose parsed counts/statuses/ranks/dependencies/evidence identities match its header and whose release closure contains every terminal prerequisite exactly once.
+- Verification: first accepted red fresh-process run records `N` and governance hashes using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/BoardReleaseConsistency.Tests.ps1' -Output Detailed -PassThru`; closure requires total=passed=`N`, zero failed/skipped/not-run/failed containers, exits 0, no retry and no mutation.
+- Closure evidence: parsed graph/count report, cycle and duplicate checks, evidence-identity report, command/counts/exits, hashes and diff identity.
+
+### EXR-018-A07
+
+Rank 64.7 - Verify the six release-governance corrections together.
+
+- Dependencies: EXR-018-A03, EXR-018-A04, EXR-018-A05, EXR-018-A06. Owner: unassigned. Workstream: Release governance. Updated: 2026-09-27. Status: To Do.
+- Bounded outcome: author `samples/contoso-exchange-online-managed-service/tests/unit/DoneDoneGovernanceGate.Tests.ps1`; orchestrate the six shipped validators read-only and consume their immutable evidence without implementing or repairing their contracts.
+- Acceptance: negative cases independently omit, duplicate, stale, tamper or fail each of the six correction packets and reject any packet produced from different board/code/test hashes; exactly one positive accepts all six passing packets from one frozen revision after the three-run zero-flake result, with canonical counts reconciled and no unresolved Missing-Field Inventory entry or current full-suite failure.
+- Verification: first accepted red fresh-process run records `N` using `Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/DoneDoneGovernanceGate.Tests.ps1' -Output Detailed -PassThru`; closure requires unchanged tests/validators and frozen revision, total=passed=`N`, zero failed/skipped/not-run/failed containers, child/native/outer exits 0, no retry, stable packet hashes, zero repository mutation and zero process/file/module/environment residue.
+- Closure evidence: six packet hashes, frozen revision and governance identities, three-run determinism identity, command/counts/exits and zero-mutation/zero-residue report.
+
 ### EXR-018
 
 Rank 65 - Enforce the Exchange release acceptance gate.
 
-- Dependencies: EXR-015-A01, EXR-015-A02, EXR-015-A03, EXR-017-A03. Owner: unassigned. Workstream: Release. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-015-A01, EXR-015-A02, EXR-015-A03, EXR-017-A03, EXR-018-A07. Owner: unassigned. Workstream: Release. Updated: 2026-09-27. Status: To Do.
 - Acceptance: release requires dated complete Exchange traceability, correct settings, all documented command tests, scoped regression/coverage, default live adapter compatibility, immutable approval/evidence verification, rollback/idempotency, and independent live walkthrough evidence. Report Exchange conformance, approved deviations, and external readiness separately; no tenant-wide 100% claim. Any newly identified applicable gap is force-ranked before this card can close.
 - Verification: machine-checkable release manifest refuses each missing prerequisite and accepts one complete Exchange release packet with links to test and live evidence; RAID owners acknowledge unresolved external risks without converting them into passed Exchange controls.
 - EXR-007 admission gate: require implementation evidence for all eight originally admitted scopes and all seven merged proposal clauses, resolved through this 15-row ledger to every current executable leaf and source/control/evidence/runbook mapping. Reject omitted proposals, a mere Proposed/scheduled disposition offered as completion, stale review dates, missing per-setting coverage and absent authorized live evidence. EXR-017-A03 requires both live runs and all EXR-016 children; their EXR-014-A02/013-A02/013-A01/012-A01-A04 chain covers every implementation leaf. The original 30-source/25-control/18-external inventory and 3,669-test result remain dated baseline evidence, not a promise that later scope/discovery counts stay unchanged.
 - EXR-010 decomposition gate: require completed evidence for all twelve email children through EXR-010-A12 and its explicit dependencies. Resolve C10/C15 through the acceptance-allocation table; reject the parent summary, child scheduling or prior partial tests offered as completion. No extra recommendation denominator or duplicate parent counting is introduced.
-- Remaining-board gate: one machine-checkable release decision, not an implementation catchall. Require all 35 new children, retained EXR-007-A01/A06/A07 and every other executable prerequisite, with explicit child-to-parent clause and 15-proposal coverage. All three EXR-015 children and EXR-017-A03 are direct prerequisites; reject summary-parent status as evidence, unknown/missing leaves, unapproved coverage, interrupted live pairs and missing independent attestation. Missing acceptance returns to its scoped owner, never a new generic writer or tenant task. Historical retirement labels resolve through allocation tables; old parent ranks/statuses are not release eligibility.
+- Remaining-board gate: one machine-checkable release decision, not an implementation catchall. Require all 35 prior new children, the seven EXR-018-A01 through A07 release-verification leaves, retained EXR-007-A01/A06/A07 and every other executable prerequisite, with explicit child-to-parent clause and 15-proposal coverage. All three EXR-015 children, EXR-017-A03 and terminal EXR-018-A07 are direct prerequisites; reject summary-parent status as evidence, unknown/missing leaves, unapproved coverage, interrupted live pairs, missing independent attestation, unresolved atomic fields, unmapped current failures, a single green run offered as zero-flake proof, a declared inventory offered as final recommendation disposition, or inconsistent board authority/counts/dependencies. Missing acceptance returns to its scoped owner, never a new generic writer or tenant task. Historical retirement labels resolve through allocation tables; old parent ranks/statuses are not release eligibility.
 
 ## Current Code Audit 2026-09-21
 
