@@ -143,6 +143,7 @@ function New-StatefulAdapterFixture {
     @(@{ Identity = 'reviewer@example.test'; Subject = 'CN=Offline Adapter'; Authority = 'ExchangeOnlineChangeApproval' }) | ConvertTo-Json -AsArray | Set-Content $authorityPath
     $arguments = @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:adapterRoot 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; PreviewPath = (Join-Path $directory 'preview-ADAPTER004.json'); ApprovalPath = (Join-Path $directory 'approval-ADAPTER004.json'); AuthorizedSignerPath = $authorityPath }
     $configuration = Get-Content $arguments.ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable
+    $configuration.controls['MDO-009'].protectedUsers = @($parameters.SECURITY_OPERATIONS_MAILBOX)
     $configuration.controls['MDO-006'].approval = @{ reference = 'OFFLINE-010'; owner = 'security'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
     $arguments.ConfigurationPath = Join-Path $directory 'configuration.json'
     $configuration | ConvertTo-Json -Depth 60 | Set-Content $arguments.ConfigurationPath
@@ -158,8 +159,9 @@ function Invoke-AdapterRoundTrip {
     & $script:adapterCommand -Stage Preview @Arguments -Scope $Scope -Confirm:$false | Out-Null
     & $script:adapterCommand -Stage Approve @Arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:adapterCertificate -Confirm:$false | Out-Null
     & $script:adapterCommand -Stage Validate @Arguments | Out-Null
-    & (Join-Path $script:adapterRoot 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @Arguments -Apply -SkipConnection -Confirm:$false | Out-Null
-    $result = & (Join-Path $Arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') -Apply -Confirm:$false
+    & $script:adapterCommand -Stage Apply @Arguments -Apply -Confirm:$false | Out-Null
+    & (Join-Path $Arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') -Apply -Confirm:$false | Out-Null
+    $result = & $script:adapterCommand -Stage Rollback @Arguments -Apply -Confirm:$false
     $writes = $global:adapterCalls.Count
     $repeated = & $script:adapterCommand -Stage Rollback @Arguments -Apply -Confirm:$false
     @{ Status = $result.Status; RepeatedStatus = $repeated.Status; RepeatedWrites = $global:adapterCalls.Count - $writes }

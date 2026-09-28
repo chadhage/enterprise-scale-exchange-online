@@ -34,7 +34,677 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 310
+Allocation generation: 381
+
+### Generation 381 Purple Closure
+
+Registry updated: 2026-09-28. Closure generation: 380 -> 381. Canonical counts are **47 To Do / 0 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Closed:** `EXR-007-A02-T04` moves In Progress -> Done.
+- **Final protected packet:** ParameterHash 14/14, ChangePreview 39/39, ConnectorTrust 18/18, Safe Sender 15/15, OrganizationAllowList 15/15, SharingPolicyBinding 9/9 and governance 24/24.
+- **Compatibility:** ApprovedAdapter 66/171, 105 known failures, zero added and 13 removed normalized identities; all 15 TABL cases pass.
+- Watched hashes and repository status are stable; `git diff --check` is clean.
+- Release all Purple ownership and quiesce `purple-20260928T045843Z`.
+- Gold, Silver and Purple are complete and quiescent. No next-card activation in this generation. RAID unchanged.
+
+### Generation 380 Purple Isolated Protected Leaves
+
+Registry updated: 2026-09-28. Verification ACK: `purple-20260928T045843Z/Kanban/g380/isolate-three-protected-leaves-EXR-007-A02-T04` (generation 379 -> 380). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Accepted from combined run:** ParameterHash 14/14, Safe Sender 15/15, SharingPolicyBinding 9/9, governance 24/24 and clean diff check.
+- **Cross-leaf contamination:** ChangePreview lost `$PreviewMember`; ConnectorTrust and OrganizationAllowList inherited incompatible `ResultSize` mock shapes.
+- **Coworker-3:** run those three leaves once each in separate fresh processes; expected 39/39, 18/18 and 15/15.
+- Capture complete before/after hashes and status with a bounded non-recursive summarizer; then `git diff --check`.
+- No edits, same-process retry, ApprovedAdapter rerun, live state or Git mutation.
+- Purple remains In Progress pending isolated proof. Counts and RAID unchanged.
+
+### Generation 379 Purple Final Protected Verification
+
+Registry updated: 2026-09-28. Verification ACK: `purple-20260928T045843Z/Kanban/g379/final-protected-verification-EXR-007-A02-T04` (generation 378 -> 379). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Accepted baseline:** ApprovedAdapter **66/171 with 105 failures**, zero added and 13 removed normalized identities.
+- **TABL:** all 15 bounded positive/negative/governance/recovery cases pass.
+- **Coworker-3:** run ParameterHash, ChangePreview, ConnectorTrust, Safe Sender, OrganizationAllowList, SharingPolicyBinding and BacklogAtomicity, then `git diff --check`.
+- Expected denominators: 14, 39, 18, 15, 15, 9 and 24, all fully passing.
+- No ApprovedAdapter rerun, edits, retries, live state or Git mutation.
+- Purple remains In Progress pending canonical closure. Counts and RAID unchanged.
+
+### Generation 378 Purple Signed Artifact Verification
+
+Registry updated: 2026-09-28. Verification ACK: `purple-20260928T045843Z/Kanban/g378/verify-signed-artifact-date-strings-EXR-007-A02-T04` (generation 377 -> 378). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Accepted provisionally:** Common SHA-256 `92173149AEC19F12B4EE0B56A1BF436E80D31C982244BF67380FC00B5C5A95E6`; helper restored to `F6C81C1890ECE7D192C4991C48D2795C58B920B5A52E3F3227E3830262187D34`.
+- **Coworker-3:** run the complete 171-test ApprovedAdapterRoundTrip contract once and compare normalized failures to accepted 53/171 with 118 failures.
+- Require zero new identities and explicitly report every TABL positive, negative governance guard and creation-recovery case.
+- No edits, retries, other protected suites, live state or Git mutation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 377 Purple Signed Artifact Date Strings
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g377/preserve-signed-artifact-date-strings-EXR-007-A02-T04` (generation 376 -> 377). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Proven mismatch:** only `Value.ExpirationDate`; observed canonical string is five bytes longer than approved expected.
+- **Root cause:** signed preview/approval artifact reader omits `-DateKind String`, coercing ISO-looking strings into runtime dates.
+- **Coworker-2:** add `-DateKind String` to that one parser call and revert the disproven fixture `[datetimeoffset]` cast.
+- Static parser/AST checks only; no tests or imports. Exactly two edits, no comparison relaxation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 376 Purple Bounded TABL Pair Capture
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g376/capture-one-TABL-post-state-pair-EXR-007-A02-T04` (generation 375 -> 376). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Generation 375:** recursive redaction/serialization exhausted local memory; process was terminated and source restored exactly. No operand evidence exists.
+- **Coworker-2:** run only exact sender; write the two canonical strings directly to explicit temporary files capped at 64 KiB each; compare shallow JSON structure without scalar disclosure.
+- **Prohibited:** exception Data, Pester-result serialization, recursive redaction, second test, retry or broader execution.
+- Delete both operand files and restore Common SHA-256 `602A0800A43C031FB5809281FB6E02004827B51A7D22B2409215FA1633E56F30` before return.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 375 Purple TABL Operand Capture
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g375/capture-TABL-post-state-operands-EXR-007-A02-T04` (generation 374 -> 375). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Generation 374:** exact sender and unchanged governance remained red; changed ticket and justification remained green. Other requested parameterized cases were not selected.
+- **Coworker-2:** temporarily attach canonical expected/observed strings to exception Data, execute only the two known positives once, capture a redacted field/type/value-shape diff, then restore exact product bytes.
+- **Mandatory restoration:** Common SHA-256 `602A0800A43C031FB5809281FB6E02004827B51A7D22B2409215FA1633E56F30`, zero residual diagnostic text/diff.
+- No permanent product/test edit, retry, broader test, live state or Git mutation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 374 Purple TABL Expiration Verification
+
+Registry updated: 2026-09-28. Verification ACK: `purple-20260928T045843Z/Kanban/g374/verify-TABL-expiration-EXR-007-A02-T04` (generation 373 -> 374). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Accepted provisionally:** one helper-only `[datetimeoffset]` normalization; helper SHA-256 `A5EC345DA9FCA80E740B47F3150712300EBA322086405A950E747242383AB6C5`.
+- **Coworker-3:** run four affected TABL positives and eleven fail-closed guards, or the smallest containing TABL group/full file if parameterized filtering cannot select exactly.
+- Fresh PowerShell 7/Pester 5.7.1, one run, no retries or edits.
+- Any remaining `ChangePostStateMismatch` stops this correction path and requires operand instrumentation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 373 Purple TABL Fixture Expiration
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g373/normalize-TABL-fixture-expiration-EXR-007-A02-T04` (generation 372 -> 373). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis:** compared operands are not serialized; reconstructed fields are equal except possible fixture `Z` versus approved `+00:00` expiration formatting.
+- **Coworker-1:** edit only TABL row construction to serialize ExpirationDate through UTC DateTimeOffset round-trip format.
+- **Immutable:** all other TABL fields/targets, product state comparison, fingerprints, rollback preflight, other nouns/scopes and assertions.
+- Static checks only. If execution remains red, instrument operands before any broader behavior change.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 372 Purple TABL Post-State Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g372/diagnose-TABL-post-state-EXR-007-A02-T04` (generation 371 -> 372). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Helper gains accepted:** AcceptedDomains, Quarantine and Impersonation creation recovery are each 3/3; no entitlement/binder/deployment/null-receipt blockers or guard regressions remain.
+- **Residual:** TABL matrix is 1/3, and exact sender/governance cases also retain ChangePostStateMismatch.
+- **Coworker-3:** read-only field-level comparison of approved After versus independent readback across four TABL identities. Identify common mismatch, product-versus-fixture ownership and one smallest safe edit.
+- Preserve exact identity/action/target/OperationId, ticket/justification, creation fingerprints and rollback preflight. No tests or edits.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 371 Purple Recovery Matrix Rerun
+
+Registry updated: 2026-09-28. Run ACK: `purple-20260928T045843Z/Kanban/g371/rerun-recovery-after-receipt-fix-EXR-007-A02-T04` (generation 370 -> 371). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Receipt correction accepted:** artifact output suppressed; first direct rollback is result; second direct rollback remains idempotency guard; helper parses cleanly.
+- **Coworker-1:** run complete 12-case creation-recovery matrix once.
+- **Expected:** AcceptedDomains, Quarantine and Impersonation 3/3; only TABL positive/drift cases retain post-state mismatch; no binder/deployment/null-status failures or guard regressions.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 370 Purple Rollback Receipt Helper
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g370/correct-roundtrip-rollback-receipt-EXR-007-A02-T04` (generation 369 -> 370). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis:** generated rollback artifact is intentionally inert/output-free; first direct Stage Rollback is the authoritative receipt, second direct call is the idempotency guard.
+- **Coworker-1:** edit only helper rollback sequence: artifact to Out-Null, `$result` from first direct rollback, write count, `$repeated` from second direct rollback.
+- **Immutable:** artifact execution, arguments, signed validation, rollback ordering/semantics, repeat zero-write assertion, fixture corrections, product files and assertions.
+- Static parser/structure checks only. No Pester, product import, live-state read or tenant operation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 369 Purple Rollback Result Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g369/diagnose-rollback-result-contract-EXR-007-A02-T04` (generation 368 -> 369). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Apply progression accepted:** parameter-binding and generic deployment-value blockers are gone; eight guards unchanged. AcceptedDomains, Quarantine and Impersonation now fail only on null rollback status; TABL retains separate post-state mismatch.
+- **Coworker-3:** read-only trace of helper, generated rollback artifact and direct adapter Rollback result contract. Determine output suppression/double invocation and one smallest safe status-verification correction.
+- Preserve artifact execution and rollback semantics. No tests, edits, retries, live-state reads or tenant operations.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 368 Purple Approved-Adapter Recovery Rerun
+
+Registry updated: 2026-09-28. Run ACK: `purple-20260928T045843Z/Kanban/g368/rerun-approved-adapter-recovery-matrix-EXR-007-A02-T04` (generation 367 -> 368). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Helper correction accepted:** Preview/Approve/Validate/Apply use the same adapter command and original arguments; generated rollback contract remains; no generic deployment path remains.
+- **Coworker-1:** run the complete 12-case creation-recovery matrix once in one fresh Pester 5.7.1 process.
+- **Acceptance:** 171 discovered / 12 selected / 12 total; no parameter-binding or generic deployment-value failures; eight guards do not regress; classify remaining product failures; stable hashes and zero mutation.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 367 Purple Approved-Adapter Apply Helper
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g367/use-approved-adapter-apply-entrypoint-EXR-007-A02-T04` (generation 366 -> 367). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis:** domainInventory is valid nested approved-change data; generic deployment correctly rejects nested placeholder values. The round-trip helper uses the wrong Apply entrypoint.
+- **Coworker-1:** replace only the helper's deployment clone/filter/invocation with `$script:adapterCommand -Stage Apply @Arguments -Apply -Confirm:$false`.
+- **Immutable:** arguments, entitlement fixture, rollback artifact, assertions, generic placeholder validation, parameter hashing/binding, product signatures and schemas.
+- Static parser/structure checks only. No Pester, product import, live-state read or tenant operation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 366 Purple DomainInventory Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g366/diagnose-domainInventory-contract-EXR-007-A02-T04` (generation 365 -> 366). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Splat fix accepted:** all four positive round trips pass parameter binding; eight guards remain unchanged. Matrix stays 7/12.
+- **Shared next blocker:** all four positives fail at UnsupportedParameterValueType for nested `domainInventory`; TABL drift recovery remains a separate product readback defect.
+- **Coworker-3:** read-only trace of domainInventory runtime shape, placeholder/consumer usage, validation contract and ownership. Identify one smallest safe edit that preserves recursive-placeholder, unknown-key and sensitive-value controls.
+- No tests, edits, retries, live-state reads or tenant operations. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 365 Purple Creation-Recovery Rerun
+
+Registry updated: 2026-09-28. Run ACK: `purple-20260928T045843Z/Kanban/g365/rerun-creation-recovery-matrix-EXR-007-A02-T04` (generation 364 -> 365). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Helper correction accepted:** deployment clone removes exactly RequestedBy and AuthorizedSignerPath; original lifecycle arguments and supported deployment keys remain intact.
+- **Coworker-1:** rerun the complete 12-case creation-recovery matrix once in one fresh Pester 5.7.1 process.
+- **Acceptance:** 171 discovered / 12 selected / 12 total; no parameter-binding failures; eight negative cases do not regress; classify four positive outcomes; stable hashes and zero mutation.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 364 Purple Round-Trip Splat Correction
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g364/correct-roundtrip-deployment-splat-EXR-007-A02-T04` (generation 363 -> 364). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis:** AuthorizedSignerPath and RequestedBy are lifecycle-only but the helper splats both into deployment; either can be the first binder error.
+- **Coworker-1:** exclusively owns the deployment invocation in `Invoke-AdapterRoundTrip`. Clone arguments, remove exactly those two keys from the clone, and deploy with the clone.
+- **Immutable:** original lifecycle table, Apply/SkipConnection/Confirm controls, all other keys, product signatures, entitlement fixture correction and assertions.
+- Static parser/structure checks only. No Pester, product import, live-state read or tenant operation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 363 Purple Round-Trip Helper Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g363/diagnose-roundtrip-helper-contract-EXR-007-A02-T04` (generation 362 -> 363). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Fixture gain accepted:** two Impersonation recovery cases now pass; entitlement-placeholder blocker removed without product change. Matrix is 7/12.
+- **Shared helper blocker:** four create/restore round trips fail first on unsupported AuthorizedSignerPath; earlier evidence also identified RequestedBy. TABL drift recovery remains a separate product readback defect.
+- **Coworker-3:** read-only comparison of `Invoke-AdapterRoundTrip` splat against the invoked deployment entrypoint. Enumerate every stale key and one smallest test-helper correction; do not alter production signature.
+- No tests, edits, retries, live-state reads or tenant operations. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 362 Purple Creation-Recovery Matrix
+
+Registry updated: 2026-09-28. Run ACK: `purple-20260928T045843Z/Kanban/g362/run-creation-recovery-matrix-EXR-007-A02-T04` (generation 361 -> 362). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **G361 no-op:** 171 discovered / 0 selected because Pester filters the unexpanded `<Scope>` template. No test body ran; hashes stable; zero mutation.
+- **Coworker-1:** run the complete 12-case `Creation recovery for <Scope>` matrix once in one fresh Pester 5.7.1 process.
+- **Acceptance:** 171 discovered / 12 selected / 12 total; classify three outcomes for AcceptedDomains, Quarantine, Impersonation and TABL; stable hashes and zero mutation.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 361 Purple Impersonation Focused Run
+
+Registry updated: 2026-09-28. Run ACK: `purple-20260928T045843Z/Kanban/g361/run-impersonation-creation-recovery-EXR-007-A02-T04` (generation 360 -> 361). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Fixture correction accepted:** MDO-009 protectedUsers now uses the resolved SecOps mailbox; helper/product/test parsers are clean; product entitlement remains unchanged.
+- **Coworker-1:** run only the three Impersonation creation-recovery cases once in one fresh Pester 5.7.1 process.
+- **Acceptance:** 171 discovered / 3 selected / 3 total; classify appeared-before-apply, unrelated-property drift and create/restore outcomes; stable hashes and zero mutation.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 360 Purple Impersonation Fixture Correction
+
+Registry updated: 2026-09-28. Correction ACK: `purple-20260928T045843Z/Kanban/g360/correct-impersonation-protected-user-fixture-EXR-007-A02-T04` (generation 359 -> 360). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Isolation:** three TABL product readback failures, one stale RequestedBy helper/API failure, three Impersonation placeholder failures and one passing appeared-before-apply guard remain.
+- **Coworker-1:** exclusively owns `New-StatefulAdapterFixture` in ApprovedAdapterDoubles.ps1. Bind MDO-009 protectedUsers to the resolved SECURITY_OPERATIONS_MAILBOX before writing fixture configuration.
+- **Immutable:** product entitlement validation, literal placeholder, all other controls/parameters, product files and test assertions.
+- Static parser/structure checks only. No Pester, product import, live-state read or tenant operation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 359 Purple Partial Acceptance And Next-Unit Isolation
+
+Registry updated: 2026-09-28. Reconciliation ACK: `purple-20260928T045843Z/Kanban/g359/isolate-remaining-G11-EXR-007-A02-T04` (generation 358 -> 359). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Partial accepted:** ParameterHash 14/14, ChangePreview 39/39, four lifecycle guards green, ApprovedAdapter 53/171 with zero added and exactly 13 removed identities. Semantic/hash/mutation requirements pass.
+- **New baseline:** ApprovedAdapter 53 passed / 118 failed. Purple releases all write/process ownership; card remains In Progress.
+- **Coworker-3:** read-only isolation of remaining card-specific identities. Report exact sender, unchanged TABL governance, TABL creation recovery and Impersonation creation recovery status; distinguish fixture blockers from product defects and identify one smallest next edit surface/guard set.
+- No tests, edits, retries, live-state reads or tenant operations. Counts and RAID unchanged.
+
+### Generation 358 Purple Parameter-Binding Verification
+
+Registry updated: 2026-09-28. Verification ACK: `purple-20260928T045843Z/Kanban/g358/verify-parameter-binding-partial-EXR-007-A02-T04` (generation 357 -> 358). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Reconciliation:** current ApprovedAdapter delta is zero added / 13 removed. Organization optional-property failures predate this unit. Workflow identity sets are unchanged since first observation but lack a pre-g351 baseline, so remain tracked outside acceptance.
+- **Coworker-3:** read-only review plus one fresh-process run of ParameterHash 14, ChangePreview 39, four lifecycle guards and ApprovedAdapter 171.
+- **Acceptance:** all focused/preview/hash leaves green; ApprovedAdapter exact 53/171 with enumerated 13 removals and zero additions; parameter-binding/date/legacy-preview/security semantics intact; stable hashes and zero mutation.
+- Do not run workflow leaves. No edits or retries. Purple remains In Progress pending canonical acceptance. Counts and RAID unchanged.
+
+### Generation 357 Purple Workflow Baseline Reconciliation
+
+Registry updated: 2026-09-28. Reconciliation ACK: `purple-20260928T045843Z/Kanban/g357/reconcile-workflow-baseline-EXR-007-A02-T04` (generation 356 -> 357). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Repair candidate:** ParameterHash 14/14, ChangePreview 39/39, four lifecycle guards green; ApprovedAdapter improves to 53/171 with zero added and 13 removed identities.
+- **Unreconciled blockers:** Organization changed-parameter hits known absent optional ewsAllowedAppIds; ApprovedWorkflow 0/11 and ApprovedWorkflowCommand 0/22 were not baselined before the signed parameter change.
+- **Coworker-2:** quiescent and releases ownership.
+- **Coworker-3:** read-only evidence/source reconciliation. Map each workflow/Organization failure to pre-generation-351 evidence, enumerate 13 removals, and identify any identity newly caused by this unit. No tests or edits.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 356 Purple Parameter Date Repair
+
+Registry updated: 2026-09-28. Repair ACK: `purple-20260928T045843Z/Kanban/g356/repair-parameter-date-deserialization-EXR-007-A02-T04` (generation 355 -> 356). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Exact red accepted:** ParameterHash 13/14 with the sole new public-path date-string case failing on System.DateTime canonicalization; original 13 green.
+- **Coworker-2:** exclusively owns only `Get-BaselineParameterHash` JSON deserialization for one attempt. Add repository-standard `-DateKind String`; all other symbols/files are immutable.
+- **Validation:** run ParameterHash 14, ChangePreview 39, four lifecycle guards, ApprovedAdapter 171, ApprovedWorkflow 11 and ApprovedWorkflowCommand 22 once each in fresh processes.
+- Require all focused/preview/workflow leaves green, ApprovedAdapter no worse than 40/171 with no added identity, changed-parameter rejection restored, stable tests and no out-of-scope mutation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 355 Purple Parameter Date Red
+
+Registry updated: 2026-09-28. Red-run ACK: `purple-20260928T045843Z/Kanban/g355/run-parameter-date-string-red-EXR-007-A02-T04` (generation 354 -> 355). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Regression accepted:** ParameterHash now has 14 tests; the new public-path date-string case preserves the original 13 and parses cleanly.
+- **Coworker-1:** run only ParameterHash.Tests.ps1 once in one fresh Pester 5.7.1 process. Require exact 14/14/14, original 13 green, and the sole new case failing on System.DateTime canonicalization.
+- Test hash must remain `7345117ED68485357EC272D4667EA5472F336E38EE9847A72F8BCE05522394AE`.
+- No edits or retry. Product remains read-only. Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 354 Purple Parameter Date Regression
+
+Registry updated: 2026-09-28. Test ACK: `purple-20260928T045843Z/Kanban/g354/add-parameter-date-string-regression-EXR-007-A02-T04` (generation 353 -> 354). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Attempt failed:** parameter binding exposes `UnsupportedCanonicalValue` because ISO date-looking JSON strings become System.DateTime in `Get-BaselineParameterHash`. ApprovedAdapter regresses to 4/171 with 36 added identities and lifecycle/workflow guards fail broadly.
+- **Coverage gap:** ChangePreview 39/39 and existing ParameterHash 13/13 remain green; no current test covers date-looking parameter strings.
+- **Coworker-1:** exclusively owns ParameterHash.Tests.ps1 to add one public-path deterministic hashing regression for ISO date-looking strings. Preserve existing tests and unsupported-type rejection.
+- Static parser/structure checks only. Product/Common/ApprovedAdapters remain read-only. No Pester, imports, live-state reads or tenant operations.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 353 Purple Signed Parameter Binding
+
+Registry updated: 2026-09-28. Implementation ACK: `purple-20260928T045843Z/Kanban/g353/bind-parameter-hash-EXR-007-A02-T04` (generation 352 -> 353). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis accepted:** `workflowOptions.enableDkim` changes after approval because signed previews freeze configuration and operations but not canonical parameter inputs.
+- **Coworker-2:** one final attempt. Own only the generation-351 TABL comparison block plus preview construction/member validation and pre-definition binding gate in Common.
+- **Implementation:** reuse secret-redacting `Get-BaselineParameterHash`; freeze algorithm-qualified ParameterHash in preview; require and compare it before definitions/state reads; mismatch throws ChangePreviewBindingMismatch. Legacy previews lacking the member fail closed and must be regenerated.
+- **Immutable:** tests/manifest; sensitive redaction; tenant/profile/configuration and signed-preview binding; exact TABL identity/action/target/OperationId; ticket/justification; rollback preflight; unrelated behavior.
+- **Validation:** run four lifecycle guards, ApprovedAdapter, ChangePreview, ParameterHash, ApprovedWorkflow and ApprovedWorkflowCommand once each. Require guards/regressions green, ApprovedAdapter no worse than accepted 40/171 with no added identity, stable tests and no out-of-scope mutation.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 352 Purple TABL Ordering Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `purple-20260928T045843Z/Kanban/g352/diagnose-TABL-parameter-ordering-EXR-007-A02-T04` (generation 351 -> 352). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Attempt 1 nonqualifying:** guards remain green; ApprovedAdapter improves 40/171 -> 41/171 and removes two TABL failures, but adds the changed-parameter identity because ChangeStateDrift replaces required ChangePreviewBindingMismatch.
+- **Coworker-2:** quiescent and releases ownership. One nominal attempt remains but requires a refreshed grant.
+- **Coworker-3:** read-only trace of the bounded diff/evidence, TABL comparison block and exact changed-parameter test. Identify changed field/value, bypass ordering, smallest safe correction and whether scope expansion is required.
+- Preserve ticket/justification and exact identity/action/target/OperationId fail-closed semantics. No tests, edits, retries, live-state reads or tenant operations.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 351 Purple TABL Normalization Unit
+
+Registry updated: 2026-09-28. Implementation ACK: `purple-20260928T045843Z/Kanban/g351/repair-TABL-desired-normalization-EXR-007-A02-T04` (generation 350 -> 351). Canonical counts remain **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Reconciliation:** Quarantine creation recovery is removed. Four relevant identities remain: three TABL preview-binding mismatches and one Impersonation recovery blocked earlier by entitlement fixture resolution.
+- **Coworker-2:** exclusively owns only the TABL Desired-versus-approved-After comparison block in ApprovedAdapters for at most two attempts. Normalize only Action, ExpirationDate and Notes representations immediately before exact comparison.
+- **Immutable:** exact entry type/address/action/target/OperationId matching; ticket/justification fail-closed behavior; creation fingerprint checks; shared rollback preflight; generic canonicalization; all other branches/files.
+- **Per attempt:** ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15, SharingPolicy 9 and ApprovedAdapter 171 once each. Require guards green, baseline no worse than 40/171 with no added normalized raw full-name identity, stable tests and no out-of-scope mutation. Enumerate removals.
+- Purple remains the sole In Progress card. Counts and RAID unchanged.
+
+### Generation 350 Silver Closure And Purple Reconciliation
+
+Registry updated: 2026-09-28. Closure/reconciliation ACK: `purple-20260928T045843Z/Kanban/g350/reconcile-G11-after-rollback-preflight` (generation 349 -> 350). Canonical counts are **47 To Do / 1 In Progress / 42 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver closure:** independent verification reproduces SharingPolicy 9/9, ConnectorTrust 18/18, Safe Sender 15/15, OrganizationAllowList 15/15 and ApprovedAdapter 40/171 with zero added and exactly one named rollback-atomicity identity removed. Semantic/static/hash/mutation requirements all pass.
+- Move `EXR-007-A04-T01` In Progress -> Done. Release all Silver ownership and quiesce the cohort.
+- **Purple impact:** the removed identity overlaps Purple's prior G11 creation-recovery target. Purple/Coworker-3 receives read-only authority to reconcile generation-349 raw identities against the three prior G11 targets, confirm the removal, enumerate exact remaining targets and identify the smallest next edit surface.
+- No tests, edits, retries or shared-file ownership. Purple is the sole In Progress card. RAID unchanged.
+
+### Generation 349 Silver Closure Verification
+
+Registry updated: 2026-09-28. Verification ACK: `silver-20260928T045843Z-root/Kanban/g349/verify-close-EXR-007-A04-T01` (generation 348 -> 349). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Implementation green:** SharingPolicy 9/9; ConnectorTrust 18/18; Safe Sender 15/15; OrganizationAllowList 15/15; ApprovedAdapter improved to 40/171 with one named rollback-atomicity identity removed and zero added.
+- **Coworker-2:** quiescent and releases ownership. Only the Rollback branch changed; Common SHA-256 is `BD4330D8273F1F7E41BD2FAE8E8243E6FD700FC1CD5BC0E2AC45F1F42495BD3E`.
+- **Coworker-3:** read-only final review plus one fresh-process run of each exact leaf. Verify exact results and identity delta, stable hashes, zero mutation, valid files, calendar separation, readiness Unverified, go-live false, and zero-write state-preserving drift rejection.
+- No edits or retries. Silver remains In Progress pending canonical closure; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 348 Silver Rollback Preflight Implementation
+
+Registry updated: 2026-09-28. Implementation ACK: `silver-20260928T045843Z-root/Kanban/g348/implement-rollback-preflight-EXR-007-A04-T01` (generation 347 -> 348). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Clean red accepted:** exact 9/9/9; the exact executive mailbox field is Legacy after rejected rollback, proving shared partial-apply.
+- **Coworker-2:** exclusively owns the Rollback branch of `Invoke-BaselineApprovedChange` for at most two attempts. Preflight every rollback operation read-only before any mutation; preserve reverse mutation order and post-write readback after full validation.
+- **Immutable:** adapter definitions, state readers, error type, successful rollback behavior, non-Rollback paths, tests and all other files.
+- **Per attempt:** focused 9, ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15 and ApprovedAdapter 171 once each. Require focused 9/9, green guards, no ApprovedAdapter worsening/new identity, stable tests and no out-of-scope mutation. Enumerate allowed removals in the known partial-apply family.
+- Silver remains In Progress pending independent verification; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 347 Silver Final Rollback Red
+
+Registry updated: 2026-09-28. Red-run ACK: `silver-20260928T045843Z-root/Kanban/g347/confirm-rollback-atomicity-red-EXR-007-A04-T01` (generation 346 -> 347). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Assertion accepted:** Drifted is parsed; the exact executive mailbox is selected; its own SharingPolicy is compared exactly. Contract remains 8 negative plus 1 positive, 9 AAA sets, 33 assertions, negative-first, zero parser errors.
+- **Coworker-1:** run only the focused leaf once in one fresh Pester 5.7.1 process. Require exact 9/9/9 and sole product-contract failure at the exact mailbox field assertion or following DriftWrites assertion.
+- Test hash must remain `9A559444F6B1E8C68253A4D6E938B5CB68034FE1029FE97AC7004770DC23FC2A`.
+- No edits or retry. Product remains read-only. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 346 Silver Mailbox Field Assertion Correction
+
+Registry updated: 2026-09-28. Correction ACK: `silver-20260928T045843Z-root/Kanban/g346/correct-mailbox-field-assertion-EXR-007-A04-T01` (generation 345 -> 346). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Red accepted:** exact 9/9/9 and sole DriftWrites 1 failure cleanly prove shared rollback partial-apply.
+- **Assertion defect:** the wildcard can match mailbox identity and policy value from different JSON records.
+- **Coworker-1:** edit only that assertion to parse Drifted, select exactly `executive@contoso.example`, and compare its own SharingPolicy exactly to `Approved Partner Sharing`.
+- Preserve all other assertions/helpers, 8 negative plus 1 positive, negative-first order, AAA markers and product expectations. Static checks only; product remains read-only.
+- Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 345 Silver Corrected Rollback Red
+
+Registry updated: 2026-09-28. Red-run ACK: `silver-20260928T045843Z-root/Kanban/g345/run-corrected-rollback-red-EXR-007-A04-T01` (generation 344 -> 345). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Correction accepted:** Drifted is captured immediately after rejected rollback and before cleanup; the mailbox assertion now uses it. Contract remains 8 negative plus 1 positive, negative-first, 9 AAA sets, 33 assertions, zero parser errors.
+- **Coworker-1:** run only the focused leaf once in one fresh Pester 5.7.1 process. Require exact 9/9/9 and clean product-contract red at the corrected mailbox-state assertion or following DriftWrites assertion.
+- Test hash must remain `5B7208C8BDABF850EE6474E2F6E1E69FC53738B093D543575A6B3D0AF299F74B`.
+- No edits, retry, live-state read or tenant operation. Product remains read-only. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 344 Silver Drifted Snapshot Correction
+
+Registry updated: 2026-09-28. Correction ACK: `silver-20260928T045843Z-root/Kanban/g344/correct-drifted-snapshot-EXR-007-A04-T01` (generation 343 -> 344). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Red accepted in part:** exact 9/9/9 and the sole DriftWrites 1 failure validly prove the diagnosed write. The new mailbox assertion passed only because it referenced the pre-drift Applied snapshot.
+- **Coworker-1:** capture and return a canonical Drifted snapshot immediately after rejected rollback, before drift reset/successful rollback; point only the new mailbox assertion at Drifted.
+- **Immutable contract:** all existing assertions, 8 negative plus 1 positive, negative-first order, AAA markers and product expectations.
+- Static parser/structure checks only. No Pester, product import/edit, live-state read or tenant operation. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 343 Silver Rollback Atomicity Red
+
+Registry updated: 2026-09-28. Red-run ACK: `silver-20260928T045843Z-root/Kanban/g343/run-rollback-atomicity-red-EXR-007-A04-T01` (generation 342 -> 343). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Assertion accepted:** the focused positive now separately asserts executive mailbox state preservation before checking zero drift writes. The file remains 8 negative plus 1 positive, negative-first, with 9 AAA sets, 22 assertions and zero parser errors.
+- **Coworker-1:** run only the focused leaf once in one fresh Pester 5.7.1 process. Require exact 9/9/9 discovery and clean product-contract red proving partial mutation or the diagnosed write before later drift rejection.
+- Test hash must remain `A690197294F713D3BD699C75C483D2786EEE122F1F1DDC4667F16268D59006A4`.
+- No edits, retry, product import outside the test run, live-state read or tenant operation. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 342 Silver Rollback Atomicity Assertion
+
+Registry updated: 2026-09-28. Assertion ACK: `silver-20260928T045843Z-root/Kanban/g342/add-rollback-atomicity-assertion-EXR-007-A04-T01` (generation 341 -> 342). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis accepted:** repeat Apply writes nothing; drifted Rollback mutates the mailbox before a later operation detects policy drift. This is shared sequential rollback partial-apply, not a fixture defect.
+- **Missing contract:** the focused positive counts writes but does not separately assert the executive mailbox remains bound to Approved Partner Sharing.
+- **Coworker-1:** exclusively owns the positive assertion block to add that state-preservation assertion before the existing DriftWrites assertion. Preserve 8 negative plus 1 positive, negative-first order, existing assertions, AAA markers and product expectations.
+- Static parser/structure checks only. No Pester, product import, product edit, live-state read or tenant operation.
+- Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 341 Silver Repeat-Drift Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `silver-20260928T045843Z-root/Kanban/g341/diagnose-repeat-drift-EXR-007-A04-T01` (generation 340 -> 341). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Repair result:** the SharingPolicy-specific go-live invariant now passes. The positive reaches its final assertion and reports DriftWrites 1 instead of 0.
+- **Regression boundary:** all guards green; ApprovedAdapter 39/171 with zero added/removed normalized raw full-name identities; tests stable; product files valid; no out-of-scope mutation.
+- **Coworker-3:** read-only trace of the one repeat operation/write. Identify command/double, expected/actual fields, product-versus-fixture ownership, smallest safe edit surface and compatibility risk.
+- No tests, edits, retries, live-state reads or tenant operations. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 340 Silver Go-Live Invariant Repair
+
+Registry updated: 2026-09-28. Repair ACK: `silver-20260928T045843Z-root/Kanban/g340/repair-go-live-invariant-EXR-007-A04-T01` (generation 339 -> 340). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis accepted:** shared Pass mapping is correct; the SharingPolicy-specific projection adds PartnerReadiness Unverified afterward without suppressing GoLiveSuccess.
+- **Coworker-2:** exclusively owns the local `$finish` projection in `Test-SharingPolicyBindingControl` for one edit/run attempt. Enforce `Unverified => GoLiveSuccess false`. Shared result contracts and every other path are immutable.
+- **Validation:** run focused 9, ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15 and ApprovedAdapter 171 once each in fresh processes. Require focused 9/9, green guards, ApprovedAdapter no worse than 39/171 with no added normalized raw full-name identity, stable tests, valid product files and no out-of-scope mutation.
+- No second attempt. Silver remains In Progress pending independent closure verification; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 339 Silver Go-Live Invariant Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `silver-20260928T045843Z-root/Kanban/g339/diagnose-go-live-EXR-007-A04-T01` (generation 338 -> 339). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Final-run result:** SharingPolicy 8/9. The positive reaches Status Pass and PartnerReadiness Unverified, then fails only because GoLiveSuccess is true. All guards are green and ApprovedAdapter remains 39/171 with zero added/removed normalized raw full-name identities.
+- **Static integrity:** hashes stable, parsers clean, manifest/JSON valid, calendar boundary separate, zero mutation.
+- **Coworker-3:** read-only trace of the readiness/go-live calculation. Identify exact symbol, branch, operands, required invariant, compatibility risk and smallest safe edit surface; determine whether the repair is SharingPolicy-specific or shared.
+- No tests, edits, retries, live-state reads or tenant operations. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 338 Silver Final Verification
+
+Registry updated: 2026-09-28. Verification ACK: `silver-20260928T045843Z-root/Kanban/g338/verify-final-EXR-007-A04-T01` (generation 337 -> 338). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Correction accepted:** one fixture line updates default-using mailboxes to the newly selected default. The 8-negative/1-positive contract, 9 AAA marker sets, 32 assertions, negative-first order and product expectations remain intact; parser errors are zero.
+- **Coworker-3:** read-only final verification. Run focused 9, ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15 and ApprovedAdapter 171 exactly once each in fresh processes.
+- **Acceptance:** focused 9/9, all guards green, ApprovedAdapter no worse than 39/171 with no added normalized raw full-name failure identity, stable hashes, zero mutation, valid product files, calendar separation and partner readiness Unverified.
+- No edits or retries. Silver remains In Progress pending canonical closure; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 337 Silver Fixture Transition Correction
+
+Registry updated: 2026-09-28. Correction ACK: `silver-20260928T045843Z-root/Kanban/g337/correct-default-mailbox-double-EXR-007-A04-T01` (generation 336 -> 337). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnosis accepted:** product apply selects the new default correctly. The test double updates only policy `IsDefault` flags and leaves the default-using mailbox's simulated `SharingPolicy` on the old identity, causing the correct product readback failure.
+- **Coworker-1:** exclusively owns the focused test's `Set-SharingPolicy` fixture branch. Update the simulated default-using mailbox when a new default is selected.
+- **Immutable contract:** 8 negative plus 1 positive, negative-first order, assertions, AAA markers and all product expectations.
+- **Validation:** static parser/structure checks only. No Pester, product import/dot-source, product edit, live-state read or tenant operation.
+- Silver remains In Progress pending an independent final run; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 336 Silver Result-Fail Diagnosis
+
+Registry updated: 2026-09-28. Diagnostic ACK: `silver-20260928T045843Z-root/Kanban/g336/diagnose-result-fail-EXR-007-A04-T01` (generation 335 -> 336). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Repair result:** approved identity/before-state normalization cleared the operation mismatch. SharingPolicy remains 8/9 because the positive lifecycle now returns Fail instead of Pass.
+- **Regression boundary:** all three guards remain green; ApprovedAdapter remains 39/171 with 132 failures; direct normalized full-name comparison shows zero added and zero removed identities.
+- **Coworker-2:** quiescent and releases ownership. ApprovedAdapters SHA-256 is `5956A1CFE0AAF8024CA37143D4BBD50C4901B3DBE6A5CEE42D8CC7DB6CA2A017`.
+- **Coworker-3:** read-only inspection of focused evidence and source only. Trace the exact branch, field and comparison producing Fail and name the smallest safe edit surface. No rerun, edit, live-state read or tenant operation.
+- Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 335 Silver Surgical Repair
+
+Registry updated: 2026-09-28. Repair ACK: `silver-20260928T045843Z-root/Kanban/g335/repair-displaced-default-EXR-007-A04-T01` (generation 334 -> 335). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Independent result:** SharingPolicy 8/9 with the sole named displaced-default failure; ConnectorTrust 18/18, Safe Sender 15/15, OrganizationAllowList 15/15, ApprovedAdapter 39/171 with 132 failures; hashes stable and zero mutation.
+- **Root cause:** the SharingPolicyBinding DesiredOnly displaced-default reconstruction block must separately normalize immutable approved identity and typed `Before.Value`.
+- **Coworker-2:** exclusively owns that block in ApprovedAdapters for one edit/run attempt. No other branch or file is writable.
+- **Validation:** run each exact leaf once in fresh processes. Require SharingPolicy 9/9, green guards, ApprovedAdapter no worse than 39/171 with 132 failures, and direct normalized full-test-name comparison against generation-334 raw evidence showing no added failure identity. Digest-only equality is insufficient because the verifier lacked the prior canonicalization recipe.
+- Silver remains In Progress pending independent closure verification; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 334 Silver Partial Verification And Diagnosis
+
+Registry updated: 2026-09-28. Verification ACK: `silver-20260928T045843Z-root/Kanban/g334/verify-diagnose-EXR-007-A04-T01-partial` (generation 333 -> 334). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Coworker-2 terminal:** three attempts moved SharingPolicy 6/9 -> 6/9 -> 8/9. ConnectorTrust 18/18, Safe Sender 15/15, OrganizationAllowList 15/15 and ApprovedAdapter 39/171 with the same 132 identities were preserved throughout. Coworker-2 is quiescent and releases ownership.
+- **Remaining failure:** `ChangeOperationMismatch: displaced sharing default lacks its approved identity and before-state.`
+- **Coworker-3:** read-only review plus one fresh-process run of each exact leaf. Verify the packet, stable tests, unchanged ApprovedAdapter identity set and zero mutation; diagnose the immutable approved operation/before-state reconstruction path and name the smallest safe next edit surface.
+- No edits, retries or speculative repair. Silver remains In Progress; Purple remains queued. Counts and RAID unchanged.
+
+### Generation 333 Purple Partial Acceptance And Silver Implementation
+
+Registry updated: 2026-09-28. Accepted partial/handoff ACK: `silver-20260928T045843Z-root/Kanban/g333/implement-EXR-007-A04-T01` (generation 332 -> 333). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple partial accepted:** independent verification confirms all three guards green and ApprovedAdapter 39/171 with 132 failures, zero new identity and exactly two expected non-target removals. Three target G11 identities remain; Purple stays In Progress but releases all ownership.
+- **Silver/Coworker-2:** exclusively owns ApprovedAdapters/Common/Common.psd1 and the recommendation mapping to implement SharingPolicyBinding evidence/evaluation and bounded lifecycle. Maximum three attempts.
+- **Per-attempt validation:** run focused 9, ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15 and ApprovedAdapter 171 once each. Require focused/guards green, ApprovedAdapter no worse than 39/171 with 132 failures and no new identity.
+- Tests and all other paths remain read-only. Purple remains queued for later G11 work. Counts and RAID unchanged.
+
+### Generation 332 Purple G11 Partial Verification
+
+Registry updated: 2026-09-28. Accepted terminal/verification ACK: `purple-20260928T045843Z/Kanban/g332/verify-EXR-007-A02-T04-G11-partial` (generation 331 -> 332). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Partial result:** all three guard leaves remain green. ApprovedAdapter improves from 37/171 with 134 failures to 39/171 with 132 failures, no new identity, while the three target G11 identities remain. Product hash is `A89D9933366D81F53286C43ED6DCBF539B20E0D5928B8092DF6CF096F38483A3`; parser errors are zero.
+- **Purple/Coworker-3:** independently review the one-file diff, run all four leaves once, and persist identity comparison. Require exact guards, at least 39/171 passed, at most 132 failures, exactly the two reported non-target removals, all three G11 identities retained, no new identity, stable hashes and zero mutation.
+- **Next lease:** after verification, shared ownership passes to Silver by force rank. Silver remains queued during this read-only window. Counts and RAID unchanged.
+
+### Generation 331 Purple G11 Hash Reconciliation
+
+Registry updated: 2026-09-28. Accepted abort/refreshed ACK: `purple-20260928T045843Z/Kanban/g331/implement-EXR-007-A02-T04-G11` (generation 330 -> 331). Canonical counts remain **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Safe abort:** Purple/Coworker-2 detected generation-327 expected hash versus observed Gold-modified hash and performed zero edits/tests/attempts.
+- **Reconciliation:** observed ApprovedAdapters SHA-256 `0BA6137ECEE80C778DA5AEA25193A7380C23E4EE6F0DE2291D166751B7927D0D` is Gold's independently verified and accepted generation-330 state, not concurrent work.
+- **Refreshed Purple/Coworker-2 grant:** same ApprovedAdapters-only G11 unit, with full two-attempt budget and the observed hash as required start. Preserve Safe Sender and all accepted guards; eliminate only the three G11 identities.
+- Silver remains queued. Counts and RAID unchanged.
+
+### Generation 330 Gold Closure And Purple G11 Activation
+
+Registry updated: 2026-09-28. Accepted closure/activation ACK: `purple-20260928T045843Z/Kanban/g330/implement-EXR-007-A02-T04-G11` (generation 329 -> 330). Canonical counts are **47 To Do / 2 In Progress / 41 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold closure:** independent verification passed Safe Sender 15/15, ConnectorTrust 18/18 and OrganizationAllowList 15/15. ApprovedAdapter remains exact 37/171 with the same 134-failure multiset; persisted comparison shows no added, removed or count-mismatched identity. `EXR-007-A02-T03` moves In Progress -> Done. All Gold roles and shared ownership are released.
+- **Purple/Coworker-2 G11:** by rank 32, exclusively owns only ApprovedAdapters.ps1 to resolve the three retained TABL canonical create/readback mismatches. Maximum two attempts.
+- **Per-attempt validation:** run ConnectorTrust 18, Safe Sender 15, OrganizationAllowList 15 and ApprovedAdapter 171 once each. Require all guards green, all three G11 identities eliminated, no new failed identity or additional failed container.
+- **Serialization:** Common/manifest, tests and all other paths remain read-only. Silver remains implementation-ready and queued. Counts and RAID unchanged.
+
+### Generation 329 Gold Independent Verification
+
+Registry updated: 2026-09-28. Accepted implementation/verification ACK: `gold-20260928T045843Z-root-session/Kanban/g329/verify-EXR-007-A02-T03` (generation 328 -> 329). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Implementation ready:** Gold attempt 2 reports Safe Sender 15/15, ConnectorTrust 18/18, OrganizationAllowList 15/15, and ApprovedAdapter 37/171 with 134 failures. Product/test hashes and parser checks match current files; Coworker-2 is quiescent.
+- **Evidence gap:** no combined owned-diff artifact, mutation manifest, or failed-identity comparison was persisted. Zero new ApprovedAdapter failures is therefore unaccepted pending independent proof.
+- **Gold/Coworker-3:** review the owned product diff; run all four exact leaves once; compare all 134 ApprovedAdapter failed identities against Purple generation-327 baseline SHA-256 `7A2CB3B9B7826E9F73DEB3D72BA33E2B70C307C027F98C155EBAC17301A5B2ED`; persist comparison, diff review, mutation inventory and manifest. Require 15/15, 18/18, 15/15, exact 37/171 with identical failures, stable hashes and no mutation.
+- Purple and Silver remain queued until Gold verification quiesces. Counts and RAID unchanged.
+
+### Generation 328 Purple Partial Acceptance And Gold Implementation
+
+Registry updated: 2026-09-28. Accepted partial/handoff ACK: `gold-20260928T045843Z-root-session/Kanban/g328/implement-EXR-007-A02-T03` (generation 327 -> 328). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple GD1 accepted as partial:** independent verification confirms ConnectorTrust 18/18 and ApprovedAdapter 37/171 with 134 failures, no new failure identities, all eight G10 identities absent and three G11 identities retained. Purple remains In Progress but releases every shared-file/process grant.
+- **Gold/Coworker-2 implementation:** by rank 31, exclusively owns ApprovedAdapters/Common/Common.psd1 to implement Safe Sender evidence/evaluation and approved lifecycle. Maximum three attempts.
+- **Per-attempt validation:** run Safe Sender 15-test leaf, ConnectorTrust 18-test guard, neighboring OrganizationAllowList leaf and ApprovedAdapterRoundTrip once each. Stop at Safe Sender 15/15, ConnectorTrust 18/18, neighboring zero failures/failed containers, and ApprovedAdapter no worse than 37/171 passed / 134 failed with no new failure identity.
+- **Serialization:** tests and all other paths remain read-only. Purple and Silver remain queued until Gold quiesces. Counts and RAID unchanged.
+
+### Generation 327 Purple GD1 Partial Verification
+
+Registry updated: 2026-09-28. Accepted partial/verification ACK: `purple-20260928T045843Z/Kanban/g327/verify-EXR-007-A02-T04-GD1-partial` (generation 326 -> 327). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Partial result:** ConnectorTrust remains 18/18. ApprovedAdapterRoundTrip has 171 tests; it improved from 31 passed / 140 failed to 37 passed / 134 failed. The prior 140-test language confused failure count with denominator and is superseded.
+- **G10/G11 disposition:** all eight G10 admission failure identities are eliminated; the three G11 canonical readback mismatches remain. ApprovedAdapters hash is `348C788D2A37DE61C3D7D0C6CC640B2F3FC389F3BED90DC14CBFBD39895CD5AA`; parser errors are zero.
+- **Purple/Coworker-3:** independently review the one-file diff, run ConnectorTrust once and ApprovedAdapterRoundTrip once. Require exact 18/18 guard and 171 denominator with at least 37 passed / at most 134 failed, no new failed identities, G10 absent, G11 present, stable hashes and zero mutation.
+- **Next lease:** after the verifier quiesces, shared implementation ownership proceeds by force rank to Gold rank 31 before further Purple rank 32 or Silver rank 36 work. Gold and Silver remain queued during verification. Counts and RAID unchanged.
+
+### Generation 326 Purple GD1 TABL Canonicalization
+
+Registry updated: 2026-09-28. Accepted diagnostic/implementation ACK: `purple-20260928T045843Z/Kanban/g326/implement-EXR-007-A02-T04-GD1` (generation 325 -> 326). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Diagnostic accepted:** Purple/Coworker-1's evidence partitions all 140 residual failures into twelve exclusive groups. The failed container is the aggregate result of child failures, not a separate parser/import defect.
+- **Purple/Coworker-2 GD1:** exclusively owns only ApprovedAdapters.ps1. Implement TABL DesiredOnly admission and canonical create/readback. Common, manifest, ConnectorTrust branch and every test remain read-only.
+- **Attempt/acceptance boundary:** maximum two attempts. After each, run ConnectorTrust's unchanged 18-test leaf and the 140-test ApprovedAdapterRoundTrip leaf once. Stop at focused 18/18 plus removal of all eleven G10/G11 failures from the current 116/140 baseline, with no new failures or failed containers.
+- **Serialization:** Silver and Gold remain implementation-ready but queued because both need ApprovedAdapters. Counts and RAID unchanged.
+
+### Generation 325 Silver Clean Red Acceptance And Serialized Wait
+
+Registry updated: 2026-09-28. Accepted red ACK: `silver-20260928T045843Z-root/Kanban/g325/accept-EXR-007-A04-T01-red` (generation 324 -> 325). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver red accepted:** exact 9/9/9 discovery, 0 passed / 9 failed, zero other outcomes and zero failed containers, one invocation, no retry, stable SHA-256 `60CE1DF99886E9FAEBCF057AA34A347F20BA1A6BEE994A4E71C8E807997DEC8A` and zero mutation. Eight failures prove absent `Get-SharingPolicyBindingEvidence`; the positive proves unsupported `SharingPolicyBinding` scope.
+- **Silver/Coworker-2:** implementation-ready but quiescent. Purple/Coworker-1 is actively reading the shared dispatcher surfaces for the generation-324 residual-failure partition, so no write or test ownership is issued yet.
+- Gold remains implementation-ready and queued. A later canonical generation will serialize the next bounded shared-file unit after Purple returns. Counts and RAID unchanged.
+
+### Generation 324 Purple Diagnostic And Silver Corrected Rerun
+
+Registry updated: 2026-09-28. Accepted terminal/disposition ACKs: `purple-20260928T045843Z/Kanban/g324/diagnose-EXR-007-A02-T04-general-dispatcher` and `silver-20260928T045843Z-root/Kanban/g324/rerun-EXR-007-A04-T01-red` (generation 323 -> 324). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple repair terminal packet:** both authorized attempts consumed. Focused stayed 18/18; affected improved to 116/256 but retains 140 failures and one failed container. Product files have zero parser errors and Coworker-2 is quiescent. No committed historical complete dispatcher exists to restore.
+- **Purple/Coworker-1 diagnostic:** one read-only static reconciliation of every residual failure and failed container against current code/tests. Partition root causes, exact owning functions/files, prerequisite order, test-vs-product classification and smallest deterministic next implementation unit. No edits or tests.
+- **Silver/Coworker-1 rerun:** run the corrected nine-test SharingPolicy leaf exactly once with stable SHA-256 `60CE1DF99886E9FAEBCF057AA34A347F20BA1A6BEE994A4E71C8E807997DEC8A`; capture all outcomes and make no edits.
+- **Read-only window:** both actions may overlap. Gold remains queued and receives no shared write lease until both return quiescent. Counts and RAID unchanged.
+
+### Generation 323 Silver Adapter-Root Acceptance And Rerun Wait
+
+Registry updated: 2026-09-28. Accepted correction ACK: `silver-20260928T045843Z-root/Kanban/g323/accept-EXR-007-A04-T01-adapter-root` (generation 322 -> 323). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Correction accepted:** Silver/Coworker-1 changed only `ExchangeSharingPolicyBindingLifecycle.Tests.ps1`, now SHA-256 `60CE1DF99886E9FAEBCF057AA34A347F20BA1A6BEE994A4E71C8E807997DEC8A`, adding the established adapterRoot-to-sampleRoot binding. The prior explicit TestRoot fix, nine behaviors/assertions/order, **9/9/9** AAA markers and zero-parser-error state remain intact.
+- **Rerun deferred:** Purple/Coworker-2 currently holds and may mutate shared product files imported by Silver's leaf. Silver receives no test/process authority until Purple returns quiescent and a later generation grants one exact rerun.
+- Gold remains queued. Counts and RAID unchanged.
+
+### Generation 322 Purple Verification Rejection And Compatibility Repair
+
+Registry updated: 2026-09-28. Accepted rejection/repair ACK: `purple-20260928T045843Z/Kanban/g322/repair-EXR-007-A02-T04-scope-compatibility` (generation 321 -> 322). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Independent rejection:** Purple/Coworker-3 confirmed focused 18/18 green but affected regression 89/256, with 167 failures and zero failed containers. Gateway leaves passed; ApprovedAdapterRoundTrip failed because the new public dispatcher hard-coded ConnectorTrust as the only accepted scope.
+- **Purple/Coworker-2 repair:** reclaims only ApprovedAdapters/Common/Common.psd1. Preserve bounded ConnectorTrust behavior while restoring every pre-existing supported approved-adapter scope. Empty, duplicate and genuinely unsupported scopes must still fail. Maximum two attempts; after each, run the unchanged focused leaf and exact three-file affected suite once. Stop only at focused 18/18 plus affected 256/256, with zero failed containers.
+- **Serialization:** Silver may complete only its owned static harness correction. No Silver rerun and no Gold implementation while Purple holds shared product files. Tests and all other paths remain read-only to Purple.
+- Counts and RAID unchanged.
+
+### Generation 321 Silver Adapter-Root Harness Correction
+
+Registry updated: 2026-09-28. Accepted execution/disposition ACK: `silver-20260928T045843Z-root/Kanban/g321/correct-EXR-007-A04-T01-adapter-root` (generation 320 -> 321). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Rerun envelope accepted:** exact 9/9/9 discovery, 0 passed / 9 failed, zero other outcomes and zero failed containers, one invocation, no retry, stable corrected test hash and zero mutation. Eight negatives reached intended missing `Get-SharingPolicyBindingEvidence`.
+- **Second harness defect:** the positive advanced beyond explicit TestDrive propagation and failed at shared helper line 130 because `$script:adapterRoot` was null. The test defines `$script:sampleRoot` but omitted the established alias used by comparable lifecycle tests.
+- **Silver/Coworker-1 correction:** edit only `ExchangeSharingPolicyBindingLifecycle.Tests.ps1` to assign `$script:adapterRoot = $script:sampleRoot` in BeforeAll. Preserve the explicit test-root fix, nine behaviors/assertions/order and AAA structure. Static parser/structure validation only; no Pester or product import.
+- Purple retains its read-only verification grant. Gold remains queued. Silver/Coworker-2/-3 remain waiting. Counts and RAID unchanged.
+
+### Generation 320 Purple Green Acceptance And Read-Only Verification Window
+
+Registry updated: 2026-09-28. Accepted implementation and read-only ACKs: `purple-20260928T045843Z/Kanban/g320/verify-EXR-007-A02-T04` and `silver-20260928T045843Z-root/Kanban/g320/rerun-EXR-007-A04-T01-red` (generation 319 -> 320). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple implementation accepted:** Coworker-2 used all three authorized attempts, progressing 17/18, 17/18, then exact 18/18 green with zero other outcomes or failed containers. The test remained SHA-256 `0C156AB1F811167F1B84547EAB28C2DDB0FBAC9C331170FBC6C21EEB5DA9474A`; ApprovedAdapters/Common/Common.psd1 hashes match the accepted packet and parser errors are zero. Coworker-2 is quiescent and the shared write lease is released.
+- **Purple/Coworker-3 verification:** independently review the three-file diff; run the unchanged 18-test ConnectorTrust leaf once, then the three named affected existing leaves together once. Require exact focused green, zero affected failures/failed containers, stable identities and no mutation.
+- **Silver/Coworker-1 corrected rerun:** run the corrected SharingPolicy leaf once, requiring exact 9/9/9 discovery and preserved SHA-256 `6B51319C547A759477EC5D129F98AFAD8DB3B021A33D7000E40501F3557D3F1B`; capture all outcomes and make no edits.
+- **Read-only window:** Purple verification and Silver rerun may overlap because both are read-only. Gold receives no shared write lease until both readers return quiescent. No retry, edit, broader, live, tenant or Git action is authorized. Counts and RAID unchanged.
+
+### Generation 319 Silver Harness Acceptance And Rerun Wait
+
+Registry updated: 2026-09-28. Accepted correction ACK: `silver-20260928T045843Z-root/Kanban/g319/accept-EXR-007-A04-T01-positive-harness` (generation 318 -> 319). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Correction accepted:** Silver/Coworker-1 changed only `ExchangeSharingPolicyBindingLifecycle.Tests.ps1`, now SHA-256 `6B51319C547A759477EC5D129F98AFAD8DB3B021A33D7000E40501F3557D3F1B`, to pass an explicit Pester test root into the positive fixture. The 8-negative/1-positive ordering, assertions, behaviors and **9/9/9** AAA markers remain intact; parser errors are zero.
+- **Rerun deferred:** the focused leaf imports Common, and Purple/Coworker-2 currently owns and may mutate Common/ApprovedAdapters/Common.psd1. Silver receives no test/process authority until Purple returns a quiescent shared-file handoff and a later generation grants one exact corrected 9-test rerun.
+- Purple retains implementation authority. Gold remains implementation-ready and queued. Silver/Coworker-1/-2/-3 are quiescent. Counts and RAID unchanged.
+
+### Generation 318 Gold T03 Red Acceptance And Serialized Wait
+
+Registry updated: 2026-09-28. Accepted red ACK: `gold-20260928T045843Z-root-session/Kanban/g318/accept-EXR-007-A02-T03-red` (generation 317 -> 318). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold red accepted:** exact **15 discovered / selected / total, 0 passed / 15 failed**, zero other outcomes and zero failed containers, one invocation, no retry, unchanged test SHA-256 `1B929F10D17A6601BC0FB632A05ADB99EA505337AC39DE5E2572D1B867600732`, evidence SHA-256 `06533DBEB5DBDBA8D37B52C91B74C391D1D429C45B39AD123BF542819697C65C`. Every failure reached absent `Invoke-BaselineApprovedChange`.
+- **Gold/Coworker-2:** implementation-ready but quiescent. Purple/Coworker-2 currently owns the overlapping ApprovedAdapters/Common/Common.psd1 files, so Gold receives no write or test grant until Purple returns a verified handoff and a later generation allocates exact Safe Sender surfaces.
+- Purple and Silver retain their generation-317 grants. Gold/Coworker-3 remains waiting. Counts and RAID unchanged.
+
+### Generation 317 Purple Implementation And Silver Harness Correction
+
+Registry updated: 2026-09-28. Accepted/disposition ACKs: `purple-20260928T045843Z/Kanban/g317/implement-EXR-007-A02-T04` and `silver-20260928T045843Z-root/Kanban/g317/correct-EXR-007-A04-T01-positive-harness` (generation 316 -> 317). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple red accepted:** exact **18 discovered / selected / total, 0 passed / 18 failed**, zero other outcomes and zero failed containers, one invocation, no retry, unchanged test SHA-256 `0C156AB1F811167F1B84547EAB28C2DDB0FBAC9C331170FBC6C21EEB5DA9474A`. Every failure reached absent `Invoke-BaselineApprovedChange`.
+- **Purple/Coworker-2 implementation phase:** exclusively owns `ExchangeOnlineBaseline.ApprovedAdapters.ps1`, `ExchangeOnlineBaseline.Common.psm1`, and `ExchangeOnlineBaseline.Common.psd1`. Implement the shared entry point and ConnectorTrust lifecycle, with at most three implementation attempts and one unchanged focused 18-test run after each; stop at first exact green. No other file is writable.
+- **Silver red disposition:** the exact 9-test run had zero failed containers. Eight negatives reached intended missing `Get-SharingPolicyBindingEvidence`; the sole positive had a null-`$TestDrive` arrangement defect, and wrapper exit 42 misclassified aggregate failure.
+- **Silver/Coworker-1 correction phase:** edit only `ExchangeSharingPolicyBindingLifecycle.Tests.ps1` to pass an explicit Pester test root into the positive fixture. Preserve all nine behaviors, ordering, assertions and AAA structure; static parser/structure checks only, no Pester.
+- **Serialization:** Gold and Silver have no ownership of the three shared implementation files while Purple holds them. Gold retains its generation-316 red-run grant. Purple/Silver Coworker-3 remain waiting. Counts and RAID unchanged.
+
+### Generation 316 Gold T03 Test Acceptance And Red-Run Grant
+
+Registry updated: 2026-09-28. Accepted test/red-run ACK: `gold-20260928T045843Z-root-session/Kanban/g316/run-EXR-007-A02-T03-red` (generation 315 -> 316). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Test authoring accepted:** Gold/Coworker-1 created only `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeMailboxSafeSenderLifecycle.Tests.ps1`, SHA-256 `1B929F10D17A6601BC0FB632A05ADB99EA505337AC39DE5E2572D1B867600732`. Static verification found **15** tests in required physical order, **15/15/15** AAA markers, zero parser errors and no Gold mutation outside the owned file.
+- **Coworker-1 red phase:** execute the focused Pester 5.7.1 leaf exactly once in a fresh process. Require exactly **15 discovered / selected / total**, preserve the test hash, capture complete result counts, failed containers, exit code, elapsed time and command, and write evidence only under `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-g316-EXR-007-A02-T03-red\coworker-1`.
+- **Restrictions:** no retry, test edit, product/config/helper/existing-test/governance edit, broader run, implementation attempt, Git, live or tenant action. Coworker-2 and Coworker-3 remain waiting.
+- Purple and Silver retain their focused red-run grants. Counts and RAID remain unchanged.
+
+### Generation 315 Silver T01 Test Acceptance And Red-Run Grant
+
+Registry updated: 2026-09-28. Accepted test/red-run ACK: `silver-20260928T045843Z-root/Kanban/g315/run-EXR-007-A04-T01-red` (generation 314 -> 315). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Test authoring accepted:** Silver/Coworker-1 created only `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeSharingPolicyBindingLifecycle.Tests.ps1`, SHA-256 `8B50651FD203D8897FAD04AD7ACD4F4CE1D69E6077198A60FAF7989520C6FCE0`. Static verification found **9** tests in required physical order, **9/9/9** AAA markers, zero parser errors and no Silver mutation outside the owned file.
+- **Coworker-1 red phase:** execute the focused Pester 5.7.1 leaf exactly once in a fresh process. Require exactly **9 discovered / selected / total**, preserve the test hash, capture complete result counts, failed containers, exit code, elapsed time and command, and write evidence only under `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-g315-EXR-007-A04-T01-red\coworker-1`.
+- **Restrictions:** no retry, test edit, product/config/helper/existing-test/governance edit, broader run, implementation attempt, Git, live or tenant action. Coworker-2 and Coworker-3 remain waiting.
+- Purple retains its generation-314 red-run grant; Gold retains its generation-313 test-author grant. Counts and RAID remain unchanged.
+
+### Generation 314 Purple T04 Test Acceptance And Red-Run Grant
+
+Registry updated: 2026-09-28. Accepted test/red-run ACK: `purple-20260928T045843Z/Kanban/g314/run-EXR-007-A02-T04-red` (generation 313 -> 314). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Test authoring accepted:** Purple/Coworker-1 created only `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeConnectorTrustLifecycle.Tests.ps1`, SHA-256 `0C156AB1F811167F1B84547EAB28C2DDB0FBAC9C331170FBC6C21EEB5DA9474A`. Static verification found **18** tests in required physical order, **18/18/18** AAA markers, zero parser errors and no worker mutation outside the owned file.
+- **Coworker-1 red phase:** execute the focused Pester 5.7.1 leaf exactly once in a fresh process. Require exactly **18 discovered / selected / total**, preserve the test hash, capture complete result counts, failed containers, exit code, elapsed time and command, and write evidence only under `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g314-EXR-007-A02-T04-red\coworker-1`.
+- **Restrictions:** no retry, test edit, product/config/helper/existing-test/governance edit, broader run, implementation attempt, Git, live or tenant action. Coworker-2 and Coworker-3 remain waiting.
+- Gold and Silver retain their generation-313 test-author grants. Counts and RAID remain unchanged.
+
+### Generation 313 Gold/Silver Discovery Acceptance And Test-Author Grants
+
+Registry updated: 2026-09-28. Accepted discovery/authoring ACKs: `gold-20260928T045843Z-root-session/Kanban/g313/author-EXR-007-A02-T03-tests` and `silver-20260928T045843Z-root/Kanban/g313/author-EXR-007-A04-T01-tests` (generation 312 -> 313). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold discovery accepted:** Gold/Coworker-1 returned `EXR-007-A02-T03` evidence SHA-256 `FADEADCB6655B804455C3E158095D8374C905A1C96A2C47E46D6919882E4675D`, identifying the future shared implementation surfaces and absent-before-creation `ExchangeMailboxSafeSenderLifecycle.Tests.ps1`. The packet reports zero repository writes and zero executable actions.
+- **Gold/Coworker-1 test-author phase:** exclusively create `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeMailboxSafeSenderLifecycle.Tests.ps1`, with all **14 negative** AAA cases before exactly **1 positive** lifecycle case. Return hash, ordered case inventory, diagnostics and mutation inventory without executing Pester or importing product code.
+- **Silver discovery accepted:** Silver/Coworker-1 returned `EXR-007-A04-T01` evidence SHA-256 `1BD379C5599D8D7F54EDCDE0D77888F00674F7FAF83D9F1E90AF061C96488318`, identifying the future shared implementation/config surfaces and absent-before-creation `ExchangeSharingPolicyBindingLifecycle.Tests.ps1`. The packet reports zero repository writes and zero executable actions.
+- **Silver/Coworker-1 test-author phase:** exclusively create `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeSharingPolicyBindingLifecycle.Tests.ps1`, with all **8 negative** AAA cases before exactly **1 positive** lifecycle case. Return hash, ordered case inventory, diagnostics and mutation inventory without executing Pester or importing product code.
+- **Waiting roles:** Gold/Silver Coworker-2 wait for accepted red evidence and exact implementation ACKs; Coworker-3 wait for separate verification ACKs. Shared production/config/helper/existing-test paths remain read-only. Purple retains its generation-312 test-author grant.
+- Counts and RAID remain unchanged.
+
+### Generation 312 Purple T04 Discovery Acceptance And Test-Author Grant
+
+Registry updated: 2026-09-28. Accepted discovery/authoring ACK: `purple-20260928T045843Z/Kanban/g312/author-EXR-007-A02-T04-tests` (generation 311 -> 312). Canonical counts remain **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Discovery accepted:** Purple/Coworker-1 returned `EXR-007-A02-T04` evidence SHA-256 `07F6360557DA9A6AFE29430C4AD7DDCD9A6F05480289D7E6F9B12572B593963E`, identifying Common and ApprovedAdapters as future implementation surfaces, three affected existing tests, and absent-before-creation `ExchangeConnectorTrustLifecycle.Tests.ps1` as the owning test surface. The packet reports zero repository writes and zero executable actions.
+- **Coworker-1 test-author phase:** Purple/Coworker-1 exclusively owns creation of `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeConnectorTrustLifecycle.Tests.ps1`. It must author all **17 negative** Arrange-Act-Assert cases before exactly **1 positive** lifecycle case, then return the file hash, case inventory, parser/editor diagnostics and mutation inventory without executing Pester or importing product code.
+- **Coworker-2 implementation phase:** waiting. Common, ApprovedAdapters and existing tests remain read-only until the canonical writer accepts red evidence and grants exact implementation ownership.
+- **Coworker-3 verification phase:** waiting for a separate independent-verification ACK.
+- **Other cohorts:** Gold and Silver retain only their generation-311 read-only discovery grants. Counts and RAID remain unchanged.
+
+### Generation 311 User-Authorized Handoff And Three-Cohort Discovery Activation
+
+Registry updated: 2026-09-28. Accepted handoff/allocation ACK: `2fae83f7-f572-4fa4-90af-78f2c39bc492/Kanban/g311/handoff-and-activate-three` (generation 310 -> 311). Canonical counts are **47 To Do / 3 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Writer handoff:** the maintainer explicitly declared stale coordinator `silver-20260928T022842Z-6e4ba1e7` quiesced and transferred sole canonical-writer authority to current root session `2fae83f7-f572-4fa4-90af-78f2c39bc492`. The root serializes every later canonical transition; no cohort worker may edit governance.
+- **Gold activation:** Gold `gold-20260928T045843Z-root-session` owns rank 31 `EXR-007-A02-T03` under ACK `gold-20260928T045843Z-root-session/Kanban/g311/discover-EXR-007-A02-T03`. Coworker-1 owns one read-only static discovery pass and exclusive output root `C:\Users\chhage\AppData\Local\Temp\cohort-Gold-g311-EXR-007-A02-T03\coworker-1`; Coworker-2 waits for accepted negative-test evidence plus an implementation ACK; Coworker-3 waits for a separate verification ACK.
+- **Purple activation:** Purple `purple-20260928T045843Z` owns rank 32 `EXR-007-A02-T04` under ACK `purple-20260928T045843Z/Kanban/g311/discover-EXR-007-A02-T04`. Coworker-1 owns one read-only static discovery pass and exclusive output root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g311-EXR-007-A02-T04\coworker-1`; Coworker-2 waits for accepted negative-test evidence plus an implementation ACK; Coworker-3 waits for a separate verification ACK.
+- **Silver activation:** Silver `silver-20260928T045843Z-root` owns rank 36 `EXR-007-A04-T01` under ACK `silver-20260928T045843Z-root/Kanban/g311/discover-EXR-007-A04-T01`. Coworker-1 owns one read-only static discovery pass and exclusive output root `C:\Users\chhage\AppData\Local\Temp\cohort-Silver-g311-EXR-007-A04-T01\coworker-1`; Coworker-2 waits for accepted negative-test evidence plus an implementation ACK; Coworker-3 waits for a separate verification ACK.
+- **Shared boundary:** each Coworker-1 may identify exact owning source/test paths, focused executable command and deterministic discovery/red count but may not run tests or write repository files. No retry, implementation attempt, Git, live, tenant, credential, consent, external-infrastructure or RAID action is authorized. A later canonical generation must accept each discovery packet and grant nonoverlapping test/source ownership before TDD begins.
+- **Neutral buffer:** Platinum remains registered and claimless. RAID-D01 through RAID-D05 remain unchanged and unconfirmed.
 
 ### Generation 310 Fresh Four-Cohort Registration And Neutral Platinum Buffer
 

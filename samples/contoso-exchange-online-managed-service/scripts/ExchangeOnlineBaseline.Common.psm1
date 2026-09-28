@@ -3707,6 +3707,9 @@ function New-BaselineChangePreview {
         [object]$GeneratedOn,
 
         [AllowNull()]
+        [object]$ParameterHash,
+
+        [AllowNull()]
         [object]$ValidFor
     )
 
@@ -3723,6 +3726,15 @@ function New-BaselineChangePreview {
         $value = Get-BaselineRecordMember -Node $Context -Name $required
         if (-not (Test-BaselineNodeMember -Node $Context -Name $required) -or [string]::IsNullOrWhiteSpace([string]$value)) {
             throw "ChangePreviewContextNotRecognized: the supplied context carries no $required; pass the output of Get-BaselineContext."
+        }
+    }
+
+    if ($null -ne $ParameterHash) {
+        foreach ($required in @('Algorithm', 'Hash')) {
+            $value = Get-BaselineRecordMember -Node $ParameterHash -Name $required
+            if (-not (Test-BaselineNodeMember -Node $ParameterHash -Name $required) -or [string]::IsNullOrWhiteSpace([string]$value)) {
+                throw "ChangePreviewParameterHashNotRecognized: the supplied parameter hash carries no $required; pass the output of Get-BaselineParameterHash."
+            }
         }
     }
 
@@ -3805,18 +3817,23 @@ function New-BaselineChangePreview {
     $schemaVersion = [string](@((Get-ArtifactVersionContract).Artifact) | Where-Object { [string]$_.Artifact -eq 'Preview' }).SchemaVersion
     $invariant = [System.Globalization.CultureInfo]::InvariantCulture
 
-    return , (ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
-                SchemaVersion          = $schemaVersion
-                ChangeId               = $ChangeId
-                Tenant                 = $Tenant
-                DeploymentProfile      = [string](Get-BaselineRecordMember -Node $Context -Name 'DeploymentProfile')
-                ConfigurationAlgorithm = [string](Get-BaselineRecordMember -Node $Context -Name 'Algorithm')
-                ConfigurationHash      = [string](Get-BaselineRecordMember -Node $Context -Name 'Hash')
-                Operation              = $entry
-                GeneratedOn            = $generated.ToString('o', $invariant)
-                ExpiresOn              = $generated.Add($window).ToString('o', $invariant)
-                ToolVersion            = Get-BaselineToolVersion
-            }))
+    $preview = [ordered]@{
+        SchemaVersion          = $schemaVersion
+        ChangeId               = $ChangeId
+        Tenant                 = $Tenant
+        DeploymentProfile      = [string](Get-BaselineRecordMember -Node $Context -Name 'DeploymentProfile')
+        ConfigurationAlgorithm = [string](Get-BaselineRecordMember -Node $Context -Name 'Algorithm')
+        ConfigurationHash      = [string](Get-BaselineRecordMember -Node $Context -Name 'Hash')
+        Operation              = $entry
+        GeneratedOn            = $generated.ToString('o', $invariant)
+        ExpiresOn              = $generated.Add($window).ToString('o', $invariant)
+        ToolVersion            = Get-BaselineToolVersion
+    }
+    if ($null -ne $ParameterHash) {
+        $preview.ParameterHash = ConvertTo-BaselineHashableNode -Node $ParameterHash
+    }
+
+    return , (ConvertTo-ImmutableBaselineNode -Node $preview)
 }
 
 $script:BaselineChangeApprovalPreviewMember = @('SchemaVersion', 'ChangeId', 'Tenant', 'DeploymentProfile', 'ConfigurationAlgorithm', 'ConfigurationHash', 'Operation', 'GeneratedOn', 'ExpiresOn', 'ToolVersion')
@@ -3854,7 +3871,7 @@ function Read-BaselineChangeApprovalArtifact {
     $text = [System.Text.UTF8Encoding]::new($false).GetString($bytes)
 
     $document = $null
-    try { $document = $text | ConvertFrom-Json -Depth 64 } catch { $document = $null }
+    try { $document = $text | ConvertFrom-Json -Depth 64 -DateKind String } catch { $document = $null }
 
     if ($null -eq $document -or $document -is [string] -or $document -is [System.Collections.IList] -or $document -is [valuetype]) {
         return @{ Fault = 'NotReadable'; Detail = "'$Path' does not parse as a JSON document"; Document = $null; Hash = $hash }
@@ -6351,7 +6368,7 @@ function Get-BaselineParameterHash {
     }
 
     try {
-        $parameter = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        $parameter = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -AsHashtable -DateKind String -ErrorAction Stop
     }
     catch {
         throw "ParameterJsonInvalid: '$Path' is not valid JSON. $($_.Exception.Message)"
@@ -14126,6 +14143,349 @@ function Test-IncidentExerciseControl {
     return Test-BaselineControl -ControlId 'OPS-002' -Evidence $Evidence -Evaluator $evaluator
 }
 
+. (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.ApprovedAdapters.ps1')
+
+function Invoke-BaselineApprovedChange {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    param(
+        [Parameter(Mandatory)][ValidateSet('Preview','Approve','Validate','Apply','Rollback')][string]$Stage,
+        [Parameter(Mandatory)][string]$ParameterPath,
+        [Parameter(Mandatory)][string]$ConfigurationPath,
+        [Parameter(Mandatory)][string]$ArtifactRoot,
+        [Parameter(Mandatory)][string]$ChangeId,
+        [Parameter(Mandatory)][string]$RequestedBy,
+        [string]$PreviewPath,
+        [string]$ApprovalPath,
+        [string]$AuthorizedSignerPath,
+        [string[]]$Scope = @(),
+        [string]$ApprovalIdentity,
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate,
+        [switch]$Apply
+    )
+
+    $ErrorActionPreference = 'Stop'
+    if ($Stage -eq 'Preview') { Assert-ApprovedAdapterScope -Scope $Scope }
+    if ($Stage -in @('Apply','Rollback') -and -not $Apply) {
+        throw 'ChangeApplySwitchRequired: supply -Apply only for an authorized mutation.'
+    }
+
+    $configuration = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $parameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $parameterHash = Get-BaselineParameterHash -Path $ParameterPath
+    $configurationHash = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData(
+            [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson $configuration)))).ToLowerInvariant()
+    $context = [pscustomobject]@{
+        Configuration = $configuration
+        Parameters = $parameters
+        Entitlement = $parameters.entitlement
+        DeploymentProfile = 'ExchangeOnly'
+        Algorithm = 'SHA256'
+        Hash = $configurationHash
+    }
+    $tenant = [string]$parameters.MICROSOFT_ENTRA_TENANT_GUID
+    $paths = @{}
+    foreach ($entry in (New-BaselineChangeArtifactSet -ChangeId $ChangeId -Root $ArtifactRoot)) {
+        $paths[[string]$entry.Artifact] = [string]$entry.Path
+    }
+
+    if ($Stage -eq 'Preview') {
+        $operations = @(Get-BaselineConcreteOperation -Context $context -Scope $Scope)
+        for ($index = 0; $index -lt $operations.Count; $index++) { $operations[$index].Sequence = $index + 1 }
+        $preview = ConvertTo-BaselineHashableNode (New-BaselineChangePreview -ChangeId $ChangeId -Tenant $tenant `
+            -Context $context -Operation $operations -GeneratedOn ([datetime]::UtcNow) -ParameterHash $parameterHash)
+        $preview.Scope = @($Scope)
+        if ($PSCmdlet.ShouldProcess($ChangeId, 'Freeze immutable Exchange preview')) {
+            return Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Preview -Root $ArtifactRoot -Content $preview
+        }
+        return
+    }
+
+    if ([string]::IsNullOrWhiteSpace($PreviewPath) -or [string]::IsNullOrWhiteSpace($ApprovalPath)) {
+        throw 'ChangeArtifactPathsRequired: supply both -PreviewPath and -ApprovalPath.'
+    }
+    $previewRecord = Read-BaselineChangeApprovalArtifact -Path $PreviewPath -Member @($script:BaselineChangeApprovalPreviewMember + 'ParameterHash')
+    if ($previewRecord.Fault) { throw "ChangePreviewInvalid: $($previewRecord.Detail)" }
+    $preview = $previewRecord.Document
+    if ([string]$preview.ChangeId -cne $ChangeId -or [string]$preview.Tenant -cne $tenant -or
+        [string]$preview.DeploymentProfile -cne 'ExchangeOnly' -or [string]$preview.ConfigurationHash -cne $configurationHash) {
+        throw 'ChangePreviewBindingMismatch: change, tenant, profile or configuration differs from the frozen preview.'
+    }
+    $Scope = @($preview.Scope)
+    Assert-ApprovedAdapterScope -Scope $Scope
+
+    if ($Stage -eq 'Approve') {
+        if ($null -eq $SigningCertificate -or -not $SigningCertificate.HasPrivateKey -or
+            [string]::IsNullOrWhiteSpace($ApprovalIdentity)) {
+            throw 'ChangeSigningPrerequisite: an independent approver and signing certificate are required.'
+        }
+        $approval = [ordered]@{
+            SchemaVersion = '1.0.0'
+            ChangeId = $ChangeId
+            Tenant = $tenant
+            DeploymentProfile = 'ExchangeOnly'
+            PreviewHash = $previewRecord.Hash
+            ApprovalIdentity = $ApprovalIdentity
+            ApprovalAuthority = 'ExchangeOnlineChangeApproval'
+            ApprovalTimeUtc = [datetimeoffset]::UtcNow.ToString('o')
+        }
+        $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+            [Security.Cryptography.Pkcs.ContentInfo]::new(
+                [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson $approval))), $true)
+        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
+        $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+        $cms.ComputeSignature($signer, $true)
+        $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
+        if ($PSCmdlet.ShouldProcess($ChangeId, 'Emit independently signed approval')) {
+            return Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Approval -Root $ArtifactRoot -Content $approval
+        }
+        return
+    }
+
+    $decision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath -Tenant $tenant `
+        -DeploymentProfile ExchangeOnly -ConfigurationHash $configurationHash -RequestedBy $RequestedBy
+    if (-not $decision.Permitted) { throw ('ApplyRefused: ' + ($decision.Finding -join '; ')) }
+    $frozenParameterHash = Get-BaselineRecordMember -Node $preview -Name 'ParameterHash'
+    if ([string](Get-BaselineRecordMember -Node $frozenParameterHash -Name 'Algorithm') -cne [string]$parameterHash.Algorithm -or
+        [string](Get-BaselineRecordMember -Node $frozenParameterHash -Name 'Hash') -cne [string]$parameterHash.Hash) {
+        throw 'ChangePreviewBindingMismatch: administrator parameters differ from the frozen preview.'
+    }
+    if ($Stage -eq 'Validate') { return $decision }
+
+    $approved = @($preview.Operation)
+    $definitions = @(Get-ApprovedAdapterDefinitions -Context $context -Scope $Scope -Approved $approved -DesiredOnly)
+    Assert-ApprovedAdapterCommands -Definitions $definitions
+    $definitionById = @{}
+    foreach ($definition in $definitions) {
+        $identity = ConvertTo-CanonicalJson $definition.Target
+        $suffix = [Convert]::ToHexString(
+            [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))
+        ).Substring(0,16).ToLowerInvariant()
+        $definitionById["$($definition.Adapter)-$suffix"] = $definition
+    }
+    if ($definitions.Count -ne $approved.Count) { throw 'ChangeOperationMismatch: the approved operation set differs from this scope.' }
+
+    $journal = [Collections.Generic.List[object]]::new()
+    $ordered = if ($Stage -eq 'Rollback') { @($approved | Sort-Object Sequence -Descending) } else { $approved }
+    $rollbackCurrentById = @{}
+    if ($Stage -eq 'Rollback') {
+        foreach ($operation in $ordered) {
+            $definition = $definitionById[[string]$operation.OperationId]
+            if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
+            $current = Read-ApprovedAdapterState $definition
+            $allowed = ConvertTo-BaselineHashableNode $operation.After
+            $desired = ConvertTo-BaselineHashableNode $operation.Before
+            if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
+                (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+                throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
+            }
+            $rollbackCurrentById[[string]$operation.OperationId] = $current
+        }
+    }
+    foreach ($operation in $ordered) {
+        $definition = $definitionById[[string]$operation.OperationId]
+        if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
+        $current = if ($Stage -eq 'Rollback') {
+            $rollbackCurrentById[[string]$operation.OperationId]
+        } else {
+            Read-ApprovedAdapterState $definition
+        }
+        $allowed = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.After } else { $operation.Before })
+        $desired = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.Before } else { $operation.After })
+        if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
+            (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+            if ($Stage -eq 'Apply' -and $definition.Adapter -ceq 'MailboxSafeSender') {
+                throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
+            }
+            throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
+        }
+        $entry = @{ OperationId = [string]$operation.OperationId; State = 'Unchanged'; Fault = '' }
+        if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+            Invoke-BaselineConcreteOperation -Definition $definition -Current $current -Desired $desired -Journal $entry
+            $entry.State = 'Succeeded'
+        }
+        $journal.Add($entry)
+        $observed = Read-ApprovedAdapterState $definition
+        if ((ConvertTo-CanonicalJson $observed) -cne (ConvertTo-CanonicalJson $desired)) {
+            if ($definition.Adapter -ceq 'MailboxSafeSender') {
+                throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
+            }
+            throw 'ChangePostStateMismatch: independent readback did not confirm the approved state.'
+        }
+    }
+
+    $receipt = [ordered]@{
+        ChangeId = $ChangeId
+        Tenant = $tenant
+        DeploymentProfile = 'ExchangeOnly'
+        PreviewHash = $previewRecord.Hash
+        ConfigurationHash = $configurationHash
+        Status = 'Succeeded'
+        Fault = ''
+        Operation = @($journal)
+        CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
+    }
+    if ($Stage -eq 'Apply') {
+        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
+        $rollback = "#requires -Version 7.5`n# Invoke the approved Rollback stage for change $ChangeId.`n"
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Rollback -Root $ArtifactRoot -Content $rollback
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
+        $post = @{}
+        foreach ($key in $receipt.Keys) { $post[$key] = $receipt[$key] }
+        $post.Operation = @($approved)
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PostChange -Root $ArtifactRoot -Content $post
+    }
+    [pscustomobject]$receipt
+}
+
+function Get-SharingPolicyBindingEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][scriptblock]$PolicyCollection,
+        [Parameter(Mandatory)][scriptblock]$MailboxCollection
+    )
+
+    try {
+        $policies = @(& $PolicyCollection)
+        $mailboxes = @(& $MailboxCollection)
+        $policyIdentity = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($policy in $policies) {
+            if (-not (Test-BaselineNodeMember $policy Identity) -or
+                [string]::IsNullOrWhiteSpace([string]$policy.Identity) -or
+                -not $policyIdentity.Add([string]$policy.Identity) -or
+                -not (Test-BaselineNodeMember $policy Domains) -or
+                (Get-BaselineRecordMember $policy Enabled) -isnot [bool] -or
+                (Get-BaselineRecordMember $policy IsDefault) -isnot [bool]) {
+                throw 'SharingPolicyBindingInventoryIncomplete: sharing policy inventory is incomplete or ambiguous.'
+            }
+        }
+        $mailboxIdentity = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($mailbox in $mailboxes) {
+            if (-not (Test-BaselineNodeMember $mailbox Identity) -or
+                [string]::IsNullOrWhiteSpace([string]$mailbox.Identity) -or
+                -not $mailboxIdentity.Add([string]$mailbox.Identity) -or
+                -not (Test-BaselineNodeMember $mailbox SharingPolicy) -or
+                (Get-BaselineRecordMember $mailbox UsesDefaultSharingPolicy) -isnot [bool]) {
+                throw 'SharingPolicyBindingInventoryIncomplete: mailbox binding inventory is incomplete or ambiguous.'
+            }
+        }
+        [pscustomobject]@{
+            Complete = $true
+            Failure = ''
+            Policies = $policies
+            Mailboxes = $mailboxes
+        }
+    } catch {
+        [pscustomobject]@{
+            Complete = $false
+            Failure = $_.Exception.Message
+            Policies = @()
+            Mailboxes = @()
+        }
+    }
+}
+
+function Test-SharingPolicyBindingControl {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$Evidence,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Approval,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Applicability
+    )
+
+    $finish = {
+        param([string]$Status, [string]$Reason)
+        $base = New-ControlResult -ControlId 'EXR-007-A04-T01' -Status $Status -Reason $Reason -Evidence $Evidence
+        $partnerReadiness = 'Unverified'
+        [pscustomobject][ordered]@{
+            ControlId = $base.ControlId
+            Status = $base.Status
+            Normalized = $base.Normalized
+            GoLiveSuccess = $base.GoLiveSuccess -and $partnerReadiness -cne 'Unverified'
+            Reason = $base.Reason
+            Evidence = $base.Evidence
+            PartnerReadiness = $partnerReadiness
+            EvaluatedAtUtc = $base.EvaluatedAtUtc
+        }
+    }
+
+    $enterprise = Get-BaselineRecordMember $Applicability Enterprise
+    $education = Get-BaselineRecordMember $Applicability EducationGuidance
+    if ($enterprise -isnot [System.Collections.IDictionary] -or
+        [string](Get-BaselineRecordMember $enterprise Decision) -cne 'Applicable' -or
+        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $enterprise Rationale)) -or
+        $education -isnot [System.Collections.IDictionary] -or
+        [string](Get-BaselineRecordMember $education Treatment) -cne 'ContextOnly' -or
+        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $education Rationale))) {
+        return & $finish Fail 'SharingPolicyEnterpriseApplicabilityInvalid'
+    }
+    $expiresOn = [datetimeoffset]::MinValue
+    if ((Get-BaselineRecordMember $Approval Complete) -isnot [bool] -or -not (Get-BaselineRecordMember $Approval Complete) -or
+        (Get-BaselineRecordMember $Approval IndependentlyApproved) -isnot [bool] -or -not (Get-BaselineRecordMember $Approval IndependentlyApproved) -or
+        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $Approval Reference)) -or
+        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $Approval Owner)) -or
+        -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $Approval ExpiresOn), [ref]$expiresOn) -or
+        $expiresOn -le [datetimeoffset]::UtcNow) {
+        return & $finish Fail 'SharingPolicyDisclosureApprovalMissing'
+    }
+    if ($null -eq $Evidence -or (Get-BaselineRecordMember $Evidence Complete) -isnot [bool] -or -not (Get-BaselineRecordMember $Evidence Complete)) {
+        return & $finish Error 'SharingPolicyBindingInventoryIncomplete'
+    }
+
+    $allowedDomains = @((Get-BaselineRecordMember $Approval PartnerDomains) | ForEach-Object { ([string]$_).Trim() })
+    $allowWildcard = (Get-BaselineRecordMember $Approval AllowWildcard) -eq $true
+    $allowAnonymous = (Get-BaselineRecordMember $Approval AllowAnonymous) -eq $true
+    $detailRank = @{ CalendarSharingFreeBusySimple = 1; CalendarSharingFreeBusyDetail = 2; CalendarSharingFreeBusyReviewer = 3 }
+    $maximumDetail = [string](Get-BaselineRecordMember $Approval MaximumDetail)
+    $defaultPolicies = @($Evidence.Policies | Where-Object { $_.IsDefault })
+    $defaultMailboxes = @($Evidence.Mailboxes | Where-Object { $_.UsesDefaultSharingPolicy })
+    if ($defaultPolicies.Count -ne 1 -or $defaultMailboxes.Count -eq 0 -or
+        @($defaultMailboxes | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.SharingPolicy) -or [string]$_.SharingPolicy -cne [string]$defaultPolicies[0].Identity }).Count) {
+        return & $finish Fail 'SharingPolicyDefaultMailboxBindingMissing'
+    }
+    $bindings = Get-BaselineRecordMember $Approval ExplicitMailboxBindings
+    if ($bindings -isnot [System.Collections.IDictionary]) {
+        return & $finish Fail 'SharingPolicyExplicitMailboxBindingUnresolved'
+    }
+    foreach ($entry in $bindings.GetEnumerator()) {
+        $matches = @($Evidence.Mailboxes | Where-Object { [string]$_.Identity -ceq [string]$entry.Key })
+        if ($matches.Count -ne 1 -or
+            @($Evidence.Policies | Where-Object { [string]$_.Identity -ceq [string]$matches[0].SharingPolicy }).Count -ne 1) {
+            return & $finish Fail 'SharingPolicyExplicitMailboxBindingUnresolved'
+        }
+    }
+
+    $approvedPolicyNames = @([string](Get-BaselineRecordMember $Approval DefaultPolicy)) +
+        @((Get-BaselineRecordMember $Approval ExplicitMailboxBindings).Values | ForEach-Object { [string]$_ })
+    foreach ($policy in @($Evidence.Policies | Where-Object { $_.Enabled -and [string]$_.Identity -in $approvedPolicyNames })) {
+        foreach ($domainEntry in @($policy.Domains)) {
+            $parts = @([string]$domainEntry -split '\s*:\s*', 2)
+            if ($parts.Count -ne 2 -or [string]::IsNullOrWhiteSpace($parts[0]) -or [string]::IsNullOrWhiteSpace($parts[1])) {
+                return & $finish Fail 'SharingPolicyDisclosureDetailExcessive'
+            }
+            if ($parts[0] -ceq '*' -and -not $allowWildcard) { return & $finish Fail 'SharingPolicyWildcardScopeUnapproved' }
+            if ($parts[0] -ceq 'Anonymous' -and -not $allowAnonymous) { return & $finish Fail 'SharingPolicyAnonymousScopeUnapproved' }
+            if ($parts[0] -cnotin @('*','Anonymous') -and $parts[0] -notin $allowedDomains) {
+                return & $finish Fail 'SharingPolicyDisclosureApprovalMissing'
+            }
+            if (-not $detailRank.ContainsKey($parts[1]) -or -not $detailRank.ContainsKey($maximumDetail) -or
+                $detailRank[$parts[1]] -gt $detailRank[$maximumDetail]) {
+                return & $finish Fail 'SharingPolicyDisclosureDetailExcessive'
+            }
+        }
+    }
+
+    foreach ($entry in $bindings.GetEnumerator()) {
+        $matches = @($Evidence.Mailboxes | Where-Object { [string]$_.Identity -ceq [string]$entry.Key })
+        if ($matches.Count -ne 1 -or [string]$matches[0].SharingPolicy -cne [string]$entry.Value -or
+            @($Evidence.Policies | Where-Object { [string]$_.Identity -ceq [string]$entry.Value }).Count -ne 1) {
+            return & $finish Fail 'SharingPolicyExplicitMailboxBindingUnresolved'
+        }
+    }
+    & $finish Pass ''
+}
+
 Export-ModuleMember -Function @(
     'Resolve-BaselineConfiguration'
     'Assert-BaselineConfiguration'
@@ -14258,6 +14618,8 @@ Export-ModuleMember -Function @(
     'Test-ChangeSafetyControl'
     'Get-IncidentExerciseEvidence'
     'Test-IncidentExerciseControl'
+    'Get-SharingPolicyBindingEvidence'
+    'Test-SharingPolicyBindingControl'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'
@@ -14280,4 +14642,5 @@ Export-ModuleMember -Function @(
     'Test-BaselineApplyPrerequisite'
     'Test-BaselineDeploymentApplyOrder'
     'Test-BaselineDeploymentMutationPlan'
+    'Invoke-BaselineApprovedChange'
 )

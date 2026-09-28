@@ -169,6 +169,21 @@ Describe 'EVD-004-A1 non-sensitive parameter-file hash' {
             # Assert
             $secondHash | Should -BeExactly $firstHash -Because 'hashing the file bytes would make reformatting look like a configuration change and bury the changes that matter in noise'
         }
+
+        It 'hashes ISO date-looking parameter values canonically as JSON strings' {
+            # Arrange
+            $path = New-ParameterFixture -Name 'date-string-parameters.json' -Content '{ "effectiveDate": "2026-09-28", "expiresAt": "2026-09-28T04:58:43Z" }'
+            $expectedHash = Get-ExpectedHash -Record ([ordered]@{
+                    effectiveDate = '2026-09-28'
+                    expiresAt     = '2026-09-28T04:58:43Z'
+                })
+
+            # Act
+            $hash = Get-BaselineParameterHash -Path $path
+
+            # Assert
+            $hash.Hash | Should -BeExactly $expectedHash -Because 'valid ISO date-looking JSON strings must remain strings rather than being rejected or coerced to System.DateTime before canonical hashing'
+        }
     }
 
     Context 'Negative: the hash cannot be edited after it is computed' {
