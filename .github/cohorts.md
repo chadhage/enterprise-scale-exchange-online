@@ -34,7 +34,63 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 303
+Allocation generation: 309
+
+### Generation 309 V01 Genuine-Gate Classification And Purple Release
+
+Registry updated: 2026-09-28. Accepted classification/release ACK: `Silver-20260928T005943Z-fe1943a8/Kanban/g309/accept-V01-genuine-gate-release-Purple` (generation 308 -> 309). Canonical counts are **50 To Do / 0 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Classification accepted:** V01's Missing-Field Inventory row is genuine, not stale. V01 remains To Do behind incomplete D01; D01 retains **9 failed tests / 1 failed container / 140 container errors** without supported disposition or dated waiver; no independent reviewer, review grant or exact external review-output root exists.
+- **Disposition:** retain and clarify the V01 row. No identity, independence, waiver, grant or evidence location is fabricated. The accepted R02/F01 reconciliations and frozen A02 parser/test identities remain preserved.
+- **Release:** A02 moves In Progress -> To Do because its first exposed unresolved item now requires external inputs and has no executable internal action. Purple's active A02 ownership and all three roles are released and quiescent.
+- Silver remains sole coordinator. Purple, Silver and Gold implementation workers are read-only with no active claim. Resumption requires a later canonical generation proving the external gate inputs or allocating a different dependency-safe card.
+
+### Generation 308 Purple A02 F01 Acceptance And V01 Classification Grant
+
+Registry updated: 2026-09-28. Accepted verification and classification ACK: `Purple-20260928T005943Z-fe1943a/Kanban/g308/classify-A02-V01-inventory-row` (generation 307 -> 308). Canonical counts remain **49 To Do / 1 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **F01 unit accepted:** the unchanged focused A02 leaf passed **24/24** with zero other outcomes, and the frozen actual-backlog validator discovered **90/24/49/1/40** before advancing exactly to `MissingFieldInventoryUnresolved:EXR-010-A12-L01-V01`. Both acceptance-critical invocations exited 0 with zero retries, stable identities and no mutation.
+- **Wrapper disclosure:** the supervisory evidence wrapper later exited 1 because static-history selectors expected generation-level headings. A read-only addendum corrected those selector findings; no acceptance invocation was retried. The authoritative required invocation results are accepted and the F01 unit is released.
+- **Next bounded classification:** Purple Coworker-1 may perform one read-only canonical-evidence pass to determine only whether V01's missing future independent reviewer identity/output root is stale or a genuine unresolved external gate given V01's To Do status and D01 dependency. Coworker-2 may draft proposal artifacts only; Coworker-3 waits for a later ACK.
+- A02 remains In Progress. Silver remains sole coordinator; Gold and Silver implementation workers remain read-only. No canonical edit, test, parser/product/historical-Kanban/RAID/Git/live/tenant/external action is authorized.
+
+### Generation 307 Purple A02 F01-Reconciliation Verification Grant
+
+Registry updated: 2026-09-28. Accepted proposal and verifier ACK: `Purple-20260928T005943Z-fe1943a/Kanban/g307/verify-A02-F01-inventory-reconciliation` (generation 306 -> 307). Canonical counts remain **49 To Do / 1 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Proposal acceptance:** generations 274/275 accepted F01's terminal `NOT_ACTIVATED/PASS` branch because no L01-owned defect, owner or correction path was proved. Its conditional owner/path/focused-command/affected-suite fields were correctly never instantiated; only F01's stale current Missing-Field Inventory row is removed. F01 remains Done and residual **9/1/140** unknown outcomes remain separately owned by D01.
+- **Scope deviation:** Coworker-1 used five unauthorized read-only Git inspection commands. They caused no mutation or external action, and this acceptance relies only on canonical generation-274/275 text rather than their output.
+- **Independent verification grant:** Purple Coworker-3 alone may review the generation-307 canonical diff, run the unchanged `BacklogAtomicity.Tests.ps1` leaf exactly once fresh and invoke the frozen validator against the actual backlog exactly once. Require 24/24, zero other outcomes/failed containers, stable parser/test identities, no mutation, actual discovery **90/24/49/1/40**, and first genuine unresolved error `MissingFieldInventoryUnresolved:EXR-010-A12-L01-V01`.
+- A02 remains In Progress. Silver remains sole coordinator; Gold and Silver implementation workers remain read-only. No retry, parser/test edit, broader test, product/historical-Kanban/RAID/Git/live/tenant/external action is authorized.
+
+### Generation 306 Purple A02 R02 Acceptance And F01 Proposal Grant
+
+Registry updated: 2026-09-28. Accepted verification and proposal ACK: `Purple-20260928T005943Z-fe1943a/Kanban/g306/claim-A02-F01-inventory-reconciliation` (generation 305 -> 306). Canonical counts remain **49 To Do / 1 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **R02 unit accepted:** Purple Coworker-3 independently reviewed the canonical change, then the unchanged focused A02 leaf passed **24/24**, with zero failed/skipped/inconclusive/not-run/failed containers, launches/invocations/retries **1/1/0**, exit 0, stable validator/test working-byte identities, no mutation and no process residue.
+- **Actual-backlog result:** the frozen validator discovered **90 executable / 24 summary / 49 To Do / 1 In Progress / 40 Done** and advanced exactly to `MissingFieldInventoryUnresolved:EXR-010-A12-L01-F01`. The R02 unit is released.
+- **Next atomic proposal:** Purple Coworker-1 may perform read-only reconciliation of only F01's current inventory row against its generation-274 no-activation grant and generation-275 `NOT_ACTIVATED/PASS` closure. Coworker-2 may then write exact patch-proposal artifacts only under a generation-306 F01 evidence subroot. Coworker-3 waits for a later canonical-transaction verifier ACK.
+- A02 remains In Progress. Silver remains sole coordinator; Gold and Silver implementation workers remain read-only. Parser/test runs or edits and product/historical-Kanban/RAID/Git/live/tenant actions are not authorized in this proposal phase.
+
+### Generation 305 Purple A02 R02-Reconciliation Verification Grant
+
+Registry updated: 2026-09-28. Accepted proposal and verifier ACK: `Purple-20260928T005943Z-fe1943a/Kanban/g305/verify-A02-R02-inventory-reconciliation` (generation 304 -> 305). Canonical counts remain **49 To Do / 1 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Proposal acceptance:** Purple Coworker-1 proved that R02's accepted generation-273 evidence-sufficiency path and generation-274 closure already satisfy the explicit unavailable-manifest discriminator. Purple Coworker-2 proposed an exact bounded canonical patch. The current Missing-Field Inventory request for the nonexistent invalid-launch 5,846-test/208-file manifest identity/path/hash is therefore stale; only that row is removed.
+- **Preserved disposition:** 5,817 remains authoritative, 5,846/208 remains reference-only, the arithmetic difference of 29 remains irreducibly unknown and no regression is asserted. R02 remains Done and its historical evidence remains unchanged.
+- **Independent verification grant:** Purple Coworker-3 alone may review the generation-305 canonical diff, run the unchanged `BacklogAtomicity.Tests.ps1` leaf exactly once in a fresh process and invoke the frozen validator against the actual backlog exactly once. Require 24/24 passing with zero failed/skipped/not-run/failed containers, stable parser/test identities, no mutation, actual discovery **90/24/49/1/40**, and first genuine unresolved error `MissingFieldInventoryUnresolved:EXR-010-A12-L01-F01`.
+- A02 remains In Progress. Silver remains the sole coordinator; Gold and Silver implementation workers remain read-only. No parser/test/product/historical-Kanban/RAID/Git/live/tenant/external edit, retry or broader test is authorized.
+
+### Generation 304 Fresh Three-Cohort Registration And Purple A02 Claim
+
+Registry updated: 2026-09-27. Accepted startup/allocation ACK: `Purple-20260928T005943Z-fe1943a/Kanban/g304/claim-A02-R02-inventory-reconciliation` (generation 303 -> 304). Canonical counts are **49 To Do / 1 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Writer handoff:** prior Silver run `silver-20260927T232906Z-root` and all earlier runs/workers were recorded released and quiescent at generation 303. Fresh run `Silver-20260928T005943Z-fe1943a8`, coordinator `b505f600-ce8c-4fe2-9f48-749c02005062`, is the sole canonical coordinator for generation 304. This root administrative relay supplies the canonical write capability unavailable to its embedded historical-Kanban-only runtime.
+- **Fresh registrations:** Purple `Purple-20260928T005943Z-fe1943a`, coordinator `ef52646a-946d-4d2a-85b1-f4c89a516afe`; Silver `Silver-20260928T005943Z-fe1943a8`; Gold `cohort-Gold-5b75683a-e344-4274-847f-75ddcd84b424-20260928T005943Z`, coordinator `5b75683a-e344-4274-847f-75ddcd84b424`. All began from clean commit `fe1943a8e5c550001cc11cdfc43a6734f31251ff`.
+- **Identity reconciliation:** `core.autocrlf=true`. A02 test Git-blob/Windows-working SHA-256 values are `447F9AA715DCF098C14E98F7F550ED4EAFAA13A65F8E99D88CDE88F702078FEF` / `ED01F1DC5F6D98CE5C48E4FA67AAF64DF3EBC20288E0ED23052E977A52E131C0`; validator values are `3286E56E3C961267AB35C4DA25EEA27DB184AA1760E14A8DCB4668AF0D351C29` / `64E6E6463C9F386E0BB145BBAF6FDD9A6842F32552CAE8977E7B6F4210D5F43B`. The committed two-leaf suite passes **30/30**, zero failed/skipped/not-run/failed containers. These paired identities supersede the stale pre-commit test hash for future acceptance.
+- **Purple active A02 unit:** both Purple and Gold proposed reconciliation of stale Missing-Field Inventory row `EXR-010-A12-L01-R02`; Purple's proposal arrived first and receives the single claim. R02 is already Done with accepted generation-273/274 evidence: 5,817 is authoritative; the 5,846/208 reference manifest has no retained name/file manifest or hash; the 29-item identity delta is irreducibly unknown. Purple may perform read-only clause/evidence reconciliation and draft the exact removal/update of only the R02 Missing-Field Inventory row plus corresponding R02/A02 explanatory text. Silver alone applies canonical edits after reviewing the proposal.
+- **Ownership and phases:** evidence root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-Purple-20260928T005943Z-fe1943a-g304-EXR-018-A02-inventory-reconciliation`. Coworker-1 owns read-only clause/evidence reconciliation; Coworker-2 owns exact patch proposal artifacts only, with no repository write authority; Coworker-3 owns post-write independent review plus one focused 24-case run and direct actual-backlog check after a later ACK. No parser/test/product/historical-Kanban/RAID/Git/live/tenant/external action is authorized.
+- **Gold and Silver implementation state:** Gold loses the collision and remains registered/read-only with no claim. Silver has no implementation card; its three worker roles remain waiting while its coordinator serializes canonical governance. Any additional file, test, process or evidence authority requires a new generation-bound ACK.
 
 ### Generation 303 Purple A02 Parser-Recovery Acceptance And Release
 
