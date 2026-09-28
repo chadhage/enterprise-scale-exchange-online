@@ -31,6 +31,73 @@ function New-ApprovedAdapterDefinition {
     @{ Adapter = $Adapter; Get = "Get-$Noun"; Set = "Set-$Noun"; New = $(if ($Create -or $Delete) { "New-$Noun" }); Remove = $(if ($Create -or $Delete) { "Remove-$Noun" }); Target = $Target; CreateTarget = $CreateTarget; Desired = $Desired; Types = $Types; Delete = [bool]$Delete; Toggle = [bool]$Toggle; Noun = $Noun }
 }
 
+function Assert-ApprovedAdapterScope {
+    param([AllowEmptyCollection()][string[]]$Scope = @())
+    $supported = @(
+        'SharingPolicyBinding','ConnectorTrust','ApplicationAssignmentScope','OrganizationAllowList','MailboxSafeSender','OrganizationRelationship',
+        'FullAccess','SendOnBehalf','TransportBypass','GovernanceMailboxPolicy','GovernanceMrm',
+        'GovernanceEncryption','Organization','ExternalSender','OutboundSpam','RemoteDomains',
+        'MailboxProtocols','MailboxPlans','AcceptedDomains','ReportSubmission','SecOpsOverride',
+        'Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Dkim',
+        'Forwarding','AddInAcquisition','TenantAllowBlockList'
+    )
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    if ($Scope.Count -eq 0) { throw 'ChangeScopeUnsupported: select at least one approved adapter scope.' }
+    foreach ($area in $Scope) {
+        if ([string]::IsNullOrWhiteSpace($area) -or -not $seen.Add($area) -or $area -cnotin $supported) {
+            throw "ChangeScopeUnsupported: '$area' is empty, duplicate, or unsupported."
+        }
+    }
+}
+
+function Resolve-BaselineEwsPolicy {
+    param($DesiredState, [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
+    if ($DesiredState.ewsEnabled -isnot [bool]) { throw 'EwsEnabledInvalid: ewsEnabled must be Boolean.' }
+    if ([string]$DesiredState.ewsApplicationAccessPolicy -cne 'EnforceAllowList') { throw 'EwsEnforcementRequired: EnforceAllowList is required.' }
+    $allowList = @($DesiredState.ewsAllowList)
+    if ($DesiredState.ewsEnabled -and
+        ($allowList.Count -eq 0 -or @($allowList | Where-Object { [string]::IsNullOrWhiteSpace($_) -or $_ -eq '*' }).Count -or
+            @($allowList | Select-Object -Unique).Count -ne $allowList.Count)) {
+        throw 'EwsAllowListInvalid: a narrow unique user-agent allow list is required.'
+    }
+    $result = @{
+        EwsEnabled = [bool]$DesiredState.ewsEnabled
+        EwsApplicationAccessPolicy = [string]$DesiredState.ewsApplicationAccessPolicy
+        EwsAllowList = $allowList
+    }
+    $applicationIds = @($DesiredState.ewsAllowedAppIds)
+    if ($DesiredState.ewsEnabled) {
+        if ($applicationIds.Count -eq 0 -or @($applicationIds | Where-Object { $_ -notmatch '^[0-9a-fA-F-]{36}$' }).Count) {
+            throw 'EwsApplicationIdentityRequired: application IDs are required.'
+        }
+        $result.EwsAllowedAppIDs = $applicationIds -join ','
+    }
+    $result
+}
+
+function Resolve-BaselineRemoteDomainOofType {
+    param($DesiredState)
+    $type = [string]$DesiredState.allowedOOFType
+    if ($type -cnotin @('None','InternalLegacy','External','ExternalLegacy')) { throw 'RemoteDomainOofTypeInvalid: an explicit supported OOF type is required.' }
+    if ($type -ceq 'External' -and [string]::IsNullOrWhiteSpace([string]$DesiredState.externalOofApproval)) {
+        throw 'RemoteDomainExternalApprovalRequired: External OOF requires approval.'
+    }
+    $type
+}
+
+function Assert-ExchangeGovernanceApproval {
+    param($Approval, [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
+    if ($Approval -isnot [System.Collections.IDictionary] -or
+        [string]::IsNullOrWhiteSpace([string]$Approval.reference) -or
+        [string]::IsNullOrWhiteSpace([string]$Approval.owner)) {
+        throw 'ChangeApprovalRequired: an owner and approval reference are required.'
+    }
+    $expiresOn = [datetimeoffset]::MinValue
+    if (-not [datetimeoffset]::TryParse([string]$Approval.expiresOn, [ref]$expiresOn) -or $expiresOn -le $Now) {
+        throw 'ChangeApprovalExpired: approval must have a future expiry.'
+    }
+}
+
 function Get-ApprovedAdapterCollection {
     param([string]$Command, [hashtable]$Arguments = @{}, [string[]]$Required = @('Identity'), [string[]]$NullableRequired = @())
     $rows = @(& $Command @Arguments -ErrorAction Stop)
@@ -46,11 +113,12 @@ function Get-ApprovedAdapterCollection {
 
 function Get-ApprovedAdapterDefinitions {
     param($Context, [string[]]$Scope, $Approved, [switch]$DesiredOnly)
+    Assert-ApprovedAdapterScope -Scope $Scope
     $controls = $Context.Configuration.controls
     $parameters = $Context.Parameters
     $options = $parameters['workflowOptions']
     if ($null -eq $options) { $options = @{} }
-    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules','fullAccessDelegations','sendOnBehalfDelegations','organizationAllowList','organizationRelationships','applicationAssignmentScope')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
+    foreach ($key in $options.Keys) { if ($key -cnotin @('enableDkim','tenantAllowBlockEntries','outboundSpam','transportSclExceptions','externalSubjectPrefixRules','fullAccessDelegations','sendOnBehalfDelegations','organizationAllowList','mailboxSafeSenders','organizationRelationships','applicationAssignmentScope','connectorTrust','sharingPolicyBinding')) { throw "ChangeOptionsInvalid: unsupported option $key." } }
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
@@ -58,7 +126,7 @@ function Get-ApprovedAdapterDefinitions {
     }
     $targets = {
         param($Adapter, $Command, $Arguments = @{}, $Required = @('Identity'))
-        if ($null -ne $Approved) {
+        if ($null -ne $Approved -and -not $DesiredOnly) {
             foreach ($operation in @($Approved | Where-Object { $_.OperationId -clike "$Adapter-*" })) {
                 $target = ConvertFrom-Json -InputObject $operation.Identity -AsHashtable
                 if (-not $target.ContainsKey('Identity') -or [string]::IsNullOrWhiteSpace([string]$target.Identity)) { throw 'ChangeOperationMismatch: target Identity is required.' }
@@ -70,6 +138,186 @@ function Get-ApprovedAdapterDefinitions {
     }
     foreach ($area in $Scope) {
         switch -CaseSensitive ($area) {
+            SharingPolicyBinding {
+                $settings = $options['sharingPolicyBinding']
+                if ($settings -isnot [System.Collections.IDictionary]) {
+                    throw 'SharingPolicyBindingOptionsRequired: an explicit sharing policy and mailbox binding declaration is required.'
+                }
+                if ([string](Get-BaselineRecordMember $settings partnerReadiness) -cne 'Unverified') {
+                    throw 'SharingPolicyPartnerReadinessInvalid: external partner readiness must remain Unverified.'
+                }
+                $approval = Get-BaselineRecordMember $settings disclosureApproval
+                $expiresOn = [datetimeoffset]::MinValue
+                if ($approval -isnot [System.Collections.IDictionary] -or
+                    (Get-BaselineRecordMember $approval Complete) -isnot [bool] -or -not (Get-BaselineRecordMember $approval Complete) -or
+                    (Get-BaselineRecordMember $approval IndependentlyApproved) -isnot [bool] -or -not (Get-BaselineRecordMember $approval IndependentlyApproved) -or
+                    [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $approval Reference)) -or
+                    [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $approval Owner)) -or
+                    -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $approval ExpiresOn), [ref]$expiresOn) -or
+                    $expiresOn -le [datetimeoffset]::UtcNow) {
+                    throw 'SharingPolicyDisclosureApprovalMissing: complete current independent disclosure approval is required.'
+                }
+
+                $policies = @((Get-BaselineRecordMember $settings policies) | Where-Object { $null -ne $_ })
+                if ($policies.Count -eq 0) { throw 'SharingPolicyCoverageRequired: at least one approved sharing policy is required.' }
+                $policyNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach ($policy in $policies) {
+                    $identity = ([string](Get-BaselineRecordMember $policy identity)).Trim()
+                    $domains = @((Get-BaselineRecordMember $policy domains) | ForEach-Object { ([string]$_).Trim() })
+                    if ([string]::IsNullOrWhiteSpace($identity) -or -not $policyNames.Add($identity) -or
+                        $domains.Count -eq 0 -or @($domains | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count -or
+                        (Get-BaselineRecordMember $policy enabled) -isnot [bool] -or
+                        (Get-BaselineRecordMember $policy isDefault) -isnot [bool]) {
+                        throw 'SharingPolicyCoverageInvalid: policy identities, domains and typed state must be complete and unique.'
+                    }
+                }
+                if ($DesiredOnly) {
+                    foreach ($operation in @($Approved | Where-Object { $_.OperationId -clike 'SharingPolicyBindingDisplacedDefault-*' })) {
+                        $target = ConvertFrom-Json -InputObject $operation.Identity -AsHashtable
+                        $approvedIdentity = ([string](Get-BaselineRecordMember $target Identity)).Trim()
+                        $before = ConvertTo-BaselineHashableNode (Get-BaselineRecordMember (Get-BaselineRecordMember $operation Before) Value)
+                        if ([string]::IsNullOrWhiteSpace($approvedIdentity) -or
+                            $before -isnot [System.Collections.IDictionary]) {
+                            throw 'ChangeOperationMismatch: displaced sharing default lacks its approved identity and before-state.'
+                        }
+                        New-ApprovedAdapterDefinition -Adapter SharingPolicyBindingDisplacedDefault -Noun SharingPolicy `
+                            -Target @{ Identity = $approvedIdentity } `
+                            -Desired @{ Domains = @((Get-BaselineRecordMember $before Domains)); Enabled = [bool](Get-BaselineRecordMember $before Enabled); Default = $false } `
+                            -Types @{ Domains = 'Strings'; Enabled = 'Boolean'; Default = 'Boolean' }
+                    }
+                } else {
+                    $existingPolicies = Get-ApprovedAdapterCollection -Command Get-SharingPolicy -Arguments @{ ResultSize = 'Unlimited' } -Required @('Identity','Domains','Enabled','IsDefault')
+                    foreach ($existing in @($existingPolicies | Where-Object { $_.IsDefault -and -not $policyNames.Contains([string]$_.Identity) })) {
+                        New-ApprovedAdapterDefinition -Adapter SharingPolicyBindingDisplacedDefault -Noun SharingPolicy `
+                            -Target @{ Identity = [string]$existing.Identity } `
+                            -Desired @{ Domains = @($existing.Domains); Enabled = [bool]$existing.Enabled; Default = $false } `
+                            -Types @{ Domains = 'Strings'; Enabled = 'Boolean'; Default = 'Boolean' }
+                    }
+                }
+                foreach ($policy in $policies) {
+                    $identity = ([string](Get-BaselineRecordMember $policy identity)).Trim()
+                    $domains = @((Get-BaselineRecordMember $policy domains) | ForEach-Object { ([string]$_).Trim() })
+                    New-ApprovedAdapterDefinition -Adapter SharingPolicyBindingPolicy -Noun SharingPolicy `
+                        -Target @{ Identity = $identity } `
+                        -Desired @{ Domains = $domains; Enabled = [bool](Get-BaselineRecordMember $policy enabled); Default = [bool](Get-BaselineRecordMember $policy isDefault) } `
+                        -Types @{ Domains = 'Strings'; Enabled = 'Boolean'; Default = 'Boolean' }
+                }
+
+                $defaultPolicy = ([string](Get-BaselineRecordMember $settings defaultMailboxPolicy)).Trim()
+                if ([string]::IsNullOrWhiteSpace($defaultPolicy) -or -not $policyNames.Contains($defaultPolicy) -or
+                    @($policies | Where-Object { [string](Get-BaselineRecordMember $_ identity) -ieq $defaultPolicy -and (Get-BaselineRecordMember $_ isDefault) -eq $true }).Count -ne 1) {
+                    throw 'SharingPolicyDefaultMailboxBindingMissing: the default mailbox policy must identify one approved default policy.'
+                }
+                $mailboxes = @((Get-BaselineRecordMember $settings explicitMailboxBindings) | Where-Object { $null -ne $_ })
+                $mailboxNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                foreach ($mailbox in $mailboxes) {
+                    $identity = ([string](Get-BaselineRecordMember $mailbox identity)).Trim()
+                    $sharingPolicy = ([string](Get-BaselineRecordMember $mailbox sharingPolicy)).Trim()
+                    if ([string]::IsNullOrWhiteSpace($identity) -or -not $mailboxNames.Add($identity) -or
+                        [string]::IsNullOrWhiteSpace($sharingPolicy) -or -not $policyNames.Contains($sharingPolicy)) {
+                        throw 'SharingPolicyExplicitMailboxBindingUnresolved: every explicit mailbox must uniquely identify an approved policy.'
+                    }
+                    New-ApprovedAdapterDefinition -Adapter SharingPolicyBindingMailbox -Noun Mailbox `
+                        -Target @{ Identity = $identity } -Desired @{ SharingPolicy = $sharingPolicy } -Types @{ SharingPolicy = 'String' }
+                }
+            }
+            ConnectorTrust {
+                $settings = $options['connectorTrust']
+                if ($settings -isnot [System.Collections.IDictionary]) {
+                    throw 'ConnectorTrustCoverageRequired: an explicit connector trust declaration is required.'
+                }
+                if ((Get-BaselineRecordMember $settings provisionExternalInfrastructure) -eq $true) {
+                    throw 'ConnectorTrustExternalProvisioningForbidden: Exchange lifecycle authority stops at the Exchange boundary.'
+                }
+
+                $declarationByDirection = @{}
+                foreach ($direction in @('Inbound','Outbound')) {
+                    $name = $direction.ToLowerInvariant()
+                    $declarations = @((Get-BaselineRecordMember $settings $name) | Where-Object { $null -ne $_ })
+                    if ($declarations.Count -eq 0) {
+                        throw "ConnectorTrust${direction}CoverageRequired: explicit $direction connector coverage is required."
+                    }
+                    foreach ($declaration in $declarations) {
+                        $identity = ([string](Get-BaselineRecordMember $declaration identity)).Trim()
+                        if ([string]::IsNullOrWhiteSpace($identity)) { throw "ConnectorTrust${direction}CoverageRequired: every declaration requires an identity." }
+                        if ((Get-BaselineRecordMember $declaration declared) -isnot [bool] -or -not (Get-BaselineRecordMember $declaration declared)) {
+                            throw "ConnectorTrustUndeclared: $direction connector '$identity' is not explicitly declared."
+                        }
+                        $scope = @((Get-BaselineRecordMember $declaration routingScope) | ForEach-Object { ([string]$_).Trim() })
+                        if ($scope.Count -eq 0 -or @($scope | Where-Object { $_ -eq '*' }).Count) {
+                            throw "ConnectorTrustRoutingScopeTooBroad: $direction connector '$identity' carries routing scope '$($scope -join ',')'."
+                        }
+                        $authentication = Get-BaselineRecordMember $declaration authentication
+                        if ($authentication -isnot [System.Collections.IDictionary] -or
+                            (Get-BaselineRecordMember $authentication required) -isnot [bool] -or
+                            -not (Get-BaselineRecordMember $authentication required) -or
+                            (Get-BaselineRecordMember $authentication verified) -isnot [bool] -or
+                            -not (Get-BaselineRecordMember $authentication verified) -or
+                            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $authentication evidence))) {
+                            throw "ConnectorTrustAuthenticationRequired: $direction connector '$identity' requires verified authentication evidence."
+                        }
+                        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $declaration owner))) {
+                            throw "ConnectorTrustOwnerRequired: $direction connector '$identity' requires an accountable owner."
+                        }
+                        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $declaration approval))) {
+                            throw "ConnectorTrustApprovalRequired: $direction connector '$identity' requires independent approval evidence."
+                        }
+                        $expiresOn = [datetimeoffset]::MinValue
+                        if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $declaration expiresOn), [ref]$expiresOn) -or
+                            $expiresOn -le [datetimeoffset]::UtcNow) {
+                            throw "ConnectorTrustApprovalExpired: $direction connector '$identity' approval is expired or invalid."
+                        }
+                    }
+                    $declarationByDirection[$direction] = $declarations
+                }
+
+                foreach ($handoff in @((Get-BaselineRecordMember $settings externalRoutingHandoffs) | Where-Object { $null -ne $_ })) {
+                    $name = [string](Get-BaselineRecordMember $handoff name)
+                    if ((Get-BaselineRecordMember $handoff reconciled) -isnot [bool] -or
+                        -not (Get-BaselineRecordMember $handoff reconciled) -or
+                        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $handoff owner)) -or
+                        [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $handoff evidence))) {
+                        throw "ConnectorTrustExternalHandoffUnreconciled: '$name' requires independently reconciled external routing evidence."
+                    }
+                }
+
+                $desired = Get-BaselineRecordMember $settings desired
+                if ($desired -isnot [System.Collections.IDictionary]) { throw 'ConnectorTrustCoverageRequired: desired connector state is required.' }
+                $contracts = @(
+                    @{
+                        Direction = 'Inbound'; Noun = 'InboundConnector'
+                        Fields = @('Enabled','SenderDomains','SenderIPAddresses','TlsSenderCertificateName','RestrictDomainsToCertificate','RestrictDomainsToIPAddresses','RequireTls')
+                        Types = @{ Enabled = 'Boolean'; SenderDomains = 'Strings'; SenderIPAddresses = 'Strings'; TlsSenderCertificateName = 'String'; RestrictDomainsToCertificate = 'Boolean'; RestrictDomainsToIPAddresses = 'Boolean'; RequireTls = 'Boolean' }
+                    },
+                    @{
+                        Direction = 'Outbound'; Noun = 'OutboundConnector'
+                        Fields = @('Enabled','RecipientDomains','SmartHosts','TlsSettings','TlsDomain','RouteAllMessagesViaOnPremises','UseMxRecord')
+                        Types = @{ Enabled = 'Boolean'; RecipientDomains = 'Strings'; SmartHosts = 'Strings'; TlsSettings = 'String'; TlsDomain = 'String'; RouteAllMessagesViaOnPremises = 'Boolean'; UseMxRecord = 'Boolean' }
+                    }
+                )
+                foreach ($contract in $contracts) {
+                    $direction = $contract.Direction
+                    $desiredState = Get-BaselineRecordMember $desired $direction.ToLowerInvariant()
+                    if ($desiredState -isnot [System.Collections.IDictionary]) { throw "ConnectorTrust${direction}CoverageRequired: desired state is required." }
+                    $identity = ([string](Get-BaselineRecordMember $desiredState identity)).Trim()
+                    if (@($declarationByDirection[$direction] | Where-Object { [string](Get-BaselineRecordMember $_ identity) -ceq $identity }).Count -ne 1) {
+                        throw "ConnectorTrust${direction}CoverageRequired: desired connector '$identity' requires one matching declaration."
+                    }
+                    if (-not $DesiredOnly) {
+                        $rows = Get-ApprovedAdapterCollection -Command "Get-$($contract.Noun)" -Arguments @{ ResultSize = 'Unlimited' } -Required @('Identity')
+                        if (@($rows | Where-Object { [string]$_.Identity -ceq $identity }).Count -ne 1) {
+                            throw "ChangeReadIncomplete: $($contract.Noun) requires exactly one target '$identity'."
+                        }
+                    }
+                    $values = @{}
+                    foreach ($field in $contract.Fields) {
+                        $sourceName = $field.Substring(0,1).ToLowerInvariant() + $field.Substring(1)
+                        $values[$field] = Get-BaselineRecordMember $desiredState $sourceName
+                    }
+                    New-ApprovedAdapterDefinition -Adapter "ConnectorTrust$direction" -Noun $contract.Noun `
+                        -Target @{ Identity = $identity } -Desired $values -Types $contract.Types
+                }
+            }
             ApplicationAssignmentScope {
                 $settings = $options['applicationAssignmentScope']
                 if ($settings -isnot [System.Collections.IDictionary]) { throw 'ApplicationAuthorizationAssessmentMissing: EXR-007-A03-T01 assessment is required.' }
@@ -237,6 +485,116 @@ function Get-ApprovedAdapterDefinitions {
                 }
                 & $fixed OrganizationAllowListConnection HostedConnectionFilterPolicy @{ Identity = $connectionIdentity } @{ IPAllowList = $ipAllowList; EnableSafeList = [bool]$connection.enableSafeList } @{ IPAllowList = 'Strings'; EnableSafeList = 'Boolean' }
                 & $fixed OrganizationAllowListContent HostedContentFilterPolicy @{ Identity = $contentIdentity } @{ AllowedSenders = $allowedSenders; AllowedSenderDomains = $allowedSenderDomains } @{ AllowedSenders = 'Strings'; AllowedSenderDomains = 'Strings' }
+            }
+            MailboxSafeSender {
+                $declarations = @($options['mailboxSafeSenders'] | Where-Object { $null -ne $_ })
+                if ($declarations.Count -eq 0) { throw 'MailboxSafeSenderMailboxOmitted: an explicit applicable mailbox inventory is required.' }
+
+                $declarationByMailbox = @{}
+                foreach ($declaration in $declarations) {
+                    $mailbox = ([string](Get-BaselineRecordMember $declaration mailbox)).Trim().ToLowerInvariant()
+                    $mailboxType = [string](Get-BaselineRecordMember $declaration mailboxType)
+                    if ($mailbox -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or $mailboxType -cnotin @('UserMailbox','SharedMailbox') -or
+                        $declarationByMailbox.ContainsKey($mailbox)) {
+                        throw "MailboxSafeSenderMailboxIdentityAmbiguous: $mailbox is missing, unsupported, or duplicated."
+                    }
+                    $approvedValues = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                    foreach ($contract in @(
+                            @{ Name = 'senders'; Kind = 'Sender'; Pattern = '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' }
+                            @{ Name = 'domains'; Kind = 'Domain'; Pattern = '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$' }
+                        )) {
+                        foreach ($entry in @((Get-BaselineRecordMember $declaration $contract.Name) | Where-Object { $null -ne $_ })) {
+                            $value = ([string](Get-BaselineRecordMember $entry value)).Trim().ToLowerInvariant()
+                            if ([string](Get-BaselineRecordMember $entry kind) -cne $contract.Kind -or
+                                [string]::IsNullOrWhiteSpace($value) -or $value -eq '*' -or $value -notmatch $contract.Pattern) {
+                                throw "MailboxSafeSenderTrustTooBroad: $value is not narrow $($contract.Kind) trust."
+                            }
+                            if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $entry owner))) {
+                                throw "MailboxSafeSenderOwnerRequired: $value requires an accountable owner."
+                            }
+                            if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $entry approval))) {
+                                throw "MailboxSafeSenderApprovalRequired: $value requires an approval reference."
+                            }
+                            $expiresOn = [datetimeoffset]::MinValue
+                            if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $entry expiresOn), [ref]$expiresOn) -or
+                                $expiresOn -le [datetimeoffset]::UtcNow) {
+                                throw "MailboxSafeSenderApprovalExpired: $value requires a future expiration."
+                            }
+                            if (-not $approvedValues.Add($value)) {
+                                throw "MailboxSafeSenderTrustTooBroad: duplicate trust value $value is ambiguous."
+                            }
+                        }
+                    }
+                    $declarationByMailbox[$mailbox] = @{
+                        MailboxType = $mailboxType
+                        ApprovedValues = @($approvedValues | Sort-Object)
+                    }
+                }
+
+                $currentByMailbox = @{}
+                if (-not $DesiredOnly) {
+                    $mailboxes = @(& Get-Mailbox -ResultSize Unlimited -ErrorAction Stop)
+                    $applicable = @($mailboxes | Where-Object RecipientTypeDetails -Cin @('UserMailbox','SharedMailbox'))
+                    $seenMailbox = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+                    foreach ($mailboxRow in $applicable) {
+                        foreach ($field in @('Identity','PrimarySmtpAddress','RecipientTypeDetails')) {
+                            if (-not (Test-BaselineNodeMember $mailboxRow $field) -or [string]::IsNullOrWhiteSpace([string]$mailboxRow.$field)) {
+                                throw "ChangeReadIncomplete: Get-Mailbox omitted $field."
+                            }
+                        }
+                        $mailbox = ([string]$mailboxRow.PrimarySmtpAddress).Trim().ToLowerInvariant()
+                        if (-not $seenMailbox.Add($mailbox)) {
+                            throw "MailboxSafeSenderMailboxIdentityAmbiguous: $mailbox appears more than once."
+                        }
+                        if (-not $declarationByMailbox.ContainsKey($mailbox)) {
+                            throw "MailboxSafeSenderMailboxOmitted: $mailbox is absent from the approved inventory."
+                        }
+                        if ([string]$mailboxRow.RecipientTypeDetails -cne [string]$declarationByMailbox[$mailbox].MailboxType) {
+                            throw "MailboxSafeSenderMailboxIdentityAmbiguous: $mailbox has an unexpected mailbox type."
+                        }
+                        $rows = @(& Get-MailboxJunkEmailConfiguration -Identity $mailbox -ErrorAction Stop)
+                        if ($rows.Count -ne 1) {
+                            throw "ChangeReadIncomplete: MailboxJunkEmailConfiguration requires exactly one target for $mailbox."
+                        }
+                        foreach ($field in @('Identity','TrustedSendersAndDomains')) {
+                            if (-not (Test-BaselineNodeMember $rows[0] $field) -or $null -eq $rows[0].$field) {
+                                throw "ChangeReadIncomplete: MailboxJunkEmailConfiguration omitted $field for $mailbox."
+                            }
+                        }
+                        if ([string]$rows[0].Identity -ine $mailbox) {
+                            throw "ChangeReadIncomplete: MailboxJunkEmailConfiguration returned another target for $mailbox."
+                        }
+                        $currentByMailbox[$mailbox] = @($rows[0].TrustedSendersAndDomains | ForEach-Object {
+                                if ($_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_)) {
+                                    throw "ChangeReadIncomplete: MailboxJunkEmailConfiguration TrustedSendersAndDomains contains an unresolved value for $mailbox."
+                                }
+                                ([string]$_).Trim().ToLowerInvariant()
+                            } | Sort-Object -Unique)
+                    }
+                    foreach ($mailbox in $declarationByMailbox.Keys) {
+                        if (-not $seenMailbox.Contains($mailbox)) {
+                            throw "MailboxSafeSenderMailboxIdentityAmbiguous: $mailbox is not one exact applicable mailbox."
+                        }
+                    }
+                }
+
+                foreach ($mailbox in @($declarationByMailbox.Keys | Sort-Object)) {
+                    $target = @{ Identity = $mailbox }
+                    $priorValues = if (-not $DesiredOnly) {
+                        @($currentByMailbox[$mailbox])
+                    } else {
+                        $identity = ConvertTo-CanonicalJson $target
+                        $operation = @($Approved | Where-Object { $_.Identity -ceq $identity })
+                        if ($operation.Count -ne 1) {
+                            throw "ChangeOperationMismatch: approved MailboxSafeSender operation is required for $mailbox."
+                        }
+                        @($operation[0].Before.Value.TrustedSendersAndDomains)
+                    }
+                    $desiredValues = @(@($priorValues) + @($declarationByMailbox[$mailbox].ApprovedValues) | Sort-Object -Unique)
+                    & $fixed MailboxSafeSender MailboxJunkEmailConfiguration $target @{
+                        TrustedSendersAndDomains = $desiredValues
+                    } @{ TrustedSendersAndDomains = 'Strings' }
+                }
             }
             OrganizationRelationship {
                 $relationships = @($options['organizationRelationships'] | Where-Object { $null -ne $_ })
@@ -567,7 +925,7 @@ function Get-ApprovedAdapterDefinitions {
                     ExceptIfFromMemberOf = 'Strings'
                     ExceptIfSenderDomainIs = 'Strings'
                 }
-                if ($null -ne $Approved -and -not $DesiredOnly) {
+                if ($null -ne $Approved) {
                     if ($outbound -isnot [System.Collections.IDictionary] -or $outbound.policyIdentity -cne $policyIdentity -or $outbound.ruleIdentity -cne $ruleIdentity -or $outbound.profile -cne 'Strict') { throw 'OutboundSpamIdentityUnapproved: only the exact approved custom Strict policy and rule are supported.' }
                     if ($outbound.settings -isnot [System.Collections.IDictionary] -or @($outbound.settings.Keys).Count -ne $settingTypes.Count -or @($settingTypes.Keys | Where-Object { -not $outbound.settings.ContainsKey($_) }).Count) { throw 'OutboundSpamSettingsIncomplete: all nine outbound settings are required.' }
                     foreach ($field in @('RecipientLimitExternalPerHour','RecipientLimitInternalPerHour','RecipientLimitPerDay')) {
@@ -905,12 +1263,12 @@ function Get-ApprovedAdapterDefinitions {
                     foreach ($field in @('entryType','entryValue','action','owner','ticket','createdDateTime','expirationDateTime','justification')) { if ([string]::IsNullOrWhiteSpace([string]$entry[$field])) { throw "ChangeOptionsInvalid: TABL requires $field." } }
                     if ($entry.entryType -cnotin @('Sender','Domain','Url','File') -or $entry.action -cnotin @('Allow','Block')) { throw 'ChangeOptionsInvalid: unsupported TABL type or action.' }
                     $entryValue = [string]$entry.entryValue
-                    if ($null -ne $Approved -and -not $DesiredOnly) {
+                    if ($null -ne $Approved) {
                         switch -CaseSensitive ($entry.entryType) {
                             Sender {
                                 $mailbox = $null
                                 try { $mailbox = [Net.Mail.MailAddress]::new($entryValue) } catch {}
-                                if ($entryValue -match '[*?]' -or $null -eq $mailbox -or $mailbox.Address -ine $entryValue -or $mailbox.Host -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList Sender requires an exact mailbox address.' }
+                                if ($entryValue -match '[*?]' -or $null -eq $mailbox -or $mailbox.Address -cne $entryValue -or $mailbox.Host -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList Sender requires an exact mailbox address.' }
                             }
                             Domain {
                                 if ($entryValue -notmatch '^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$') { throw 'ChangeOptionsInvalid: TenantAllowBlockList Domain requires an exact domain.' }
@@ -930,7 +1288,28 @@ function Get-ApprovedAdapterDefinitions {
                     $days = ($expiry - $created).TotalDays
                     if ($expiry -le [datetimeoffset]::UtcNow -or $days -le 0 -or ($entry.action -ceq 'Allow' -and $days -gt $controls['MDO-007'].allowEntryMaximumDurationDays) -or ($entry.action -ceq 'Block' -and $days -ne $controls['MDO-007'].blockEntryRetentionDays)) { throw 'ChangeOptionsInvalid: TABL duration violates governance.' }
                     $notes = 'Owner={0}; Ticket={1}; Created={2}; Justification={3}' -f $entry.owner,$entry.ticket,$created.ToString('o'),$entry.justification
-                    & $fixed TenantAllowBlockList TenantAllowBlockListItems @{ ListType = $listType; Entries = @([string]$entry.entryValue) } @{ Action = $entry.action; ExpirationDate = $expiry.ToUniversalTime().ToString('o'); Notes = $notes } @{ Action = 'String'; ExpirationDate = 'DateTime'; Notes = 'NullableString' } $true @{ ListType = $listType; Entries = @([string]$entry.entryValue) }
+                    $definition = & $fixed TenantAllowBlockList TenantAllowBlockListItems @{ ListType = $listType; Entries = @([string]$entry.entryValue) } @{ Action = $entry.action; ExpirationDate = $expiry.ToUniversalTime().ToString('o'); Notes = $notes } @{ Action = 'String'; ExpirationDate = 'DateTime'; Notes = 'NullableString' } $true @{ ListType = $listType; Entries = @([string]$entry.entryValue) }
+                    if ($null -ne $Approved -and $DesiredOnly) {
+                        $identity = ConvertTo-CanonicalJson $definition.Target
+                        $suffix = [Convert]::ToHexString(
+                            [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))
+                        ).Substring(0,16).ToLowerInvariant()
+                        $previous = @($Approved | Where-Object { $_.OperationId -ceq "TenantAllowBlockList-$suffix" })
+                        if ($previous.Count -eq 1) {
+                            $desiredComparison = ConvertTo-BaselineHashableNode $definition.Desired
+                            $approvedComparison = ConvertTo-BaselineHashableNode $previous[0].After.Value
+                            foreach ($field in @('Action','ExpirationDate','Notes')) {
+                                $desiredComparison[$field] = ConvertTo-ApprovedAdapterValue $desiredComparison[$field] $definition.Types[$field] $field
+                                $approvedComparison[$field] = ConvertTo-ApprovedAdapterValue $approvedComparison[$field] $definition.Types[$field] $field
+                            }
+                        }
+                        if ($previous.Count -ne 1 -or
+                            (ConvertTo-CanonicalJson $desiredComparison) -cne
+                            (ConvertTo-CanonicalJson $approvedComparison)) {
+                            throw 'ChangePreviewBindingMismatch: TABL governance fields differ from the approved preview.'
+                        }
+                    }
+                    $definition
                 }
             }
         }
@@ -992,7 +1371,7 @@ function Read-ApprovedAdapterState {
     }
     $value = @{}
     foreach ($field in $Definition.Types.Keys) {
-        $source = if ($Definition.Toggle -and $Definition.Noun -ne 'InboxRule') { 'State' } else { $field }
+        $source = if ($Definition.Adapter -clike 'SharingPolicyBinding*' -and $field -ceq 'Default') { 'IsDefault' } elseif ($Definition.Toggle -and $Definition.Noun -ne 'InboxRule') { 'State' } else { $field }
         if (-not (Test-BaselineNodeMember $row $source)) {
             if ($Definition.Adapter -cmatch '^(?:Eop|Atp)Presets(?:Standard|Strict)$' -and $Definition.Types[$field] -ceq 'Strings' -and @($Definition.Desired[$field]).Count -eq 0) { $actual = @() }
             else { throw "ChangeReadIncomplete: $($Definition.Adapter) omitted $source." }
@@ -1003,12 +1382,52 @@ function Read-ApprovedAdapterState {
         }
         $value[$field] = ConvertTo-ApprovedAdapterValue $actual $Definition.Types[$field] $field
     }
+    if ($Definition.Adapter -ceq 'TenantAllowBlockList') {
+        $normalizedDesired = @{}
+        foreach ($field in $Definition.Types.Keys) {
+            $normalizedDesired[$field] = ConvertTo-ApprovedAdapterValue $Definition.Desired[$field] $Definition.Types[$field] $field
+        }
+        if ((ConvertTo-CanonicalJson $value) -ceq (ConvertTo-CanonicalJson $normalizedDesired)) {
+            $value = $normalizedDesired
+        }
+    }
     if ($Definition.Delete) {
         if ($value.RoleAssigneeType -cne 'RoleAssignmentPolicy' -or $value.Delegating -or $value.Role -cnotin @('My Custom Apps','My Marketplace Apps','My ReadWriteMailboxApps') -or $value.RecipientWriteScope -cne 'Self' -or $value.ConfigWriteScope -cne 'None' -or $value.CustomRecipientWriteScope -or $value.CustomConfigWriteScope -or $value.ExclusiveRecipientWriteScope -or $value.ExclusiveConfigWriteScope) { throw 'ChangeReadIncomplete: role grant has unsupported restoration scope.' }
     }
     if ($null -ne $Observation) {
         $bytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson (ConvertTo-BaselineHashableNode $row)))
         $Observation.ObjectFingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    }
+    $lifecycle = @{}
+    foreach ($scopeNumber in 1..4) {
+        foreach ($name in @('Stage','ArtifactRoot','ChangeId')) {
+            if (-not $lifecycle.ContainsKey($name)) {
+                $variable = Get-Variable -Name $name -Scope $scopeNumber -ErrorAction SilentlyContinue
+                if ($null -ne $variable) { $lifecycle[$name] = $variable.Value }
+            }
+        }
+    }
+    if ($Definition.New -and -not $Definition.Delete -and $lifecycle.Stage -eq 'Rollback') {
+        $applyPath = Join-Path $lifecycle.ArtifactRoot "apply-$($lifecycle.ChangeId).json"
+        if (Test-Path -LiteralPath $applyPath) {
+            $applyReceipt = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+            $identity = ConvertTo-CanonicalJson $Definition.Target
+            $suffix = [Convert]::ToHexString(
+                [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))
+            ).Substring(0,16).ToLowerInvariant()
+            $operationId = "$($Definition.Adapter)-$suffix"
+            $created = @($applyReceipt.Operation | Where-Object {
+                    $_.OperationId -ceq $operationId -and $_.State -ceq 'Succeeded' -and
+                    -not [string]::IsNullOrWhiteSpace([string]$_.ObjectFingerprint)
+                })
+            if ($created.Count -eq 1) {
+                $bytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson (ConvertTo-BaselineHashableNode $row)))
+                $fingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+                if ($fingerprint -cne [string]$created[0].ObjectFingerprint) {
+                    throw 'ChangeStateDrift: a created object changed after its approved creation.'
+                }
+            }
+        }
     }
     @{ Exists = $true; Value = $value }
 }
@@ -1125,7 +1544,7 @@ function Invoke-BaselineConcreteOperation {
             if ((Read-ApprovedAdapterState $Definition).Exists) { throw 'ChangePostStateMismatch: TABL removal was not confirmed.' }
         }
         if ($Desired.Exists) {
-            $arguments = $target.Clone()
+            $arguments = $Definition.CreateTarget.Clone()
             $arguments[$Desired.Value.Action] = $true
             $arguments.ExpirationDate = ([datetimeoffset]$Desired.Value.ExpirationDate).UtcDateTime
             $arguments.Notes = $Desired.Value.Notes

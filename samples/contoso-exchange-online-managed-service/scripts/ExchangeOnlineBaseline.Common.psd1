@@ -141,6 +141,8 @@
         'Test-ChangeSafetyControl'
         'Get-IncidentExerciseEvidence'
         'Test-IncidentExerciseControl'
+        'Get-SharingPolicyBindingEvidence'
+        'Test-SharingPolicyBindingControl'
         'Get-BaselineParameterHash'
         'New-BaselineEvidenceEnvelope'
         'Test-BaselineControl'
@@ -164,6 +166,7 @@
         'Test-BaselineApplyPrerequisite'
         'Test-BaselineDeploymentApplyOrder'
         'Test-BaselineDeploymentMutationPlan'
+        'Invoke-BaselineApprovedChange'
     )
     CmdletsToExport      = @()
     VariablesToExport    = @()
