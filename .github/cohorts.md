@@ -34,7 +34,17 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 309
+Allocation generation: 310
+
+### Generation 310 Fresh Four-Cohort Registration And Neutral Platinum Buffer
+
+Registry updated: 2026-09-28. Accepted registration ACK: `silver-20260928T022842Z-6e4ba1e7/Kanban/g310/register-four-cohorts-neutral-Platinum` (generation 309 -> 310). Canonical counts remain **50 To Do / 0 In Progress / 40 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Writer handoff:** prior Silver run `Silver-20260928T005943Z-fe1943a8` explicitly confirmed clean published HEAD `1afa7006440788c54505c54f7daee5bde3f885fb`, no active claims, and quiescent prior roles, then released and transferred sole canonical-coordinator authority to fresh Silver run `silver-20260928T022842Z-6e4ba1e7`, coordinator `5eb4da6f-5cab-4105-894d-22cea507a0a6`.
+- **Fresh registrations:** Purple `Purple-20260928T022129Z-1afa7006`, coordinator `eacc82c0-4898-40fa-8c69-e4fb853494b9`; Gold `Gold-20260928T022129Z-1afa7006`, coordinator `e9ed88c6-7f1c-4986-bc74-a0032c284148`; Platinum `Platinum-20260928T022129Z-1afa7006-g309-884`, coordinator `e0f221f8-04b5-4448-b887-645fe17da492`; and the fresh Silver run above.
+- **Queue affinities only:** Purple has queue affinity to externally gated A02. Gold has queue affinity to `EXR-007-A02-T03`. These affinities keep both cards To Do and grant no claim, WIP, executable reservation, path/output ownership, attempt, test/process authority or worker activation. Silver is unallocated.
+- **Neutral Platinum buffer:** Platinum exists only to remain a claimless neutral buffer when blocked work again needs a cohort without competing ownership. It has no card affinity, executable allocation, WIP slot, repository or output path, test/process grant, reviewer identity, waiver, evidence authority or implementation role. Its three logical Coworkers remain uninvoked and standby. Activation requires a new canonical generation-bound ACK documenting the qualifying blocked-work scenario.
+- **Current gates:** A02 remains blocked by D01's unsupported **9/1/140** outcomes and V01's absent independent reviewer, review grant and exact output root. No identity, waiver, authority or evidence location is inferred. No cohort worker starts in generation 310.
 
 ### Generation 309 V01 Genuine-Gate Classification And Purple Release
 
