@@ -34,7 +34,38 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 381
+Allocation generation: 384
+
+### Generation 384 Publication Checkpoint
+
+Registry updated: 2026-09-28. Allocation generation: 383 -> 384. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept exact SendAs red **13/0/13** at test SHA-256 `4DA933DBF9C2666441CE6D4913A03FF55DC97C1F5E4E6741CFC6022DDD9811BB`; coherent unsupported-scope product boundary; implementation-ready but no implementation grant in this generation.
+- **Silver:** accept corrected Calendar static contract SHA-256 `F949F0F11731D515BEFE4994848514519AA9ED6F7FC628507006B713552147CB`; 20 cases, 19 negative then 1 positive, complete AAA and zero parser diagnostics; no red-run grant in this generation.
+- **Gold:** accept substantive review verdict REJECT. One undeclared SendOnBehalf delegate can remain; closure is ineligible. Product attempt 3/3 remains unspent and ungranted.
+- All cohorts are quiescent. Shared product files remain unchanged and unowned.
+- RAID unchanged.
+
+### Generation 383 Static Adjudication
+
+Registry updated: 2026-09-28. Allocation generation: 382 -> 383. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept the 13-case SendAs static contract; ACK `purple-20260928T173848Z/Kanban/g383/run-EXR-007-A05-T02-red` grants one unchanged focused red run in fresh PowerShell 7/Pester 5.7.1.
+- **Silver:** reject only compound negative granularity; ACK `silver-20260928T173848Z/Kanban/g383/correct-EXR-007-A04-T02-static-contract` grants test-only static splitting into one cause/expected reason per negative, all before one positive.
+- **Gold:** generation-382 rejection was procedural only. ACK `gold-20260928T173848Z/Kanban/g383/review-EXR-007-A05-T03-F01-R01` accepts the two canonical ledgers and two new lifecycle test files as authorized dirty baseline and requires substantive read-only review.
+- Shared product/Common/ApprovedAdapters/helper/config paths remain read-only. No broader execution, live state, tenant, commit, push or publish.
+- RAID unchanged.
+
+### Generation 382 Three-Cohort Restart
+
+Registry updated: 2026-09-28. Allocation generation: 381 -> 382. Canonical counts are **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** ACK `silver-20260928T173848Z/Kanban/g382/start-EXR-007-A04-T02`; claim `EXR-007-A04-T02`; Coworker-1 owns only absent-before-creation `ExchangeCalendarPublicationLifecycle.Tests.ps1` for static negative-first authoring.
+- **Purple:** ACK `purple-20260928T173848Z/Kanban/g382/start-EXR-007-A05-T02`; claim `EXR-007-A05-T02`; Coworker-1 owns only absent-before-creation `ExchangeSendAsDelegationLifecycle.Tests.ps1` for static negative-first authoring.
+- **Gold:** ACK `gold-20260928T173848Z/Kanban/g382/review-EXR-007-A05-T03-F01-R01`; claim `EXR-007-A05-T03-F01-R01`; Coworker-3 has read-only independent review authority and external evidence output only.
+- Product/Common/ApprovedAdapters/helper/config paths are read-only for all three cohorts. No test execution is granted.
+- One Kanban steward and exactly three Coworkers per cohort remain mandatory. Stop after the granted unit for canonical adjudication.
+- RAID unchanged.
 
 ### Generation 381 Purple Closure
 
