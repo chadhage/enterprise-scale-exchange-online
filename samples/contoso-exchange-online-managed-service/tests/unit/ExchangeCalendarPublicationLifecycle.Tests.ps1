@@ -4,7 +4,6 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
     BeforeAll {
         $script:sampleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
         Import-Module (Join-Path $script:sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
-        $script:subject = 'Invoke-ExchangeCalendarPublicationLifecycle'
         $script:publicationIdentity = 'executive@contoso.example:\Calendar'
 
         function Get-Mailbox {
@@ -17,6 +16,35 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
 
         function Set-MailboxCalendarFolder {
             throw 'Unmocked Set-MailboxCalendarFolder call.'
+        }
+
+        $script:calendarFolderReader = {
+            param([Parameter(Mandatory)][string]$Identity)
+
+            Get-MailboxCalendarFolder -Identity $Identity -ErrorAction Stop
+        }
+        $script:calendarFolderWriter = {
+            param(
+                [Parameter(Mandatory)][string]$Identity,
+                [Parameter(Mandatory)][bool]$PublishEnabled,
+                [Parameter(Mandatory)][string]$DetailLevel
+            )
+
+            Set-MailboxCalendarFolder -Identity $Identity -PublishEnabled $PublishEnabled -DetailLevel $DetailLevel -ErrorAction Stop
+        }
+        $script:subject = {
+            param(
+                [Parameter(Mandatory)]$InputObject,
+                [switch]$Apply,
+                [switch]$Rollback
+            )
+
+            Invoke-ExchangeCalendarPublicationLifecycle `
+                -InputObject $InputObject `
+                -Apply:$Apply `
+                -Rollback:$Rollback `
+                -CalendarFolderReader $script:calendarFolderReader `
+                -CalendarFolderWriter $script:calendarFolderWriter
         }
 
         function New-CalendarPublicationInput {

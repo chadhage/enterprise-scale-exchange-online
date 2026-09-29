@@ -1,0 +1,247 @@
+{
+  "catalogVersion": "1.0.0",
+  "contractId": "EXO-013",
+  "title": "Per-mailbox audit action coverage",
+  "scope": "MailboxAuditActions",
+  "retrievedOn": "2026-09-29",
+  "authority": {
+    "kind": "MicrosoftLearn",
+    "fixturesAreAuthority": false,
+    "sources": [
+      {
+        "url": "https://learn.microsoft.com/en-us/purview/audit-mailboxes",
+        "purpose": "Managed mailbox audit defaults, sign-in types, DefaultAuditSet semantics, and supported mailbox auditing behavior"
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/purview/audit-premium",
+        "purpose": "Premium audit capabilities and licensing entitlement"
+      },
+      {
+        "url": "https://learn.microsoft.com/en-us/purview/audit-log-activities",
+        "purpose": "Authoritative mailbox activity names and descriptions"
+      }
+    ]
+  },
+  "applicability": {
+    "includedRecipientTypeDetails": [
+      "UserMailbox",
+      "SharedMailbox",
+      "RoomMailbox",
+      "EquipmentMailbox"
+    ],
+    "excludedRecipientTypeDetails": [
+      "GroupMailbox"
+    ],
+    "exclusionReason": "Microsoft 365 Group mailboxes are outside the initial EXO-013 denominator."
+  },
+  "signInTypes": [
+    {
+      "property": "AuditAdmin",
+      "defaultAuditSetToken": "Admin",
+      "managedDefaultActionSet": "ManagedDefault.Admin",
+      "premiumActionSet": "Premium.Admin"
+    },
+    {
+      "property": "AuditDelegate",
+      "defaultAuditSetToken": "Delegate",
+      "managedDefaultActionSet": "ManagedDefault.Delegate",
+      "premiumActionSet": "Premium.Delegate"
+    },
+    {
+      "property": "AuditOwner",
+      "defaultAuditSetToken": "Owner",
+      "managedDefaultActionSet": "ManagedDefault.Owner",
+      "premiumActionSet": "Premium.Owner"
+    }
+  ],
+  "defaultAuditSetSemantics": {
+    "property": "DefaultAuditSet",
+    "managedTokens": [
+      "Admin",
+      "Delegate",
+      "Owner"
+    ],
+    "comparison": "OrdinalIgnoreCaseSetEquality",
+    "managedMeaning": "All three tokens identify mailbox action lists that are maintained by Microsoft for their corresponding AuditAdmin, AuditDelegate, and AuditOwner sign-in types.",
+    "missingOrEmptyMeaning": "The mailbox action lists have been customized and must not be treated as managed defaults.",
+    "partialMeaning": "Only the sign-in types named by the present tokens remain in their managed-default state; every absent token represents customization.",
+    "customizationPolicy": "Any customized, missing, or additional action requires separate explicit approval. This catalog does not authorize customization.",
+    "premiumSeparation": "DefaultAuditSet describes managed default action maintenance; it does not prove premium entitlement or global audit ingestion and retention."
+  },
+  "actionSets": {
+    "ManagedDefault.Admin": {
+      "class": "ManagedDefault",
+      "property": "AuditAdmin",
+      "actions": [
+        "ApplyRecord",
+        "Copy",
+        "Create",
+        "FolderBind",
+        "HardDelete",
+        "Move",
+        "MoveToDeletedItems",
+        "SendAs",
+        "SendOnBehalf",
+        "SoftDelete",
+        "Update",
+        "UpdateCalendarDelegation",
+        "UpdateFolderPermissions",
+        "UpdateInboxRules"
+      ]
+    },
+    "ManagedDefault.Delegate": {
+      "class": "ManagedDefault",
+      "property": "AuditDelegate",
+      "actions": [
+        "ApplyRecord",
+        "Create",
+        "FolderBind",
+        "HardDelete",
+        "Move",
+        "MoveToDeletedItems",
+        "SendAs",
+        "SendOnBehalf",
+        "SoftDelete",
+        "Update",
+        "UpdateFolderPermissions",
+        "UpdateInboxRules"
+      ]
+    },
+    "ManagedDefault.Owner": {
+      "class": "ManagedDefault",
+      "property": "AuditOwner",
+      "actions": [
+        "ApplyRecord",
+        "Create",
+        "HardDelete",
+        "MailboxLogin",
+        "Move",
+        "MoveToDeletedItems",
+        "SoftDelete",
+        "Update",
+        "UpdateCalendarDelegation",
+        "UpdateFolderPermissions",
+        "UpdateInboxRules"
+      ]
+    },
+    "Premium.Admin": {
+      "class": "Premium",
+      "property": "AuditAdmin",
+      "actions": [
+        "MailItemsAccessed",
+        "Send"
+      ],
+      "entitlement": "MicrosoftPurviewAuditPremium"
+    },
+    "Premium.Delegate": {
+      "class": "Premium",
+      "property": "AuditDelegate",
+      "actions": [
+        "MailItemsAccessed",
+        "Send"
+      ],
+      "entitlement": "MicrosoftPurviewAuditPremium"
+    },
+    "Premium.Owner": {
+      "class": "Premium",
+      "property": "AuditOwner",
+      "actions": [
+        "MailItemsAccessed",
+        "SearchQueryInitiated",
+        "Send"
+      ],
+      "entitlement": "MicrosoftPurviewAuditPremium"
+    }
+  },
+  "mailboxTypePolicies": [
+    {
+      "recipientTypeDetails": "UserMailbox",
+      "requiredSignInProperties": [
+        "AuditAdmin",
+        "AuditDelegate",
+        "AuditOwner"
+      ],
+      "managedDefaultActionSets": [
+        "ManagedDefault.Admin",
+        "ManagedDefault.Delegate",
+        "ManagedDefault.Owner"
+      ],
+      "premiumActionSetsWhenEntitled": [
+        "Premium.Admin",
+        "Premium.Delegate",
+        "Premium.Owner"
+      ]
+    },
+    {
+      "recipientTypeDetails": "SharedMailbox",
+      "requiredSignInProperties": [
+        "AuditAdmin",
+        "AuditDelegate",
+        "AuditOwner"
+      ],
+      "managedDefaultActionSets": [
+        "ManagedDefault.Admin",
+        "ManagedDefault.Delegate",
+        "ManagedDefault.Owner"
+      ],
+      "premiumActionSetsWhenEntitled": [
+        "Premium.Admin",
+        "Premium.Delegate",
+        "Premium.Owner"
+      ]
+    },
+    {
+      "recipientTypeDetails": "RoomMailbox",
+      "requiredSignInProperties": [
+        "AuditAdmin",
+        "AuditDelegate",
+        "AuditOwner"
+      ],
+      "managedDefaultActionSets": [
+        "ManagedDefault.Admin",
+        "ManagedDefault.Delegate",
+        "ManagedDefault.Owner"
+      ],
+      "premiumActionSetsWhenEntitled": [
+        "Premium.Admin",
+        "Premium.Delegate",
+        "Premium.Owner"
+      ]
+    },
+    {
+      "recipientTypeDetails": "EquipmentMailbox",
+      "requiredSignInProperties": [
+        "AuditAdmin",
+        "AuditDelegate",
+        "AuditOwner"
+      ],
+      "managedDefaultActionSets": [
+        "ManagedDefault.Admin",
+        "ManagedDefault.Delegate",
+        "ManagedDefault.Owner"
+      ],
+      "premiumActionSetsWhenEntitled": [
+        "Premium.Admin",
+        "Premium.Delegate",
+        "Premium.Owner"
+      ]
+    }
+  ],
+  "premiumEntitlement": {
+    "requiredEvidence": "Independent current entitlement evidence for the mailbox or covered user",
+    "whenVerified": "Evaluate the applicable Premium action sets in addition to ManagedDefault action sets.",
+    "whenMissingOrUnverified": "Do not infer premium coverage, do not fabricate premium actions, and return the premium requirement as unresolved.",
+    "notEstablishedBy": [
+      "DefaultAuditSet",
+      "AuditAdmin",
+      "AuditDelegate",
+      "AuditOwner",
+      "fixtureData"
+    ]
+  },
+  "globalAudit": {
+    "ingestion": "Unverified",
+    "retention": "Unverified",
+    "semantics": "Per-mailbox action configuration does not establish that events are ingested into the global audit log or retained for any duration."
+  }
+}

@@ -14329,7 +14329,7 @@ function Invoke-BaselineApprovedChange {
         $receipt.Operations = @(Get-ApprovedSendAsOperationEvidence -Context $context)
     }
     if ('SendOnBehalf' -cin $Scope) {
-        $receipt.Operations = @($receipt.Operations) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
+        $receipt.Operations = @($receipt['Operations']) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
     }
     if ($Stage -eq 'Apply') {
         $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
@@ -14527,7 +14527,25 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
     param(
         [Parameter(Mandatory)]$InputObject,
         [switch]$Apply,
-        [switch]$Rollback
+        [switch]$Rollback,
+        [Parameter(DontShow)]
+        [ValidateNotNull()]
+        [scriptblock]$CalendarFolderReader = {
+            param([Parameter(Mandatory)][string]$Identity)
+
+            Get-MailboxCalendarFolder -Identity $Identity -ErrorAction Stop
+        },
+        [Parameter(DontShow)]
+        [ValidateNotNull()]
+        [scriptblock]$CalendarFolderWriter = {
+            param(
+                [Parameter(Mandatory)][string]$Identity,
+                [Parameter(Mandatory)][bool]$PublishEnabled,
+                [Parameter(Mandatory)][string]$DetailLevel
+            )
+
+            Set-MailboxCalendarFolder -Identity $Identity -PublishEnabled $PublishEnabled -DetailLevel $DetailLevel -ErrorAction Stop
+        }
     )
 
     $applicableMailboxes = @(Get-BaselineRecordMember $InputObject ApplicableMailboxes)
@@ -14627,26 +14645,8 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
     }
     $normalizedExpectedApply = ConvertTo-ExchangeCalendarPublicationState -State $expectedApply -FallbackMailbox $mailbox
 
-    $invokeCalendarCommand = {
-        param([string]$Name, [hashtable]$Parameters)
-
-        $pipeline = [powershell]::Create([System.Management.Automation.Runspaces.RunspaceMode]::CurrentRunspace)
-        try {
-            $null = $pipeline.AddCommand($Name)
-            foreach ($entry in $Parameters.GetEnumerator()) {
-                $null = $pipeline.AddParameter([string]$entry.Key, $entry.Value)
-            }
-            $output = @($pipeline.Invoke())
-            if ($pipeline.HadErrors) { throw $pipeline.Streams.Error[0] }
-            if ($output.Count -eq 1) { return $output[0] }
-            $output
-        } finally {
-            $pipeline.Dispose()
-        }
-    }
-
     try {
-        $current = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+        $current = & $CalendarFolderReader -Identity $folderIdentity
     } catch {
         throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
     }
@@ -14656,14 +14656,13 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
     }
 
     if ($Apply) {
-        $null = & $invokeCalendarCommand 'Set-MailboxCalendarFolder' @{
-            Identity = $folderIdentity
-            PublishEnabled = [bool](Get-BaselineRecordMember $requested PublishEnabled)
-            DetailLevel = $requestedDetail
-        }
+        $null = & $CalendarFolderWriter `
+            -Identity $folderIdentity `
+            -PublishEnabled ([bool](Get-BaselineRecordMember $requested PublishEnabled)) `
+            -DetailLevel $requestedDetail
     }
     try {
-        $applyReadback = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+        $applyReadback = & $CalendarFolderReader -Identity $folderIdentity
     } catch {
         throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
     }
@@ -14673,7 +14672,7 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
     }
 
     try {
-        $rollbackPreflight = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+        $rollbackPreflight = & $CalendarFolderReader -Identity $folderIdentity
     } catch {
         throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
     }
@@ -14683,14 +14682,13 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
     }
 
     if ($Rollback) {
-        $null = & $invokeCalendarCommand 'Set-MailboxCalendarFolder' @{
-            Identity = $folderIdentity
-            PublishEnabled = [bool](Get-BaselineRecordMember $preChange PublishEnabled)
-            DetailLevel = [string](Get-BaselineRecordMember $preChange DetailLevel)
-        }
+        $null = & $CalendarFolderWriter `
+            -Identity $folderIdentity `
+            -PublishEnabled ([bool](Get-BaselineRecordMember $preChange PublishEnabled)) `
+            -DetailLevel ([string](Get-BaselineRecordMember $preChange DetailLevel))
     }
     try {
-        $rollbackReadback = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+        $rollbackReadback = & $CalendarFolderReader -Identity $folderIdentity
     } catch {
         throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
     }
@@ -14704,6 +14702,560 @@ function Invoke-ExchangeCalendarPublicationLifecycle {
         RollbackReadback = $rollbackReadback
         PartnerReadiness = Get-BaselineRecordMember $InputObject PartnerReadiness
         IndependentPartnerAttestation = Get-BaselineRecordMember $InputObject IndependentPartnerAttestation
+    }
+}
+
+function Test-ExchangeMailboxAuditActionCatalog {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [System.Collections.IDictionary]$Catalog
+    )
+
+    $expectedSource = @(
+        'https://learn.microsoft.com/en-us/purview/audit-mailboxes'
+        'https://learn.microsoft.com/en-us/purview/audit-premium'
+        'https://learn.microsoft.com/en-us/purview/audit-log-activities'
+    )
+    $includedType = @('UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox')
+    $excludedType = @('GroupMailbox')
+    $signInProperty = @('AuditAdmin','AuditDelegate','AuditOwner')
+    $defaultToken = @('Admin','Delegate','Owner')
+
+    if ([string](Get-BaselineRecordMember $Catalog catalogVersion) -cne '1.0.0') {
+        throw 'MailboxAuditActionCatalogVersionUnsupported: catalogVersion must be 1.0.0.'
+    }
+    if ([string](Get-BaselineRecordMember $Catalog contractId) -cne 'EXO-013') {
+        throw 'MailboxAuditActionCatalogContractInvalid: contractId must be EXO-013.'
+    }
+    if ([string](Get-BaselineRecordMember $Catalog scope) -cne 'MailboxAuditActions') {
+        throw 'MailboxAuditActionCatalogScopeInvalid: scope must be MailboxAuditActions.'
+    }
+
+    $authority = Get-BaselineRecordMember $Catalog authority
+    if ([string](Get-BaselineRecordMember $authority kind) -cne 'MicrosoftLearn' -or
+        (Get-BaselineRecordMember $authority fixturesAreAuthority) -ne $false) {
+        throw 'MailboxAuditActionCatalogAuthorityInvalid: Microsoft Learn must be the authority and fixtures must not be authority.'
+    }
+    $source = @((Get-BaselineRecordMember $authority sources) | ForEach-Object {
+            [string](Get-BaselineRecordMember $_ url)
+        })
+    if ((ConvertTo-CanonicalJson $source) -cne (ConvertTo-CanonicalJson $expectedSource)) {
+        throw 'MailboxAuditActionCatalogSourcesInvalid: the Microsoft Learn source set is not pinned.'
+    }
+    if ([string](Get-BaselineRecordMember $Catalog retrievedOn) -cne '2026-09-29') {
+        throw 'MailboxAuditActionCatalogRetrievalDateInvalid: retrievedOn must be 2026-09-29.'
+    }
+
+    $applicability = Get-BaselineRecordMember $Catalog applicability
+    if ((ConvertTo-CanonicalJson @((Get-BaselineRecordMember $applicability includedRecipientTypeDetails))) -cne
+            (ConvertTo-CanonicalJson $includedType) -or
+        (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $applicability excludedRecipientTypeDetails))) -cne
+            (ConvertTo-CanonicalJson $excludedType)) {
+        throw 'MailboxAuditActionCatalogApplicabilityInvalid: the mailbox denominator is not canonical.'
+    }
+
+    $signInTypes = @((Get-BaselineRecordMember $Catalog signInTypes))
+    $actualSignInProperty = @($signInTypes | ForEach-Object { [string](Get-BaselineRecordMember $_ property) })
+    $actualSignInToken = @($signInTypes | ForEach-Object { [string](Get-BaselineRecordMember $_ defaultAuditSetToken) })
+    if ((ConvertTo-CanonicalJson $actualSignInProperty) -cne (ConvertTo-CanonicalJson $signInProperty) -or
+        (ConvertTo-CanonicalJson $actualSignInToken) -cne (ConvertTo-CanonicalJson $defaultToken)) {
+        throw 'MailboxAuditActionCatalogSignInTypesInvalid: the AuditAdmin, AuditDelegate, and AuditOwner mapping is incomplete.'
+    }
+    $expectedSignInTypes = @(
+        [ordered]@{ property = 'AuditAdmin'; defaultAuditSetToken = 'Admin'; managedDefaultActionSet = 'ManagedDefault.Admin'; premiumActionSet = 'Premium.Admin' }
+        [ordered]@{ property = 'AuditDelegate'; defaultAuditSetToken = 'Delegate'; managedDefaultActionSet = 'ManagedDefault.Delegate'; premiumActionSet = 'Premium.Delegate' }
+        [ordered]@{ property = 'AuditOwner'; defaultAuditSetToken = 'Owner'; managedDefaultActionSet = 'ManagedDefault.Owner'; premiumActionSet = 'Premium.Owner' }
+    )
+    if ((ConvertTo-CanonicalJson $signInTypes) -cne (ConvertTo-CanonicalJson $expectedSignInTypes)) {
+        throw 'MailboxAuditActionCatalogSignInTypesInvalid: the pinned sign-in action-set references are invalid.'
+    }
+
+    $expectedActionSets = [ordered]@{
+        'ManagedDefault.Admin' = [ordered]@{
+            class = 'ManagedDefault'; property = 'AuditAdmin'
+            actions = @('ApplyRecord','Copy','Create','FolderBind','HardDelete','Move','MoveToDeletedItems','SendAs','SendOnBehalf','SoftDelete','Update','UpdateCalendarDelegation','UpdateFolderPermissions','UpdateInboxRules')
+        }
+        'ManagedDefault.Delegate' = [ordered]@{
+            class = 'ManagedDefault'; property = 'AuditDelegate'
+            actions = @('ApplyRecord','Create','FolderBind','HardDelete','Move','MoveToDeletedItems','SendAs','SendOnBehalf','SoftDelete','Update','UpdateFolderPermissions','UpdateInboxRules')
+        }
+        'ManagedDefault.Owner' = [ordered]@{
+            class = 'ManagedDefault'; property = 'AuditOwner'
+            actions = @('ApplyRecord','Create','HardDelete','MailboxLogin','Move','MoveToDeletedItems','SoftDelete','Update','UpdateCalendarDelegation','UpdateFolderPermissions','UpdateInboxRules')
+        }
+        'Premium.Admin' = [ordered]@{
+            class = 'Premium'; property = 'AuditAdmin'; actions = @('MailItemsAccessed','Send')
+            entitlement = 'MicrosoftPurviewAuditPremium'
+        }
+        'Premium.Delegate' = [ordered]@{
+            class = 'Premium'; property = 'AuditDelegate'; actions = @('MailItemsAccessed','Send')
+            entitlement = 'MicrosoftPurviewAuditPremium'
+        }
+        'Premium.Owner' = [ordered]@{
+            class = 'Premium'; property = 'AuditOwner'; actions = @('MailItemsAccessed','SearchQueryInitiated','Send')
+            entitlement = 'MicrosoftPurviewAuditPremium'
+        }
+    }
+    $actionSets = Get-BaselineRecordMember $Catalog actionSets
+    if ($actionSets -isnot [System.Collections.IDictionary] -or
+        (ConvertTo-CanonicalJson @($actionSets.Keys | Sort-Object -CaseSensitive)) -cne
+            (ConvertTo-CanonicalJson @($expectedActionSets.Keys | Sort-Object -CaseSensitive))) {
+        throw 'MailboxAuditActionCatalogActionSetsInvalid: the pinned action-set names are invalid.'
+    }
+    foreach ($setName in $expectedActionSets.Keys) {
+        $actualSet = Get-BaselineRecordMember $actionSets $setName
+        $expectedSet = $expectedActionSets[$setName]
+        if ([string](Get-BaselineRecordMember $actualSet class) -cne [string](Get-BaselineRecordMember $expectedSet class) -or
+            [string](Get-BaselineRecordMember $actualSet property) -cne [string](Get-BaselineRecordMember $expectedSet property) -or
+            (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $actualSet actions))) -cne
+                (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $expectedSet actions)))) {
+            throw "MailboxAuditActionCatalogActionSetsInvalid: action set '$setName' differs from the pinned class, property, or actions."
+        }
+        $expectsEntitlement = Test-BaselineNodeMember $expectedSet entitlement
+        $hasEntitlement = Test-BaselineNodeMember $actualSet entitlement
+        if ($hasEntitlement -ne $expectsEntitlement -or
+            ($expectsEntitlement -and
+                [string](Get-BaselineRecordMember $actualSet entitlement) -cne
+                    [string](Get-BaselineRecordMember $expectedSet entitlement))) {
+            throw "MailboxAuditActionCatalogActionSetsInvalid: action set '$setName' has an invalid entitlement."
+        }
+    }
+
+    $expectedMailboxTypePolicies = @(
+        'UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox' | ForEach-Object {
+            [ordered]@{
+                recipientTypeDetails = $_
+                requiredSignInProperties = @('AuditAdmin','AuditDelegate','AuditOwner')
+                managedDefaultActionSets = @('ManagedDefault.Admin','ManagedDefault.Delegate','ManagedDefault.Owner')
+                premiumActionSetsWhenEntitled = @('Premium.Admin','Premium.Delegate','Premium.Owner')
+            }
+        }
+    )
+    $mailboxTypePolicies = @((Get-BaselineRecordMember $Catalog mailboxTypePolicies))
+    if ((ConvertTo-CanonicalJson $mailboxTypePolicies) -cne (ConvertTo-CanonicalJson $expectedMailboxTypePolicies)) {
+        throw 'MailboxAuditActionCatalogMailboxTypePoliciesInvalid: mailbox type policies differ from the pinned graph.'
+    }
+    $referencedSetNames = @(
+        $signInTypes | ForEach-Object {
+            [string](Get-BaselineRecordMember $_ managedDefaultActionSet)
+            [string](Get-BaselineRecordMember $_ premiumActionSet)
+        }
+        $mailboxTypePolicies | ForEach-Object {
+            @((Get-BaselineRecordMember $_ managedDefaultActionSets))
+            @((Get-BaselineRecordMember $_ premiumActionSetsWhenEntitled))
+        }
+    )
+    if (@($referencedSetNames | Where-Object { [string]$_ -cnotin @($actionSets.Keys) }).Count -gt 0) {
+        throw 'MailboxAuditActionCatalogActionSetReferenceInvalid: a policy references an unknown action set.'
+    }
+
+    $semantics = Get-BaselineRecordMember $Catalog defaultAuditSetSemantics
+    if ([string](Get-BaselineRecordMember $semantics property) -cne 'DefaultAuditSet' -or
+        [string](Get-BaselineRecordMember $semantics comparison) -cne 'OrdinalIgnoreCaseSetEquality' -or
+        (ConvertTo-CanonicalJson @((Get-BaselineRecordMember $semantics managedTokens))) -cne
+            (ConvertTo-CanonicalJson $defaultToken) -or
+        [string](Get-BaselineRecordMember $semantics customizationPolicy) -cne
+            'Any customized, missing, or additional action requires separate explicit approval. This catalog does not authorize customization.') {
+        throw 'MailboxAuditActionCatalogCustomizationPolicyInvalid: DefaultAuditSet customization is not fail-closed.'
+    }
+
+    $premium = Get-BaselineRecordMember $Catalog premiumEntitlement
+    if ([string](Get-BaselineRecordMember $premium requiredEvidence) -cne
+        'Independent current entitlement evidence for the mailbox or covered user') {
+        throw 'MailboxAuditActionCatalogPremiumEntitlementInvalid: premium actions require independent entitlement evidence.'
+    }
+    $globalAudit = Get-BaselineRecordMember $Catalog globalAudit
+    if ([string](Get-BaselineRecordMember $globalAudit ingestion) -cne 'Unverified' -or
+        [string](Get-BaselineRecordMember $globalAudit retention) -cne 'Unverified') {
+        throw 'MailboxAuditActionCatalogGlobalAuditInvalid: ingestion and retention must remain unverified.'
+    }
+
+    # The digest is over the canonical form of the complete pinned document, not a projection.
+    # It therefore pins every allowed property name and value (including title, source purposes,
+    # descriptive semantics, entitlement/global-audit text, and every nested reference) and also
+    # refuses additional properties at any depth.
+    $canonicalCatalog = ConvertTo-CanonicalJson $Catalog
+    $catalogBytes = [Text.Encoding]::UTF8.GetBytes($canonicalCatalog)
+    $catalogDigest = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData($catalogBytes)
+    )
+    if ($catalogDigest -cne '3A54C26FF6CB282E848076240E4AD8DE207AC6A904459A70769F4EFC8C2EEE1D') {
+        throw 'MailboxAuditActionCatalogGraphInvalid: the catalog differs from the exact pinned schema and value graph.'
+    }
+
+    [ordered]@{
+        ContractId = 'EXO-013'
+        CatalogVersion = '1.0.0'
+        Scope = 'MailboxAuditActions'
+        RetrievedOn = '2026-09-29'
+        IsValid = $true
+        AuthorityKind = 'MicrosoftLearn'
+        SourceUrls = $expectedSource
+        IncludedRecipientTypeDetails = $includedType
+        ExcludedRecipientTypeDetails = $excludedType
+        SignInProperties = $signInProperty
+        GlobalAuditIngestion = 'Unverified'
+        GlobalAuditRetention = 'Unverified'
+    }
+}
+
+function ConvertTo-ExchangeMailboxAuditActionAssessment {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [System.Collections.IDictionary]$Catalog,
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [System.Collections.IDictionary]$RawCollection
+    )
+
+    if ($null -eq $Catalog) {
+        throw 'MailboxAuditActionCatalogRequired: a pinned catalog is required.'
+    }
+    $null = Test-ExchangeMailboxAuditActionCatalog -Catalog $Catalog
+    if ($null -eq $RawCollection) {
+        throw 'MailboxAuditActionRawCollectionRequired: a raw mailbox collection is required.'
+    }
+    $failureReason = [string](Get-BaselineRecordMember $RawCollection FailureReason)
+    if (-not [string]::IsNullOrWhiteSpace($failureReason)) {
+        throw "MailboxAuditActionCollectionFailed: $failureReason"
+    }
+    if ((Get-BaselineRecordMember $RawCollection Complete) -ne $true) {
+        throw 'MailboxAuditActionCollectionIncomplete: the mailbox collection is incomplete.'
+    }
+
+    $includedType = @((Get-BaselineRecordMember (Get-BaselineRecordMember $Catalog applicability) includedRecipientTypeDetails))
+    $excludedType = @((Get-BaselineRecordMember (Get-BaselineRecordMember $Catalog applicability) excludedRecipientTypeDetails))
+    $managedToken = @((Get-BaselineRecordMember (Get-BaselineRecordMember $Catalog defaultAuditSetSemantics) managedTokens))
+    $actionSets = Get-BaselineRecordMember $Catalog actionSets
+    $signInTypes = @((Get-BaselineRecordMember $Catalog signInTypes))
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    $results = [Collections.Generic.List[object]]::new()
+
+    foreach ($record in @((Get-BaselineRecordMember $RawCollection Records))) {
+        $identity = ([string](Get-BaselineRecordMember $record Identity)).Trim().ToLowerInvariant()
+        if ([string]::IsNullOrWhiteSpace($identity) -or -not $seen.Add($identity)) {
+            throw "MailboxAuditActionIdentityDuplicate: mailbox identity '$identity' is missing or duplicated."
+        }
+        $recipientType = [string](Get-BaselineRecordMember $record RecipientTypeDetails)
+        if ($recipientType -cin $excludedType) { continue }
+        if ($recipientType -cnotin $includedType) {
+            throw "MailboxAuditActionRecipientTypeUnsupported: recipient type '$recipientType' is outside the canonical denominator."
+        }
+
+        $defaultAuditSet = @((Get-BaselineRecordMember $record DefaultAuditSet))
+        $unknownToken = @($defaultAuditSet | Where-Object { [string]$_ -notin $managedToken })
+        if ($unknownToken.Count -gt 0 -or @($defaultAuditSet | Select-Object -Unique).Count -ne $defaultAuditSet.Count) {
+            throw "MailboxAuditActionDefaultAuditSetInvalid: mailbox '$identity' carries an unknown or duplicate token."
+        }
+        if (@($managedToken | Where-Object { [string]$_ -notin $defaultAuditSet }).Count -gt 0) {
+            throw "MailboxAuditActionCustomizationUnauthorized: mailbox '$identity' is not on all managed defaults."
+        }
+        if ((Get-BaselineRecordMember $record AuditBypassEnabled) -eq $true) {
+            throw "MailboxAuditActionBypassEnabled: mailbox '$identity' bypasses auditing."
+        }
+
+        $premiumEntitlement = [string](Get-BaselineRecordMember $record PremiumEntitlement)
+        $normalizedAction = [ordered]@{}
+        foreach ($mapping in $signInTypes) {
+            $property = [string](Get-BaselineRecordMember $mapping property)
+            $managedSet = Get-BaselineRecordMember $actionSets ([string](Get-BaselineRecordMember $mapping managedDefaultActionSet))
+            $premiumSet = Get-BaselineRecordMember $actionSets ([string](Get-BaselineRecordMember $mapping premiumActionSet))
+            $requiredManaged = @((Get-BaselineRecordMember $managedSet actions))
+            $premiumAction = @((Get-BaselineRecordMember $premiumSet actions))
+            $actualAction = @((Get-BaselineRecordMember $record $property))
+            if (@($requiredManaged | Where-Object { [string]$_ -notin $actualAction }).Count -gt 0) {
+                throw "MailboxAuditActionCoverageIncomplete: mailbox '$identity' is missing required $property actions."
+            }
+            $observedPremium = @($actualAction | Where-Object { [string]$_ -in $premiumAction })
+            if ($observedPremium.Count -gt 0 -and $premiumEntitlement -cne 'Verified') {
+                throw "MailboxAuditActionPremiumEntitlementUnresolved: mailbox '$identity' has premium actions without verified entitlement."
+            }
+            if ($premiumEntitlement -ceq 'Verified' -and
+                @($premiumAction | Where-Object { [string]$_ -notin $actualAction }).Count -gt 0) {
+                throw "MailboxAuditActionCoverageIncomplete: mailbox '$identity' is missing entitled premium $property actions."
+            }
+            $approvedAction = @($requiredManaged)
+            if ($premiumEntitlement -ceq 'Verified') {
+                $approvedAction += @($premiumAction)
+            }
+            if (@($actualAction | Where-Object { [string]$_ -cnotin $approvedAction }).Count -gt 0 -or
+                @($actualAction | Select-Object -Unique).Count -ne $actualAction.Count) {
+                throw "MailboxAuditActionCustomizationUnauthorized: mailbox '$identity' has an additional or duplicate $property action."
+            }
+            $normalizedAction[$property] = @($actualAction | Sort-Object -CaseSensitive)
+        }
+
+        $results.Add([ordered]@{
+                Identity = $identity
+                RecipientTypeDetails = $recipientType
+                DefaultAuditSet = @($defaultAuditSet | Sort-Object -CaseSensitive)
+                AuditAdmin = $normalizedAction.AuditAdmin
+                AuditDelegate = $normalizedAction.AuditDelegate
+                AuditOwner = $normalizedAction.AuditOwner
+                PremiumEntitlement = $premiumEntitlement
+                AuditBypassEnabled = $false
+                Status = 'Compliant'
+                Findings = @()
+                GlobalAuditIngestion = 'Unverified'
+                GlobalAuditRetention = 'Unverified'
+            })
+    }
+
+    [ordered]@{
+        Scope = 'MailboxAuditActions'
+        CatalogVersion = '1.0.0'
+        Complete = $true
+        FailureReason = ''
+        Results = @($results | Sort-Object { $_.Identity })
+    }
+}
+
+function Invoke-ExchangeMailboxAuditActionLifecycle {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][System.Collections.IDictionary]$Catalog,
+        [Parameter(Mandatory)][string]$Scope,
+        [Parameter(Mandatory)][string]$Identity,
+        [Parameter(Mandatory)][string]$RecipientTypeDetails,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Approval,
+        [Parameter(Mandatory)][bool]$CollectionComplete,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$Read,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$Apply,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$Rollback
+    )
+
+    if ($null -eq $Catalog) {
+        throw 'MailboxAuditActionCatalogRequired: a pinned catalog is required.'
+    }
+    $null = Test-ExchangeMailboxAuditActionCatalog -Catalog $Catalog
+    if ($Scope -cne 'MailboxAuditActions') {
+        throw 'MailboxAuditActionScopeInvalid: scope must be MailboxAuditActions.'
+    }
+    if ([string]::IsNullOrWhiteSpace($Approval)) {
+        throw 'MailboxAuditActionApprovalRequired: an explicit change approval is required.'
+    }
+    if ($Approval -cne 'CHG-EXO013-001') {
+        throw 'MailboxAuditActionCustomizationUnauthorized: the approval does not authorize mailbox audit customization.'
+    }
+    if (-not $CollectionComplete) {
+        throw 'MailboxAuditActionCollectionIncomplete: the mailbox collection is incomplete.'
+    }
+    $supportedRecipientTypes = @('UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox')
+    if ($RecipientTypeDetails -cnotin $supportedRecipientTypes) {
+        throw "MailboxAuditActionRecipientTypeUnsupported: recipient type '$RecipientTypeDetails' is not an approved lifecycle target."
+    }
+    $requestedIdentity = $Identity.Trim().ToLowerInvariant()
+    if ([string]::IsNullOrWhiteSpace($requestedIdentity)) {
+        throw 'MailboxAuditActionIdentityMismatch: the requested mailbox identity is empty.'
+    }
+    if ($null -eq $Read) {
+        throw 'MailboxAuditActionReadRequired: an explicit read dependency is required.'
+    }
+    if ($null -eq $Apply -or $null -eq $Rollback) {
+        throw 'MailboxAuditActionMutationDependencyRequired: explicit apply and rollback dependencies are required.'
+    }
+
+    try {
+        $before = & $Read
+    } catch {
+        throw "MailboxAuditActionCollectionFailed: $($_.Exception.Message)"
+    }
+    if ((Get-BaselineRecordMember $before Complete) -ne $true) {
+        throw 'MailboxAuditActionCollectionIncomplete: the initial read is incomplete.'
+    }
+    $beforeIdentity = ([string](Get-BaselineRecordMember $before Identity)).Trim()
+    if (-not [string]::Equals($beforeIdentity, $requestedIdentity, [StringComparison]::OrdinalIgnoreCase)) {
+        throw 'MailboxAuditActionIdentityMismatch: the initial read does not identify the requested mailbox.'
+    }
+    if ([string](Get-BaselineRecordMember $before RecipientTypeDetails) -cne $RecipientTypeDetails) {
+        throw 'MailboxAuditActionRecipientTypeMismatch: the initial read recipient type does not match the requested target.'
+    }
+    if ((Get-BaselineRecordMember $before AuditBypassEnabled) -eq $true) {
+        throw 'MailboxAuditActionBypassEnabled: the mailbox bypasses auditing.'
+    }
+    if ([string](Get-BaselineRecordMember $before PremiumEntitlement) -cne 'Verified') {
+        throw 'MailboxAuditActionPremiumEntitlementUnresolved: premium entitlement is not verified.'
+    }
+
+    $actionSets = Get-BaselineRecordMember $Catalog actionSets
+    $mailboxPolicy = @((Get-BaselineRecordMember $Catalog mailboxTypePolicies) |
+        Where-Object { [string](Get-BaselineRecordMember $_ recipientTypeDetails) -ceq $RecipientTypeDetails })
+    if ($mailboxPolicy.Count -ne 1) {
+        throw 'MailboxAuditActionCatalogMailboxTypePoliciesInvalid: the requested recipient type has no unique pinned policy.'
+    }
+    $mailboxPolicy = $mailboxPolicy[0]
+    $desired = [ordered]@{
+        DefaultAuditSet = @((Get-BaselineRecordMember (Get-BaselineRecordMember $Catalog defaultAuditSetSemantics) managedTokens))
+    }
+    $policyProperties = @((Get-BaselineRecordMember $mailboxPolicy requiredSignInProperties))
+    $policyManagedSets = @((Get-BaselineRecordMember $mailboxPolicy managedDefaultActionSets))
+    $policyPremiumSets = @((Get-BaselineRecordMember $mailboxPolicy premiumActionSetsWhenEntitled))
+    for ($index = 0; $index -lt $policyProperties.Count; $index++) {
+        $property = [string]$policyProperties[$index]
+        $managed = Get-BaselineRecordMember $actionSets ([string]$policyManagedSets[$index])
+        $premium = Get-BaselineRecordMember $actionSets ([string]$policyPremiumSets[$index])
+        $desired[$property] = @((Get-BaselineRecordMember $managed actions)) + @((Get-BaselineRecordMember $premium actions))
+    }
+
+    $stateJson = $ExecutionContext.SessionState.Module.NewBoundScriptBlock({
+        param($State)
+        $value = [ordered]@{
+            Identity = ([string](Get-BaselineRecordMember $State Identity)).Trim().ToLowerInvariant()
+            RecipientTypeDetails = [string](Get-BaselineRecordMember $State RecipientTypeDetails)
+            DefaultAuditSet = @((Get-BaselineRecordMember $State DefaultAuditSet) | Sort-Object -CaseSensitive)
+            AuditAdmin = @((Get-BaselineRecordMember $State AuditAdmin) | Sort-Object -CaseSensitive)
+            AuditDelegate = @((Get-BaselineRecordMember $State AuditDelegate) | Sort-Object -CaseSensitive)
+            AuditOwner = @((Get-BaselineRecordMember $State AuditOwner) | Sort-Object -CaseSensitive)
+            AuditBypassEnabled = [bool](Get-BaselineRecordMember $State AuditBypassEnabled)
+            PremiumEntitlement = [string](Get-BaselineRecordMember $State PremiumEntitlement)
+        }
+        ConvertTo-CanonicalJson $value
+    })
+    $beforeJson = & $stateJson $before
+    $desiredState = [ordered]@{
+        Identity = $requestedIdentity
+        RecipientTypeDetails = $RecipientTypeDetails
+        DefaultAuditSet = @($desired.DefaultAuditSet)
+        AuditAdmin = @($desired.AuditAdmin)
+        AuditDelegate = @($desired.AuditDelegate)
+        AuditOwner = @($desired.AuditOwner)
+        AuditBypassEnabled = $false
+        PremiumEntitlement = 'Verified'
+    }
+    $desiredJson = & $stateJson $desiredState
+
+    $primaryFailure = $null
+    try {
+        $null = & $Apply $desired
+    } catch {
+        $primaryFailure = "MailboxAuditActionApplyFailed: $($_.Exception.Message)"
+    }
+    if ($null -eq $primaryFailure) {
+        try {
+            $afterApply = & $Read
+        } catch {
+            $primaryFailure = "MailboxAuditActionCollectionFailed: $($_.Exception.Message)"
+        }
+    }
+    if ($null -eq $primaryFailure -and (Get-BaselineRecordMember $afterApply Complete) -ne $true) {
+        $primaryFailure = 'MailboxAuditActionReadbackIncomplete: the apply readback is incomplete.'
+    }
+    if ($null -eq $primaryFailure) {
+        $afterApplyIdentity = ([string](Get-BaselineRecordMember $afterApply Identity)).Trim()
+        if (-not [string]::Equals($afterApplyIdentity, $requestedIdentity, [StringComparison]::OrdinalIgnoreCase)) {
+            $primaryFailure = 'MailboxAuditActionIdentityMismatch: the apply readback does not identify the requested mailbox.'
+        } elseif ([string](Get-BaselineRecordMember $afterApply RecipientTypeDetails) -cne $RecipientTypeDetails) {
+            $primaryFailure = 'MailboxAuditActionRecipientTypeMismatch: the apply readback recipient type does not match the requested target.'
+        } elseif ((& $stateJson $afterApply) -cne $desiredJson) {
+            $primaryFailure = 'MailboxAuditActionReadbackMismatch: apply readback differs from the catalog state.'
+        }
+    }
+
+    $rollbackEvidence = [ordered]@{
+        Attempted = $true
+        ReadbackAttempted = $false
+        ReadbackVerified = $false
+        Verified = $false
+        FailureId = ''
+        FailureMessage = ''
+        ReadbackFailureId = ''
+        ReadbackFailureMessage = ''
+        ObservedResultingState = $null
+    }
+    try {
+        $null = & $Rollback $before
+    } catch {
+        $rollbackEvidence.FailureId = 'MailboxAuditActionRollbackFailed'
+        $rollbackEvidence.FailureMessage = $_.Exception.Message
+    }
+    # A rollback dependency can mutate state and then throw. Always perform the independent
+    # readback so the failure evidence records the state that actually resulted.
+    $rollbackEvidence.ReadbackAttempted = $true
+    try {
+        $afterRollback = & $Read
+        $rollbackEvidence.ObservedResultingState = $afterRollback
+    } catch {
+        $rollbackEvidence.ReadbackFailureId = 'MailboxAuditActionCollectionFailed'
+        $rollbackEvidence.ReadbackFailureMessage = $_.Exception.Message
+    }
+    if ([string]::IsNullOrEmpty($rollbackEvidence.ReadbackFailureId)) {
+        if ((Get-BaselineRecordMember $afterRollback Complete) -ne $true) {
+            $rollbackEvidence.ReadbackFailureId = 'MailboxAuditActionRollbackMismatch'
+            $rollbackEvidence.ReadbackFailureMessage = 'rollback readback is incomplete.'
+        } else {
+            $afterRollbackIdentity = ([string](Get-BaselineRecordMember $afterRollback Identity)).Trim()
+            if (-not [string]::Equals($afterRollbackIdentity, $requestedIdentity, [StringComparison]::OrdinalIgnoreCase)) {
+                $rollbackEvidence.ReadbackFailureId = 'MailboxAuditActionIdentityMismatch'
+                $rollbackEvidence.ReadbackFailureMessage = 'the rollback readback does not identify the requested mailbox.'
+            } elseif ([string](Get-BaselineRecordMember $afterRollback RecipientTypeDetails) -cne $RecipientTypeDetails) {
+                $rollbackEvidence.ReadbackFailureId = 'MailboxAuditActionRecipientTypeMismatch'
+                $rollbackEvidence.ReadbackFailureMessage = 'the rollback readback recipient type does not match the requested target.'
+            } elseif ((& $stateJson $afterRollback) -cne $beforeJson) {
+                $rollbackEvidence.ReadbackFailureId = 'MailboxAuditActionRollbackMismatch'
+                $rollbackEvidence.ReadbackFailureMessage = 'rollback readback differs from the exact before state.'
+            } else {
+                $rollbackEvidence.ReadbackVerified = $true
+            }
+        }
+    }
+    $rollbackEvidence.Verified =
+        [string]::IsNullOrEmpty($rollbackEvidence.FailureId) -and
+        $rollbackEvidence.ReadbackVerified
+
+    if ($null -ne $primaryFailure) {
+        $failure = [InvalidOperationException]::new(
+            "$primaryFailure RollbackAttempted=$($rollbackEvidence.Attempted); RollbackReadbackAttempted=$($rollbackEvidence.ReadbackAttempted); RollbackReadbackVerified=$($rollbackEvidence.ReadbackVerified); RollbackVerified=$($rollbackEvidence.Verified); RollbackFailureId=$($rollbackEvidence.FailureId); RollbackFailure=$($rollbackEvidence.FailureMessage); RollbackReadbackFailureId=$($rollbackEvidence.ReadbackFailureId); RollbackReadbackFailure=$($rollbackEvidence.ReadbackFailureMessage)"
+        )
+        $failure.Data['PrimaryFailure'] = $primaryFailure
+        $failure.Data['RollbackAttempted'] = $rollbackEvidence.Attempted
+        $failure.Data['RollbackReadbackAttempted'] = $rollbackEvidence.ReadbackAttempted
+        $failure.Data['RollbackReadbackVerified'] = $rollbackEvidence.ReadbackVerified
+        $failure.Data['RollbackVerified'] = $rollbackEvidence.Verified
+        $failure.Data['RollbackFailureId'] = $rollbackEvidence.FailureId
+        $failure.Data['RollbackFailure'] = $rollbackEvidence.FailureMessage
+        $failure.Data['RollbackReadbackFailureId'] = $rollbackEvidence.ReadbackFailureId
+        $failure.Data['RollbackReadbackFailure'] = $rollbackEvidence.ReadbackFailureMessage
+        $failure.Data['ObservedResultingState'] = $rollbackEvidence.ObservedResultingState
+        throw $failure
+    }
+    if (-not $rollbackEvidence.Verified) {
+        $failureId = if (-not [string]::IsNullOrEmpty($rollbackEvidence.FailureId)) {
+            $rollbackEvidence.FailureId
+        } else {
+            $rollbackEvidence.ReadbackFailureId
+        }
+        $failureMessage = if (-not [string]::IsNullOrEmpty($rollbackEvidence.FailureId)) {
+            $rollbackEvidence.FailureMessage
+        } else {
+            $rollbackEvidence.ReadbackFailureMessage
+        }
+        $failure = [InvalidOperationException]::new("$failureId`: $failureMessage")
+        $failure.Data['RollbackAttempted'] = $rollbackEvidence.Attempted
+        $failure.Data['RollbackReadbackAttempted'] = $rollbackEvidence.ReadbackAttempted
+        $failure.Data['RollbackReadbackVerified'] = $rollbackEvidence.ReadbackVerified
+        $failure.Data['RollbackVerified'] = $rollbackEvidence.Verified
+        $failure.Data['RollbackFailureId'] = $rollbackEvidence.FailureId
+        $failure.Data['RollbackFailure'] = $rollbackEvidence.FailureMessage
+        $failure.Data['RollbackReadbackFailureId'] = $rollbackEvidence.ReadbackFailureId
+        $failure.Data['RollbackReadbackFailure'] = $rollbackEvidence.ReadbackFailureMessage
+        $failure.Data['ObservedResultingState'] = $rollbackEvidence.ObservedResultingState
+        throw $failure
+    }
+
+    [ordered]@{
+        Scope = 'MailboxAuditActions'
+        Identity = $requestedIdentity
+        RecipientTypeDetails = $RecipientTypeDetails
+        Applied = $true
+        ReadbackVerified = $true
+        RolledBack = $true
+        RollbackVerified = $true
+        GlobalAuditIngestion = 'Unverified'
+        GlobalAuditRetention = 'Unverified'
+        Operations = @('ReadBefore','Apply','ReadAfterApply','Rollback','ReadAfterRollback')
     }
 }
 
@@ -14842,6 +15394,9 @@ Export-ModuleMember -Function @(
     'Get-SharingPolicyBindingEvidence'
     'Test-SharingPolicyBindingControl'
     'Invoke-ExchangeCalendarPublicationLifecycle'
+    'Test-ExchangeMailboxAuditActionCatalog'
+    'ConvertTo-ExchangeMailboxAuditActionAssessment'
+    'Invoke-ExchangeMailboxAuditActionLifecycle'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'

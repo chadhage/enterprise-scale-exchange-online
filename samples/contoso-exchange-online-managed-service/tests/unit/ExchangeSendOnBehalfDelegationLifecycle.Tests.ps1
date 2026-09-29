@@ -256,7 +256,7 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
         It 'refuses an unauthorized explicit SendOnBehalf delegate before writes' {
             # Arrange
             $arguments = New-SendOnBehalfFixture
-            $global:adapterState.Mailbox[0].GrantSendOnBehalfTo += 'rogue@contoso.example'
+            $global:adapterState.Mailbox[0].GrantSendOnBehalfTo = @('rogue@contoso.example')
 
             # Act
             $invoke = { Invoke-SendOnBehalfPreview $arguments }
@@ -269,6 +269,7 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
         It 'refuses an inventory that omits an applicable shared recipient before writes' {
             # Arrange
             $arguments = New-SendOnBehalfFixture
+            $global:adapterState.Mailbox[0].GrantSendOnBehalfTo = @()
             $global:adapterState.Mailbox = @($global:adapterState.Mailbox | Where-Object RecipientTypeDetails -NE 'SharedMailbox')
 
             # Act
@@ -445,7 +446,7 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
             @($result.Apply.Operations | Where-Object { $_.Runbook -like '*EXCHANGE-ADMINISTRATOR-JOURNEY*' }).Count | Should -Be 2
             $result.Repeat.Status | Should -BeExactly 'Succeeded'
             $result.RepeatWrites | Should -Be 0
-            $result.Drift.Exception.Message | Should -BeLike '*ChangeOperationMismatch*'
+            $result.Drift.Exception.Message | Should -BeLike '*ChangeStateDrift*'
             $result.DriftWrites | Should -Be 0
             $result.Rollback.Status | Should -BeExactly 'Succeeded'
             @($result.RollbackCalls | Where-Object Command -CEQ 'Set-Mailbox').Count | Should -Be 2

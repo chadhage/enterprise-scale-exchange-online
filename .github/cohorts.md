@@ -34,7 +34,269 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 392
+Allocation generation: 421
+
+### Generation 421 Purple A07 Closure
+
+Registry updated: 2026-09-29. Allocation generation: 420 -> 421. Canonical counts become **43 To Do / 0 In Progress / 47 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept A07 focused 42/42, static safety/export review, ModuleManifest 17/17, affected lifecycles 67/67, and compatibility 66 Success / 105 accepted Failure identities with zero added/removed. `EXR-007-A07` moves to Done; all Purple leases/process authority are released.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; `EXR-007-A08-T02` remains blocked because `EXR-007-A08-T01` is not Done.
+- All three cohorts are quiescent. Tenant ingestion/retention remain `Unverified`. No full-suite-green claim, live-state read, tenant action, credentials, commit, push or publish occurred.
+
+### Generation 420 Purple A07 Manifest Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 419 -> 420. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept static review, affected regressions **67/67**, and ApprovedAdapter compatibility **66 Success / 105 accepted Failure identities** with zero added/removed. ModuleManifest made zero Pester invocations because its launcher did not parse. Replacement ACK `purple-20260929T073000Z/Kanban/g420/run-EXR-007-A07-manifest` grants Coworker-1 one literal-safe fresh ModuleManifest invocation only.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No edit, retry, other suite, tenant action, credentials, commit, push or publish.
+
+### Generation 419 Purple A07 Closure Verification
+
+Registry updated: 2026-09-29. Allocation generation: 418 -> 419. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept focused A07 **42/42** with stable hashes/status. ACK `purple-20260929T072000Z/Kanban/g419/verify-EXR-007-A07-closure` grants exactly three top-level read-only/process Coworkers: Coworker-1 independent static/export/hash review plus ModuleManifest; Coworker-2 separate fresh Calendar, SharingPolicy, FullAccess, SendAs and SendOnBehalf regressions; Coworker-3 hierarchy-preserving ApprovedAdapter compatibility.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No edit, retry, full-suite execution, tenant action, credentials, commit, push or publish.
+
+### Generation 418 Purple A07 Process Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 417 -> 418. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation-417 phase 3 made zero Pester invocations because an invalid preflight assumed remote `origin`; the checkout uses configured remote `upstream`. Replacement ACK `purple-20260929T071000Z/Kanban/g418/run-EXR-007-A07-focused` grants Coworker-3 one fresh focused invocation with remote-name-neutral repository identification and frozen files.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No edit, second process, retry, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 417 Purple A07 Fixture Counter Correction
+
+Registry updated: 2026-09-29. Allocation generation: 416 -> 417. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** maintainer authorizes the one-fixture persistent-counter correction and one replacement run. ACK `purple-20260929T070000Z/Kanban/g417/correct-EXR-007-A07-read-counter` authorizes exactly three serialized top-level Coworkers: Coworker-1 changes only the incomplete-readback fixture counter and statically validates; Coworker-2 independently verifies the exact delta and complete/incomplete/complete sequence without Pester; Coworker-3 performs the sole replacement run only after acceptance.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No product/catalog/manifest/other-test change, retry, second edit, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 416 Purple A07 Fixture Counter Blocker
+
+Registry updated: 2026-09-29. Allocation generation: 415 -> 416. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept the three import-only test deltas and sole replacement result **41/42**. The only failure is the incomplete-apply-readback fixture: a scalar counter mutation inside a repeatedly invoked closure does not persist, so its second-read incomplete branch never executes. `EXR-007-A07` remains In Progress, blocked and quiescent pending explicit maintainer authority for a one-fixture persistent-counter amendment and replacement run.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No product edit, test edit/invocation, retry, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 415 Purple A07 Test Import Amendment
+
+Registry updated: 2026-09-29. Allocation generation: 414 -> 415. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** maintainer authorizes the test-only module import amendment and one replacement run. ACK `purple-20260929T065000Z/Kanban/g415/import-EXR-007-A07-tests` authorizes exactly three serialized top-level Coworkers: Coworker-1 adds only the same fail-fast Common manifest import to each A07 `BeforeAll` and statically validates; Coworker-2 independently verifies the three deltas, visibility, hashes and unchanged 42-case contract; Coworker-3 performs the sole replacement run only after acceptance.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No product/catalog/manifest/case change, retry, second edit, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 414 Purple A07 Test Harness Blocker
+
+Registry updated: 2026-09-29. Allocation generation: 413 -> 414. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept the generation-413 surgical product correction and independent no-shim diagnostics. The sole focused run produced 42 command-not-found failures because all three frozen A07 tests omit importing the Common module. This test-plumbing defect was masked by the original natural-red run. `EXR-007-A07` remains In Progress, blocked and quiescent pending explicit maintainer authority for a test-only import amendment and replacement run.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No edit, retry, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 413 Purple A07 Surgical Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 412 -> 413. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** maintainer authorizes one recovery beyond attempt 3/3. ACK `purple-20260929T064000Z/Kanban/g413/surgical-EXR-007-A07-closure` authorizes exactly three serialized top-level Coworkers: Coworker-1 removes only the broken `$stateJson` closure boundary and statically validates; Coworker-2 independently verifies the exact delta and ordinary no-shim path; Coworker-3 performs the sole focused 42-case invocation only after acceptance.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No policy/test/catalog/shape/export change, retry, second edit, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 412 Purple A07 Blocked
+
+Registry updated: 2026-09-29. Allocation generation: 411 -> 412. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** final product attempt 3/3 is consumed and rejected before Pester. Exact catalog graph pinning and rollback-after-rollback-failure behavior independently verify, but `.GetNewClosure()` loses private module helper `Get-BaselineRecordMember`, causing ordinary lifecycle invocation to fail after its first read. `EXR-007-A07` remains In Progress, blocked and quiescent pending explicit maintainer adjudication. Coworker-3 did not run.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No additional edit, process invocation, retry, tenant action, credentials, commit, push or publish is authorized.
+
+### Generation 411 Purple A07 Final Product Attempt
+
+Registry updated: 2026-09-29. Allocation generation: 410 -> 411. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** product attempt 2/3 is consumed and rejected before Pester on two remaining defects: incomplete exact catalog-graph pinning and rollback readback skipped when rollback throws. ACK `purple-20260929T063000Z/Kanban/g411/recover-EXR-007-A07-attempt-3` authorizes exactly three serialized top-level Coworkers: Coworker-1 final two-defect correction/static validation; Coworker-2 independent review; Coworker-3 sole focused invocation only after acceptance. This is final product attempt 3/3.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No further product edit is authorized without explicit maintainer adjudication; no test edit, retry, tenant action, credentials, commit, push or publish.
+
+### Generation 410 Purple A07 Product Attempt 2
+
+Registry updated: 2026-09-29. Allocation generation: 409 -> 410. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** product attempt 1/3 is consumed and rejected before Pester on four blockers: incomplete catalog pinning, unauthorized extra actions accepted as compliant, missing post-apply failure restoration, and missing lifecycle target/type binding. ACK `purple-20260929T062000Z/Kanban/g410/recover-EXR-007-A07-attempt-2` authorizes exactly three serialized top-level Coworkers: Coworker-1 one coherent Common/manifest correction and static validation; Coworker-2 independent blocker/hash review; Coworker-3 sole focused invocation only after acceptance. This consumes attempt 2/3.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No test edit, retry, second implementation pass, tenant operation, credentials, commit, push or publish is authorized.
+
+### Generation 409 Purple A07 Product Attempt 1
+
+Registry updated: 2026-09-29. Allocation generation: 408 -> 409. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept generation 408's corrected contract and exact natural-red result: 3 containers, 42 discovered, 42 failed, zero skipped/not-run, with 14 failures in each of the three expected missing-command families and none unexpected. ACK `purple-20260929T061000Z/Kanban/g409/implement-EXR-007-A07-attempt-1` authorizes exactly three serialized top-level Coworkers: Coworker-1 product authoring/static validation in Common and manifest only; Coworker-2 independent contract/safety/hash review; Coworker-3 sole focused invocation. This consumes product attempt 1/3.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No retry, second edit, tenant operation, credentials, commit, push or publish is authorized.
+
+### Generation 408 Purple Parent-Level Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 407 -> 408. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** the exact wrapper hit maximum descendant depth without edits or Pester. The parent-level exact Kanban steward validated ownership and stopped on a process-authority mismatch. Replacement ACK `purple-20260929T060000Z/Kanban/g408/correct-review-run-EXR-007-A07` authorizes exactly three serialized top-level Coworkers: Coworker-1 one-case edit/static validation; Coworker-2 independent read-only contract/hash review; Coworker-3 sole focused Pester invocation after acceptance.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- Generation 407 process authority is superseded. No retry, second edit, product implementation, tenant operation, credentials, commit, push or publish is authorized.
+
+### Generation 407 Purple A07 Missing-Version Correction
+
+Registry updated: 2026-09-29. Allocation generation: 406 -> 407. Canonical counts remain **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 406 produced the pinned catalog and exactly 42 natural-red tests, but independent review found the catalog unit covered an absent catalog rather than a missing/blank `catalogVersion` property. ACK `purple-20260929T055500Z/Kanban/g407/correct-EXR-007-A07-missing-version` authorizes Coworker-1 to replace only that one negative, preserve exactly 42 cases, statically validate, and perform one focused natural-red invocation.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No product implementation, second edit, retry, tenant operation, credentials, commit, push or publish is authorized.
+
+### Generation 406 Purple A07 Contract Authoring
+
+Registry updated: 2026-09-29. Allocation generation: 405 -> 406. Canonical counts become **43 To Do / 1 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** maintainer policy is ratified for separate `EXO-013` / Per-mailbox audit action coverage: `MailboxAuditActions`; User, Shared, Room and Equipment denominator; Group excluded; repository-pinned Microsoft Learn catalog authority with source URLs, retrieval date and version; three focused 14-case units (catalog, normalization, lifecycle); ingestion/retention literal `Unverified`. ACK `purple-20260929T053000Z/Kanban/g406/author-EXR-007-A07-contract` claims `EXR-007-A07` for test/catalog authoring, static validation and one natural-red focused invocation only.
+- **Silver:** quiescent; no claim or authority.
+- **Gold:** quiescent; no dependency-eligible card or authority.
+- No product implementation, tenant read/write, credentials, retry, commit, push or publish is authorized.
+
+### Generation 405 Silver Closure
+
+Registry updated: 2026-09-29. Allocation generation: 404 -> 405. Canonical counts become **44 To Do / 0 In Progress / 46 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** Calendar closure accepted on focused 20/20, static/export review, ModuleManifest 17/17, SharingPolicy 9/9, FullAccess 12/12, SendAs 13/13, SendOnBehalf 13/13 and compatibility 66 Success / 105 accepted Failure identities with zero added/removed. `EXR-007-A04-T02` moves to Done; all Silver leases/process authority are released.
+- **Full-suite disclosure:** generation-404 repository-wide run remains red and produced truncated XML; no full-suite-green claim is made. Its failures are not used to override passing Calendar-owned and affected surfaces without owner-by-owner reconciliation.
+- **Purple:** A07 remains dependency-eligible but blocked on versioned policy inputs and contract reconciliation.
+- **Gold:** no dependency-eligible card.
+- All cohorts are quiescent. No live-state read, tenant action, credentials, commit, push, or publish is authorized or occurred.
+
+### Generation 404 Silver Compatibility and Full Regression
+
+Registry updated: 2026-09-29. Allocation generation: 403 -> 404. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept static review plus ModuleManifest 17/17, SharingPolicy 9/9, FullAccess 12/12, SendAs 13/13 and SendOnBehalf 13/13. ACK `silver-20260929T051400Z/Kanban/g404/verify-EXR-007-A04-T02-compatibility-full` grants one configuration-based compatibility process and, only if it passes, one full offline process. All files frozen.
+- **Purple:** EXO-013 policy inputs unresolved; no claim/lease.
+- **Gold:** dependency-blocked by rank-45 T01; no claim/lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 403 Silver Closure Verification
+
+Registry updated: 2026-09-29. Allocation generation: 402 -> 403. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept Calendar focused 20/20 and both independent reviews. ACK `silver-20260929T051000Z/Kanban/g403/verify-EXR-007-A04-T02-closure` grants Coworker-3 sequential read-only static/export, adjacent lifecycle, delegation, compatibility and final full-offline regression processes; stop at first discrepancy. All repository files are frozen.
+- **Purple:** EXO-013 policy inputs unresolved; no claim/lease.
+- **Gold:** dependency-blocked by rank-45 T01; no claim/lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 402 Silver Explicit Dependencies
+
+Registry updated: 2026-09-29. Allocation generation: 401 -> 402. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** ACK `silver-20260929T050700Z/Kanban/g402/recover-EXR-007-A04-T02-explicit-dependencies`. Coworker-2 owns the bounded Calendar function/test dependency seam and one focused run. Manifest, exports, all other product/test bytes and Gold receipt seam are frozen.
+- **Purple:** EXO-013 policy inputs unresolved; no claim/lease.
+- **Gold:** dependency-blocked by rank-45 T01; no claim/lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 401 Silver Module-Mock Binding
+
+Registry updated: 2026-09-29. Allocation generation: 400 -> 401. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** retain direct-dispatch Common hash `EB92B88847A1163CA8E60FBD2D571BF6B74A6B04974F51973C2E34E75350827F` and 16/20 result. ACK `silver-20260929T050400Z/Kanban/g401/bind-EXR-007-A04-T02-module-mocks` grants Coworker-1 the focused test's module-stub/mock/assertion plumbing and one run; product files are frozen.
+- **Purple:** EXO-013 policy inputs unresolved; no claim/lease.
+- **Gold:** dependency-blocked by rank-45 T01; no claim/lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 400 Silver Direct-Dispatch Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 399 -> 400. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** ACK `silver-20260929T050100Z/Kanban/g400/recover-EXR-007-A04-T02-attempt-5`. Coworker-2 exclusively owns the Calendar dispatch block for one product-only direct-dispatch edit and one frozen focused run; attempt 5/5 is consumed on edit.
+- **Purple:** EXO-013 design retained but blocked on denominator, scope naming, focused decomposition and versioned policy inputs. No claim/lease.
+- **Gold:** no dependency-eligible card; rank-46 T02 remains blocked by rank-45 T01. No claim/lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 399 Three-Cohort Read-Only Design
+
+Registry updated: 2026-09-29. Allocation generation: 398 -> 399. Canonical counts remain **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** ACK `purple-20260929T045600Z/Kanban/g399/design-EXR-007-A07-separate-control`. The maintainer selected a separate audit-action control/lifecycle; three Coworkers must reconcile an implementation-ready contract proposal. No claim or execution.
+- **Silver:** ACK `silver-20260929T045600Z/Kanban/g399/diagnose-EXR-007-A04-T02-mock-dispatch`. Three Coworkers diagnose a mock-friendly production dispatch design; no edit/run/attempt.
+- **Gold:** ACK `gold-20260929T045600Z/Kanban/g399/select-next-queue-card`. Three Coworkers identify the next dependency-eligible queue card and bounded partition; no claim or execution.
+- All workers are read-only. No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 398 Gold Closure
+
+Registry updated: 2026-09-29. Allocation generation: 397 -> 398. Canonical counts become **44 To Do / 1 In Progress / 45 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** independent closure accepted: focused 13/13, FullAccess 12/12, SendAs 13/13 and compatibility 66 Success / 105 accepted Failure identities with zero added/removed. `EXR-007-A05-T03-F01-R01` moves to Done; all Gold leases/process authority are released.
+- **Silver:** sole remaining In Progress card, blocked/quiescent at Calendar 16/20 after four consumed attempts.
+- **Purple:** quiescent; rank-44 A07 is dependency-eligible but blocked on the maintainer control-contract decision.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized or occurred.
+
+### Generation 397 Gold Closure Verification
+
+Registry updated: 2026-09-29. Allocation generation: 396 -> 397. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** accept focused 13/13 and both independent reviews. ACK `gold-20260929T045200Z/Kanban/g397/verify-EXR-007-A05-T03-F01-R01-closure` grants Coworker-3 sequential read-only FullAccess, SendAs and hierarchy-preserving compatibility processes; stop at first discrepancy. All repository files are frozen.
+- **Silver:** blocked/quiescent at Calendar 16/20; no lease.
+- **Purple:** blocked/quiescent pending the A07 maintainer control-contract decision; no claim.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 396 Gold Drift Contract Correction
+
+Registry updated: 2026-09-29. Allocation generation: 395 -> 396. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** accept Common indexer fix and 12/13 result; sole failure is a test drift-taxonomy defect. ACK `gold-20260929T044900Z/Kanban/g396/correct-EXR-007-A05-T03-F01-R01-drift-contract` grants Coworker-1 the one assertion edit and one focused run. Product files are frozen.
+- **Silver:** blocked/quiescent at Calendar 16/20; no lease.
+- **Purple:** blocked/quiescent pending the A07 maintainer control-contract decision; no claim.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 395 Gold Receipt Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 394 -> 395. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** accept corrected focused test SHA-256 `333B2BA6AB3C10674199679C232CEA8685E412A3B6782551A7C215A9D07F5E92`. ACK `gold-20260929T044600Z/Kanban/g395/recover-EXR-007-A05-T03-F01-R01-attempt-4` grants Coworker-2 the exact Common receipt-expression edit and one focused run; attempt 4/4 is consumed on edit.
+- **Silver:** blocked/quiescent at Calendar 16/20; no lease.
+- **Purple:** blocked/quiescent pending the A07 maintainer control-contract decision; no claim.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 394 Silver Result and Gold Fixture Isolation
+
+Registry updated: 2026-09-29. Allocation generation: 393 -> 394. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** retain exact namespace-only attempt 4/4 and 16/20 result. Common is `A3151B15440F813F0A894320A9ECAE2E5725A4F2BF326F32FDCB08057FE4DA97`; Silver is blocked/quiescent with no lease.
+- **Purple:** rank-44 A07 is dependency-eligible but blocked on its unresolved maintainer control-contract decision. All Purple workers are read-only/quiescent.
+- **Gold:** ACK `gold-20260929T044300Z/Kanban/g394/isolate-EXR-007-A05-T03-F01-R01-fixtures`. Coworker-1 exclusively owns only the focused SendOnBehalf test for two reason-isolation fixture corrections and static validation. Product files remain frozen; no Pester run or product attempt.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 393 Parent-Level Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 392 -> 393. The parent session is sole canonical writer after all restart wrappers confirmed quiescence. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** ACK `silver-20260929T043800Z/Kanban/g393/recover-EXR-007-A04-T02-attempt-4`. Coworker-2 exclusively owns Common/manifest for one namespace-only correction and one frozen Calendar run; attempt 4/4 is consumed on edit. Coworkers 1 and 3 are independent read-only reviewers.
+- **Purple:** exactly three read-only Coworkers may propose the next dependency-eligible queue card and bounded negative-first partition. No claim, edit, process, or execution grant.
+- **Gold:** exactly three read-only Coworkers may adjudicate the remaining SendOnBehalf fixture/product boundary. No edit, process, or additional attempt grant.
+- Only Silver has writable/process authority. No live-state read, tenant action, credentials, commit, push, or publish is authorized.
 
 ### Generation 392 Final Three-Cohort Outcome
 
