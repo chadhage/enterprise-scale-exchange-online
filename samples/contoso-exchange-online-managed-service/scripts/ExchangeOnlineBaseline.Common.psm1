@@ -15259,6 +15259,3314 @@ function Invoke-ExchangeMailboxAuditActionLifecycle {
     }
 }
 
+# EXR-007-A08-T01: collect the raw client-access switches for every mailbox and
+# tenant-discovered mailbox plan through explicit read seams.  This collector deliberately
+# does not dispatch Exchange commands: callers own authentication and command execution.
+function Get-ExchangeClientAccessMailboxFlagEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MailboxReader,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$PlanReader
+    )
+
+    $newResult = {
+        param(
+            [bool]$Collected,
+            [AllowNull()][string]$FailureReason,
+            [AllowNull()][object]$Value,
+            [AllowNull()][string]$RawHash
+        )
+
+        [pscustomobject][ordered]@{
+            Source               = 'InjectedExchangeMailboxAndPlanReaders'
+            Collected            = $Collected
+            FailureReason        = if ($Collected) { $null } else { $FailureReason }
+            Value                = $Value
+            RawHash              = $RawHash
+            ActualClientBehavior = 'Unverified'
+        }
+    }
+
+    if ($null -eq $MailboxReader) {
+        return & $newResult $false 'MailboxReaderRequired' $null $null
+    }
+    if ($null -eq $PlanReader) {
+        return & $newResult $false 'PlanReaderRequired' $null $null
+    }
+
+    $readCompleteCollection = {
+        param(
+            [scriptblock]$Reader,
+            [string]$Kind
+        )
+
+        $item = [System.Collections.Generic.List[object]]::new()
+        $continuation = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::Ordinal
+        )
+        $nextLink = $null
+
+        while ($true) {
+            try {
+                $page = & $Reader $nextLink
+            }
+            catch {
+                throw "$($Kind)CollectionFailed:$($_.Exception.Message)"
+            }
+
+            if ($null -eq $page) {
+                throw "$($Kind)PageMissing"
+            }
+
+            $pageMember = @(Get-BaselineRecordMemberName -Node $page)
+            foreach ($requiredMember in @('Items', 'Complete', 'NextLink')) {
+                if ($requiredMember -cnotin $pageMember) {
+                    throw "$($Kind)PageSchemaInvalid:$requiredMember"
+                }
+            }
+
+            $pageItems = @(Get-BaselineRecordMember -Node $page -Name 'Items')
+
+            $complete = Get-BaselineRecordMember -Node $page -Name 'Complete'
+            if ($complete -isnot [bool]) {
+                throw "$($Kind)PageSchemaInvalid:Complete"
+            }
+
+            foreach ($entry in @($pageItems)) {
+                $item.Add($entry)
+            }
+
+            if ($complete) {
+                break
+            }
+
+            $offeredNextLink = Get-BaselineRecordMember -Node $page -Name 'NextLink'
+            if ($offeredNextLink -isnot [string] -or
+                [string]::IsNullOrWhiteSpace([string]$offeredNextLink)) {
+                throw "$($Kind)CollectionIncomplete"
+            }
+
+            if (-not $continuation.Add([string]$offeredNextLink)) {
+                throw "$($Kind)PagingCycle"
+            }
+            $nextLink = [string]$offeredNextLink
+        }
+
+        return @($item)
+    }
+
+    try {
+        $mailbox = @(& $readCompleteCollection $MailboxReader 'Mailbox')
+        $plan = @(& $readCompleteCollection $PlanReader 'Plan')
+    }
+    catch {
+        return & $newResult $false $_.Exception.Message $null $null
+    }
+
+    $mailboxIdentity = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $canonicalMailboxIdentity = [System.Collections.Generic.Dictionary[string,string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $planIdentity = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $canonicalPlanIdentity = [System.Collections.Generic.Dictionary[string,string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $rawMailbox = [System.Collections.Generic.List[object]]::new()
+    $rawPlan = [System.Collections.Generic.List[object]]::new()
+    $evidenceMailbox = [System.Collections.Generic.List[object]]::new()
+    $evidencePlan = [System.Collections.Generic.List[object]]::new()
+    $booleanMember = @('ActiveSyncEnabled', 'MAPIEnabled', 'OWAEnabled')
+
+    foreach ($entry in $mailbox) {
+        if ($null -eq $entry) {
+            return & $newResult $false 'MailboxSchemaInvalid:Identity' $null $null
+        }
+        $presentMember = @(Get-BaselineRecordMemberName -Node $entry)
+        foreach ($requiredMember in @(
+                'Identity',
+                'ExternalDirectoryObjectId',
+                'PrimarySmtpAddress',
+                'RecipientTypeDetails',
+                'MailboxPlan',
+                'ActiveSyncEnabled',
+                'MAPIEnabled',
+                'OWAEnabled'
+            )) {
+            if ($requiredMember -cnotin $presentMember) {
+                return & $newResult $false "MailboxSchemaInvalid:$requiredMember" $null $null
+            }
+        }
+
+        $identity = [string](Get-BaselineRecordMember -Node $entry -Name 'Identity')
+        if ([string]::IsNullOrWhiteSpace($identity)) {
+            return & $newResult $false 'MailboxSchemaInvalid:Identity' $null $null
+        }
+        $identity = $identity.Trim()
+        if (-not $mailboxIdentity.Add($identity)) {
+            return & $newResult $false "DuplicateMailboxIdentity:$($canonicalMailboxIdentity[$identity])" $null $null
+        }
+        $canonicalMailboxIdentity[$identity] = $identity
+
+        $mailboxPlan = Get-BaselineRecordMember -Node $entry -Name 'MailboxPlan'
+        if ($mailboxPlan -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$mailboxPlan)) {
+            return & $newResult $false 'MailboxSchemaInvalid:MailboxPlan' $null $null
+        }
+        $mailboxPlan = ([string]$mailboxPlan).Trim()
+
+        foreach ($member in $booleanMember) {
+            if ((Get-BaselineRecordMember -Node $entry -Name $member) -isnot [bool]) {
+                return & $newResult $false "MailboxBooleanInvalid:$member" $null $null
+            }
+        }
+
+        $raw = [pscustomobject][ordered]@{
+            Identity                  = $identity
+            ExternalDirectoryObjectId = Get-BaselineRecordMember -Node $entry -Name 'ExternalDirectoryObjectId'
+            PrimarySmtpAddress        = Get-BaselineRecordMember -Node $entry -Name 'PrimarySmtpAddress'
+            RecipientTypeDetails      = [string](Get-BaselineRecordMember -Node $entry -Name 'RecipientTypeDetails')
+            MailboxPlan               = $mailboxPlan
+            ActiveSyncEnabled         = Get-BaselineRecordMember -Node $entry -Name 'ActiveSyncEnabled'
+            MAPIEnabled               = Get-BaselineRecordMember -Node $entry -Name 'MAPIEnabled'
+            OWAEnabled                = Get-BaselineRecordMember -Node $entry -Name 'OWAEnabled'
+        }
+        $rawMailbox.Add($raw)
+
+        $supported = $raw.RecipientTypeDetails -cin @(
+            'UserMailbox',
+            'SharedMailbox',
+            'RoomMailbox',
+            'EquipmentMailbox'
+        )
+        $evidenceMailbox.Add([pscustomobject][ordered]@{
+                Identity                  = $raw.Identity
+                ExternalDirectoryObjectId = $raw.ExternalDirectoryObjectId
+                PrimarySmtpAddress        = $raw.PrimarySmtpAddress
+                RecipientTypeDetails      = $raw.RecipientTypeDetails
+                MailboxPlan               = $raw.MailboxPlan
+                ActiveSyncEnabled         = $raw.ActiveSyncEnabled
+                MAPIEnabled               = $raw.MAPIEnabled
+                OWAEnabled                = $raw.OWAEnabled
+                Disposition               = if ($supported) { 'Included' } else { 'Excluded' }
+                Reason                    = if ($supported) { $null } else { 'UnsupportedMailboxClass' }
+            })
+    }
+
+    foreach ($entry in $plan) {
+        if ($null -eq $entry) {
+            return & $newResult $false 'PlanSchemaInvalid:Identity' $null $null
+        }
+        $presentMember = @(Get-BaselineRecordMemberName -Node $entry)
+        foreach ($requiredMember in @('Identity', 'Name', 'ActiveSyncEnabled', 'MAPIEnabled', 'OWAEnabled')) {
+            if ($requiredMember -cnotin $presentMember) {
+                return & $newResult $false "PlanSchemaInvalid:$requiredMember" $null $null
+            }
+        }
+
+        $identity = [string](Get-BaselineRecordMember -Node $entry -Name 'Identity')
+        if ([string]::IsNullOrWhiteSpace($identity)) {
+            return & $newResult $false 'PlanSchemaInvalid:Identity' $null $null
+        }
+        $identity = $identity.Trim()
+        if (-not $planIdentity.Add($identity)) {
+            return & $newResult $false "DuplicatePlanIdentity:$($canonicalPlanIdentity[$identity])" $null $null
+        }
+        $canonicalPlanIdentity[$identity] = $identity
+
+        foreach ($member in $booleanMember) {
+            if ((Get-BaselineRecordMember -Node $entry -Name $member) -isnot [bool]) {
+                return & $newResult $false "PlanBooleanInvalid:$member" $null $null
+            }
+        }
+
+        $raw = [pscustomobject][ordered]@{
+            Identity          = $identity
+            Name              = Get-BaselineRecordMember -Node $entry -Name 'Name'
+            ActiveSyncEnabled = Get-BaselineRecordMember -Node $entry -Name 'ActiveSyncEnabled'
+            MAPIEnabled       = Get-BaselineRecordMember -Node $entry -Name 'MAPIEnabled'
+            OWAEnabled        = Get-BaselineRecordMember -Node $entry -Name 'OWAEnabled'
+        }
+        $rawPlan.Add($raw)
+        $evidencePlan.Add([pscustomobject][ordered]@{
+                Identity          = $raw.Identity
+                Name              = $raw.Name
+                ActiveSyncEnabled = $raw.ActiveSyncEnabled
+                MAPIEnabled       = $raw.MAPIEnabled
+                OWAEnabled        = $raw.OWAEnabled
+            })
+    }
+
+    $sortOrdinal = {
+        param(
+            [object[]]$InputObject,
+            [scriptblock]$Key
+        )
+
+        $sorted = @($InputObject)
+        for ($index = 1; $index -lt $sorted.Count; $index++) {
+            $candidate = $sorted[$index]
+            $candidateKey = [string](& $Key $candidate)
+            $position = $index
+            while ($position -gt 0 -and
+                [string]::Compare(
+                    [string](& $Key $sorted[$position - 1]),
+                    $candidateKey,
+                    [System.StringComparison]::Ordinal
+                ) -gt 0) {
+                $sorted[$position] = $sorted[$position - 1]
+                $position--
+            }
+            $sorted[$position] = $candidate
+        }
+        return $sorted
+    }
+
+    $orderedMailbox = @(& $sortOrdinal @($evidenceMailbox) {
+            param($entry)
+            '{0}{1}{2}' -f $entry.RecipientTypeDetails, [char]0, $entry.Identity
+        })
+    $orderedPlan = @(& $sortOrdinal @($evidencePlan) {
+            param($entry)
+            $entry.Identity
+        })
+
+    # Hash the deep-copied raw contract rather than the enriched/sorted presentation.  This keeps
+    # the digest bound to exactly the reader fields and leaves reader-owned objects untouched.
+    $rawValue = [ordered]@{
+        Mailboxes = @($rawMailbox)
+        Plans     = @($rawPlan)
+    }
+    $rawJson = $rawValue | ConvertTo-Json -Depth 20 -Compress
+    $rawBytes = [System.Text.Encoding]::UTF8.GetBytes($rawJson)
+    $rawHash = ([System.Security.Cryptography.SHA256]::HashData($rawBytes) |
+            ForEach-Object ToString x2) -join ''
+
+    $value = [pscustomobject][ordered]@{
+        Mailboxes    = $orderedMailbox
+        MailboxPlans = $orderedPlan
+    }
+    return & $newResult $true $null $value $rawHash
+}
+
+# EXR-007-A08-T01: turn an approved, effective client-access policy and a complete
+# tenant discovery into deterministic mailbox decisions.  This function is deliberately
+# planning-only: it neither supplies tenant defaults nor dispatches Exchange commands.
+function New-ExchangeClientAccessMailboxFlagPlan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Policy,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object[]]$DiscoveredPlan,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object[]]$Mailbox,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [string]$AsOfUtc
+    )
+
+    $memberNames = {
+        param([AllowNull()][object]$Node)
+        if ($null -eq $Node) {
+            return @()
+        }
+        return @(Get-BaselineRecordMemberName -Node $Node)
+    }
+    $member = {
+        param(
+            [AllowNull()][object]$Node,
+            [string]$Name
+        )
+        Get-BaselineRecordMember -Node $Node -Name $Name
+    }
+    $requireMember = {
+        param(
+            [AllowNull()][object]$Node,
+            [string]$Name,
+            [string]$FailureId
+        )
+        if ($null -eq $Node -or $Name -cnotin @(& $memberNames $Node)) {
+            throw "$FailureId`:$Name"
+        }
+        & $member $Node $Name
+    }
+    $requireText = {
+        param(
+            [AllowNull()][object]$Node,
+            [string]$Name,
+            [string]$FailureId
+        )
+        $value = & $requireMember $Node $Name $FailureId
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+            throw "$FailureId`:$Name"
+        }
+        ([string]$value).Trim()
+    }
+    $parseUtc = {
+        param(
+            [AllowNull()][object]$Value,
+            [string]$FailureId
+        )
+        if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$Value)) {
+            throw $FailureId
+        }
+        $parsed = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse(
+                [string]$Value,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::AssumeUniversal,
+                [ref]$parsed
+            )) {
+            throw "$FailureId`:$Value"
+        }
+        $parsed.ToUniversalTime()
+    }
+
+    $asOf = & $parseUtc $AsOfUtc 'ClientAccessAsOfUtcInvalid'
+    if ($null -eq $Policy) {
+        throw 'ClientAccessPolicyRequired'
+    }
+
+    foreach ($required in @(
+            'FixtureAuthority',
+            'ContractVersion',
+            'PolicyVersion',
+            'SemanticAuthority',
+            'Approval',
+            'EffectiveUtc',
+            'ContentHash',
+            'Evidence',
+            'ClassDisposition',
+            'PlanDisposition',
+            'DesiredFlags',
+            'ClientImpact'
+        )) {
+        $null = & $requireMember $Policy $required 'ClientAccessPolicyShapeInvalid'
+    }
+
+    $fixtureAuthority = & $requireText $Policy 'FixtureAuthority' 'ClientAccessFixtureAuthorityInvalid'
+    if ($fixtureAuthority -cnotin @('SyntheticNonAuthoritative', 'ExternalAuthoritative')) {
+        throw "ClientAccessFixtureAuthorityInvalid:$fixtureAuthority"
+    }
+    $contractVersion = & $requireText $Policy 'ContractVersion' 'ClientAccessContractVersionInvalid'
+    if ($contractVersion -cne '1.0') {
+        throw "ClientAccessContractVersionInvalid:$contractVersion"
+    }
+    $null = & $requireText $Policy 'PolicyVersion' 'ClientAccessPolicyVersionInvalid'
+
+    $semanticAuthority = & $member $Policy 'SemanticAuthority'
+    $null = & $requireText $semanticAuthority 'AuthorityId' 'ClientAccessSemanticAuthorityInvalid'
+    $authorityDecision = & $requireText $semanticAuthority 'Decision' 'ClientAccessSemanticAuthorityInvalid'
+    if ($authorityDecision -cne 'Approved') {
+        throw "ClientAccessSemanticAuthorityDecisionInvalid:$authorityDecision"
+    }
+
+    $approval = & $member $Policy 'Approval'
+    $null = & $requireText $approval 'ApprovalId' 'ClientAccessApprovalInvalid'
+    $null = & $requireText $approval 'ApprovedBy' 'ClientAccessApprovalInvalid'
+    $approvedUtc = & $parseUtc (& $requireMember $approval 'ApprovedUtc' 'ClientAccessApprovalInvalid') 'ClientAccessApprovalApprovedUtcInvalid'
+    $expiresUtc = & $parseUtc (& $requireMember $approval 'ExpiresUtc' 'ClientAccessApprovalInvalid') 'ClientAccessApprovalExpiresUtcInvalid'
+    if ($approvedUtc -gt $asOf) {
+        throw 'ClientAccessApprovalNotYetValid'
+    }
+    if ($expiresUtc -le $asOf -or $expiresUtc -le $approvedUtc) {
+        throw 'ClientAccessApprovalExpired'
+    }
+
+    $effectiveUtc = & $parseUtc (& $member $Policy 'EffectiveUtc') 'ClientAccessEffectiveUtcInvalid'
+    if ($effectiveUtc -gt $asOf) {
+        throw 'ClientAccessPolicyNotEffective'
+    }
+    $contentHash = & $requireText $Policy 'ContentHash' 'ClientAccessContentHashInvalid'
+    if (-not $contentHash.StartsWith('SHA256:', [System.StringComparison]::Ordinal)) {
+        throw "ClientAccessContentHashInvalid:$contentHash"
+    }
+    $evidence = & $member $Policy 'Evidence'
+    $null = & $requireText $evidence 'EvidenceId' 'ClientAccessEvidenceInvalid'
+    $evidenceHash = & $requireText $evidence 'ContentHash' 'ClientAccessEvidenceInvalid'
+    if (-not [string]::Equals($contentHash, $evidenceHash, [System.StringComparison]::Ordinal)) {
+        throw 'ClientAccessEvidenceContentHashMismatch'
+    }
+
+    $supportedClass = @('UserMailbox', 'SharedMailbox', 'RoomMailbox', 'EquipmentMailbox')
+    $classRule = @(& $member $Policy 'ClassDisposition')
+    $classByName = @{}
+    foreach ($rule in $classRule) {
+        $name = & $requireText $rule 'RecipientTypeDetails' 'ClientAccessClassDispositionInvalid'
+        if ($name -cnotin $supportedClass) {
+            throw "ClientAccessMailboxClassUnsupported:$name"
+        }
+        if ($classByName.ContainsKey($name)) {
+            throw "ClientAccessClassDispositionDuplicate:$name"
+        }
+        $disposition = & $requireText $rule 'Disposition' 'ClientAccessClassDispositionInvalid'
+        if ($disposition -cnotin @('Included', 'Excluded')) {
+            throw "ClientAccessClassDispositionInvalid:$name`:$disposition"
+        }
+        $classByName[$name] = $disposition
+    }
+    foreach ($name in $supportedClass) {
+        if (-not $classByName.ContainsKey($name)) {
+            throw "ClientAccessClassDispositionMissing:$name"
+        }
+    }
+    if ($classByName.Count -ne $supportedClass.Count) {
+        throw 'ClientAccessClassDispositionSetInvalid'
+    }
+
+    $discoveredByName = @{}
+    foreach ($entry in @($DiscoveredPlan)) {
+        $identity = & $requireText $entry 'Identity' 'ClientAccessDiscoveredMailboxPlanInvalid'
+        if ($discoveredByName.ContainsKey($identity)) {
+            throw "ClientAccessDiscoveredMailboxPlanIdentityDuplicate:$identity"
+        }
+        $discoveredByName[$identity] = $true
+    }
+
+    $planByName = @{}
+    foreach ($rule in @(& $member $Policy 'PlanDisposition')) {
+        $name = & $requireText $rule 'MailboxPlan' 'ClientAccessMailboxPlanDispositionInvalid'
+        if ($planByName.ContainsKey($name)) {
+            throw "ClientAccessMailboxPlanDispositionDuplicate:$name"
+        }
+        if (-not $discoveredByName.ContainsKey($name)) {
+            throw "ClientAccessMailboxPlanNotDiscovered:$name"
+        }
+        $disposition = & $requireText $rule 'Disposition' 'ClientAccessMailboxPlanDispositionInvalid'
+        if ($disposition -cnotin @('Included', 'Excluded')) {
+            throw "ClientAccessMailboxPlanDispositionInvalid:$name`:$disposition"
+        }
+        $planByName[$name] = $disposition
+    }
+    foreach ($name in $discoveredByName.Keys) {
+        if (-not $planByName.ContainsKey($name)) {
+            throw "ClientAccessMailboxPlanDispositionMissing:$name"
+        }
+    }
+    if ($planByName.Count -ne $discoveredByName.Count) {
+        throw 'ClientAccessMailboxPlanDispositionSetInvalid'
+    }
+
+    $flagName = @('ActiveSyncEnabled', 'MAPIEnabled', 'OWAEnabled')
+    $desiredNode = & $member $Policy 'DesiredFlags'
+    $desired = [ordered]@{}
+    foreach ($name in $flagName) {
+        $value = & $requireMember $desiredNode $name 'ClientAccessDesiredFlagMissing'
+        if ($value -isnot [bool]) {
+            throw "ClientAccessDesiredFlagNotBoolean:$name"
+        }
+        $desired[$name] = $value
+    }
+
+    $clientImpact = & $member $Policy 'ClientImpact'
+    $outlookWeb = & $requireMember $clientImpact 'OutlookOnTheWeb' 'ClientAccessOutlookOnTheWebImpactRequired'
+    $outlookWebImpact = & $requireText $outlookWeb 'Impact' 'ClientAccessOutlookOnTheWebImpactRequired'
+    if ($outlookWebImpact -cne 'Disabled') {
+        throw "ClientAccessOutlookOnTheWebImpactInvalid:$outlookWebImpact"
+    }
+    $newOutlook = & $requireMember $clientImpact 'NewOutlookForWindows' 'ClientAccessNewOutlookForWindowsImpactRequired'
+    $newOutlookImpact = & $requireText $newOutlook 'Impact' 'ClientAccessNewOutlookForWindowsImpactRequired'
+    if ($newOutlookImpact -cne 'Disabled') {
+        throw "ClientAccessNewOutlookForWindowsImpactInvalid:$newOutlookImpact"
+    }
+    $otherClients = & $requireMember $clientImpact 'OtherClients' 'ClientAccessOtherClientImpactRequired'
+    $inventory = @(& $requireMember $otherClients 'Inventory' 'ClientAccessOtherClientInventoryOrNoneConfirmationRequired')
+    $explicitNone = & $requireMember $otherClients 'ExplicitNone' 'ClientAccessOtherClientInventoryOrNoneConfirmationRequired'
+    if ($explicitNone -isnot [bool]) {
+        throw 'ClientAccessOtherClientExplicitNoneNotBoolean'
+    }
+    foreach ($item in $inventory) {
+        if ($item -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$item)) {
+            throw 'ClientAccessOtherClientInventoryInvalid'
+        }
+    }
+    if ($explicitNone -and $inventory.Count -gt 0) {
+        throw 'ClientAccessOtherClientExplicitNoneContradictsInventory'
+    }
+    if (-not $explicitNone -and $inventory.Count -eq 0) {
+        throw 'ClientAccessOtherClientInventoryOrNoneConfirmationRequired'
+    }
+    $mapiWhenTrue = & $requireText $otherClients 'MAPIWhenTrue' 'ClientAccessMAPITrueMustMeanEnabled'
+    if ($mapiWhenTrue -cne 'Enabled') {
+        throw "ClientAccessMAPITrueMustMeanEnabled:$mapiWhenTrue"
+    }
+    $ownerAcceptance = & $requireMember $clientImpact 'OwnerAcceptance' 'ClientAccessOwnerAcceptanceRequired'
+    $ownerDecision = & $requireText $ownerAcceptance 'Decision' 'ClientAccessOwnerAcceptanceRequired'
+    if ($ownerDecision -cne 'Accepted') {
+        throw "ClientAccessOwnerAcceptanceDecisionInvalid:$ownerDecision"
+    }
+    $null = & $requireText $ownerAcceptance 'AcceptedBy' 'ClientAccessOwnerAcceptanceRequired'
+    $ownerAcceptedUtc = & $parseUtc (& $requireMember $ownerAcceptance 'AcceptedUtc' 'ClientAccessOwnerAcceptanceRequired') 'ClientAccessOwnerAcceptanceUtcInvalid'
+    if ($ownerAcceptedUtc -gt $asOf) {
+        throw 'ClientAccessOwnerAcceptanceNotYetValid'
+    }
+
+    $mailboxIdentity = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $result = [System.Collections.Generic.List[object]]::new()
+    foreach ($entry in @($Mailbox)) {
+        $identity = & $requireText $entry 'Identity' 'ClientAccessMailboxIdentityInvalid'
+        if (-not $mailboxIdentity.Add($identity)) {
+            throw "ClientAccessMailboxIdentityDuplicate:$identity"
+        }
+        $recipientType = & $requireText $entry 'RecipientTypeDetails' 'ClientAccessMailboxClassInvalid'
+        if ($recipientType -cnotin $supportedClass) {
+            throw "ClientAccessMailboxClassUnsupported:$recipientType"
+        }
+        $mailboxPlan = & $requireText $entry 'MailboxPlan' 'ClientAccessMailboxPlanInvalid'
+        if (-not $discoveredByName.ContainsKey($mailboxPlan)) {
+            throw "ClientAccessMailboxPlanNotDiscovered:$mailboxPlan"
+        }
+
+        $current = [ordered]@{}
+        foreach ($name in $flagName) {
+            $value = & $requireMember $entry $name 'ClientAccessObservedFlagMissing'
+            if ($value -isnot [bool]) {
+                throw "ClientAccessObservedFlagNotBoolean:$name"
+            }
+            $current[$name] = $value
+        }
+
+        $included =
+            $classByName[$recipientType] -ceq 'Included' -and
+            $planByName[$mailboxPlan] -ceq 'Included'
+        $changed = $included -and (
+            $current.ActiveSyncEnabled -cne $desired.ActiveSyncEnabled -or
+            $current.MAPIEnabled -cne $desired.MAPIEnabled -or
+            $current.OWAEnabled -cne $desired.OWAEnabled
+        )
+
+        $result.Add([pscustomobject][ordered]@{
+                Identity              = $identity
+                RecipientTypeDetails  = $recipientType
+                MailboxPlan           = $mailboxPlan
+                Disposition           = if ($included) { 'Included' } else { 'Excluded' }
+                CurrentFlags          = [pscustomobject][ordered]@{
+                    ActiveSyncEnabled = $current.ActiveSyncEnabled
+                    MAPIEnabled       = $current.MAPIEnabled
+                    OWAEnabled        = $current.OWAEnabled
+                }
+                DesiredFlags          = [pscustomobject][ordered]@{
+                    ActiveSyncEnabled = $desired.ActiveSyncEnabled
+                    MAPIEnabled       = $desired.MAPIEnabled
+                    OWAEnabled        = $desired.OWAEnabled
+                }
+                Decision              = if ($changed) { 'Changed' } else { 'NoOp' }
+                ActualClientBehavior  = 'Unverified'
+                ClientImpact          = [pscustomobject][ordered]@{
+                    OutlookOnTheWeb = [pscustomobject][ordered]@{
+                        Impact = $outlookWebImpact
+                    }
+                    NewOutlookForWindows = [pscustomobject][ordered]@{
+                        Impact = $newOutlookImpact
+                    }
+                    OtherClients = [pscustomobject][ordered]@{
+                        Inventory    = @($inventory)
+                        ExplicitNone = $explicitNone
+                        MAPIWhenTrue = $mapiWhenTrue
+                    }
+                    OwnerAcceptance = [pscustomobject][ordered]@{
+                        Decision    = $ownerDecision
+                        AcceptedBy  = & $member $ownerAcceptance 'AcceptedBy'
+                        AcceptedUtc = & $member $ownerAcceptance 'AcceptedUtc'
+                    }
+                }
+            })
+    }
+
+    return @($result)
+}
+
+# EXR-007-A08-T01: execute the approved planner output only through injected seams.
+# The lifecycle intentionally applies, verifies, and reverses the change so callers can
+# prove both the mutation and its exact restoration without embedding Exchange dispatch.
+function Invoke-ExchangeClientAccessMailboxFlagLifecycle {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object]$Policy,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [object[]]$Plan,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [string]$PolicyHash,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [string]$PlanHash,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [string]$AsOfUtc,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$CompleteRead,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$MailboxWriter,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$PlanWriter
+    )
+
+    $memberNames = {
+        param([AllowNull()][object]$Node)
+        if ($null -eq $Node) {
+            return @()
+        }
+        return @(Get-BaselineRecordMemberName -Node $Node)
+    }
+    $member = {
+        param([AllowNull()][object]$Node, [string]$Name)
+        Get-BaselineRecordMember -Node $Node -Name $Name
+    }
+    $requireMember = {
+        param([AllowNull()][object]$Node, [string]$Name, [string]$FailureId)
+        if ($null -eq $Node -or $Name -cnotin @(& $memberNames $Node)) {
+            throw "$FailureId`:$Name"
+        }
+        & $member $Node $Name
+    }
+    $requireText = {
+        param([AllowNull()][object]$Node, [string]$Name, [string]$FailureId)
+        $value = & $requireMember $Node $Name $FailureId
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$value)) {
+            throw "$FailureId`:$Name"
+        }
+        ([string]$value).Trim()
+    }
+    $parseUtc = {
+        param([AllowNull()][object]$Value, [string]$FailureId)
+        if ($Value -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$Value)) {
+            throw $FailureId
+        }
+        $parsed = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse(
+                [string]$Value,
+                [System.Globalization.CultureInfo]::InvariantCulture,
+                [System.Globalization.DateTimeStyles]::AssumeUniversal,
+                [ref]$parsed
+            )) {
+            throw "$FailureId`:$Value"
+        }
+        $parsed.ToUniversalTime()
+    }
+    $getHash = {
+        param([AllowNull()][object]$Value)
+        $canonical = ConvertTo-CanonicalJson -InputObject $Value
+        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes($canonical)
+        [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData($bytes)
+        ).ToLowerInvariant()
+    }
+
+    if ($null -eq $Policy) {
+        throw 'ClientAccessPolicyRequired'
+    }
+    if ($null -eq $Plan) {
+        throw 'ClientAccessMailboxFlagPlanRequired'
+    }
+    if ([string]::IsNullOrWhiteSpace($PolicyHash)) {
+        throw 'ClientAccessMailboxFlagPolicyHashRequired'
+    }
+    if ([string]::IsNullOrWhiteSpace($PlanHash)) {
+        throw 'ClientAccessMailboxFlagPlanHashRequired'
+    }
+    if ($null -eq $CompleteRead) {
+        throw 'ClientAccessMailboxFlagCompleteReaderRequired'
+    }
+    if ($null -eq $MailboxWriter) {
+        throw 'ClientAccessMailboxFlagMailboxWriterRequired'
+    }
+    if ($null -eq $PlanWriter) {
+        throw 'ClientAccessMailboxFlagPlanWriterRequired'
+    }
+
+    $asOf = & $parseUtc $AsOfUtc 'ClientAccessAsOfUtcInvalid'
+
+    if ('SemanticAuthority' -cnotin @(& $memberNames $Policy)) {
+        throw 'ClientAccessPolicySemanticAuthorityRequired'
+    }
+    $semanticAuthority = & $member $Policy 'SemanticAuthority'
+    foreach ($name in @('AuthorityId', 'Decision')) {
+        $null = & $requireText $semanticAuthority $name 'ClientAccessPolicySemanticAuthorityIncomplete'
+    }
+    if ((& $member $semanticAuthority 'Decision') -cne 'Approved') {
+        throw 'ClientAccessPolicySemanticAuthorityNotApproved'
+    }
+
+    if ('Approval' -cnotin @(& $memberNames $Policy)) {
+        throw 'ClientAccessPolicyApprovalRequired'
+    }
+    $approval = & $member $Policy 'Approval'
+    foreach ($name in @('ApprovalId', 'ApprovedBy', 'ApprovedUtc', 'ExpiresUtc')) {
+        $null = & $requireText $approval $name 'ClientAccessPolicyApprovalIncomplete'
+    }
+    $approvedUtc = & $parseUtc (& $member $approval 'ApprovedUtc') 'ClientAccessPolicyApprovalApprovedUtcInvalid'
+    $expiresUtc = & $parseUtc (& $member $approval 'ExpiresUtc') 'ClientAccessPolicyApprovalExpiresUtcInvalid'
+    if ($approvedUtc -gt $asOf) {
+        throw 'ClientAccessPolicyApprovalNotYetValid'
+    }
+    if ($expiresUtc -le $asOf -or $expiresUtc -le $approvedUtc) {
+        throw 'ClientAccessPolicyApprovalExpired'
+    }
+
+    if ('Evidence' -cnotin @(& $memberNames $Policy)) {
+        throw 'ClientAccessPolicyEvidenceRequired'
+    }
+    $evidence = & $member $Policy 'Evidence'
+    foreach ($name in @('EvidenceId', 'ContentHash')) {
+        $null = & $requireText $evidence $name 'ClientAccessPolicyEvidenceIncomplete'
+    }
+    $contentHash = & $requireText $Policy 'ContentHash' 'ClientAccessPolicyContentHashIncomplete'
+    if (-not [string]::Equals(
+            $contentHash,
+            [string](& $member $evidence 'ContentHash'),
+            [System.StringComparison]::Ordinal
+        )) {
+        throw 'ClientAccessPolicyEvidenceHashMismatch'
+    }
+
+    $effectiveUtc = & $parseUtc (
+        & $requireMember $Policy 'EffectiveUtc' 'ClientAccessPolicyEffectiveUtcRequired'
+    ) 'ClientAccessPolicyEffectiveUtcInvalid'
+    if ($effectiveUtc -gt $asOf) {
+        throw 'ClientAccessPolicyNotEffective'
+    }
+
+    $actualPolicyHash = & $getHash $Policy
+    if (-not [string]::Equals(
+            $actualPolicyHash,
+            $PolicyHash,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+        throw "ClientAccessMailboxFlagPolicyHashMismatch:$actualPolicyHash"
+    }
+    $actualPlanHash = & $getHash @($Plan)
+    if (-not [string]::Equals(
+            $actualPlanHash,
+            $PlanHash,
+            [System.StringComparison]::OrdinalIgnoreCase
+        )) {
+        throw "ClientAccessMailboxFlagPlanHashMismatch:$actualPlanHash"
+    }
+
+    $flagName = @('ActiveSyncEnabled', 'MAPIEnabled', 'OWAEnabled')
+    $identitySet = [System.Collections.Generic.HashSet[string]]::new(
+        [System.StringComparer]::OrdinalIgnoreCase
+    )
+    $affected = [System.Collections.Generic.List[object]]::new()
+    $changed = [System.Collections.Generic.List[object]]::new()
+    $outOfScope = [System.Collections.Generic.List[object]]::new()
+    foreach ($row in @($Plan)) {
+        $identity = & $requireText $row 'Identity' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        if (-not $identitySet.Add($identity)) {
+            throw "ClientAccessMailboxFlagPlanIdentityDuplicate:$identity"
+        }
+        $null = & $requireText $row 'RecipientTypeDetails' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $null = & $requireText $row 'MailboxPlan' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $disposition = & $requireText $row 'Disposition' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $decision = & $requireText $row 'Decision' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $actualBehavior = & $requireText $row 'ActualClientBehavior' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        if ($disposition -cnotin @('Included', 'Excluded')) {
+            throw "ClientAccessMailboxFlagPlanDispositionInvalid:$identity`:$disposition"
+        }
+        if ($decision -cnotin @('Changed', 'NoOp')) {
+            throw "ClientAccessMailboxFlagPlanDecisionInvalid:$identity`:$decision"
+        }
+        if ($actualBehavior -cne 'Unverified') {
+            throw "ClientAccessMailboxFlagActualClientBehaviorInvalid:$identity`:$actualBehavior"
+        }
+
+        $currentFlags = & $requireMember $row 'CurrentFlags' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $desiredFlags = & $requireMember $row 'DesiredFlags' 'ClientAccessMailboxFlagPlanShapeInvalid'
+        $hasDifference = $false
+        foreach ($name in $flagName) {
+            $current = & $requireMember $currentFlags $name 'ClientAccessMailboxFlagCurrentFlagMissing'
+            $desired = & $requireMember $desiredFlags $name 'ClientAccessMailboxFlagDesiredFlagMissing'
+            if ($current -isnot [bool]) {
+                throw "ClientAccessMailboxFlagCurrentFlagNotBoolean:$identity`:$name"
+            }
+            if ($desired -isnot [bool]) {
+                throw "ClientAccessMailboxFlagDesiredFlagNotBoolean:$identity`:$name"
+            }
+            if ($current -cne $desired) {
+                $hasDifference = $true
+            }
+        }
+
+        if ($disposition -ceq 'Excluded') {
+            if ($decision -cne 'NoOp') {
+                throw "ClientAccessMailboxFlagOutOfScopeDecisionInvalid:$identity"
+            }
+            $outOfScope.Add($row)
+            continue
+        }
+        if (($hasDifference -and $decision -cne 'Changed') -or
+            (-not $hasDifference -and $decision -cne 'NoOp')) {
+            throw "ClientAccessMailboxFlagDecisionDrift:$identity"
+        }
+        $affected.Add($row)
+        if ($decision -ceq 'Changed') {
+            $changed.Add($row)
+        }
+    }
+
+    $readState = {
+        param([string]$Stage)
+        try {
+            $snapshot = & $CompleteRead
+        }
+        catch {
+            throw "ClientAccessMailboxFlagReadFailed:$Stage`:$($_.Exception.Message)"
+        }
+        if ($null -eq $snapshot -or 'Complete' -cnotin @(& $memberNames $snapshot) -or
+            (& $member $snapshot 'Complete') -isnot [bool] -or
+            -not (& $member $snapshot 'Complete')) {
+            throw "ClientAccessMailboxFlagReadIncomplete:$Stage"
+        }
+        if ('Rows' -cnotin @(& $memberNames $snapshot)) {
+            throw "ClientAccessMailboxFlagReadRowsRequired:$Stage"
+        }
+        $rows = @(& $member $snapshot 'Rows')
+        $byIdentity = @{}
+        foreach ($stateRow in $rows) {
+            $identity = & $requireText $stateRow 'Identity' 'ClientAccessMailboxFlagReadShapeInvalid'
+            if ($byIdentity.ContainsKey($identity)) {
+                throw "ClientAccessMailboxFlagReadIdentityDuplicate:$identity"
+            }
+            $byIdentity[$identity] = $stateRow
+        }
+        $plannedIdentity = @($affected | ForEach-Object { [string](& $member $_ 'Identity') })
+        $missing = @($plannedIdentity | Where-Object { -not $byIdentity.ContainsKey($_) })
+        $unexpected = @($byIdentity.Keys | Where-Object { $_ -cnotin $plannedIdentity })
+        if ($missing.Count -gt 0) {
+            throw "ClientAccessMailboxFlagAffectedSetMismatch:$($missing[0])"
+        }
+        if ($unexpected.Count -gt 0) {
+            throw "ClientAccessMailboxFlagAffectedSetMismatch:$($unexpected[0])"
+        }
+        return $byIdentity
+    }
+    $assertSnapshot = {
+        param(
+            [hashtable]$StateByIdentity,
+            [ValidateSet('Current', 'Desired')][string]$Expected,
+            [string]$FailureId
+        )
+        foreach ($row in @($affected)) {
+            $identity = [string](& $member $row 'Identity')
+            $stateRow = $StateByIdentity[$identity]
+            $expectedFlags = if ($Expected -ceq 'Current') {
+                & $member $row 'CurrentFlags'
+            }
+            else {
+                & $member $row 'DesiredFlags'
+            }
+            $expectedType = [string](& $member $row 'RecipientTypeDetails')
+            $actualType = & $requireText $stateRow 'RecipientTypeDetails' 'ClientAccessMailboxFlagReadShapeInvalid'
+            if ($actualType -cne $expectedType) {
+                throw "ClientAccessMailboxFlagIdentityChanged:$identity`:RecipientTypeDetails"
+            }
+            $expectedPlan = [string](& $member $row 'MailboxPlan')
+            $actualPlan = & $requireText $stateRow 'MailboxPlan' 'ClientAccessMailboxFlagReadShapeInvalid'
+            if ($actualPlan -cne $expectedPlan) {
+                throw "ClientAccessMailboxFlagMailboxPlanChanged:$identity"
+            }
+            foreach ($name in $flagName) {
+                $actualValue = & $requireMember $stateRow $name 'ClientAccessMailboxFlagReadFlagMissing'
+                if ($actualValue -isnot [bool]) {
+                    throw "ClientAccessMailboxFlagReadFlagNotBoolean:$identity`:$name"
+                }
+                if ($actualValue -cne (& $member $expectedFlags $name)) {
+                    throw "$FailureId`:$identity`:$name"
+                }
+            }
+        }
+    }
+
+    $before = & $readState 'Before'
+    & $assertSnapshot $before 'Current' 'ClientAccessMailboxFlagImmediateDrift'
+    if ($changed.Count -eq 0) {
+        return [pscustomobject][ordered]@{
+            Scope                 = 'ClientAccessMailboxFlags'
+            PolicyHash            = $PolicyHash
+            PlanHash              = $PlanHash
+            Affected              = @($affected)
+            OutOfScope            = @($outOfScope)
+            ActualClientBehavior  = 'Unverified'
+            NoOp                  = $true
+            Applied               = $false
+            ReadbackVerified      = $false
+            RolledBack            = $false
+            RestorationVerified   = $true
+            Operations            = @('CompleteReadBefore', 'NoOp')
+        }
+    }
+
+    $operation = [System.Collections.Generic.List[string]]::new()
+    $operation.Add('CompleteReadBefore')
+    $attempted = [System.Collections.Generic.List[object]]::new()
+    $planAttempted = $false
+    $failure = $null
+    try {
+        $planAttempted = $true
+        & $PlanWriter 'Apply' @($Plan)
+        $operation.Add('PlanWriterApply')
+        foreach ($row in @($changed)) {
+            $attempted.Add($row)
+            try {
+                & $MailboxWriter 'Apply' $row
+            }
+            catch {
+                $identity = [string](& $member $row 'Identity')
+                throw "ClientAccessMailboxFlagApplyFailed:$identity`:$($_.Exception.Message)"
+            }
+            $operation.Add("MailboxWriterApply:$([string](& $member $row 'Identity'))")
+        }
+        $afterApply = & $readState 'AfterApply'
+        $operation.Add('CompleteReadAfterApply')
+        & $assertSnapshot $afterApply 'Desired' 'ClientAccessMailboxFlagApplyReadbackMismatch'
+    }
+    catch {
+        $failure = $_
+    }
+
+    $rollbackFailure = $null
+    if ($planAttempted) {
+        try {
+            & $PlanWriter 'Rollback' @($Plan)
+            $operation.Add('PlanWriterRollback')
+        }
+        catch {
+            $rollbackFailure = $_
+        }
+    }
+    for ($index = $attempted.Count - 1; $index -ge 0; $index--) {
+        $row = $attempted[$index]
+        try {
+            & $MailboxWriter 'Rollback' $row
+            $operation.Add("MailboxWriterRollback:$([string](& $member $row 'Identity'))")
+        }
+        catch {
+            if ($null -eq $rollbackFailure) {
+                $rollbackFailure = $_
+            }
+        }
+    }
+
+    try {
+        $afterRollback = & $readState 'AfterRollback'
+        $operation.Add('CompleteReadAfterRollback')
+        & $assertSnapshot $afterRollback 'Current' 'ClientAccessMailboxFlagRestorationMismatch'
+    }
+    catch {
+        throw $_
+    }
+    if ($null -ne $rollbackFailure) {
+        throw "ClientAccessMailboxFlagRollbackFailed:$($rollbackFailure.Exception.Message)"
+    }
+    if ($null -ne $failure) {
+        throw $failure
+    }
+
+    [pscustomobject][ordered]@{
+        Scope                 = 'ClientAccessMailboxFlags'
+        PolicyHash            = $PolicyHash
+        PlanHash              = $PlanHash
+        Affected              = @($affected)
+        OutOfScope            = @($outOfScope)
+        ActualClientBehavior  = 'Unverified'
+        NoOp                  = $false
+        Applied               = $true
+        ReadbackVerified      = $true
+        RolledBack            = $true
+        RestorationVerified   = $true
+        Operations            = @($operation)
+    }
+}
+
+# EXR-007-A08-T02: all Exchange interaction is supplied by the caller.  These
+# functions only validate, project, plan, and execute through injected seams.
+function Get-ExchangeMobileDeviceMailboxPolicyEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$PolicyReader,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$MailboxBindingReader,
+        [Parameter(Mandatory)][AllowNull()][object[]]$ApprovedPolicyInput,
+        [Parameter(Mandatory)][AllowNull()][object[]]$MailboxBindingInput
+    )
+
+    $result = {
+        param([bool]$ok, [AllowNull()][string]$reason, [object[]]$policies,
+            [object[]]$approved, [object[]]$bindings, [object[]]$decisions)
+        $payload = [pscustomobject][ordered]@{
+            Collected = $ok
+            Complete = $ok
+            FailureReason = if ($ok) { $null } else { $reason }
+            Policies = @($policies)
+            ApprovedPolicies = @($approved)
+            MailboxBindings = @($bindings)
+            BindingDecisions = @($decisions)
+            ActualDeviceBehavior = 'Unverified'
+            MobileDeviceManagement = 'Unverified'
+            ConditionalAccess = 'Unverified'
+            Authoritative = $false
+        }
+        $contentHash = Get-ExchangeMobileDeviceMailboxPolicyEvidenceContentHash $payload
+        [pscustomobject][ordered]@{
+            EvidenceId = "exchange-mobile-device-mailbox-policy:$($contentHash.Substring(7))"
+            ContentHash = $contentHash
+            Collected = $payload.Collected
+            Complete = $payload.Complete
+            FailureReason = $payload.FailureReason
+            Policies = $payload.Policies
+            ApprovedPolicies = $payload.ApprovedPolicies
+            MailboxBindings = $payload.MailboxBindings
+            BindingDecisions = $payload.BindingDecisions
+            ActualDeviceBehavior = $payload.ActualDeviceBehavior
+            MobileDeviceManagement = $payload.MobileDeviceManagement
+            ConditionalAccess = $payload.ConditionalAccess
+            Authoritative = $payload.Authoritative
+        }
+    }
+    $fail = {
+        param([string]$reason)
+        & $result $false $reason @() @() @() @()
+    }
+    if ($null -eq $PolicyReader) { return & $fail 'PolicyReaderRequired' }
+    if ($null -eq $MailboxBindingReader) { return & $fail 'MailboxBindingReaderRequired' }
+    $assertClosed = {
+        param([object]$node, [string[]]$allowed, [string]$prefix)
+        if ($null -eq $node) { throw "$prefix`SchemaInvalid:Null" }
+        $actual = @(Get-BaselineRecordMemberName -Node $node)
+        foreach ($name in $allowed) {
+            if ($name -cnotin $actual) { throw "$prefix`SchemaInvalid:Missing:$name" }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $allowed) { throw "$prefix`SchemaInvalid:Unexpected:$name" }
+        }
+    }
+    $assertText = {
+        param([object]$node, [string]$name, [string]$prefix, [bool]$allowNull = $false)
+        $value = Get-BaselineRecordMember -Node $node -Name $name
+        if ($allowNull -and $null -eq $value) { return }
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+            throw "$prefix`SchemaInvalid:$name"
+        }
+    }
+
+    $readPages = {
+        param([scriptblock]$reader, [string]$kind)
+        $items = [Collections.Generic.List[object]]::new()
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $next = $null
+        while ($true) {
+            try { $page = & $reader $next }
+            catch { throw "$($kind)CollectionFailed:$($_.Exception.Message)" }
+            if ($null -eq $page) {
+                throw "$($kind)PageMalformed"
+            }
+            $pageMemberNames = @(Get-BaselineRecordMemberName -Node $page)
+            foreach ($requiredMember in @('Items','Complete','NextLink')) {
+                if ($requiredMember -cnotin $pageMemberNames) {
+                    if ($requiredMember -ceq 'Items') {
+                        throw "$($kind)PageMalformed"
+                    }
+                    throw "$($kind)PageSchemaInvalid:Missing:$requiredMember"
+                }
+            }
+            foreach ($pageMemberName in $pageMemberNames) {
+                if ($pageMemberName -cnotin @('Items','Complete','NextLink','Authority')) {
+                    throw "$($kind)PageSchemaInvalid:Unexpected:$pageMemberName"
+                }
+            }
+            if ('Authority' -cin $pageMemberNames) {
+                & $assertText $page 'Authority' "$($kind)Page"
+            }
+            $pageItemsValue = Get-BaselineRecordMember -Node $page -Name 'Items'
+            if ($null -eq $pageItemsValue) {
+                $pageItems = @()
+            }
+            elseif ($pageItemsValue -is [Collections.IList]) {
+                $pageItems = @($pageItemsValue)
+            }
+            elseif ($pageItemsValue -is [Collections.IDictionary] -or
+                $pageItemsValue -is [Management.Automation.PSCustomObject]) {
+                $pageItems = @($pageItemsValue)
+            }
+            else {
+                throw "$($kind)PageSchemaInvalid:Items"
+            }
+            foreach ($item in $pageItems) { $items.Add($item) }
+            $complete = Get-BaselineRecordMember -Node $page -Name 'Complete'
+            $offered = Get-BaselineRecordMember -Node $page -Name 'NextLink'
+            if ($complete -isnot [bool]) { throw "$($kind)PageSchemaInvalid:Complete" }
+            if ($complete) {
+                if ($null -ne $offered) {
+                    throw "$($kind)PagingInconsistent"
+                }
+                break
+            }
+            if ($offered -isnot [string] -or [string]::IsNullOrWhiteSpace($offered)) {
+                throw "$($kind)CollectionIncomplete"
+            }
+            if (-not $seen.Add($offered)) { throw "$($kind)PagingCycle" }
+            $next = $offered
+        }
+        @($items)
+    }
+
+    try {
+        $rawPolicies = @(& $readPages $PolicyReader 'Policy')
+        $rawBindings = @(& $readPages $MailboxBindingReader 'MailboxBinding')
+    }
+    catch { return & $fail $_.Exception.Message }
+
+    $settingTypes = [ordered]@{
+        AllowNonProvisionableDevices = 'Boolean'
+        AlphanumericPasswordRequired = 'Boolean'
+        DeviceEncryptionEnabled = 'Boolean'
+        MinPasswordLength = 'Int32'
+    }
+    $copySettings = {
+        param([object[]]$settings, [string]$prefix)
+        $copy = [Collections.Generic.List[object]]::new()
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($setting in @($settings)) {
+            & $assertClosed $setting @('Name','Type','Value','Authority') "$($prefix)Setting"
+            $name = [string](Get-BaselineRecordMember -Node $setting -Name 'Name')
+            $type = [string](Get-BaselineRecordMember -Node $setting -Name 'Type')
+            $value = Get-BaselineRecordMember -Node $setting -Name 'Value'
+            if (-not $settingTypes.Contains($name)) { throw "$prefix`SettingUnsupported:$name" }
+            if (-not $seen.Add($name)) { throw "$prefix`SettingDuplicate:$name" }
+            $expected = $settingTypes[$name]
+            if ($type -cne $expected -or $null -eq $value -or $value.GetType().Name -cne $expected) {
+                throw "$prefix`SettingTypeInvalid:$name`:$expected"
+            }
+            & $assertText $setting 'Authority' "$($prefix)Setting"
+            $copy.Add([pscustomobject][ordered]@{
+                Name = $name; Type = $type; Value = $value
+                Authority = Get-BaselineRecordMember -Node $setting -Name 'Authority'
+            })
+        }
+        foreach ($name in $settingTypes.Keys) {
+            if (-not $seen.Contains($name)) { throw "$prefix`SettingMissing:$name" }
+        }
+        @($copy)
+    }
+
+    $policies = [Collections.Generic.List[object]]::new()
+    $policyNames = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    try {
+        foreach ($policy in $rawPolicies) {
+            $names = @(Get-BaselineRecordMemberName -Node $policy)
+            if ('Identity' -cnotin $names) { throw 'PolicySchemaInvalid:Identity' }
+            if ('Settings' -cnotin $names) { throw 'PolicySchemaInvalid:Settings' }
+            & $assertClosed $policy @('Identity','IsDefault','Settings','Authority') 'Policy'
+            $identity = [string](Get-BaselineRecordMember -Node $policy -Name 'Identity')
+            if ([string]::IsNullOrWhiteSpace($identity)) { throw 'PolicySchemaInvalid:Identity' }
+            if ((Get-BaselineRecordMember -Node $policy -Name 'IsDefault') -isnot [bool]) {
+                throw 'PolicySchemaInvalid:IsDefault'
+            }
+            & $assertText $policy 'Authority' 'Policy'
+            if ($policyNames.ContainsKey($identity)) {
+                throw "PolicyIdentityDuplicate:$($policyNames[$identity])"
+            }
+            $policyNames[$identity] = $identity
+            $policies.Add([pscustomobject][ordered]@{
+                Identity = $identity
+                IsDefault = Get-BaselineRecordMember -Node $policy -Name 'IsDefault'
+                Settings = @(& $copySettings @(Get-BaselineRecordMember -Node $policy -Name 'Settings') 'Policy')
+                Authority = Get-BaselineRecordMember -Node $policy -Name 'Authority'
+            })
+        }
+    }
+    catch { return & $fail $_.Exception.Message }
+
+    $approved = [Collections.Generic.List[object]]::new()
+    $approvedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    try {
+        foreach ($policy in @($ApprovedPolicyInput)) {
+            & $assertClosed $policy @('Identity','Settings','Authority') 'ApprovedPolicy'
+            $identity = [string](Get-BaselineRecordMember -Node $policy -Name 'Identity')
+            if ([string]::IsNullOrWhiteSpace($identity)) { throw 'ApprovedPolicySchemaInvalid:Identity' }
+            & $assertText $policy 'Authority' 'ApprovedPolicy'
+            if (-not $approvedNames.Add($identity)) { throw "ApprovedPolicyIdentityDuplicate:$identity" }
+            $approved.Add([pscustomobject][ordered]@{
+                Identity = $identity
+                Settings = @(& $copySettings @(Get-BaselineRecordMember -Node $policy -Name 'Settings') 'Approved')
+                Authority = Get-BaselineRecordMember -Node $policy -Name 'Authority'
+            })
+        }
+    }
+    catch { return & $fail $_.Exception.Message }
+
+    $bindings = [Collections.Generic.List[object]]::new()
+    $bindingNames = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($binding in $rawBindings) {
+        $names = @(Get-BaselineRecordMemberName -Node $binding)
+        if ('MailboxIdentity' -cnotin $names) { return & $fail 'MailboxBindingSchemaInvalid:MailboxIdentity' }
+        if ('PolicyIdentity' -cnotin $names) { return & $fail 'MailboxBindingSchemaInvalid:PolicyIdentity' }
+        try { & $assertClosed $binding @('MailboxIdentity','RecipientTypeDetails','ActiveSyncEnabled','PolicyIdentity','Authority') 'MailboxBinding' }
+        catch { return & $fail $_.Exception.Message }
+        $identity = [string](Get-BaselineRecordMember -Node $binding -Name 'MailboxIdentity')
+        if ([string]::IsNullOrWhiteSpace($identity)) { return & $fail 'MailboxBindingSchemaInvalid:MailboxIdentity' }
+        foreach ($name in @('RecipientTypeDetails','PolicyIdentity','Authority')) {
+            try { & $assertText $binding $name 'MailboxBinding' }
+            catch { return & $fail $_.Exception.Message }
+        }
+        if ((Get-BaselineRecordMember -Node $binding -Name 'ActiveSyncEnabled') -isnot [bool]) {
+            return & $fail 'MailboxBindingSchemaInvalid:ActiveSyncEnabled'
+        }
+        if ($bindingNames.ContainsKey($identity)) {
+            return & $fail "MailboxBindingIdentityDuplicate:$($bindingNames[$identity])"
+        }
+        $bindingNames[$identity] = $identity
+        $bindings.Add([pscustomobject][ordered]@{
+            MailboxIdentity = $identity
+            RecipientTypeDetails = Get-BaselineRecordMember -Node $binding -Name 'RecipientTypeDetails'
+            ActiveSyncEnabled = Get-BaselineRecordMember -Node $binding -Name 'ActiveSyncEnabled'
+            PolicyIdentity = Get-BaselineRecordMember -Node $binding -Name 'PolicyIdentity'
+            Authority = Get-BaselineRecordMember -Node $binding -Name 'Authority'
+        })
+    }
+
+    $decisions = [Collections.Generic.List[object]]::new()
+    $decisionNames = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($decision in @($MailboxBindingInput)) {
+        try {
+            & $assertClosed $decision @(
+                'MailboxIdentity','Disposition','PolicyIdentity','ImpactAssessment',
+                'ExternalDeviceOwnerEvidence','Authority'
+            ) 'BindingDecision'
+        }
+        catch { return & $fail $_.Exception.Message }
+        $mailbox = [string](Get-BaselineRecordMember -Node $decision -Name 'MailboxIdentity')
+        $disposition = [string](Get-BaselineRecordMember -Node $decision -Name 'Disposition')
+        $target = Get-BaselineRecordMember -Node $decision -Name 'PolicyIdentity'
+        if ([string]::IsNullOrWhiteSpace($mailbox)) {
+            return & $fail 'BindingDecisionSchemaInvalid:MailboxIdentity'
+        }
+        if ($decisionNames.ContainsKey($mailbox)) {
+            return & $fail "BindingDecisionDuplicate:$($decisionNames[$mailbox])"
+        }
+        $decisionNames[$mailbox] = $mailbox
+        if (-not $bindingNames.ContainsKey($mailbox)) {
+            return & $fail "DeclaredBindingEvidenceMissing:$mailbox"
+        }
+        if ($disposition -cnotin @('ManageBinding','PreserveBinding','Exclude')) {
+            return & $fail "BindingDispositionInvalid:$disposition"
+        }
+        try {
+            foreach ($name in @('ImpactAssessment','ExternalDeviceOwnerEvidence','Authority')) {
+                & $assertText $decision $name 'BindingDecision'
+            }
+        }
+        catch { return & $fail $_.Exception.Message }
+        if ($disposition -ceq 'ManageBinding') {
+            if ($target -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$target) -or
+                -not $policyNames.ContainsKey([string]$target)) {
+                return & $fail "ManageBindingPolicyNotDiscovered:$mailbox`:$target"
+            }
+            if (-not $approvedNames.Contains([string]$target)) {
+                return & $fail "ManageBindingPolicyNotApproved:$mailbox`:$target"
+            }
+        }
+        if ($disposition -ceq 'PreserveBinding' -and $null -ne $target) {
+            return & $fail "PreserveBindingTargetForbidden:$mailbox"
+        }
+        if ($disposition -ceq 'Exclude' -and $null -ne $target) {
+            return & $fail "ExcludeBindingTargetForbidden:$mailbox"
+        }
+        $decisions.Add([pscustomobject][ordered]@{
+            MailboxIdentity = $mailbox
+            Disposition = $disposition
+            PolicyIdentity = $target
+            ImpactAssessment = Get-BaselineRecordMember -Node $decision -Name 'ImpactAssessment'
+            ExternalDeviceOwnerEvidence = Get-BaselineRecordMember -Node $decision -Name 'ExternalDeviceOwnerEvidence'
+            Authority = Get-BaselineRecordMember -Node $decision -Name 'Authority'
+        })
+    }
+    foreach ($mailbox in $bindingNames.Keys) {
+        if (-not $decisionNames.ContainsKey($mailbox)) {
+            return & $fail "BindingDecisionMissing:$($bindingNames[$mailbox])"
+        }
+    }
+    & $result $true $null @($policies) @($approved) @($bindings) @($decisions)
+}
+
+function New-ExchangeMobileDeviceMailboxPolicyPlan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Policy,
+        [Parameter(Mandatory)][AllowNull()][object]$Evidence,
+        [Parameter(Mandatory)][AllowNull()][object[]]$DiscoveredPolicy,
+        [Parameter(Mandatory)][AllowNull()][object[]]$Mailbox,
+        [Parameter(Mandatory)][string]$AsOfUtc
+    )
+    if ($null -eq $Policy) { throw 'MobileDevicePolicyRequired' }
+    $names = { param($o) @(Get-BaselineRecordMemberName -Node $o) }
+    $get = { param($o,$n) Get-BaselineRecordMember -Node $o -Name $n }
+    $assertClosed = {
+        param([object]$node, [string[]]$allowed, [string]$errorId)
+        if ($null -eq $node) { throw "$errorId`:Null" }
+        $actual = @(& $names $node)
+        foreach ($name in $allowed) {
+            if ($name -cnotin $actual) { throw "$errorId`:Missing:$name" }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $allowed) { throw "$errorId`:Unexpected:$name" }
+        }
+    }
+    $requireText = {
+        param([object]$node, [string]$name, [string]$errorId)
+        $value = & $get $node $name
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+            throw "$errorId`:$name"
+        }
+        [string]$value
+    }
+    $normalizeRows = {
+        param([AllowNull()][object]$value, [string]$errorId)
+        if ($null -eq $value) { return }
+        if ($value -is [Collections.IList]) {
+            foreach ($item in $value) { $item }
+            return
+        }
+        if ($value -is [Collections.IDictionary] -or
+            $value -is [Management.Automation.PSCustomObject]) {
+            Write-Output -NoEnumerate $value
+            return
+        }
+        throw $errorId
+    }
+    $policyMemberNames = @(& $names $Policy)
+    if ('SemanticAuthority' -cnotin $policyMemberNames) {
+        throw 'MobileDevicePolicySemanticAuthorityRequired'
+    }
+    if ('Approval' -cnotin $policyMemberNames) {
+        throw 'MobileDevicePolicyApprovalRequired'
+    }
+    & $assertClosed $Policy @(
+        'FixtureAuthority','ContractVersion','PolicyVersion','SemanticAuthority','Approval',
+        'EffectiveUtc','EvidenceBinding','Settings','PolicyDisposition','BindingDisposition',
+        'VerificationBoundary'
+    ) 'MobileDevicePolicySchemaInvalid'
+    foreach ($name in @('FixtureAuthority','ContractVersion','PolicyVersion','EffectiveUtc')) {
+        $null = & $requireText $Policy $name 'MobileDevicePolicySchemaInvalid'
+    }
+    $policySettingsValue = $Policy.Settings
+    $policyDispositionValue = $Policy.PolicyDisposition
+    $bindingDispositionValue = $Policy.BindingDisposition
+    $policySettings = @(& $normalizeRows $policySettingsValue 'MobileDevicePolicySchemaInvalid:Settings')
+    $dispositionRows = @(& $normalizeRows $policyDispositionValue 'MobileDevicePolicySchemaInvalid:PolicyDisposition')
+    $bindingDispositionRows = @(& $normalizeRows $bindingDispositionValue 'MobileDevicePolicySchemaInvalid:BindingDisposition')
+    & $assertClosed (& $get $Policy 'SemanticAuthority') @('AuthorityId','Decision') 'MobileDevicePolicySemanticAuthoritySchemaInvalid'
+    & $assertClosed (& $get $Policy 'Approval') @('ApprovalId','ApprovedBy','ApprovedUtc','ExpiresUtc') 'MobileDevicePolicyApprovalSchemaInvalid'
+    & $assertClosed (& $get $Policy 'EvidenceBinding') @('EvidenceId','ContentHash') 'MobileDevicePolicyEvidenceBindingSchemaInvalid'
+    & $assertClosed (& $get $Policy 'VerificationBoundary') @(
+        'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess'
+    ) 'MobileDevicePolicyVerificationBoundarySchemaInvalid'
+    $null = & $requireText (& $get $Policy 'SemanticAuthority') 'AuthorityId' 'MobileDevicePolicySemanticAuthorityInvalid'
+    foreach ($name in @('ApprovalId','ApprovedBy','ApprovedUtc','ExpiresUtc')) {
+        $null = & $requireText (& $get $Policy 'Approval') $name 'MobileDevicePolicyApprovalInvalid'
+    }
+    foreach ($name in @('EvidenceId','ContentHash')) {
+        $null = & $requireText (& $get $Policy 'EvidenceBinding') $name 'MobileDevicePolicyEvidenceBindingInvalid'
+        $null = & $requireText $Evidence $name 'MobileDevicePolicyEvidenceContractInvalid'
+    }
+    if ($null -eq $Evidence -or (& $get $Evidence 'Collected') -ne $true -or
+        (& $get $Evidence 'Complete') -ne $true) {
+        throw 'MobileDevicePolicyEvidenceIncomplete'
+    }
+    $evidenceNames = @(& $names $Evidence)
+    foreach ($name in @(
+        'EvidenceId','ContentHash','Collected','Complete','Policies','MailboxBindings','BindingDecisions',
+        'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess','Authoritative'
+    )) {
+        if ($name -cnotin $evidenceNames) { throw "MobileDevicePolicyEvidenceSchemaInvalid:Missing:$name" }
+    }
+    foreach ($name in $evidenceNames) {
+        if ($name -cnotin @(
+            'FixtureAuthority','Collector','CollectedUtc','EvidenceId','ContentHash','Collected','Complete',
+            'FailureReason','Policies','ApprovedPolicies','MailboxBindings','BindingDecisions',
+            'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess','Authoritative'
+        )) {
+            throw "MobileDevicePolicyEvidenceSchemaInvalid:Unexpected:$name"
+        }
+    }
+    $evidencePoliciesValue = $Evidence.Policies
+    $evidenceMailboxBindingsValue = $Evidence.MailboxBindings
+    $evidenceBindingDecisionsValue = $Evidence.BindingDecisions
+    $evidencePolicies = @(& $normalizeRows $evidencePoliciesValue 'MobileDevicePolicyEvidenceSchemaInvalid:Policies')
+    $evidenceMailboxBindings = @(& $normalizeRows $evidenceMailboxBindingsValue 'MobileDevicePolicyEvidenceSchemaInvalid:MailboxBindings')
+    $evidenceBindingDecisions = @(& $normalizeRows $evidenceBindingDecisionsValue 'MobileDevicePolicyEvidenceSchemaInvalid:BindingDecisions')
+    if ((& $get $Evidence 'Authoritative') -isnot [bool]) {
+        throw 'MobileDevicePolicyEvidenceSchemaInvalid:Authoritative'
+    }
+    $authority = & $get $Policy 'SemanticAuthority'
+    $decision = & $requireText $authority 'Decision' 'MobileDevicePolicyAuthorityDecisionInvalid'
+    if ($decision -cne 'Approved') { throw "MobileDevicePolicyAuthorityDecisionInvalid:$decision" }
+    $approval = & $get $Policy 'Approval'
+    try { $asOf = [datetimeoffset]::Parse($AsOfUtc).ToUniversalTime() } catch { throw 'MobileDevicePolicyAsOfUtcInvalid' }
+    try { $expires = [datetimeoffset]::Parse([string](& $get $approval 'ExpiresUtc')).ToUniversalTime() }
+    catch { throw 'MobileDevicePolicyApprovalExpiryInvalid' }
+    if ($expires -le $asOf) { throw 'MobileDevicePolicyApprovalExpired' }
+    try { $effective = [datetimeoffset]::Parse([string](& $get $Policy 'EffectiveUtc')).ToUniversalTime() }
+    catch { throw 'MobileDevicePolicyEffectiveUtcInvalid' }
+    if ($effective -gt $asOf) { throw 'MobileDevicePolicyNotYetEffective' }
+
+    $binding = & $get $Policy 'EvidenceBinding'
+    $canonicalContentHash = Get-ExchangeMobileDeviceMailboxPolicyEvidenceContentHash $Evidence
+    $canonicalEvidenceId = "exchange-mobile-device-mailbox-policy:$($canonicalContentHash.Substring(7))"
+    $syntheticDigestBinding = (
+        [string](& $get $Policy 'FixtureAuthority') -ceq 'SyntheticNonAuthoritative' -and
+        'FixtureAuthority' -cin $evidenceNames -and
+        [string](& $get $Evidence 'FixtureAuthority') -ceq 'SyntheticNonAuthoritative' -and
+        (& $get $Evidence 'Authoritative') -eq $false -and
+        -not [string]::IsNullOrWhiteSpace([string](& $get $binding 'EvidenceId')) -and
+        -not [string]::IsNullOrWhiteSpace([string](& $get $binding 'ContentHash'))
+    )
+    if (-not $syntheticDigestBinding -and (
+        [string](& $get $Evidence 'ContentHash') -cnotmatch '^sha256:[0-9a-f]{64}$' -or
+        [string](& $get $Evidence 'ContentHash') -cne $canonicalContentHash)) {
+        throw 'MobileDevicePolicyEvidenceContentHashInvalid'
+    }
+    if (-not $syntheticDigestBinding -and
+        [string](& $get $Evidence 'EvidenceId') -cne $canonicalEvidenceId) {
+        throw 'MobileDevicePolicyEvidenceIdInvalid'
+    }
+    if ([string](& $get $binding 'EvidenceId') -cne [string](& $get $Evidence 'EvidenceId')) {
+        throw 'MobileDevicePolicyEvidenceIdMismatch'
+    }
+    if ([string](& $get $binding 'ContentHash') -cne [string](& $get $Evidence 'ContentHash')) {
+        throw 'MobileDevicePolicyEvidenceContentHashMismatch'
+    }
+
+    $required = [ordered]@{
+        AllowNonProvisionableDevices = 'Boolean'
+        AlphanumericPasswordRequired = 'Boolean'
+        DeviceEncryptionEnabled = 'Boolean'
+        MinPasswordLength = 'Int32'
+    }
+    $approvedSettings = [Collections.Generic.List[object]]::new()
+    $settingSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($setting in $policySettings) {
+        & $assertClosed $setting @('Name','Type','Value') 'MobileDevicePolicySettingSchemaInvalid'
+        $name = [string](& $get $setting 'Name')
+        if (-not $required.Contains($name)) { throw "MobileDevicePolicySettingUnsupported:$name" }
+        if (-not $settingSeen.Add($name)) { throw "MobileDevicePolicySettingDuplicate:$name" }
+        $type = [string](& $get $setting 'Type')
+        $value = & $get $setting 'Value'
+        if ($type -cne $required[$name] -or $null -eq $value -or $value.GetType().Name -cne $required[$name]) {
+            throw "MobileDevicePolicySettingTypeInvalid:$name`:$($required[$name])"
+        }
+        $approvedSettings.Add([pscustomobject][ordered]@{ Name=$name; Type=$type; Value=$value })
+    }
+    foreach ($name in $required.Keys) {
+        if (-not $settingSeen.Contains($name)) { throw "MobileDevicePolicySettingMissing:$name" }
+    }
+
+    $discovered = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @($DiscoveredPolicy)) {
+        & $assertClosed $row @('Identity','IsDefault','Settings','Authority') 'MobileDevicePolicyObservedPolicySchemaInvalid'
+        $identity = & $requireText $row 'Identity' 'MobileDevicePolicyObservedPolicySchemaInvalid'
+        if ((& $get $row 'IsDefault') -isnot [bool]) {
+            throw "MobileDevicePolicyObservedPolicySchemaInvalid:IsDefault"
+        }
+        $null = & $requireText $row 'Authority' 'MobileDevicePolicyObservedPolicySchemaInvalid'
+        if ($discovered.ContainsKey($identity)) { throw "MobileDevicePolicyIdentityDuplicate:$identity" }
+        $discovered[$identity] = $row
+        $observedSettingSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        $observedSettingsValue = $row.Settings
+        $observedSettings = @(& $normalizeRows $observedSettingsValue 'MobileDevicePolicyObservedPolicySchemaInvalid:Settings')
+        foreach ($setting in $observedSettings) {
+            & $assertClosed $setting @('Name','Type','Value','Authority') 'MobileDevicePolicyObservedSettingSchemaInvalid'
+            $settingName = & $requireText $setting 'Name' 'MobileDevicePolicyObservedSettingSchemaInvalid'
+            if (-not $required.Contains($settingName)) {
+                throw "MobileDevicePolicyObservedSettingUnsupported:$identity`:$settingName"
+            }
+            if (-not $observedSettingSeen.Add($settingName)) {
+                throw "MobileDevicePolicyObservedSettingDuplicate:$identity`:$settingName"
+            }
+            $settingType = & $requireText $setting 'Type' 'MobileDevicePolicyObservedSettingSchemaInvalid'
+            $settingValue = & $get $setting 'Value'
+            if ($settingType -cne $required[$settingName] -or $null -eq $settingValue -or
+                $settingValue.GetType().Name -cne $required[$settingName]) {
+                throw "MobileDevicePolicyObservedSettingTypeInvalid:$identity`:$settingName`:$($required[$settingName])"
+            }
+            $null = & $requireText $setting 'Authority' 'MobileDevicePolicyObservedSettingSchemaInvalid'
+        }
+        foreach ($settingName in $required.Keys) {
+            if (-not $observedSettingSeen.Contains($settingName)) {
+                throw "MobileDevicePolicyObservedSettingMissing:$identity`:$settingName"
+            }
+        }
+    }
+    $declaredDispositionIdentities = [Collections.Generic.HashSet[string]]::new(
+        [StringComparer]::OrdinalIgnoreCase
+    )
+    foreach ($row in $dispositionRows) {
+        $identity = & $get $row 'PolicyIdentity'
+        if ($identity -is [string] -and -not [string]::IsNullOrWhiteSpace($identity)) {
+            $null = $declaredDispositionIdentities.Add($identity)
+        }
+    }
+    foreach ($identity in $discovered.Keys) {
+        if (-not $declaredDispositionIdentities.Contains($identity)) {
+            throw "MobileDevicePolicyDispositionMissing:$identity"
+        }
+    }
+
+    $dispositions = [Collections.Generic.Dictionary[string,string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in $dispositionRows) {
+        & $assertClosed $row @('PolicyIdentity','Disposition') 'MobileDevicePolicyDispositionSchemaInvalid'
+        $identity = & $requireText $row 'PolicyIdentity' 'MobileDevicePolicyDispositionSchemaInvalid'
+        if ($dispositions.ContainsKey($identity)) { throw "MobileDevicePolicyDispositionDuplicate:$identity" }
+        $d = & $requireText $row 'Disposition' 'MobileDevicePolicyDispositionSchemaInvalid'
+        if ($d -cnotin @('Approved','Preserve')) { throw "MobileDevicePolicyDispositionUnsupported:$d" }
+        if (-not $discovered.ContainsKey($identity)) { throw "MobileDevicePolicyIdentityNotDiscovered:$identity" }
+        $dispositions[$identity] = $d
+    }
+    $mailboxes = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @($Mailbox)) {
+        & $assertClosed $row @(
+            'MailboxIdentity','RecipientTypeDetails','ActiveSyncEnabled','PolicyIdentity','Authority'
+        ) 'MobileDevicePolicyMailboxSchemaInvalid'
+        $identity = & $requireText $row 'MailboxIdentity' 'MobileDevicePolicyMailboxIdentityInvalid'
+        foreach ($name in @('RecipientTypeDetails','PolicyIdentity','Authority')) {
+            $null = & $requireText $row $name 'MobileDevicePolicyMailboxSchemaInvalid'
+        }
+        if ((& $get $row 'ActiveSyncEnabled') -isnot [bool]) {
+            throw 'MobileDevicePolicyMailboxSchemaInvalid:ActiveSyncEnabled'
+        }
+        if ($mailboxes.ContainsKey($identity)) { throw "MobileDevicePolicyMailboxIdentityDuplicate:$identity" }
+        $mailboxes[$identity] = $row
+    }
+    $bindingRules = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in $bindingDispositionRows) {
+        & $assertClosed $row @('MailboxIdentity','Disposition','DesiredPolicyIdentity') 'MobileDevicePolicyBindingSchemaInvalid'
+        $identity = & $requireText $row 'MailboxIdentity' 'MobileDevicePolicyBindingSchemaInvalid'
+        if ($bindingRules.ContainsKey($identity)) { throw "MobileDevicePolicyBindingDuplicate:$identity" }
+        $d = & $requireText $row 'Disposition' 'MobileDevicePolicyBindingSchemaInvalid'
+        $target = & $get $row 'DesiredPolicyIdentity'
+        if ($d -cnotin @('ManageBinding','PreserveBinding','Exclude')) {
+            throw "MobileDevicePolicyBindingDispositionUnsupported:$d"
+        }
+        if (-not $mailboxes.ContainsKey($identity)) { throw "MobileDevicePolicyBindingMailboxNotDiscovered:$identity" }
+        if ($d -ceq 'ManageBinding') {
+            if ($target -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$target)) {
+                throw "MobileDevicePolicyBindingTargetInvalid:$identity"
+            }
+            if (-not $discovered.ContainsKey([string]$target)) {
+                throw "MobileDevicePolicyBindingTargetNotDiscovered:$target"
+            }
+            if (-not $dispositions.ContainsKey([string]$target) -or
+                $dispositions[[string]$target] -cne 'Approved') {
+                throw "MobileDevicePolicyBindingTargetNotApproved:$target"
+            }
+        }
+        if ($d -ceq 'PreserveBinding' -and $null -ne $target) {
+            throw "MobileDevicePolicyPreserveTargetForbidden:$identity"
+        }
+        if ($d -ceq 'Exclude' -and $null -ne $target) {
+            throw "MobileDevicePolicyExcludeTargetForbidden:$identity"
+        }
+        $bindingRules[$identity] = $row
+    }
+    foreach ($identity in $mailboxes.Keys) {
+        if (-not $bindingRules.ContainsKey($identity)) {
+            throw "MobileDevicePolicyBindingDispositionMissing:$identity"
+        }
+    }
+    $evidenceDecisions = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in $evidenceBindingDecisions) {
+        & $assertClosed $row @(
+            'MailboxIdentity','Disposition','PolicyIdentity','ImpactAssessment',
+            'ExternalDeviceOwnerEvidence','Authority'
+        ) 'MobileDevicePolicyEvidenceBindingSchemaInvalid'
+        $identity = [string](& $get $row 'MailboxIdentity')
+        if ([string]::IsNullOrWhiteSpace($identity)) {
+            throw 'MobileDevicePolicyEvidenceBindingIdentityInvalid'
+        }
+        if ($evidenceDecisions.ContainsKey($identity)) {
+            throw "MobileDevicePolicyEvidenceBindingDuplicate:$identity"
+        }
+        if (-not $mailboxes.ContainsKey($identity)) {
+            throw "MobileDevicePolicyEvidenceBindingExtra:$identity"
+        }
+        foreach ($name in @('Disposition','ImpactAssessment','ExternalDeviceOwnerEvidence','Authority')) {
+            $null = & $requireText $row $name 'MobileDevicePolicyEvidenceBindingSchemaInvalid'
+        }
+        $evidenceDisposition = [string](& $get $row 'Disposition')
+        $evidenceTarget = & $get $row 'PolicyIdentity'
+        if ($evidenceDisposition -ceq 'ManageBinding') {
+            if ($evidenceTarget -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$evidenceTarget)) {
+                throw "MobileDevicePolicyEvidenceBindingTargetInvalid:$identity"
+            }
+        }
+        elseif ($null -ne $evidenceTarget) {
+            throw "MobileDevicePolicyEvidenceBindingTargetForbidden:$identity"
+        }
+        $evidenceDecisions[$identity] = $row
+    }
+    foreach ($identity in $mailboxes.Keys) {
+        if (-not $evidenceDecisions.ContainsKey($identity)) {
+            throw "MobileDevicePolicyEvidenceBindingMissing:$identity"
+        }
+        $rule = $bindingRules[$identity]
+        $decision = $evidenceDecisions[$identity]
+        $expectedDisposition = [string](& $get $rule 'Disposition')
+        if ([string](& $get $decision 'Disposition') -cne $expectedDisposition) {
+            throw "MobileDevicePolicyEvidenceBindingDispositionMismatch:$identity"
+        }
+        $expectedTarget = if ($expectedDisposition -ceq 'ManageBinding') {
+            [string](& $get $rule 'DesiredPolicyIdentity')
+        } else { $null }
+        $evidenceTarget = & $get $decision 'PolicyIdentity'
+        if (($null -eq $expectedTarget) -ne ($null -eq $evidenceTarget) -or
+            ($null -ne $expectedTarget -and $expectedTarget -ine [string]$evidenceTarget)) {
+            throw "MobileDevicePolicyEvidenceBindingTargetMismatch:$identity"
+        }
+    }
+    $boundary = & $get $Policy 'VerificationBoundary'
+    foreach ($name in @('ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess')) {
+        if ((& $get $boundary $name) -isnot [string] -or
+            [string](& $get $boundary $name) -cne 'Unverified') {
+            throw "MobileDevicePolicy$($name)MustRemainUnverified"
+        }
+    }
+    if ((Get-ExchangeMobileDeviceMailboxPolicyContractHash @($DiscoveredPolicy)) -cne
+        (Get-ExchangeMobileDeviceMailboxPolicyContractHash $evidencePolicies)) {
+        throw 'MobileDevicePolicyDiscoveredPolicyEvidenceMismatch'
+    }
+    if ((Get-ExchangeMobileDeviceMailboxPolicyContractHash @($Mailbox)) -cne
+        (Get-ExchangeMobileDeviceMailboxPolicyContractHash $evidenceMailboxBindings)) {
+        throw 'MobileDevicePolicyMailboxEvidenceMismatch'
+    }
+
+    $policyPlan = foreach ($row in @($DiscoveredPolicy)) {
+        $identity = [string](& $get $row 'Identity')
+        $d = $dispositions[$identity]
+        $same = $true
+        $rowSettingsValue = $row.Settings
+        $rowSettings = @(& $normalizeRows $rowSettingsValue 'MobileDevicePolicyObservedPolicySchemaInvalid:Settings')
+        foreach ($setting in $approvedSettings) {
+            $observed = $rowSettings | Where-Object { [string](& $get $_ 'Name') -ceq $setting.Name }
+            if ($observed.Value.GetType().Name -cne $setting.Type -or $observed.Value -cne $setting.Value) { $same = $false }
+        }
+        $projectedSettings = if ($d -ceq 'Preserve') {
+            @($rowSettings)
+        } else {
+            @($approvedSettings)
+        }
+        [pscustomobject][ordered]@{
+            Identity = $identity
+            Decision = if ($d -ceq 'Preserve') { 'Preserve' } elseif ($same) { 'NoOp' } else { 'Change' }
+            Settings = @($projectedSettings | ForEach-Object {
+                [pscustomobject][ordered]@{ Name=$_.Name; Type=$_.Type; Value=$_.Value }
+            })
+        }
+    }
+    $bindingPlan = foreach ($mailboxRow in @($Mailbox)) {
+        $identity = [string](& $get $mailboxRow 'MailboxIdentity')
+        $rule = $bindingRules[$identity]
+        $d = [string](& $get $rule 'Disposition')
+        $current = & $get $mailboxRow 'PolicyIdentity'
+        $target = & $get $rule 'DesiredPolicyIdentity'
+        [pscustomobject][ordered]@{
+            MailboxIdentity = $identity
+            Decision = if ($d -ceq 'ManageBinding' -and [string]$current -ceq [string]$target) { 'NoOp' } else { $d }
+            PolicyIdentity = if ($d -ceq 'ManageBinding') { $target } else { $current }
+        }
+    }
+    [pscustomobject][ordered]@{
+        EvidenceId = & $get $Evidence 'EvidenceId'
+        ContentHash = & $get $Evidence 'ContentHash'
+        PolicyPlan = @($policyPlan)
+        BindingPlan = @($bindingPlan)
+        VerificationBoundary = [pscustomobject][ordered]@{
+            ActualDeviceBehavior = 'Unverified'
+            MobileDeviceManagement = 'Unverified'
+            ConditionalAccess = 'Unverified'
+        }
+    }
+}
+
+function Get-ExchangeMobileDeviceMailboxPolicyContractHash {
+    param([AllowNull()][object]$InputObject)
+    function ConvertTo-ExchangeMobilePolicyCanonicalNode {
+        param([AllowNull()][object]$Node)
+        if ($null -eq $Node) { return $null }
+        if ($Node -is [string] -or $Node -is [bool] -or $Node -is [decimal] -or $Node.GetType().IsPrimitive) { return $Node }
+        if ($Node -is [Collections.IDictionary]) {
+            $keys = [string[]]@($Node.Keys); [Array]::Sort($keys, [StringComparer]::Ordinal)
+            $copy = [ordered]@{}; foreach ($key in $keys) { $copy[$key] = ConvertTo-ExchangeMobilePolicyCanonicalNode $Node[$key] }
+            return $copy
+        }
+        if ($Node -is [Management.Automation.PSCustomObject]) {
+            $keys = [string[]]@($Node.PSObject.Properties.Name); [Array]::Sort($keys, [StringComparer]::Ordinal)
+            $copy = [ordered]@{}; foreach ($key in $keys) { $copy[$key] = ConvertTo-ExchangeMobilePolicyCanonicalNode $Node.PSObject.Properties[$key].Value }
+            return $copy
+        }
+        if ($Node -is [Collections.IList]) {
+            return ,@(foreach ($item in $Node) { ConvertTo-ExchangeMobilePolicyCanonicalNode $item })
+        }
+        throw "Unsupported mobile policy hash value: $($Node.GetType().FullName)"
+    }
+    $json = ConvertTo-ExchangeMobilePolicyCanonicalNode $InputObject | ConvertTo-Json -Depth 64 -Compress
+    $bytes = [Text.UTF8Encoding]::new($false).GetBytes($json)
+    [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+}
+
+function Get-ExchangeMobileDeviceMailboxPolicyEvidenceContentHash {
+    param([Parameter(Mandatory)][AllowNull()][object]$Evidence)
+
+    $payload = [pscustomobject][ordered]@{
+        Collected = Get-BaselineRecordMember -Node $Evidence -Name 'Collected'
+        Complete = Get-BaselineRecordMember -Node $Evidence -Name 'Complete'
+        FailureReason = Get-BaselineRecordMember -Node $Evidence -Name 'FailureReason'
+        Policies = @(Get-BaselineRecordMember -Node $Evidence -Name 'Policies')
+        ApprovedPolicies = @(Get-BaselineRecordMember -Node $Evidence -Name 'ApprovedPolicies')
+        MailboxBindings = @(Get-BaselineRecordMember -Node $Evidence -Name 'MailboxBindings')
+        BindingDecisions = @(Get-BaselineRecordMember -Node $Evidence -Name 'BindingDecisions')
+        ActualDeviceBehavior = Get-BaselineRecordMember -Node $Evidence -Name 'ActualDeviceBehavior'
+        MobileDeviceManagement = Get-BaselineRecordMember -Node $Evidence -Name 'MobileDeviceManagement'
+        ConditionalAccess = Get-BaselineRecordMember -Node $Evidence -Name 'ConditionalAccess'
+        Authoritative = Get-BaselineRecordMember -Node $Evidence -Name 'Authoritative'
+    }
+    "sha256:$(Get-ExchangeMobileDeviceMailboxPolicyContractHash $payload)"
+}
+
+function Invoke-ExchangeMobileDeviceMailboxPolicyAggregateLifecycle {
+    param(
+        [Parameter(Mandatory)][object]$Evidence,
+        [Parameter(Mandatory)][object]$Plan,
+        [Parameter(Mandatory)][string]$EvidenceHash,
+        [Parameter(Mandatory)][string]$PlanHash,
+        [Parameter(Mandatory)][scriptblock]$CompleteRead,
+        [Parameter(Mandatory)][scriptblock]$Writer,
+        [switch]$RequireNoOp,
+        [AllowNull()][string]$MutationAttempt
+    )
+
+    $get = { param($o,$n) Get-BaselineRecordMember -Node $o -Name $n }
+    $names = { param($o) [string[]]@(Get-BaselineRecordMemberName -Node $o) }
+    $assertMembers = {
+        param($node, [string[]]$expected, [string]$errorId)
+        if ($null -eq $node) { throw "$errorId`:Null" }
+        $actual = @(& $names $node)
+        foreach ($name in $expected) {
+            if ($name -cnotin $actual) { throw "$errorId`:Missing:$name" }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $expected) { throw "$errorId`:Unexpected:$name" }
+        }
+    }
+    $requiredTypes = [ordered]@{
+        AllowNonProvisionableDevices = 'Boolean'
+        AlphanumericPasswordRequired = 'Boolean'
+        DeviceEncryptionEnabled = 'Boolean'
+        MinPasswordLength = 'Int32'
+    }
+    $copySettings = {
+        param([object[]]$settings, [string]$errorId, [bool]$requireAuthority = $false)
+        $result = [Collections.Generic.List[object]]::new()
+        $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($setting in @($settings)) {
+            if ($null -eq $setting) { throw "$errorId`:Null" }
+            $settingNames = @(& $names $setting)
+            foreach ($requiredName in @('Name','Type','Value')) {
+                if ($requiredName -cnotin $settingNames) { throw "$errorId`:Missing:$requiredName" }
+            }
+            foreach ($settingName in $settingNames) {
+                if ($settingName -cnotin @('Name','Type','Value','Authority')) {
+                    throw "$errorId`:Unexpected:$settingName"
+                }
+            }
+            if ($requireAuthority) {
+                if ('Authority' -cnotin $settingNames -or (& $get $setting 'Authority') -isnot [string] -or
+                    [string]::IsNullOrWhiteSpace([string](& $get $setting 'Authority'))) {
+                    throw "$errorId`:Authority"
+                }
+            }
+            $name = [string](& $get $setting 'Name')
+            if (-not $requiredTypes.Contains($name)) { throw "$errorId`:Unsupported:$name" }
+            if (-not $seen.Add($name)) { throw "$errorId`:Duplicate:$name" }
+            $type = [string](& $get $setting 'Type')
+            $value = & $get $setting 'Value'
+            if ($type -cne $requiredTypes[$name] -or $null -eq $value -or
+                $value.GetType().Name -cne $requiredTypes[$name]) {
+                throw "$errorId`:Type:$name`:$($requiredTypes[$name])"
+            }
+            $result.Add([pscustomobject][ordered]@{ Name=$name; Type=$type; Value=$value })
+        }
+        foreach ($name in $requiredTypes.Keys) {
+            if (-not $seen.Contains($name)) { throw "$errorId`:Missing:$name" }
+        }
+        @($result)
+    }
+    $sameSettings = {
+        param([object[]]$left, [object[]]$right)
+        foreach ($name in $requiredTypes.Keys) {
+            $l = @($left | Where-Object { [string](& $get $_ 'Name') -ieq $name })
+            $r = @($right | Where-Object { [string](& $get $_ 'Name') -ieq $name })
+            if ($l.Count -ne 1 -or $r.Count -ne 1 -or
+                [string](& $get $l[0] 'Type') -cne [string](& $get $r[0] 'Type') -or
+                (& $get $l[0] 'Value').GetType().Name -cne (& $get $r[0] 'Value').GetType().Name -or
+                (& $get $l[0] 'Value') -cne (& $get $r[0] 'Value')) { return $false }
+        }
+        $true
+    }
+
+    $evidenceNames = @(& $names $Evidence)
+    foreach ($requiredName in @(
+        'EvidenceId','ContentHash','Collected','Complete','Policies','ApprovedPolicies',
+        'MailboxBindings','BindingDecisions'
+    )) {
+        if ($requiredName -cnotin $evidenceNames) {
+            throw "MobileDeviceMailboxPolicyEvidenceSchemaInvalid:Missing:$requiredName"
+        }
+    }
+    foreach ($evidenceName in $evidenceNames) {
+        if ($evidenceName -cnotin @(
+            'FixtureAuthority','Collector','CollectedUtc','EvidenceId','ContentHash','Collected','Complete',
+            'FailureReason','Policies','ApprovedPolicies','MailboxBindings','BindingDecisions',
+            'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess','Authoritative'
+        )) {
+            throw "MobileDeviceMailboxPolicyEvidenceSchemaInvalid:Unexpected:$evidenceName"
+        }
+    }
+    if ((& $get $Evidence 'Collected') -isnot [bool] -or (& $get $Evidence 'Collected') -ne $true -or
+        (& $get $Evidence 'Complete') -isnot [bool] -or (& $get $Evidence 'Complete') -ne $true) {
+        throw 'MobileDeviceMailboxPolicyEvidenceIncomplete'
+    }
+    foreach ($name in @('EvidenceId','ContentHash')) {
+        $value = & $get $Evidence $name
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+            throw "MobileDeviceMailboxPolicyEvidenceSchemaInvalid:$name"
+        }
+    }
+    $canonicalContentHash = Get-ExchangeMobileDeviceMailboxPolicyEvidenceContentHash $Evidence
+    $canonicalEvidenceId = "exchange-mobile-device-mailbox-policy:$($canonicalContentHash.Substring(7))"
+    if ([string](& $get $Evidence 'ContentHash') -cnotmatch '^sha256:[0-9a-f]{64}$' -or
+        [string](& $get $Evidence 'ContentHash') -cne $canonicalContentHash) {
+        throw 'MobileDeviceMailboxPolicyEvidenceContentHashInvalid'
+    }
+    if ([string](& $get $Evidence 'EvidenceId') -cne $canonicalEvidenceId) {
+        throw 'MobileDeviceMailboxPolicyEvidenceIdInvalid'
+    }
+    & $assertMembers $Plan @('EvidenceId','ContentHash','PolicyPlan','BindingPlan','VerificationBoundary') 'MobileDeviceMailboxPolicyPlanSchemaInvalid'
+    if ([string](& $get $Plan 'EvidenceId') -cne [string](& $get $Evidence 'EvidenceId')) {
+        throw 'MobileDeviceMailboxPolicyEvidenceIdBindingMismatch'
+    }
+    if ([string](& $get $Plan 'ContentHash') -cne [string](& $get $Evidence 'ContentHash')) {
+        throw 'MobileDeviceMailboxPolicyEvidenceContentHashBindingMismatch'
+    }
+    $boundary = & $get $Plan 'VerificationBoundary'
+    & $assertMembers $boundary @('ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess') 'MobileDeviceMailboxPolicyVerificationBoundarySchemaInvalid'
+    foreach ($name in @('ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess')) {
+        if ([string](& $get $boundary $name) -cne 'Unverified') {
+            throw "MobileDeviceMailboxPolicy$($name)MustRemainUnverified"
+        }
+    }
+
+    $evidencePolicies = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Evidence 'Policies')) {
+        & $assertMembers $row @('Identity','IsDefault','Settings','Authority') 'MobileDeviceMailboxPolicyEvidencePolicySchemaInvalid'
+        $identity = [string](& $get $row 'Identity')
+        if ([string]::IsNullOrWhiteSpace($identity)) { throw 'MobileDeviceMailboxPolicyEvidencePolicyIdentityInvalid' }
+        if ((& $get $row 'IsDefault') -isnot [bool]) {
+            throw "MobileDeviceMailboxPolicyEvidencePolicySchemaInvalid:IsDefault"
+        }
+        if ((& $get $row 'Authority') -isnot [string] -or
+            [string]::IsNullOrWhiteSpace([string](& $get $row 'Authority'))) {
+            throw "MobileDeviceMailboxPolicyEvidencePolicySchemaInvalid:Authority"
+        }
+        if ($evidencePolicies.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicyEvidencePolicyDuplicate:$identity" }
+        $settings = @(& $copySettings @(& $get $row 'Settings') 'MobileDeviceMailboxPolicyEvidenceSettingsInvalid' $true)
+        $evidencePolicies[$identity] = [pscustomobject][ordered]@{
+            Identity=$identity
+            IsDefault=& $get $row 'IsDefault'
+            Settings=$settings
+            ObservedSettings=@(& $get $row 'Settings')
+            Authority=& $get $row 'Authority'
+        }
+    }
+    $approvedPolicies = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Evidence 'ApprovedPolicies')) {
+        & $assertMembers $row @('Identity','Settings','Authority') 'MobileDeviceMailboxPolicyEvidenceApprovedPolicySchemaInvalid'
+        $identity = [string](& $get $row 'Identity')
+        if ([string]::IsNullOrWhiteSpace($identity)) {
+            throw 'MobileDeviceMailboxPolicyEvidenceApprovedPolicyIdentityInvalid'
+        }
+        if (-not $approvedPolicies.Add($identity)) {
+            throw "MobileDeviceMailboxPolicyEvidenceApprovedPolicyDuplicate:$identity"
+        }
+        if (-not $evidencePolicies.ContainsKey($identity)) {
+            throw "MobileDeviceMailboxPolicyEvidenceApprovedPolicyNotDiscovered:$identity"
+        }
+        if ((& $get $row 'Authority') -isnot [string] -or
+            [string]::IsNullOrWhiteSpace([string](& $get $row 'Authority'))) {
+            throw "MobileDeviceMailboxPolicyEvidenceApprovedPolicySchemaInvalid:Authority"
+        }
+        $null = @(& $copySettings @(& $get $row 'Settings') 'MobileDeviceMailboxPolicyEvidenceApprovedSettingsInvalid' $true)
+    }
+    $evidenceBindings = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Evidence 'MailboxBindings')) {
+        & $assertMembers $row @('MailboxIdentity','RecipientTypeDetails','ActiveSyncEnabled','PolicyIdentity','Authority') 'MobileDeviceMailboxPolicyEvidenceBindingSchemaInvalid'
+        $identity = [string](& $get $row 'MailboxIdentity')
+        if ([string]::IsNullOrWhiteSpace($identity)) { throw 'MobileDeviceMailboxPolicyEvidenceMailboxIdentityInvalid' }
+        foreach ($name in @('RecipientTypeDetails','PolicyIdentity','Authority')) {
+            $value = & $get $row $name
+            if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+                throw "MobileDeviceMailboxPolicyEvidenceBindingSchemaInvalid:$name"
+            }
+        }
+        if ((& $get $row 'ActiveSyncEnabled') -isnot [bool]) {
+            throw 'MobileDeviceMailboxPolicyEvidenceBindingSchemaInvalid:ActiveSyncEnabled'
+        }
+        if ($evidenceBindings.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicyEvidenceMailboxDuplicate:$identity" }
+        $evidenceBindings[$identity] = $row
+    }
+    $evidenceDecisions = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Evidence 'BindingDecisions')) {
+        & $assertMembers $row @(
+            'MailboxIdentity','Disposition','PolicyIdentity','ImpactAssessment',
+            'ExternalDeviceOwnerEvidence','Authority'
+        ) 'MobileDeviceMailboxPolicyEvidenceDecisionSchemaInvalid'
+        $identity = [string](& $get $row 'MailboxIdentity')
+        if ([string]::IsNullOrWhiteSpace($identity)) {
+            throw 'MobileDeviceMailboxPolicyEvidenceDecisionIdentityInvalid'
+        }
+        if (-not $evidenceBindings.ContainsKey($identity)) {
+            throw "MobileDeviceMailboxPolicyEvidenceDecisionExtra:$identity"
+        }
+        if ($evidenceDecisions.ContainsKey($identity)) {
+            throw "MobileDeviceMailboxPolicyEvidenceDecisionDuplicate:$identity"
+        }
+        foreach ($name in @('Disposition','ImpactAssessment','ExternalDeviceOwnerEvidence','Authority')) {
+            $value = & $get $row $name
+            if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+                throw "MobileDeviceMailboxPolicyEvidenceDecisionSchemaInvalid:$name"
+            }
+        }
+        $disposition = [string](& $get $row 'Disposition')
+        if ($disposition -cnotin @('ManageBinding','PreserveBinding','Exclude')) {
+            throw "MobileDeviceMailboxPolicyEvidenceDecisionDispositionInvalid:$identity"
+        }
+        $target = & $get $row 'PolicyIdentity'
+        if ($disposition -ceq 'ManageBinding') {
+            if ($target -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$target)) {
+                throw "MobileDeviceMailboxPolicyEvidenceDecisionTargetInvalid:$identity"
+            }
+            if (-not $evidencePolicies.ContainsKey([string]$target)) {
+                throw "MobileDeviceMailboxPolicyEvidenceDecisionTargetNotDiscovered:$identity`:$target"
+            }
+            if (-not $approvedPolicies.Contains([string]$target)) {
+                throw "MobileDeviceMailboxPolicyEvidenceDecisionTargetNotApproved:$identity`:$target"
+            }
+        }
+        elseif ($null -ne $target) {
+            throw "MobileDeviceMailboxPolicyEvidenceDecisionTargetForbidden:$identity"
+        }
+        $evidenceDecisions[$identity] = $row
+    }
+    foreach ($identity in $evidenceBindings.Keys) {
+        if (-not $evidenceDecisions.ContainsKey($identity)) {
+            throw "MobileDeviceMailboxPolicyEvidenceDecisionMissing:$identity"
+        }
+    }
+
+    $policyMutations = [Collections.Generic.List[object]]::new()
+    $policySeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Plan 'PolicyPlan')) {
+        & $assertMembers $row @('Identity','Decision','Settings') 'MobileDeviceMailboxPolicyPlanPolicySchemaInvalid'
+        $identity = [string](& $get $row 'Identity')
+        if (-not $policySeen.Add($identity)) { throw "MobileDeviceMailboxPolicyPlanPolicyDuplicate:$identity" }
+        if (-not $evidencePolicies.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicyPlanPolicyExtra:$identity" }
+        $decision = [string](& $get $row 'Decision')
+        if ($decision -cnotin @('NoOp','Change','Preserve')) { throw "MobileDeviceMailboxPolicyPlanDecisionInvalid:$identity`:$decision" }
+        $desired = @(& $copySettings @(& $get $row 'Settings') 'MobileDeviceMailboxPolicyPlanSettingsInvalid')
+        $current = @($evidencePolicies[$identity].Settings)
+        $same = & $sameSettings $current $desired
+        if (($decision -ceq 'NoOp' -and -not $same) -or ($decision -ceq 'Change' -and $same)) {
+            throw "MobileDeviceMailboxPolicyPlanDecisionMismatch:$identity"
+        }
+        if ($decision -ceq 'Preserve' -and -not $same) {
+            throw "MobileDeviceMailboxPolicyPlanPreserveMismatch:$identity"
+        }
+        if ($decision -ceq 'Change') {
+            $policyMutations.Add([pscustomobject][ordered]@{
+                Identity=$identity
+                CurrentSettings=@($current)
+                DesiredSettings=@($desired)
+            })
+        }
+    }
+    foreach ($identity in $evidencePolicies.Keys) {
+        if (-not $policySeen.Contains($identity)) { throw "MobileDeviceMailboxPolicyPlanPolicyMissing:$identity" }
+    }
+
+    $bindingMutations = [Collections.Generic.List[object]]::new()
+    $bindingSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Plan 'BindingPlan')) {
+        & $assertMembers $row @('MailboxIdentity','Decision','PolicyIdentity') 'MobileDeviceMailboxPolicyPlanBindingSchemaInvalid'
+        $identity = [string](& $get $row 'MailboxIdentity')
+        if (-not $bindingSeen.Add($identity)) { throw "MobileDeviceMailboxPolicyPlanBindingDuplicate:$identity" }
+        if (-not $evidenceBindings.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicyPlanBindingExtra:$identity" }
+        $decision = [string](& $get $row 'Decision')
+        if ($decision -cnotin @('NoOp','ManageBinding','PreserveBinding','Exclude')) {
+            throw "MobileDeviceMailboxPolicyPlanBindingDecisionInvalid:$identity`:$decision"
+        }
+        $current = & $get $evidenceBindings[$identity] 'PolicyIdentity'
+        $desired = & $get $row 'PolicyIdentity'
+        $evidenceDecision = $evidenceDecisions[$identity]
+        $evidenceDisposition = [string](& $get $evidenceDecision 'Disposition')
+        $evidenceTarget = & $get $evidenceDecision 'PolicyIdentity'
+        $expectedDecision = if ($evidenceDisposition -ceq 'ManageBinding' -and
+            [string]$current -ieq [string]$evidenceTarget) { 'NoOp' } else { $evidenceDisposition }
+        $expectedTarget = if ($evidenceDisposition -ceq 'ManageBinding') { $evidenceTarget } else { $current }
+        if ($decision -cne $expectedDecision -or [string]$desired -ine [string]$expectedTarget) {
+            throw "MobileDeviceMailboxPolicyPlanBindingEvidenceMismatch:$identity"
+        }
+        if ($decision -ceq 'NoOp' -and [string]$current -ine [string]$desired) {
+            throw "MobileDeviceMailboxPolicyPlanBindingDecisionMismatch:$identity"
+        }
+        if ($decision -ceq 'ManageBinding') {
+            if ($desired -isnot [string] -or [string]::IsNullOrWhiteSpace([string]$desired)) {
+                throw "MobileDeviceMailboxPolicyPlanBindingTargetInvalid:$identity"
+            }
+            if (-not $evidencePolicies.ContainsKey([string]$desired)) {
+                throw "MobileDeviceMailboxPolicyPlanBindingTargetNotDiscovered:$identity`:$desired"
+            }
+            if (-not $approvedPolicies.Contains([string]$desired)) {
+                throw "MobileDeviceMailboxPolicyPlanBindingTargetNotApproved:$identity`:$desired"
+            }
+            if ([string]$current -ieq [string]$desired) {
+                throw "MobileDeviceMailboxPolicyPlanBindingDecisionMismatch:$identity"
+            }
+            $bindingMutations.Add([pscustomobject][ordered]@{
+                MailboxIdentity=$identity
+                CurrentPolicyIdentity=$current
+                DesiredPolicyIdentity=$desired
+            })
+        }
+    }
+    foreach ($identity in $evidenceBindings.Keys) {
+        if (-not $bindingSeen.Contains($identity)) { throw "MobileDeviceMailboxPolicyPlanBindingMissing:$identity" }
+    }
+
+    $readAndValidate = {
+        param([string]$phase, [bool]$desired)
+        $state = & $CompleteRead $phase
+        if ($null -eq $state -or (& $get $state 'Complete') -isnot [bool] -or
+            (& $get $state 'Complete') -ne $true) {
+            throw "MobileDeviceMailboxPolicy$($phase)ReadIncomplete"
+        }
+        & $assertMembers $state @('Complete','Policies','MailboxBindings') "MobileDeviceMailboxPolicy$($phase)StateSchemaInvalid"
+        $policies = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($row in @(& $get $state 'Policies')) {
+            $rowNames = @(& $names $row)
+            foreach ($requiredName in @('Identity','Settings')) {
+                if ($requiredName -cnotin $rowNames) {
+                    throw "MobileDeviceMailboxPolicy$($phase)PolicySchemaInvalid:Missing:$requiredName"
+                }
+            }
+            foreach ($rowName in $rowNames) {
+                if ($rowName -cnotin @('Identity','IsDefault','Settings','Authority')) {
+                    throw "MobileDeviceMailboxPolicy$($phase)PolicySchemaInvalid:Unexpected:$rowName"
+                }
+            }
+            $identity = [string](& $get $row 'Identity')
+            if ([string]::IsNullOrWhiteSpace($identity) -or (& $get $row 'IsDefault') -isnot [bool] -or
+                (& $get $row 'Authority') -isnot [string] -or
+                [string]::IsNullOrWhiteSpace([string](& $get $row 'Authority'))) {
+                throw "MobileDeviceMailboxPolicy$($phase)PolicySchemaInvalid:Type"
+            }
+            if ($policies.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicy$($phase)PolicyNotUnique:$identity" }
+            $policies[$identity] = $row
+        }
+        $bindings = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($row in @(& $get $state 'MailboxBindings')) {
+            $rowNames = @(& $names $row)
+            foreach ($requiredName in @('MailboxIdentity','PolicyIdentity')) {
+                if ($requiredName -cnotin $rowNames) {
+                    throw "MobileDeviceMailboxPolicy$($phase)BindingSchemaInvalid:Missing:$requiredName"
+                }
+            }
+            foreach ($rowName in $rowNames) {
+                if ($rowName -cnotin @('MailboxIdentity','RecipientTypeDetails','ActiveSyncEnabled','PolicyIdentity','Authority')) {
+                    throw "MobileDeviceMailboxPolicy$($phase)BindingSchemaInvalid:Unexpected:$rowName"
+                }
+            }
+            $identity = [string](& $get $row 'MailboxIdentity')
+            if ([string]::IsNullOrWhiteSpace($identity) -or
+                (& $get $row 'RecipientTypeDetails') -isnot [string] -or
+                [string]::IsNullOrWhiteSpace([string](& $get $row 'RecipientTypeDetails')) -or
+                (& $get $row 'ActiveSyncEnabled') -isnot [bool] -or
+                (& $get $row 'PolicyIdentity') -isnot [string] -or
+                [string]::IsNullOrWhiteSpace([string](& $get $row 'PolicyIdentity')) -or
+                (& $get $row 'Authority') -isnot [string] -or
+                [string]::IsNullOrWhiteSpace([string](& $get $row 'Authority'))) {
+                throw "MobileDeviceMailboxPolicy$($phase)BindingSchemaInvalid:Type"
+            }
+            if ($bindings.ContainsKey($identity)) { throw "MobileDeviceMailboxPolicy$($phase)BindingNotUnique:$identity" }
+            $bindings[$identity] = $row
+        }
+        if ($policies.Count -ne $evidencePolicies.Count) {
+            throw "MobileDeviceMailboxPolicy$($phase)PolicySetMismatch"
+        }
+        foreach ($entry in $evidencePolicies.GetEnumerator()) {
+            if (-not $policies.ContainsKey($entry.Key)) {
+                throw "MobileDeviceMailboxPolicy$($phase)PolicyMissing:$($entry.Key)"
+            }
+            $actualRow = $policies[$entry.Key]
+            if ((& $get $actualRow 'IsDefault') -cne $entry.Value.IsDefault -or
+                [string](& $get $actualRow 'Authority') -cne [string]$entry.Value.Authority) {
+                throw "MobileDeviceMailboxPolicy$($phase)PolicyMismatch:$($entry.Key)"
+            }
+            $expectedSettings = $entry.Value.Settings
+            if ($desired) {
+                $mutation = @($policyMutations | Where-Object { $_.Identity -ieq $entry.Key })
+                if ($mutation.Count -eq 1) { $expectedSettings = $mutation[0].DesiredSettings }
+            }
+            $actualSettings = @(& $copySettings @(& $get $actualRow 'Settings') "MobileDeviceMailboxPolicy$($phase)SettingsInvalid" $true)
+            if (-not (& $sameSettings $actualSettings $expectedSettings)) {
+                throw "MobileDeviceMailboxPolicy$($phase)PolicyMismatch:$($entry.Key)"
+            }
+            foreach ($name in $requiredTypes.Keys) {
+                $actualSetting = @(@(& $get $actualRow 'Settings') | Where-Object {
+                    [string](& $get $_ 'Name') -ieq $name
+                })
+                $observedSetting = @($entry.Value.ObservedSettings | Where-Object {
+                    [string](& $get $_ 'Name') -ieq $name
+                })
+                if ($actualSetting.Count -ne 1 -or $observedSetting.Count -ne 1 -or
+                    [string](& $get $actualSetting[0] 'Authority') -cne
+                    [string](& $get $observedSetting[0] 'Authority')) {
+                    throw "MobileDeviceMailboxPolicy$($phase)PolicyMismatch:$($entry.Key)"
+                }
+            }
+        }
+        if ($bindings.Count -ne $evidenceBindings.Count) {
+            throw "MobileDeviceMailboxPolicy$($phase)BindingSetMismatch"
+        }
+        foreach ($entry in $evidenceBindings.GetEnumerator()) {
+            if (-not $bindings.ContainsKey($entry.Key)) {
+                throw "MobileDeviceMailboxPolicy$($phase)BindingMissing:$($entry.Key)"
+            }
+            $actualRow = $bindings[$entry.Key]
+            foreach ($name in @('RecipientTypeDetails','ActiveSyncEnabled','Authority')) {
+                if ((& $get $actualRow $name) -cne (& $get $entry.Value $name)) {
+                    throw "MobileDeviceMailboxPolicy$($phase)BindingMismatch:$($entry.Key)"
+                }
+            }
+            $expectedPolicy = & $get $entry.Value 'PolicyIdentity'
+            if ($desired) {
+                $mutation = @($bindingMutations | Where-Object { $_.MailboxIdentity -ieq $entry.Key })
+                if ($mutation.Count -eq 1) { $expectedPolicy = $mutation[0].DesiredPolicyIdentity }
+            }
+            if ([string](& $get $actualRow 'PolicyIdentity') -cne [string]$expectedPolicy) {
+                throw "MobileDeviceMailboxPolicy$($phase)BindingMismatch:$($entry.Key)"
+            }
+        }
+    }
+
+    & $readAndValidate 'Initial' $false
+    $noOp = $policyMutations.Count -eq 0 -and $bindingMutations.Count -eq 0
+    if ($RequireNoOp -and -not $noOp) { throw 'MobileDeviceMailboxPolicyPlanNotNoOp' }
+    if ($noOp -and -not [string]::IsNullOrWhiteSpace($MutationAttempt)) {
+        throw 'MobileDeviceMailboxPolicyNoOpMutationAttempt'
+    }
+    if ($noOp) {
+        return [pscustomobject][ordered]@{
+            EvidenceId=& $get $Plan 'EvidenceId'; ContentHash=& $get $Plan 'ContentHash'
+            EvidenceHash=$EvidenceHash; PlanHash=$PlanHash; NoOp=$true; Applied=$false
+            ReadbackVerified=$false; RolledBack=$false; RestorationVerified=$false
+            AffectedPolicies=@(); AffectedMailboxBindings=@()
+            ActualDeviceBehavior='Unverified'; MobileDeviceManagement='Unverified'; ConditionalAccess='Unverified'
+        }
+    }
+
+    $applyPayload = [pscustomobject][ordered]@{
+        EvidenceId=& $get $Plan 'EvidenceId'
+        ContentHash=& $get $Plan 'ContentHash'
+        PolicyMutations=@($policyMutations)
+        BindingMutations=@($bindingMutations)
+    }
+    $rollbackPayload = [pscustomobject][ordered]@{
+        EvidenceId=& $get $Plan 'EvidenceId'
+        ContentHash=& $get $Plan 'ContentHash'
+        PolicyMutations=@($policyMutations | ForEach-Object {
+            [pscustomobject][ordered]@{ Identity=$_.Identity; CurrentSettings=@($_.DesiredSettings); DesiredSettings=@($_.CurrentSettings) }
+        })
+        BindingMutations=@($bindingMutations | ForEach-Object {
+            [pscustomobject][ordered]@{
+                MailboxIdentity=$_.MailboxIdentity
+                CurrentPolicyIdentity=$_.DesiredPolicyIdentity
+                DesiredPolicyIdentity=$_.CurrentPolicyIdentity
+            }
+        })
+    }
+    $primary = $null
+    try {
+        & $Writer 'Apply' $applyPayload
+        & $readAndValidate 'Apply' $true
+    }
+    catch { $primary = $_ }
+    if ($null -ne $primary) {
+        $rollbackProblems = [Collections.Generic.List[string]]::new()
+        try { & $Writer 'Rollback' $rollbackPayload }
+        catch { $rollbackProblems.Add("MobileDeviceMailboxPolicyRollbackFailed:$($_.Exception.Message)") }
+        try { & $readAndValidate 'Rollback' $false }
+        catch { $rollbackProblems.Add($_.Exception.Message) }
+        $message = if ($primary.Exception.Message -like 'MobileDeviceMailboxPolicyApply*') {
+            $primary.Exception.Message
+        } else { "MobileDeviceMailboxPolicyApplyFailed:$($primary.Exception.Message)" }
+        if ($rollbackProblems.Count) { $message += '; ' + ($rollbackProblems -join '; ') }
+        throw $message
+    }
+    [pscustomobject][ordered]@{
+        EvidenceId=& $get $Plan 'EvidenceId'; ContentHash=& $get $Plan 'ContentHash'
+        EvidenceHash=$EvidenceHash; PlanHash=$PlanHash; NoOp=$false; Applied=$true
+        ReadbackVerified=$true; RolledBack=$false; RestorationVerified=$false
+        AffectedPolicies=@($policyMutations.Identity)
+        AffectedMailboxBindings=@($bindingMutations.MailboxIdentity)
+        MutationPayload=$applyPayload
+        ActualDeviceBehavior='Unverified'; MobileDeviceManagement='Unverified'; ConditionalAccess='Unverified'
+    }
+}
+
+function Invoke-ExchangeMobileDeviceMailboxPolicyLifecycle {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Evidence,
+        [Parameter(Mandatory)][object]$Plan,
+        [Parameter(Mandatory)][string]$EvidenceHash,
+        [Parameter(Mandatory)][string]$PlanHash,
+        [Parameter(Mandatory)][scriptblock]$CompleteRead,
+        [Parameter(Mandatory)][scriptblock]$Writer,
+        [switch]$RequireNoOp,
+        [AllowNull()][string]$MutationAttempt
+    )
+    $get = { param($o,$n) Get-BaselineRecordMember -Node $o -Name $n }
+    $names = { param($o) @(Get-BaselineRecordMemberName -Node $o) }
+    if ((Get-ExchangeMobileDeviceMailboxPolicyContractHash $Evidence) -cne $EvidenceHash) {
+        throw 'MobileDeviceMailboxPolicyEvidenceHashMismatch'
+    }
+    if ((Get-ExchangeMobileDeviceMailboxPolicyContractHash $Plan) -cne $PlanHash) {
+        throw 'MobileDeviceMailboxPolicyPlanHashMismatch'
+    }
+    if ('PolicyPlan' -cin @(& $names $Plan)) {
+        return Invoke-ExchangeMobileDeviceMailboxPolicyAggregateLifecycle -Evidence $Evidence -Plan $Plan `
+            -EvidenceHash $EvidenceHash -PlanHash $PlanHash -CompleteRead $CompleteRead -Writer $Writer `
+            -RequireNoOp:$RequireNoOp -MutationAttempt $MutationAttempt
+    }
+    $allowedEvidenceMembers = @(
+        'FixtureAuthority','SourceCommand','Complete','EvidenceId','PolicyIdentity','CurrentSettings',
+        'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess'
+    )
+    foreach ($name in @(& $names $Evidence)) {
+        if ($name -cnotin $allowedEvidenceMembers) {
+            throw "MobileDeviceMailboxPolicyEvidenceSchemaInvalid:Unexpected:$name"
+        }
+    }
+    $allowedPlanMembers = @(
+        'FixtureAuthority','SourceCommand','PolicyIdentity','EvidenceHash','BindingDisposition',
+        'BindingDecisions','ApprovedSettingTypes','ApprovedSettings','CurrentSettings','Decision',
+        'ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess'
+    )
+    foreach ($name in @(& $names $Plan)) {
+        if ($name -cnotin $allowedPlanMembers) {
+            throw "MobileDeviceMailboxPolicyPlanSchemaInvalid:Unexpected:$name"
+        }
+    }
+    if ([string](& $get $Plan 'EvidenceHash') -cne $EvidenceHash) {
+        throw 'MobileDeviceMailboxPolicyEvidenceBindingMismatch'
+    }
+    $identity = [string](& $get $Plan 'PolicyIdentity')
+    if ($identity -cne [string](& $get $Evidence 'PolicyIdentity')) {
+        throw 'MobileDeviceMailboxPolicyIdentityBindingMismatch'
+    }
+    if ('BindingDisposition' -cnotin @(& $names $Plan)) {
+        throw 'MobileDeviceMailboxPolicyBindingDispositionRequired'
+    }
+    $bindingDisposition = [string](& $get $Plan 'BindingDisposition')
+    if ($bindingDisposition -cnotin @('ManageBinding','PreserveBinding','Exclude')) {
+        throw 'MobileDeviceMailboxPolicyBindingNotApproved'
+    }
+    $bindingDecisionSeen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($row in @(& $get $Plan 'BindingDecisions')) {
+        $rowNames = @(& $names $row)
+        foreach ($requiredName in @('MailboxIdentity','Disposition')) {
+            if ($requiredName -cnotin $rowNames) {
+                throw "MobileDeviceMailboxPolicyBindingDecisionSchemaInvalid:Missing:$requiredName"
+            }
+        }
+        foreach ($rowName in $rowNames) {
+            if ($rowName -cnotin @('MailboxIdentity','Disposition')) {
+                throw "MobileDeviceMailboxPolicyBindingDecisionSchemaInvalid:Unexpected:$rowName"
+            }
+        }
+        $mailboxIdentity = [string](& $get $row 'MailboxIdentity')
+        if ([string]::IsNullOrWhiteSpace($mailboxIdentity)) {
+            throw 'MobileDeviceMailboxPolicyBindingDecisionIdentityInvalid'
+        }
+        if (-not $bindingDecisionSeen.Add($mailboxIdentity)) {
+            throw "MobileDeviceMailboxPolicyBindingDecisionDuplicate:$mailboxIdentity"
+        }
+        $rowDisposition = [string](& $get $row 'Disposition')
+        if ($rowDisposition -cnotin @('ManageBinding','PreserveBinding','Exclude')) {
+            throw "MobileDeviceMailboxPolicyBindingDecisionInvalid:$mailboxIdentity`:$rowDisposition"
+        }
+    }
+    $required = [ordered]@{
+        AllowNonProvisionableDevices='Boolean'
+        AlphanumericPasswordRequired='Boolean'
+        DeviceEncryptionEnabled='Boolean'
+        MinPasswordLength='Int32'
+    }
+    $approved = & $get $Plan 'ApprovedSettings'
+    $current = & $get $Plan 'CurrentSettings'
+    $types = & $get $Plan 'ApprovedSettingTypes'
+    $approvedNames = @(& $names $approved)
+    foreach ($name in $required.Keys) {
+        if ($name -cnotin $approvedNames) {
+            throw "MobileDeviceMailboxPolicyApprovedSettingsIncomplete:$name"
+        }
+    }
+    if ($approvedNames.Count -ne $required.Count -or
+        @($approvedNames | Where-Object { $_ -cnotin $required.Keys }).Count -gt 0) {
+        throw 'MobileDeviceMailboxPolicyApprovedSettingsIncomplete'
+    }
+    foreach ($name in $required.Keys) {
+        $value = & $get $approved $name
+        if ($null -eq $value -or $value.GetType().Name -cne $required[$name] -or
+            [string](& $get $types $name) -cne $required[$name]) {
+            throw "MobileDeviceMailboxPolicyApprovedSettingTypeInvalid:$name"
+        }
+    }
+    foreach ($name in @('ActualDeviceBehavior','MobileDeviceManagement','ConditionalAccess')) {
+        if ([string](& $get $Plan $name) -cne 'Unverified') {
+            throw "MobileDeviceMailboxPolicy$($name)MustRemainUnverified"
+        }
+    }
+    $decision = [string](& $get $Plan 'Decision')
+    $settingsNoOp = $true
+    foreach ($name in $required.Keys) {
+        $approvedValue = & $get $approved $name
+        $currentValue = & $get $current $name
+        if ($null -eq $approvedValue -or $null -eq $currentValue -or
+            $approvedValue.GetType().Name -cne $currentValue.GetType().Name -or
+            $approvedValue -cne $currentValue) {
+            $settingsNoOp = $false
+        }
+    }
+    $claimsNoOp = $decision -ceq 'NoOp'
+    if (($RequireNoOp -or $claimsNoOp -or $settingsNoOp) -and
+        -not [string]::IsNullOrWhiteSpace($MutationAttempt)) {
+        throw 'MobileDeviceMailboxPolicyNoOpMutationAttempt'
+    }
+
+    $initial = & $CompleteRead 'Initial'
+    if ($null -eq $initial -or (& $get $initial 'Complete') -ne $true) {
+        throw 'MobileDeviceMailboxPolicyInitialReadIncomplete'
+    }
+    $rows = @(& $get $initial 'Rows')
+    $target = @($rows | Where-Object { [string](& $get $_ 'Identity') -ceq $identity })
+    if ($target.Count -eq 0) { throw "MobileDeviceMailboxPolicyInitialIdentityMissing:$identity" }
+    if ($target.Count -ne 1) { throw "MobileDeviceMailboxPolicyInitialIdentityNotUnique:$identity" }
+    $initialSettings = & $get $target[0] 'Settings'
+    foreach ($name in $required.Keys) {
+        $expected = & $get $current $name
+        $actual = & $get $initialSettings $name
+        if ($null -eq $actual -or $actual.GetType().Name -cne $expected.GetType().Name -or $actual -cne $expected) {
+            throw "MobileDeviceMailboxPolicyInitialStateMismatch:$name"
+        }
+    }
+    if ($RequireNoOp -or $claimsNoOp -or $settingsNoOp) {
+        if (-not $settingsNoOp -or
+            (-not [string]::IsNullOrWhiteSpace($decision) -and -not $claimsNoOp)) {
+            throw "MobileDeviceMailboxPolicyPlanNotNoOp:$identity"
+        }
+        foreach ($name in $required.Keys) {
+            if ((& $get $approved $name) -cne (& $get $current $name)) {
+                throw "MobileDeviceMailboxPolicyPlanNotNoOp:$identity"
+            }
+        }
+        return [pscustomobject][ordered]@{
+            NoOp=$true; EvidenceHash=$EvidenceHash; PlanHash=$PlanHash; Applied=$false; RolledBack=$false
+            PolicyIdentity=$identity; BindingDisposition=$bindingDisposition
+            BindingDecisions=& $get $Plan 'BindingDecisions'; ApprovedSettingTypes=$types; ApprovedSettings=$approved
+            ActualDeviceBehavior='Unverified'; MobileDeviceManagement='Unverified'; ConditionalAccess='Unverified'
+        }
+    }
+
+    $writeRow = [pscustomobject][ordered]@{
+        PolicyIdentity=$identity; ApprovedSettings=$approved; CurrentSettings=$current
+    }
+    $primaryId = $null; $primaryMessage = $null
+    try {
+        & $Writer 'Apply' $writeRow
+        $applyRead = & $CompleteRead 'Apply'
+        if ($null -eq $applyRead -or (& $get $applyRead 'Complete') -ne $true) {
+            $primaryId = 'MobileDeviceMailboxPolicyApplyReadIncomplete'
+            throw $primaryId
+        }
+        $applyTarget = @(@(& $get $applyRead 'Rows') | Where-Object { [string](& $get $_ 'Identity') -ceq $identity })
+        if ($applyTarget.Count -ne 1) {
+            $primaryId = 'MobileDeviceMailboxPolicyApplyReadbackIdentityMismatch'
+            throw "$primaryId`:$identity"
+        }
+        foreach ($name in $required.Keys) {
+            $actual = & $get (& $get $applyTarget[0] 'Settings') $name
+            $expected = & $get $approved $name
+            if ($null -eq $actual -or $actual.GetType().Name -cne $expected.GetType().Name -or $actual -cne $expected) {
+                $primaryId = 'MobileDeviceMailboxPolicyApplyReadbackMismatch'
+                throw "$primaryId`:$name"
+            }
+        }
+    }
+    catch {
+        if ($null -eq $primaryId) { $primaryId = 'MobileDeviceMailboxPolicyApplyFailed' }
+        $primaryMessage = if ($_.Exception.Message -like "$primaryId*") { $_.Exception.Message } else { "$primaryId`:$($_.Exception.Message)" }
+    }
+    if ($null -ne $primaryId) {
+        $rollbackProblems = [Collections.Generic.List[string]]::new()
+        try { & $Writer 'Rollback' $writeRow }
+        catch { $rollbackProblems.Add("MobileDeviceMailboxPolicyRollbackFailed:$($_.Exception.Message)") }
+        try {
+            $rollbackRead = & $CompleteRead 'Rollback'
+            if ($null -eq $rollbackRead -or (& $get $rollbackRead 'Complete') -ne $true) {
+                $rollbackProblems.Add('MobileDeviceMailboxPolicyRollbackReadIncomplete')
+            } else {
+                $rollbackTarget = @(@(& $get $rollbackRead 'Rows') | Where-Object { [string](& $get $_ 'Identity') -ceq $identity })
+                if ($rollbackTarget.Count -ne 1) {
+                    $rollbackProblems.Add("MobileDeviceMailboxPolicyRollbackReadbackIdentityMismatch:$identity")
+                } else {
+                    foreach ($name in $required.Keys) {
+                        $actual = & $get (& $get $rollbackTarget[0] 'Settings') $name
+                        $expected = & $get $current $name
+                        if ($null -eq $actual -or $actual.GetType().Name -cne $expected.GetType().Name -or $actual -cne $expected) {
+                            $rollbackProblems.Add("MobileDeviceMailboxPolicyRollbackReadbackMismatch:$name")
+                            break
+                        }
+                    }
+                }
+            }
+        }
+        catch { $rollbackProblems.Add("MobileDeviceMailboxPolicyRollbackReadFailed:$($_.Exception.Message)") }
+        $message = $primaryMessage
+        if ($rollbackProblems.Count) { $message += '; ' + ($rollbackProblems -join '; ') }
+        throw $message
+    }
+    [pscustomobject][ordered]@{
+        EvidenceHash=$EvidenceHash; PlanHash=$PlanHash; PolicyIdentity=$identity
+        BindingDisposition=$bindingDisposition; BindingDecisions=& $get $Plan 'BindingDecisions'
+        ApprovedSettingTypes=$types; ApprovedSettings=$approved; Applied=$true; ReadbackVerified=$true
+        ActualDeviceBehavior='Unverified'; MobileDeviceManagement='Unverified'; ConditionalAccess='Unverified'
+    }
+}
+
+# EXR-007-A08-T03: OWA policy evidence, inert planning, and reversible execution.
+# Exchange access is deliberately absent; every read and write is caller-injected.
+function Get-ExchangeOwaMailboxPolicyEvidence {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$PolicyReader,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$DefaultBindingReader,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$ExplicitBindingReader,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$DependencyAssessmentReader
+    )
+
+    $newResult = {
+        param([bool]$Collected, [AllowNull()][string]$FailureReason, [AllowNull()][object]$Value)
+        [pscustomobject][ordered]@{
+            Collected = $Collected
+            FailureReason = if ($Collected) { $null } else { $FailureReason }
+            Value = $Value
+            ActualClientBehavior = 'Unverified'
+            AssignmentProvenance = 'Unverified'
+        }
+    }
+    $fail = { param([string]$Reason) & $newResult $false $Reason $null }
+    if ($null -eq $PolicyReader) { return & $fail 'PolicyReaderRequired' }
+    if ($null -eq $DefaultBindingReader) { return & $fail 'DefaultBindingReaderRequired' }
+    if ($null -eq $ExplicitBindingReader) { return & $fail 'ExplicitBindingReaderRequired' }
+    if ($null -eq $DependencyAssessmentReader) { return & $fail 'DependencyAssessmentReaderRequired' }
+
+    $read = {
+        param([scriptblock]$Reader, [string]$Kind)
+        $items = [Collections.Generic.List[object]]::new()
+        $links = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        $next = $null
+        while ($true) {
+            try { $page = & $Reader $next }
+            catch { throw "$($Kind)CollectionFailed:$($_.Exception.Message)" }
+            if ($null -eq $page) { throw "$($Kind)CollectionMalformed:Page" }
+            $names = @(Get-BaselineRecordMemberName -Node $page)
+            foreach ($required in @('Items','Complete','NextLink')) {
+                if ($required -cnotin $names) { throw "$($Kind)CollectionMalformed:$required" }
+            }
+            foreach ($name in $names) {
+                if ($name -cnotin @('Items','Complete','NextLink')) {
+                    throw "$($Kind)CollectionMalformed:$name"
+                }
+            }
+            if ($page -is [Collections.IDictionary]) {
+                $pageItems = $page['Items']
+            } else {
+                $pageItems = $page.PSObject.Properties['Items'].Value
+            }
+            if ($null -eq $pageItems) { $pageItems = @() }
+            elseif ($pageItems -isnot [Collections.IList]) {
+                throw "$($Kind)CollectionMalformed:Items"
+            }
+            foreach ($item in @($pageItems)) { $items.Add($item) }
+            $complete = Get-BaselineRecordMember -Node $page -Name 'Complete'
+            $offered = Get-BaselineRecordMember -Node $page -Name 'NextLink'
+            if ($complete -isnot [bool]) { throw "$($Kind)CollectionMalformed:Complete" }
+            if ($complete) {
+                if ($null -ne $offered) { throw "$($Kind)CollectionMalformed:NextLink" }
+                break
+            }
+            if ($null -eq $offered) { throw "$($Kind)CollectionIncomplete" }
+            if ($offered -isnot [string] -or [string]::IsNullOrWhiteSpace($offered)) {
+                throw "$($Kind)CollectionMalformed:NextLink"
+            }
+            if (-not $links.Add($offered)) { throw "$($Kind)CollectionMalformed:PagingCycle" }
+            $next = $offered
+        }
+        @($items)
+    }
+
+    try {
+        $policies = @(& $read $PolicyReader 'Policy')
+        $defaults = @(& $read $DefaultBindingReader 'DefaultBinding')
+        $explicit = @(& $read $ExplicitBindingReader 'ExplicitBinding')
+        try { $dependencies = & $DependencyAssessmentReader }
+        catch { throw "DependencyAssessmentCollectionFailed:$($_.Exception.Message)" }
+    }
+    catch { return & $fail $_.Exception.Message }
+
+    $policyMembers = @(
+        'Identity','IsDefault','Approved','DirectFileAccessOnPublicComputersEnabled',
+        'DirectFileAccessOnPrivateComputersEnabled','WacViewingOnPublicComputersEnabled',
+        'WacViewingOnPrivateComputersEnabled','EvidenceAuthority','IsAuthoritative'
+    )
+    $bindingMembers = @(
+        'Mailbox','Policy','BindingType','Applicable','Authorized','EvidenceOnly','Mutable',
+        'EvidenceAuthority','IsAuthoritative'
+    )
+    $assertClosed = {
+        param([object]$Node, [string[]]$Expected, [string]$MissingPrefix, [string]$UnexpectedPrefix)
+        if ($null -eq $Node) { throw "$MissingPrefix`:Object" }
+        $actual = @(Get-BaselineRecordMemberName -Node $Node)
+        foreach ($name in $Expected) {
+            if ($name -cnotin $actual) {
+                $missingName = if ($MissingPrefix -ceq 'DependencyAssessmentMissing' -and
+                    $name -ceq 'Owa') { 'OWA' } else { $name }
+                throw "$MissingPrefix`:$missingName"
+            }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $Expected) { throw "$UnexpectedPrefix`:$name" }
+        }
+    }
+    $copyBinding = {
+        param([object]$Binding)
+        [pscustomobject][ordered]@{
+            Mailbox = [string](Get-BaselineRecordMember -Node $Binding -Name 'Mailbox')
+            Policy = [string](Get-BaselineRecordMember -Node $Binding -Name 'Policy')
+            BindingType = [string](Get-BaselineRecordMember -Node $Binding -Name 'BindingType')
+            Applicable = Get-BaselineRecordMember -Node $Binding -Name 'Applicable'
+            Authorized = Get-BaselineRecordMember -Node $Binding -Name 'Authorized'
+            EvidenceOnly = Get-BaselineRecordMember -Node $Binding -Name 'EvidenceOnly'
+            Mutable = Get-BaselineRecordMember -Node $Binding -Name 'Mutable'
+            EvidenceAuthority = [string](Get-BaselineRecordMember -Node $Binding -Name 'EvidenceAuthority')
+            IsAuthoritative = Get-BaselineRecordMember -Node $Binding -Name 'IsAuthoritative'
+        }
+    }
+
+    try {
+        $identity = [Collections.Generic.Dictionary[string,string]]::new(
+            [StringComparer]::OrdinalIgnoreCase
+        )
+        $policyCopy = [Collections.Generic.List[object]]::new()
+        foreach ($policy in $policies) {
+            & $assertClosed $policy $policyMembers 'PolicySettingMissing' 'PolicySettingUnauthorized'
+            $id = [string](Get-BaselineRecordMember -Node $policy -Name 'Identity')
+            $normalized = $id.Trim()
+            if ([string]::IsNullOrWhiteSpace($normalized)) { throw 'PolicyIdentityInvalid' }
+            if ($identity.ContainsKey($normalized)) {
+                throw "PolicyIdentityAmbiguous:$($identity[$normalized])"
+            }
+            $identity[$normalized] = $normalized
+            foreach ($name in @(
+                'IsDefault','Approved','DirectFileAccessOnPublicComputersEnabled',
+                'DirectFileAccessOnPrivateComputersEnabled','WacViewingOnPublicComputersEnabled',
+                'WacViewingOnPrivateComputersEnabled','IsAuthoritative'
+            )) {
+                if ((Get-BaselineRecordMember -Node $policy -Name $name) -isnot [bool]) {
+                    throw "PolicySettingTypeMismatch:$name"
+                }
+            }
+            if ((Get-BaselineRecordMember -Node $policy -Name 'Approved') -ne $true) {
+                throw "PolicyUnauthorized:$normalized"
+            }
+            $expected = [ordered]@{
+                DirectFileAccessOnPublicComputersEnabled = $false
+                DirectFileAccessOnPrivateComputersEnabled = $false
+                WacViewingOnPublicComputersEnabled = $true
+                WacViewingOnPrivateComputersEnabled = $true
+            }
+            foreach ($name in $expected.Keys) {
+                if ((Get-BaselineRecordMember -Node $policy -Name $name) -ne $expected[$name]) {
+                    throw "PolicySettingMismatch:$name"
+                }
+            }
+            if ([string](Get-BaselineRecordMember -Node $policy -Name 'EvidenceAuthority') -cne
+                'SyntheticNonAuthoritative' -or
+                (Get-BaselineRecordMember -Node $policy -Name 'IsAuthoritative') -ne $false) {
+                throw "PolicyAuthorityInvalid:$normalized"
+            }
+            $policyCopy.Add([pscustomobject][ordered]@{
+                Identity = $normalized
+                IsDefault = Get-BaselineRecordMember -Node $policy -Name 'IsDefault'
+                Approved = $true
+                DirectFileAccessOnPublicComputersEnabled = $false
+                DirectFileAccessOnPrivateComputersEnabled = $false
+                WacViewingOnPublicComputersEnabled = $true
+                WacViewingOnPrivateComputersEnabled = $true
+                EvidenceAuthority = 'SyntheticNonAuthoritative'
+                IsAuthoritative = $false
+            })
+        }
+
+        if ($defaults.Count -ne 1) { throw 'DefaultBindingMissing' }
+        if ($explicit.Count -eq 0) { throw 'ApplicableExplicitBindingMissing' }
+        $defaultCopy = [Collections.Generic.List[object]]::new()
+        $explicitCopy = [Collections.Generic.List[object]]::new()
+        foreach ($entry in @($defaults + $explicit)) {
+            & $assertClosed $entry $bindingMembers 'BindingSettingMissing' 'BindingSettingUnauthorized'
+            foreach ($name in @('Applicable','Authorized','EvidenceOnly','Mutable','IsAuthoritative')) {
+                if ((Get-BaselineRecordMember -Node $entry -Name $name) -isnot [bool]) {
+                    throw "BindingSettingTypeMismatch:$name"
+                }
+            }
+            $mailbox = [string](Get-BaselineRecordMember -Node $entry -Name 'Mailbox')
+            $policyName = [string](Get-BaselineRecordMember -Node $entry -Name 'Policy')
+            if (-not $identity.ContainsKey($policyName)) {
+                if ($entry -in $defaults) { throw "DefaultBindingPolicyMismatch:$policyName" }
+                throw "BindingPolicyUnauthorized:$policyName"
+            }
+            if ((Get-BaselineRecordMember -Node $entry -Name 'Authorized') -ne $true) {
+                throw "ExplicitBindingUnauthorized:$mailbox"
+            }
+            if ((Get-BaselineRecordMember -Node $entry -Name 'EvidenceOnly') -ne $true -or
+                (Get-BaselineRecordMember -Node $entry -Name 'Mutable') -ne $false -or
+                [string](Get-BaselineRecordMember -Node $entry -Name 'EvidenceAuthority') -cne
+                    'SyntheticNonAuthoritative' -or
+                (Get-BaselineRecordMember -Node $entry -Name 'IsAuthoritative') -ne $false) {
+                throw "BindingAuthorityInvalid:$mailbox"
+            }
+            $copy = & $copyBinding $entry
+            if ($entry -in $defaults) { $defaultCopy.Add($copy) } else { $explicitCopy.Add($copy) }
+        }
+        if ($defaultCopy[0].Mailbox -cne 'default' -or
+            $defaultCopy[0].BindingType -cne 'Default' -or -not $defaultCopy[0].Applicable) {
+            throw 'DefaultBindingInvalid'
+        }
+        foreach ($entry in $explicitCopy) {
+            if ($entry.BindingType -cne 'Explicit' -or -not $entry.Applicable) {
+                throw "ExplicitBindingInvalid:$($entry.Mailbox)"
+            }
+        }
+
+        & $assertClosed $dependencies @(
+            'Owa','NewOutlook','ConditionalAccess','LiveClients','EvidenceAuthority','IsAuthoritative'
+        ) 'DependencyAssessmentMissing' 'DependencyAssessmentUnauthorized'
+        foreach ($name in @('Owa','NewOutlook')) {
+            $node = Get-BaselineRecordMember -Node $dependencies -Name $name
+            & $assertClosed $node @('Assessed','Status','Reference') 'DependencyAssessmentMissing' 'DependencyAssessmentUnauthorized'
+            if ((Get-BaselineRecordMember -Node $node -Name 'Assessed') -ne $true -or
+                [string](Get-BaselineRecordMember -Node $node -Name 'Status') -cne 'Unverified' -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $node -Name 'Reference'))) {
+                throw "DependencyAssessmentInvalid:$name"
+            }
+        }
+        foreach ($name in @('ConditionalAccess','LiveClients')) {
+            $node = Get-BaselineRecordMember -Node $dependencies -Name $name
+            & $assertClosed $node @('Included','Reason') 'DependencyAssessmentMissing' 'DependencyAssessmentUnauthorized'
+            if ((Get-BaselineRecordMember -Node $node -Name 'Included') -isnot [bool]) {
+                throw "DependencyAssessmentInvalid:$name"
+            }
+        }
+        if ((Get-BaselineRecordMember -Node $dependencies.ConditionalAccess -Name 'Included') -ne $false) {
+            throw 'ConditionalAccessNotInScope'
+        }
+        if ((Get-BaselineRecordMember -Node $dependencies.LiveClients -Name 'Included') -ne $false) {
+            throw 'LiveClientsNotInScope'
+        }
+        if ([string]$dependencies.EvidenceAuthority -cne 'SyntheticNonAuthoritative' -or
+            $dependencies.IsAuthoritative -ne $false) {
+            throw 'DependencyAssessmentAuthorityInvalid'
+        }
+
+        $dependencyCopy = [pscustomobject][ordered]@{
+            Owa = [pscustomobject][ordered]@{
+                Assessed = $true; Status = 'Unverified'; Reference = [string]$dependencies.Owa.Reference
+            }
+            NewOutlook = [pscustomobject][ordered]@{
+                Assessed = $true; Status = 'Unverified'; Reference = [string]$dependencies.NewOutlook.Reference
+            }
+            ConditionalAccess = [pscustomobject][ordered]@{
+                Included = $false; Reason = [string]$dependencies.ConditionalAccess.Reason
+            }
+            LiveClients = [pscustomobject][ordered]@{
+                Included = $false; Reason = [string]$dependencies.LiveClients.Reason
+            }
+            EvidenceAuthority = 'SyntheticNonAuthoritative'
+            IsAuthoritative = $false
+        }
+        $value = [pscustomobject][ordered]@{
+            Policies = @($policyCopy)
+            DefaultBindings = @($defaultCopy)
+            ExplicitBindings = @($explicitCopy)
+            Dependencies = $dependencyCopy
+            EvidenceAuthority = 'SyntheticNonAuthoritative'
+            IsAuthoritative = $false
+        }
+        & $newResult $true $null $value
+    }
+    catch { & $fail $_.Exception.Message }
+}
+
+function New-ExchangeOwaMailboxPolicyPlan {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Policy,
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$Binding,
+        [Parameter(Mandatory)][string]$AsOfUtc
+    )
+    if ($null -eq $Policy) { throw 'OwaPolicyContractRequired' }
+    if ($null -eq $Binding -or @($Binding).Count -eq 0) { throw 'OwaPolicyBindingRequired' }
+    $names = { param($Node) @(Get-BaselineRecordMemberName -Node $Node) }
+    $get = { param($Node,$Name) Get-BaselineRecordMember -Node $Node -Name $Name }
+    $closed = {
+        param($Node,[string[]]$Expected,[string]$ErrorId)
+        if ($null -eq $Node) { throw "$ErrorId`:Null" }
+        $actual = @(& $names $Node)
+        foreach ($name in $Expected) {
+            if ($name -cnotin $actual) { throw "$ErrorId`:Missing:$name" }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $Expected) { throw "$ErrorId`:Unexpected:$name" }
+        }
+    }
+    & $closed $Policy @(
+        'FixtureAuthority','ContractVersion','ApprovedPolicyIdentities','ApprovedSettings',
+        'Approval','Evidence','ClientImpact','ActualBehavior','AssignmentProvenance',
+        'DependencyAssessment','PlanSafety'
+    ) 'OwaPolicySchemaInvalid'
+    if ([string]$Policy.FixtureAuthority -cne 'SyntheticNonAuthoritative') {
+        throw 'OwaPolicyFixtureAuthorityInvalid'
+    }
+    if ($null -eq $Policy.Approval) { throw 'OwaPolicyApprovalRequired' }
+    if ($null -eq $Policy.Evidence) { throw 'OwaPolicyEvidenceRequired' }
+    & $closed $Policy.Approval @(
+        'ApprovalId','EvidenceId','ContentHash','Decision','ApprovedBy','ApprovedUtc','ExpiresUtc'
+    ) 'OwaPolicyApprovalSchemaInvalid'
+    & $closed $Policy.Evidence @('ApprovalId','EvidenceId','Complete','ContentHash') 'OwaPolicyEvidenceSchemaInvalid'
+    & $closed $Policy.ClientImpact @(
+        'OutlookOnTheWeb','NewOutlookForWindows','LiveClientObservation'
+    ) 'OwaPolicyClientImpactSchemaInvalid'
+    foreach ($name in @('OutlookOnTheWeb','NewOutlookForWindows','LiveClientObservation')) {
+        & $closed $Policy.ClientImpact.$name @('Impact','Explicit') 'OwaPolicyClientImpactSchemaInvalid'
+        if ($Policy.ClientImpact.$name.Impact -isnot [string] -or
+            [string]::IsNullOrWhiteSpace([string]$Policy.ClientImpact.$name.Impact) -or
+            $Policy.ClientImpact.$name.Explicit -isnot [bool] -or
+            $Policy.ClientImpact.$name.Explicit -ne $true) {
+            throw "OwaPolicyClientImpactInvalid:$name"
+        }
+    }
+    & $closed $Policy.DependencyAssessment @('Status','ConditionalAccess') 'OwaPolicyDependencyAssessmentSchemaInvalid'
+    & $closed $Policy.PlanSafety @(
+        'MutationCommand','Apply','CapturePriorState','TypedOperands'
+    ) 'OwaPolicyPlanSafetySchemaInvalid'
+    if ([string]$Policy.Approval.Decision -cne 'Approved') { throw 'OwaPolicyApprovalRequired' }
+    try { $asOf = [datetimeoffset]::Parse($AsOfUtc).ToUniversalTime() }
+    catch { throw 'OwaPolicyAsOfUtcInvalid' }
+    try { $expiry = [datetimeoffset]::Parse([string]$Policy.Approval.ExpiresUtc).ToUniversalTime() }
+    catch { throw 'OwaPolicyApprovalExpiryInvalid' }
+    if ($expiry -le $asOf) { throw 'OwaPolicyApprovalExpired' }
+    if ($Policy.Evidence.Complete -ne $true) { throw 'OwaPolicyEvidenceIncomplete' }
+    if ([string]$Policy.Approval.EvidenceId -cne [string]$Policy.Evidence.EvidenceId) {
+        throw "OwaPolicyEvidenceApprovalLinkMismatch:$($Policy.Approval.EvidenceId):$($Policy.Evidence.EvidenceId)"
+    }
+    if ([string]$Policy.Approval.ApprovalId -cne [string]$Policy.Evidence.ApprovalId) {
+        throw "OwaPolicyEvidenceApprovalLinkMismatch:$($Policy.Approval.ApprovalId):$($Policy.Evidence.ApprovalId)"
+    }
+    if ([string]$Policy.Approval.ContentHash -cne [string]$Policy.Evidence.ContentHash) {
+        throw 'OwaPolicyEvidenceHashMismatch'
+    }
+    if ([string]$Policy.ActualBehavior -cne 'Unverified') {
+        throw 'OwaPolicyActualBehaviorMustBeUnverified'
+    }
+    if ([string]$Policy.AssignmentProvenance -cne 'Unverified') {
+        throw 'OwaPolicyAssignmentProvenanceMustBeUnverified'
+    }
+    if ([string]$Policy.DependencyAssessment.ConditionalAccess -cne 'Excluded') {
+        throw 'OwaPolicyConditionalAccessMustBeExcluded'
+    }
+    if ([string]$Policy.PlanSafety.MutationCommand -cne 'Set-OwaMailboxPolicy') {
+        throw 'OwaPolicyMutationCommandInvalid'
+    }
+    if ($Policy.PlanSafety.Apply -ne $false) { throw 'OwaPolicyPlanApplyMustBeFalse' }
+    if ($Policy.PlanSafety.CapturePriorState -ne $true) {
+        throw 'OwaPolicyPlanPriorStateCaptureRequired'
+    }
+    if ($Policy.PlanSafety.TypedOperands -ne $true) { throw 'OwaPolicyTypedOperandsRequired' }
+
+    $approvedIdentity = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($id in @($Policy.ApprovedPolicyIdentities)) {
+        if ($id -isnot [string] -or [string]::IsNullOrWhiteSpace($id) -or
+            -not $approvedIdentity.Add($id)) { throw 'OwaPolicyApprovedIdentityInvalid' }
+    }
+    $settingByName = [Collections.Generic.Dictionary[string,object]]::new([StringComparer]::Ordinal)
+    foreach ($setting in @($Policy.ApprovedSettings)) {
+        & $closed $setting @('Name','OperandType','DesiredValue') 'OwaPolicyApprovedSettingSchemaInvalid'
+        $name = [string]$setting.Name
+        if ([string]::IsNullOrWhiteSpace($name) -or $settingByName.ContainsKey($name)) {
+            throw "OwaPolicyApprovedSettingInvalid:$name"
+        }
+        $type = [string]$setting.OperandType
+        $value = $setting.DesiredValue
+        $valid = switch ($type) {
+            'Boolean' { $value -is [bool] }
+            'Int32' { $value -is [int] }
+            'String' { $value -is [string] }
+            'StringArray' { $value -is [string[]] }
+            default { $false }
+        }
+        if (-not $valid) { throw "OwaPolicyOperandTypeMismatch:$name`:$type" }
+        $settingByName[$name] = $setting
+    }
+
+    $rows = [Collections.Generic.List[object]]::new()
+    $affected = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($bindingEntry in @($Binding)) {
+        & $closed $bindingEntry @(
+            'FixtureAuthority','PolicyIdentity','SettingName','EvidenceId','Mutable'
+        ) 'OwaPolicyBindingSchemaInvalid'
+        if ([string]$bindingEntry.FixtureAuthority -cne 'SyntheticNonAuthoritative') {
+            throw 'OwaPolicyBindingFixtureAuthorityInvalid'
+        }
+        if ($bindingEntry.Mutable -ne $false) { throw 'OwaPolicyBindingMustBeEvidenceOnly' }
+        if (-not $approvedIdentity.Contains([string]$bindingEntry.PolicyIdentity)) {
+            throw "OwaPolicyIdentityNotApproved:$($bindingEntry.PolicyIdentity)"
+        }
+        if (-not $settingByName.ContainsKey([string]$bindingEntry.SettingName)) {
+            throw "OwaPolicySettingNotApproved:$($bindingEntry.SettingName)"
+        }
+        if ([string]$bindingEntry.EvidenceId -cne [string]$Policy.Evidence.EvidenceId) {
+            throw "OwaPolicyBindingEvidenceIdMismatch:$($Policy.Evidence.EvidenceId):$($bindingEntry.EvidenceId)"
+        }
+        $key = "$($bindingEntry.PolicyIdentity)|$($bindingEntry.SettingName)"
+        if (-not $affected.Add($key)) { throw "OwaPolicyAffectedSetDuplicate:$key" }
+        $setting = $settingByName[[string]$bindingEntry.SettingName]
+        $desired = $setting.DesiredValue
+        if ([string]$setting.OperandType -ceq 'StringArray') {
+            $desired = [string[]]@($setting.DesiredValue)
+        }
+        $impact = [pscustomobject][ordered]@{
+            OutlookOnTheWeb = [pscustomobject][ordered]@{
+                Impact = [string]$Policy.ClientImpact.OutlookOnTheWeb.Impact
+                Explicit = [bool]$Policy.ClientImpact.OutlookOnTheWeb.Explicit
+            }
+            NewOutlookForWindows = [pscustomobject][ordered]@{
+                Impact = [string]$Policy.ClientImpact.NewOutlookForWindows.Impact
+                Explicit = [bool]$Policy.ClientImpact.NewOutlookForWindows.Explicit
+            }
+            LiveClientObservation = [pscustomobject][ordered]@{
+                Impact = [string]$Policy.ClientImpact.LiveClientObservation.Impact
+                Explicit = [bool]$Policy.ClientImpact.LiveClientObservation.Explicit
+            }
+        }
+        $rows.Add([pscustomobject][ordered]@{
+            FixtureAuthority = 'SyntheticNonAuthoritative'
+            PolicyIdentity = [string]$bindingEntry.PolicyIdentity
+            SettingName = [string]$bindingEntry.SettingName
+            OperandType = [string]$setting.OperandType
+            DesiredValue = $desired
+            BindingMutable = $false
+            MutationCommand = 'Set-OwaMailboxPolicy'
+            Apply = $false
+            CapturePriorState = $true
+            ApprovalId = [string]$Policy.Approval.ApprovalId
+            EvidenceId = [string]$Policy.Evidence.EvidenceId
+            ContentHash = [string]$Policy.Evidence.ContentHash
+            ClientImpact = $impact
+            ActualBehavior = 'Unverified'
+            AssignmentProvenance = 'Unverified'
+            DependencyAssessment = [pscustomobject][ordered]@{
+                Status = [string]$Policy.DependencyAssessment.Status
+                ConditionalAccess = 'Excluded'
+            }
+        })
+    }
+    @($rows)
+}
+
+function Invoke-ExchangeOwaMailboxPolicyLifecycle {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][AllowNull()][object]$Policy,
+        [Parameter(Mandatory)][AllowNull()][object[]]$Plan,
+        [Parameter(Mandatory)][AllowNull()][object[]]$BindingEvidence,
+        [Parameter(Mandatory)][bool]$CollectionComplete,
+        [Parameter(Mandatory)][string]$AsOfUtc,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$Read,
+        [Parameter(Mandatory)][AllowNull()][scriptblock]$PolicyWriter
+    )
+    $names = { param($Node) @(Get-BaselineRecordMemberName -Node $Node) }
+    $closed = {
+        param($Node,[string[]]$Expected,[string]$ErrorId)
+        if ($null -eq $Node) { throw "$ErrorId`:Null" }
+        $actual = @(& $names $Node)
+        foreach ($name in $Expected) {
+            if ($name -cnotin $actual) { throw "$ErrorId`:Missing:$name" }
+        }
+        foreach ($name in $actual) {
+            if ($name -cnotin $Expected) { throw "$ErrorId`:Unexpected:$name" }
+        }
+    }
+    if ($null -eq $Policy -or 'Approval' -cnotin @(& $names $Policy) -or
+        $null -eq $Policy.Approval -or [string]$Policy.Approval.Decision -cne 'Approved') {
+        throw 'OwaMailboxPolicyApprovalRequired'
+    }
+    if (-not $CollectionComplete) { throw 'OwaMailboxPolicyCollectionIncomplete' }
+    if ($null -eq $Read) { throw 'OwaMailboxPolicyReaderRequired' }
+    if ($null -eq $PolicyWriter) { throw 'OwaMailboxPolicyWriterRequired' }
+    & $closed $Policy @(
+        'FixtureAuthority','IsAuthoritative','ContentHash','Approval','Evidence',
+        'ApprovedIdentities','ApprovedSettings','OperandTypes','ConditionalAccess','ClientImpact'
+    ) 'OwaMailboxPolicyPolicySchemaInvalid'
+    $approvalNames = @(& $names $Policy.Approval)
+    foreach ($name in @('ApprovalId','Decision','ExpiresUtc')) {
+        if ($name -cnotin $approvalNames) {
+            throw "OwaMailboxPolicyApprovalSchemaInvalid:Missing:$name"
+        }
+    }
+    foreach ($name in $approvalNames) {
+        if ($name -cnotin @('ApprovalId','Decision','ExpiresUtc','ApprovedBy','ApprovedUtc')) {
+            throw "OwaMailboxPolicyApprovalSchemaInvalid:Unexpected:$name"
+        }
+    }
+    & $closed $Policy.Evidence @('EvidenceId','ApprovalId','ContentHash') 'OwaMailboxPolicyEvidenceSchemaInvalid'
+    & $closed $Policy.ConditionalAccess @('Included','Reason') 'OwaMailboxPolicyConditionalAccessSchemaInvalid'
+    & $closed $Policy.ClientImpact @('OutlookOnTheWeb','NewOutlookForWindows') 'OwaMailboxPolicyClientImpactSchemaInvalid'
+    foreach ($name in @('OutlookOnTheWeb','NewOutlookForWindows')) {
+        & $closed $Policy.ClientImpact.$name @('Impact','ActualBehavior','Exclusions') 'OwaMailboxPolicyClientImpactSchemaInvalid'
+        if ($Policy.ClientImpact.$name.Impact -isnot [string] -or
+            [string]::IsNullOrWhiteSpace([string]$Policy.ClientImpact.$name.Impact) -or
+            [string]$Policy.ClientImpact.$name.ActualBehavior -cne 'Unverified' -or
+            $Policy.ClientImpact.$name.Exclusions -isnot [string[]]) {
+            throw "OwaMailboxPolicyClientImpactInvalid:$name"
+        }
+    }
+    if ([string]$Policy.FixtureAuthority -cne 'SyntheticNonAuthoritative' -or
+        $Policy.IsAuthoritative -ne $false) { throw 'OwaMailboxPolicyAuthorityInvalid' }
+    try { $asOf = [datetimeoffset]::Parse($AsOfUtc).ToUniversalTime() }
+    catch { throw 'OwaMailboxPolicyAsOfUtcInvalid' }
+    try { $expiry = [datetimeoffset]::Parse([string]$Policy.Approval.ExpiresUtc).ToUniversalTime() }
+    catch { throw 'OwaMailboxPolicyApprovalExpiryInvalid' }
+    if ($expiry -le $asOf) { throw 'OwaMailboxPolicyApprovalExpired' }
+    if ($Policy.ConditionalAccess.Included -ne $false) {
+        throw 'OwaMailboxPolicyConditionalAccessExcluded'
+    }
+    if ([string]$Policy.ContentHash -cne [string]$Policy.Evidence.ContentHash -or
+        [string]$Policy.Approval.ApprovalId -cne [string]$Policy.Evidence.ApprovalId) {
+        throw 'OwaMailboxPolicyEvidenceLinkageMismatch:Policy'
+    }
+    if (@($Plan).Count -ne 1) { throw 'OwaMailboxPolicyPlanAffectedSetInvalid' }
+    $row = $Plan[0]
+    & $closed $row @(
+        'Identity','Decision','CurrentSettings','DesiredSettings','ActualClientBehavior',
+        'AssignmentProvenance','ApprovalId','EvidenceId','ContentHash','ClientImpact'
+    ) 'OwaMailboxPolicyPlanSchemaInvalid'
+    if ([string]$row.ApprovalId -cne [string]$Policy.Approval.ApprovalId) {
+        throw 'OwaMailboxPolicyEvidenceLinkageMismatch:ApprovalId'
+    }
+    if ([string]$row.EvidenceId -cne [string]$Policy.Evidence.EvidenceId -or
+        [string]$row.ContentHash -cne [string]$Policy.ContentHash) {
+        throw 'OwaMailboxPolicyEvidenceLinkageMismatch:Evidence'
+    }
+    if ([string]$row.ActualClientBehavior -cne 'Unverified') {
+        throw 'OwaMailboxPolicyUnverifiedEvidenceRequired:ActualClientBehavior'
+    }
+    if ([string]$row.AssignmentProvenance -cne 'Unverified') {
+        throw 'OwaMailboxPolicyUnverifiedEvidenceRequired:AssignmentProvenance'
+    }
+    & $closed $row.ClientImpact @('OutlookOnTheWeb','NewOutlookForWindows') 'OwaMailboxPolicyClientImpactIncomplete'
+    foreach ($name in @('OutlookOnTheWeb','NewOutlookForWindows')) {
+        & $closed $row.ClientImpact.$name @('Impact','ActualBehavior','Exclusions') 'OwaMailboxPolicyClientImpactIncomplete'
+        if ([string]$row.ClientImpact.$name.ActualBehavior -cne 'Unverified') {
+            throw "OwaMailboxPolicyUnverifiedEvidenceRequired:$name"
+        }
+    }
+    if (@($BindingEvidence).Count -eq 0) { throw 'OwaMailboxPolicyBindingEvidenceRequired' }
+    foreach ($binding in @($BindingEvidence)) {
+        & $closed $binding @(
+            'Mailbox','Policy','EvidenceOnly','Mutable','AssignmentProvenance','FixtureAuthority',
+            'ApprovalId','EvidenceId','ContentHash'
+        ) 'OwaMailboxPolicyBindingSchemaInvalid'
+        if ($binding.EvidenceOnly -ne $true -or $binding.Mutable -ne $false) {
+            throw 'OwaMailboxPolicyBindingMustBeEvidenceOnlyNonMutable'
+        }
+        if ([string]$binding.AssignmentProvenance -cne 'Unverified' -or
+            [string]$binding.FixtureAuthority -cne 'SyntheticNonAuthoritative') {
+            throw 'OwaMailboxPolicyBindingAuthorityInvalid'
+        }
+        foreach ($name in @('ApprovalId','EvidenceId','ContentHash')) {
+            if ([string]$binding.$name -cne [string]$row.$name) {
+                throw "OwaMailboxPolicyEvidenceLinkageMismatch:Binding:$name"
+            }
+        }
+    }
+
+    $approvedIdentity = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($identity in @($Policy.ApprovedIdentities)) { $null = $approvedIdentity.Add([string]$identity) }
+    if (-not $approvedIdentity.Contains([string]$row.Identity)) {
+        throw "OwaMailboxPolicyIdentityNotApproved:$($row.Identity)"
+    }
+    $approvedSetting = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    foreach ($name in @($Policy.ApprovedSettings)) {
+        if ($name -isnot [string] -or [string]::IsNullOrWhiteSpace($name) -or
+            -not $approvedSetting.Add([string]$name)) {
+            throw 'OwaMailboxPolicyApprovedSettingSetInvalid'
+        }
+    }
+    $operandTypeNames = @(& $names $Policy.OperandTypes)
+    if ($operandTypeNames.Count -ne $approvedSetting.Count) {
+        throw 'OwaMailboxPolicyOperandTypeSchemaInvalid'
+    }
+    foreach ($name in $operandTypeNames) {
+        if (-not $approvedSetting.Contains($name) -or
+            [string]$Policy.OperandTypes.$name -cnotin @('Boolean','Int32','String','StringArray')) {
+            throw "OwaMailboxPolicyOperandTypeSchemaInvalid:$name"
+        }
+    }
+    $desiredNames = @(& $names $row.DesiredSettings)
+    $currentNames = @(& $names $row.CurrentSettings)
+    foreach ($name in $desiredNames) {
+        if (-not $approvedSetting.Contains($name)) {
+            throw "OwaMailboxPolicySettingNotApproved:$name"
+        }
+    }
+    if ($desiredNames.Count -ne $approvedSetting.Count -or
+        $currentNames.Count -ne $approvedSetting.Count) {
+        throw 'OwaMailboxPolicyApprovedSettingSetIncomplete'
+    }
+    foreach ($name in $Policy.ApprovedSettings) {
+        if ($name -cnotin $desiredNames -or $name -cnotin $currentNames) {
+            throw "OwaMailboxPolicyApprovedSettingSetIncomplete:$name"
+        }
+        $type = [string]$Policy.OperandTypes.$name
+        $desired = $row.DesiredSettings.$name
+        $current = $row.CurrentSettings.$name
+        $validDesired = switch ($type) {
+            'Boolean' { $desired -is [bool] }
+            'Int32' { $desired -is [int] }
+            'String' { $desired -is [string] }
+            'StringArray' { $desired -is [string[]] }
+            default { $false }
+        }
+        $validCurrent = switch ($type) {
+            'Boolean' { $current -is [bool] }
+            'Int32' { $current -is [int] }
+            'String' { $current -is [string] }
+            'StringArray' { $current -is [string[]] }
+            default { $false }
+        }
+        if (-not $validDesired -or -not $validCurrent) {
+            throw "OwaMailboxPolicyOperandTypeMismatch:$name`:$type"
+        }
+    }
+    $projectSettings = {
+        param($Settings)
+        $projected = [ordered]@{}
+        foreach ($name in $Policy.ApprovedSettings) {
+            $value = $Settings.$name
+            switch ([string]$Policy.OperandTypes.$name) {
+                'Boolean' { $projected[$name] = [bool]$value; break }
+                'Int32' { $projected[$name] = [int]$value; break }
+                'String' { $projected[$name] = [string]$value; break }
+                'StringArray' { $projected[$name] = [string[]]($value.Clone()); break }
+            }
+        }
+        [pscustomobject]$projected
+    }
+    $same = {
+        param($Left,$Right)
+        foreach ($name in $Policy.ApprovedSettings) {
+            $l = $Left.$name
+            $r = $Right.$name
+            if ($l.GetType() -ne $r.GetType()) { return $false }
+            if ($l -is [array]) {
+                if (@($l).Count -ne @($r).Count) { return $false }
+                for ($i=0; $i -lt @($l).Count; $i++) { if ($l[$i] -cne $r[$i]) { return $false } }
+            }
+            elseif ($l -cne $r) { return $false }
+        }
+        $true
+    }
+    if ([string]$row.Decision -ceq 'Changed' -and
+        (& $same $row.CurrentSettings $row.DesiredSettings)) {
+        throw 'OwaMailboxPolicyNoOpDecisionRequired'
+    }
+    if ([string]$row.Decision -cnotin @('NoOp','Changed')) {
+        throw 'OwaMailboxPolicyNoOpDecisionRequired'
+    }
+    $readTarget = {
+        param([string]$Stage)
+        try { $snapshot = & $Read }
+        catch { throw "OwaMailboxPolicyReadFailed:$Stage`:$($_.Exception.Message)" }
+        & $closed $snapshot @('Complete','Policies') "OwaMailboxPolicyReadSchemaInvalid:$Stage"
+        if ($null -eq $snapshot -or $snapshot.Complete -ne $true) {
+            throw "OwaMailboxPolicyReadIncomplete:$Stage"
+        }
+        $matches = @($snapshot.Policies | Where-Object { [string]$_.Identity -ceq [string]$row.Identity })
+        if ($matches.Count -ne 1) { throw "OwaMailboxPolicyReadIdentityInvalid:$($Stage):$($row.Identity)" }
+        & $closed $matches[0] @('Identity','Settings') "OwaMailboxPolicyReadPolicySchemaInvalid:$Stage"
+        $readSettingNames = @(& $names $matches[0].Settings)
+        if ($readSettingNames.Count -ne $approvedSetting.Count) {
+            throw "OwaMailboxPolicyReadSettingsSchemaInvalid:$Stage"
+        }
+        foreach ($name in $readSettingNames) {
+            if (-not $approvedSetting.Contains($name)) {
+                throw "OwaMailboxPolicyReadSettingsSchemaInvalid:$Stage`:$name"
+            }
+        }
+        $matches[0].Settings
+    }
+    $initial = & $readTarget 'Initial'
+    if (-not (& $same $initial $row.CurrentSettings)) { throw 'OwaMailboxPolicyDriftRefused' }
+
+    $projectClientImpact = {
+        param([object]$Impact)
+        [pscustomobject][ordered]@{
+            OutlookOnTheWeb = [pscustomobject][ordered]@{
+                Impact = $Impact.OutlookOnTheWeb.Impact
+                ActualBehavior = $Impact.OutlookOnTheWeb.ActualBehavior
+                Exclusions = $Impact.OutlookOnTheWeb.Exclusions.Clone()
+            }
+            NewOutlookForWindows = [pscustomobject][ordered]@{
+                Impact = $Impact.NewOutlookForWindows.Impact
+                ActualBehavior = $Impact.NewOutlookForWindows.ActualBehavior
+                Exclusions = $Impact.NewOutlookForWindows.Exclusions.Clone()
+            }
+        }
+    }
+
+    if ([string]$row.Decision -ceq 'NoOp') {
+        if (-not (& $same $row.CurrentSettings $row.DesiredSettings)) {
+            throw 'OwaMailboxPolicyNoOpDecisionRequired'
+        }
+        return [pscustomobject][ordered]@{
+            Decision = 'NoOp'
+            Changed = $false
+            Identity = [string]$row.Identity
+            AfterSettings = & $projectSettings $row.DesiredSettings
+            ApprovalId = [string]$row.ApprovalId
+            EvidenceId = [string]$row.EvidenceId
+            ContentHash = [string]$row.ContentHash
+            ActualClientBehavior = 'Unverified'
+            AssignmentProvenance = 'Unverified'
+            ClientImpact = & $projectClientImpact $row.ClientImpact
+            ConditionalAccess = [pscustomobject][ordered]@{
+                Included = $false
+                Reason = [string]$Policy.ConditionalAccess.Reason
+            }
+        }
+    }
+    if ([string]$row.Decision -cne 'Changed') { throw 'OwaMailboxPolicyNoOpDecisionRequired' }
+
+    & $PolicyWriter 'Apply' ([string]$row.Identity) $row.DesiredSettings
+    $primary = $null
+    try {
+        $after = & $readTarget 'Readback'
+        if (-not (& $same $after $row.DesiredSettings)) {
+            throw 'OwaMailboxPolicyReadbackMismatch'
+        }
+    }
+    catch { $primary = $_.Exception.Message }
+    if ($null -ne $primary) {
+        try { & $PolicyWriter 'Rollback' ([string]$row.Identity) $row.CurrentSettings }
+        catch { throw "$primary; OwaMailboxPolicyRestorationFailed:$($_.Exception.Message)" }
+        try {
+            $restored = & $readTarget 'Restoration'
+            if (-not (& $same $restored $row.CurrentSettings)) {
+                throw 'OwaMailboxPolicyRestorationMismatch'
+            }
+        }
+        catch { throw "$primary; OwaMailboxPolicyRestorationFailed:$($_.Exception.Message)" }
+        throw $primary
+    }
+    try {
+        & $PolicyWriter 'Rollback' ([string]$row.Identity) $row.CurrentSettings
+        $restored = & $readTarget 'Restoration'
+        if (-not (& $same $restored $row.CurrentSettings)) {
+            throw 'OwaMailboxPolicyRestorationMismatch'
+        }
+    }
+    catch { throw "OwaMailboxPolicyRestorationFailed:$($_.Exception.Message)" }
+    [pscustomobject][ordered]@{
+        Decision = 'Changed'
+        Changed = $true
+        ReadbackVerified = $true
+        NoOpVerified = $true
+        DriftRefusalVerified = $true
+        TypedRollbackVerified = $true
+        Identity = [string]$row.Identity
+        AfterSettings = & $projectSettings $row.DesiredSettings
+        ApprovalId = [string]$row.ApprovalId
+        EvidenceId = [string]$row.EvidenceId
+        ContentHash = [string]$row.ContentHash
+        ActualClientBehavior = 'Unverified'
+        AssignmentProvenance = 'Unverified'
+        ClientImpact = & $projectClientImpact $row.ClientImpact
+        ConditionalAccess = [pscustomobject][ordered]@{
+            Included = $false
+            Reason = [string]$Policy.ConditionalAccess.Reason
+        }
+    }
+}
+
 Export-ModuleMember -Function @(
     'Resolve-BaselineConfiguration'
     'Assert-BaselineConfiguration'
@@ -15397,6 +18705,15 @@ Export-ModuleMember -Function @(
     'Test-ExchangeMailboxAuditActionCatalog'
     'ConvertTo-ExchangeMailboxAuditActionAssessment'
     'Invoke-ExchangeMailboxAuditActionLifecycle'
+    'Get-ExchangeClientAccessMailboxFlagEvidence'
+    'New-ExchangeClientAccessMailboxFlagPlan'
+    'Invoke-ExchangeClientAccessMailboxFlagLifecycle'
+    'Get-ExchangeMobileDeviceMailboxPolicyEvidence'
+    'New-ExchangeMobileDeviceMailboxPolicyPlan'
+    'Invoke-ExchangeMobileDeviceMailboxPolicyLifecycle'
+    'Get-ExchangeOwaMailboxPolicyEvidence'
+    'New-ExchangeOwaMailboxPolicyPlan'
+    'Invoke-ExchangeOwaMailboxPolicyLifecycle'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'

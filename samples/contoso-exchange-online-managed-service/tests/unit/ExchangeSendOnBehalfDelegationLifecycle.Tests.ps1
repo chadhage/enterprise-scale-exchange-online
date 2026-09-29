@@ -440,10 +440,10 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
                     'user@contoso.example|delegate@contoso.example'
                 )
             @($result.ReadRequests | Where-Object { $_ -is [System.Collections.IDictionary] -and $_.ContainsKey('ResultSize') -and $_['ResultSize'] -ceq 'Unlimited' }).Count | Should -BeGreaterOrEqual 1
-            @($result.Apply.Operations | Where-Object { $_.ControlId -eq 'EXR-007-A05-T03' }).Count | Should -Be 2
-            @($result.Apply.Operations | Where-Object { $_.Source -eq 'Get-Mailbox' }).Count | Should -Be 2
-            @($result.Apply.Operations | Where-Object { $_.Evidence -like '*GrantSendOnBehalfTo*' }).Count | Should -Be 2
-            @($result.Apply.Operations | Where-Object { $_.Runbook -like '*EXCHANGE-ADMINISTRATOR-JOURNEY*' }).Count | Should -Be 2
+            @($result.Apply.Operations | Where-Object { $null -ne $_ -and $null -ne $_.PSObject.Properties['ControlId'] -and $_.ControlId -eq 'EXR-007-A05-T03' }).Count | Should -Be 2
+            @($result.Apply.Operations | Where-Object { $null -ne $_ -and $null -ne $_.PSObject.Properties['Source'] -and $_.Source -eq 'Get-Mailbox' }).Count | Should -Be 2
+            @($result.Apply.Operations | Where-Object { $null -ne $_ -and $null -ne $_.PSObject.Properties['Evidence'] -and $_.Evidence -like '*GrantSendOnBehalfTo*' }).Count | Should -Be 2
+            @($result.Apply.Operations | Where-Object { $null -ne $_ -and $null -ne $_.PSObject.Properties['Runbook'] -and $_.Runbook -like '*EXCHANGE-ADMINISTRATOR-JOURNEY*' }).Count | Should -Be 2
             $result.Repeat.Status | Should -BeExactly 'Succeeded'
             $result.RepeatWrites | Should -Be 0
             $result.Drift.Exception.Message | Should -BeLike '*ChangeStateDrift*'

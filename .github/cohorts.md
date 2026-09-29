@@ -34,7 +34,585 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 422
+Allocation generation: 486
+
+### Generation 486 Purple Closure And Cohort Release
+
+Registry updated: 2026-09-29. Allocation generation: 485 -> 486. Canonical counts become **37 To Do / 0 In Progress / 53 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** rank 47 `EXR-007-A08-T03` closes with OWA 69/69, 231/231 focused cross-contract proof, manifest/client protocol 64/64, accepted unaffected adjacent gates and ApprovedAdapterRoundTrip 171/66/105/0 with exact historical failed-name sequence. Purple releases all card/file/process/output reservations and is quiescent.
+- **Gold:** rank 46 Done; all reservations released; quiescent.
+- **Silver:** rank 45 Done; all reservations released; quiescent.
+- No next card is automatically activated. A future explicit cohort start must recompute dependency-safe rank and issue a new generation-bound ACK.
+- The separate Evidence->Plan->Lifecycle aggregate-adapter contract remains open and excluded. No full-suite-green, live-tenant, credentials, commit, push or publish claim.
+
+### Generation 485 Purple Proof Review Clarification
+
+Registry updated: 2026-09-29. Allocation generation: 484 -> 485. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** g484 proof did not execute because the reviewer withheld ACCEPT after misreading the no-execution boundary. ACK `purple-20260929T353000Z/Kanban/g485/review-run-proof-EXR-007-A08-T03` explicitly authorizes required read-only parser/hash/file-size/path/Git-status checks, followed only after ACCEPT by one unchanged-runner 231-case execution.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The separate aggregate-adapter contract remains open and excluded. No retry, runner/repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 484 Purple Proof Runner Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 483 -> 484. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** the four SendOnBehalf predicate guards passed independent review; the proof runner failed before Pester due to invalid hashtable addition. Replacement ACK `purple-20260929T350000Z/Kanban/g484/run-proof-EXR-007-A08-T03` grants exactly three serialized read-only Coworkers to construct, review and execute once a minimal explicit 13-file runner requiring 231/231.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The separate aggregate-adapter contract remains open and excluded. No second replacement, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 483 Purple SendOnBehalf Assertion Correction
+
+Registry updated: 2026-09-29. Allocation generation: 482 -> 483. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** diagnosis found no OWA/Common regression; four unsafe positive-test predicates own the strict-property failure. ACK `purple-20260929T343000Z/Kanban/g483/correct-sendonbehalf-EXR-007-A08-T03` grants exactly three serialized Coworkers for four guarded predicate corrections, independent review and one 231-case OWA/mobile/CAS/SendOnBehalf proof gate.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- Carried-forward manifest/protocol, adapter and unaffected adjacent evidence remains accepted. No retry, product/manifest/export/schema/aggregate-adapter edit, unrelated test, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 482 Purple SendOnBehalf Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 481 -> 482. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** the exact adjacent replacement reached 248/249; the sole failure is SendOnBehalf positive `ControlId` shape while all 12 negatives passed. ACK `purple-20260929T340000Z/Kanban/g482/diagnose-sendonbehalf-EXR-007-A08-T03` grants exactly three parallel read-only Coworkers to trace the failing shape, compare against the last green product identity and synthesize the smallest safe correction/proof.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- Carried-forward OWA, manifest/protocol and adapter gates remain accepted. No edit, Pester, import/dot-source, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 481 Purple Adjacent Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 480 -> 481. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 480 manifest/client protocol and adapter gates passed. The adjacent invocation was contaminated by unrelated `ExchangeEmailSettingCatalog.Tests.ps1`. Replacement ACK `purple-20260929T333000Z/Kanban/g481/adjacent-EXR-007-A08-T03` grants exactly three serialized read-only Coworkers to construct, review and execute once the exact 15-file adjacent gate, expected 249/249, followed by final closure review.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The separate aggregate-adapter contract remains open and excluded. No second replacement, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 480 Purple Rank-47 Closure Gates
+
+Registry updated: 2026-09-29. Allocation generation: 479 -> 480. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 479 frozen OWA contract is accepted as 69/69; its runner's nonzero exit occurred only in post-test summarization. ACK `purple-20260929T330000Z/Kanban/g480/verify-EXR-007-A08-T03` grants exactly three read-only Coworkers for manifest/client-protocol, adjacent regression and ApprovedAdapterRoundTrip compatibility gates, followed by independent steward closure review.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The separate aggregate-adapter contract remains open and excluded. No retry, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 479 Purple Sole Dictionary Assertion
+
+Registry updated: 2026-09-29. Allocation generation: 478 -> 479. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 478 remains 68/69; the array assertion now passes and the sole failure is invalid whole-`OrderedDictionary` reference equality. ACK `purple-20260929T323000Z/Kanban/g479/final-dictionary-EXR-007-A08-T03` grants exactly three serialized Coworkers for one deterministic state-projection assertion, independent review and one 69-case run.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No retry, product/manifest/export/schema/aggregate-adapter edit, unrelated test, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 478 Purple Sole Assertion Correction
+
+Registry updated: 2026-09-29. Allocation generation: 477 -> 478. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 477 is accepted as 68/69 with Evidence, Plan and NoOp fully green. The sole Lifecycle failure is an array-enumerating restoration assertion. ACK `purple-20260929T320000Z/Kanban/g478/final-assertion-EXR-007-A08-T03` grants exactly three serialized Coworkers for that one assertion correction, independent review and one short script-file 69-case run.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No retry, product/manifest/export/schema/aggregate-adapter edit, unrelated test, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 477 Purple Verification Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 476 -> 477. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 476 bounded Common delta passed independent review, but the encoded verification command exceeded the Windows process limit before PowerShell/Pester launch. Replacement ACK `purple-20260929T313000Z/Kanban/g477/run-EXR-007-A08-T03` grants exactly three serialized read-only Coworkers to construct, independently review and execute once a temporary script-file Pester runner.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No second replacement, repository edit, aggregate-adapter implementation, unrelated test, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 476 Purple Post-Attempt Correction
+
+Registry updated: 2026-09-29. Allocation generation: 475 -> 476. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** attempt 3 is accepted as 66/69: Evidence 20/21, Plan 25/25, NoOp 7/8 and Lifecycle 14/15. All 3/3 attempts are consumed. ACK `purple-20260929T310000Z/Kanban/g476/post-attempt-EXR-007-A08-T03` grants one bounded post-attempt correction for the canonical `OWA` dependency token and closed `ClientImpact` projections, independent review and one 69-case run.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No retry, test/manifest/export edit, aggregate-adapter implementation, unrelated edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 475 Purple OWA Final Attempt
+
+Registry updated: 2026-09-29. Allocation generation: 474 -> 475. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** final diagnosis proved two Common assignment-boundary defects and two invalid array-enumerating test assertions. ACK `purple-20260929T303000Z/Kanban/g475/implement-EXR-007-A08-T03-attempt3` grants attempt 3/3 using exactly three serialized Coworkers for two Common corrections, two assertion-consumption corrections, independent review and one 69-case run.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The separate aggregate-adapter contract is not authorized. No retry, manifest/export/schema expansion, unrelated edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 474 Purple Final-Attempt Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 473 -> 474. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** attempt 2 is accepted as 47/69: Evidence 2/21, Plan 24/25, NoOp 7/8 and Lifecycle 14/15. ACK `purple-20260929T300000Z/Kanban/g474/diagnose-final-EXR-007-A08-T03` grants exactly three parallel read-only Coworkers to isolate the remaining Evidence enumeration, Plan string-array typing, lifecycle array-scalarization and cross-stage aggregate-shape boundaries before final attempt 3/3.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No repository edit, Pester, import/dot-source, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 473 Purple OWA Attempt 2
+
+Registry updated: 2026-09-29. Allocation generation: 472 -> 473. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** generation 472 isolated four bounded Common-module defects. ACK `purple-20260929T293000Z/Kanban/g473/implement-EXR-007-A08-T03-attempt2` grants product attempt 2/3 using exactly three serialized Coworkers for the four exact Common corrections, independent review and one 69-case run.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- The cross-stage aggregate-shape adapter boundary remains open for separate closure review. No retry, test/manifest/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 472 Purple Attempt-1 Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 471 -> 472. Canonical counts remain **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** attempt 1 is accepted as 41/69: Evidence 2/21, Plan 18/25, NoOp 7/8 and Lifecycle 14/15. ACK `purple-20260929T290000Z/Kanban/g472/diagnose-EXR-007-A08-T03` grants exactly three parallel read-only Coworkers to diagnose Evidence, Plan, and NoOp/Lifecycle failure families and produce one implementation-ready attempt-2 correction plan.
+- **Gold:** rank 46 Done; quiescent.
+- **Silver:** quiescent.
+- No repository edit, Pester, import/dot-source, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 471 Gold Closure And Purple Implementation
+
+Registry updated: 2026-09-29. Allocation generation: 470 -> 471. Canonical counts become **37 To Do / 1 In Progress / 52 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** rank 46 `EXR-007-A08-T02` closes with focused 75/75, manifest/client protocol 64/64, adjacent 174/174 and ApprovedAdapterRoundTrip 171/66/105/0 with exact historical failed-name sequence. Gold releases Common/manifest and is quiescent.
+- **Purple:** ACK `purple-20260929T283000Z/Kanban/g471/implement-EXR-007-A08-T03-attempt1` grants product attempt 1/3 using exactly three serialized Coworkers: Common/manifest implementation for the frozen 69-case OWA contract, independent static review, then one exact four-file run only after ACCEPT.
+- **Silver:** quiescent.
+- No test/config/governance worker edit, retry, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 470 Gold Manifest Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 469 -> 470. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** generation 469 adjacent regressions passed 174/174 and ApprovedAdapterRoundTrip matched 171/66/105/0 with exact historical failed-name sequence. The manifest/client-protocol invocation failed before discovery because of an invalid Pester parameter set. Replacement ACK `gold-20260929T280000Z/Kanban/g470/manifest-EXR-007-A08-T02` grants exactly three serialized read-only Coworkers to construct, independently verify and execute once a configuration-based manifest/client-protocol invocation, followed by final steward closure review.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for Gold to release shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No second replacement, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 469 Gold Rank-46 Closure Gates
+
+Registry updated: 2026-09-29. Allocation generation: 468 -> 469. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** generation 468 focused mobile acceptance is 75/75 with independent review accepted. ACK `gold-20260929T273000Z/Kanban/g469/verify-EXR-007-A08-T02` grants exactly three read-only Coworkers for manifest/client-protocol, adjacent regression and ApprovedAdapterRoundTrip compatibility gates, followed by steward closure review.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for Gold to release shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 468 Gold Sole Evidence Failure
+
+Registry updated: 2026-09-29. Allocation generation: 467 -> 468. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** generation 467 is accepted as 74/75: Evidence 20/21, Plan 25/25, Lifecycle 21/21 and NoOp 8/8. ACK `gold-20260929T270000Z/Kanban/g468/sole-evidence-EXR-007-A08-T02` grants exactly three serialized Coworkers for read-only static diagnosis of the sole Evidence positive failure, one minimal bounded correction, independent review and one exact 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, unrelated test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 467 Gold Final Fixture/Product Correction
+
+Registry updated: 2026-09-29. Allocation generation: 466 -> 467. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** user authorized self-contained Evidence reader authority values and direct singleton collection preservation. ACK `gold-20260929T263000Z/Kanban/g467/final-EXR-007-A08-T02` grants three serialized Coworkers for fixture correction, product correction, independent review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, unrelated test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 466 Gold Fixture/Product Hold
+
+Registry updated: 2026-09-29. Allocation generation: 465 -> 466. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** latest run is 57/75 with Lifecycle and NoOp fully green. Evidence reader page authority uses a module-invisible test-script variable; Plan loses singleton PolicyDisposition identity at a helper output boundary. Rank 46 remains In Progress pending explicit authority.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, product/test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 465 Gold Boundary Completion
+
+Registry updated: 2026-09-29. Allocation generation: 464 -> 465. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** generation 463 implemented the authorized semantics at incorrect PowerShell shape boundaries. ACK `gold-20260929T260000Z/Kanban/g465/complete-EXR-007-A08-T02` grants three serialized Coworkers for optional page Authority handling, singleton collection normalization, review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/manifest/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 464 Gold Two-Defect Hold
+
+Registry updated: 2026-09-29. Allocation generation: 463 -> 464. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** latest run is 55/75: Evidence 2/21, Plan 24/25, Lifecycle 21/21, NoOp 8/8. The page Authority field must be optional-but-allowed, and generic disposition schema validation must follow exact missing-identity detection. Rank 46 remains In Progress pending explicit authority.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, product/test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 463 Gold Two-Defect Correction
+
+Registry updated: 2026-09-29. Allocation generation: 462 -> 463. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** user authorized removal of page-envelope Authority plus exact missing-disposition precedence. ACK `gold-20260929T253000Z/Kanban/g463/finalize-EXR-007-A08-T02` grants three serialized Coworkers for correction, review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 462 Gold Runtime Hold
+
+Registry updated: 2026-09-29. Allocation generation: 461 -> 462. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** latest run is 57/75: Evidence 4/21, Plan 24/25, Lifecycle 21/21, NoOp 8/8. Two product-ordering defects remain: page-envelope Authority and exact missing-disposition precedence. Rank 46 remains In Progress; Gold waits for explicit authority.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, product/test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 461 Gold Authorized Completion
+
+Registry updated: 2026-09-29. Allocation generation: 460 -> 461. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** generation 460 review accepted all but exact missing-setting precedence; no Pester ran. ACK `gold-20260929T250000Z/Kanban/g461/complete-EXR-007-A08-T02` grants three serialized Coworkers for the single Common hunk, independent review and the still-unconsumed 75-case invocation.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/manifest/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 460 Final Gold Reconciliation
+
+Registry updated: 2026-09-29. Allocation generation: 459 -> 460. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** user authorized one final product/test reconciliation. ACK `gold-20260929T243000Z/Kanban/g460/final-EXR-007-A08-T02` grants exactly three serialized Coworkers for structural dictionary assertion repair, bounded page/synthetic/taxonomy product fixes, independent review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, unrelated test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 459 Gold Runtime Hold
+
+Registry updated: 2026-09-29. Allocation generation: 458 -> 459. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** post-attempt product review accepted, but the sole 75-case run finished 31 passed / 44 failed. Four bounded seams remain: page-item unrolling, synthetic-authority digest compatibility, dedicated taxonomy ordering, and three ordered-dictionary test assertions. Rank 46 remains In Progress; Gold is quiescent pending explicit disposition.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, product/test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 458 Gold Post-Attempt Correction
+
+Registry updated: 2026-09-29. Allocation generation: 457 -> 458. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** user authorized one bounded post-attempt correction. ACK `gold-20260929T240000Z/Kanban/g458/post-attempt-EXR-007-A08-T02` grants three serialized Coworkers for cryptographic evidence binding, exact complete apply readback, independent review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 457 Gold Attempt Exhaustion
+
+Registry updated: 2026-09-29. Allocation generation: 456 -> 457. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** attempt 3 correction was statically rejected before Pester. Two defects remain: cryptographic EvidenceId/ContentHash binding and exact full-set apply readback. Rank 46 remains In Progress; Gold waits for explicit post-attempt authority.
+- **Purple:** accepted 69-case OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, product/test/config/governance edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 456 Gold Final Product Attempt
+
+Registry updated: 2026-09-29. Allocation generation: 455 -> 456. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** attempt 2 correction was statically rejected before Pester. ACK `gold-20260929T233000Z/Kanban/g456/recover-EXR-007-A08-T02-attempt-3` grants three serialized Coworkers for the final identifier/projection/target-approval/closed-schema correction, independent review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 455 Gold Product Attempt 2
+
+Registry updated: 2026-09-29. Allocation generation: 454 -> 455. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** attempt 1 implementation was statically rejected before Pester. ACK `gold-20260929T230000Z/Kanban/g455/recover-EXR-007-A08-T02-attempt-2` grants three serialized Coworkers for Common/manifest shape/safety correction, independent review and one 75-case run.
+- **Purple:** accepted OWA natural red remains frozen; rank 47 waits for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 454 Natural-Red Acceptance And Gold Product
+
+Registry updated: 2026-09-29. Allocation generation: 453 -> 454. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** mobile natural red accepted at 75/75 expected missing-command failures. ACK `gold-20260929T223000Z/Kanban/g454/implement-EXR-007-A08-T02-attempt-1` grants three serialized Coworkers for Common/manifest implementation, independent review, then one 75-case run.
+- **Purple:** OWA natural red accepted at 69/69 expected missing-command failures; rank 47 remains In Progress and quiescent waiting for shared Common/manifest ownership.
+- **Silver:** quiescent.
+- No retry, test/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 453 Dual Natural Red
+
+Registry updated: 2026-09-29. Allocation generation: 452 -> 453. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** final 75-case mobile contract accepted. ACK `gold-20260929T220000Z/Kanban/g453/run-EXR-007-A08-T02-red` grants one fresh-process four-file natural-red run.
+- **Purple:** final 69-case OWA contract accepted. ACK `purple-20260929T220000Z/Kanban/g453/run-EXR-007-A08-T03-red` grants one fresh-process four-file natural-red run.
+- **Silver:** quiescent.
+- One invocation per cohort; no retry, edit, product/Common/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 452 Final Contract Assertion Completion
+
+Registry updated: 2026-09-29. Allocation generation: 451 -> 452. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** ACK `gold-20260929T213000Z/Kanban/g452/finalize-EXR-007-A08-T02-tests` strengthens only mobile Evidence and Plan positive denominator/preserved-row assertions while preserving 75 cases.
+- **Purple:** ACK `purple-20260929T213000Z/Kanban/g452/finalize-EXR-007-A08-T03-tests` strengthens only OWA Plan operand/linkage/authority negatives and exact typed positive assertions while preserving 69 cases.
+- **Silver:** quiescent.
+- Static corrections only; no Pester, other test/product/Common/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 451 Final Reciprocal Acceptance
+
+Registry updated: 2026-09-29. Allocation generation: 450 -> 451. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** corrected 75-case mobile contract frozen; reviews Purple's corrected OWA contract under ACK `gold-20260929T210000Z/Kanban/g451/accept-EXR-007-A08-T03-tests`.
+- **Purple:** corrected 69-case OWA contract frozen; reviews Gold's corrected mobile contract under ACK `purple-20260929T210000Z/Kanban/g451/accept-EXR-007-A08-T02-tests`.
+- **Silver:** quiescent.
+- Read-only final review only; no edit, Pester, product/Common/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 450 Dual Contract Corrections
+
+Registry updated: 2026-09-29. Allocation generation: 449 -> 450. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** reciprocal review rejected six mobile contract areas. ACK `gold-20260929T204500Z/Kanban/g450/correct-EXR-007-A08-T02-tests` grants exactly three Coworkers corrections only in Gold's four files, preserving 75 cases.
+- **Purple:** reciprocal review rejected OWA multi-defect negatives and missing paging/shape/drift/linkage/rollback boundaries. ACK `purple-20260929T204500Z/Kanban/g450/correct-EXR-007-A08-T03-tests` grants exactly three Coworkers corrections only in Purple's four files, preserving 69 cases.
+- **Silver:** quiescent.
+- Paths remain disjoint. Static correction/review only; no Pester, product/Common/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 449 Reciprocal Contract Review
+
+Registry updated: 2026-09-29. Allocation generation: 448 -> 449. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** current stable 75-case mobile files are frozen at hashes recorded in canonical backlog. Gold reviews only Purple's 69 OWA cases under ACK `gold-20260929T203000Z/Kanban/g449/review-EXR-007-A08-T03-tests`.
+- **Purple:** current stable 69-case OWA files are frozen. Purple reviews only Gold's 75 mobile cases under ACK `purple-20260929T203000Z/Kanban/g449/review-EXR-007-A08-T02-tests`.
+- Reciprocal review explicitly rejects ambiguous multi-defect negatives and checks lifecycle/compensation, shape, taxonomy and exclusion completeness.
+- **Silver:** quiescent.
+- Read-only static review only; no edit, Pester, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 448 Dual Negative-First Authoring
+
+Registry updated: 2026-09-29. Allocation generation: 447 -> 448. Canonical counts remain **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Gold:** rank-46 design accepted at **75 cases = 71 negatives + four positives**. ACK `gold-20260929T200000Z/Kanban/g448/author-EXR-007-A08-T02-tests` grants three Coworkers whole-file ownership of four new mobile-policy evidence/plan/lifecycle/no-op test files; static authoring only.
+- **Purple:** rank-47 design accepted at **69 cases = 65 negatives + four positives**. ACK `purple-20260929T200000Z/Kanban/g448/author-EXR-007-A08-T03-tests` grants three Coworkers whole-file ownership of four new OWA-policy evidence/plan/no-op/lifecycle test files; static authoring only.
+- **Silver:** rank 45 is Done and Silver remains quiescent.
+- The eight paths are disjoint. No Pester, product/Common/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 447 Rank 45 Closure And Dual Activation
+
+Registry updated: 2026-09-29. Allocation generation: 446 -> 447. Canonical counts become **37 To Do / 2 In Progress / 51 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** rank 45 accepted Done with CAS 74/74, manifest/client protocol 64/64, adjacent lifecycle 100/100 and adapter compatibility 171/66/105/0 with zero failure-identity changes. Silver releases ownership and is quiescent.
+- **Gold:** ACK `gold-20260929T194500Z/Kanban/g447/design-EXR-007-A08-T02` activates rank 46 for three-Coworker read-only mobile-device mailbox policy/binding contract design.
+- **Purple:** ACK `purple-20260929T194500Z/Kanban/g447/design-EXR-007-A08-T03` activates rank 47 for three-Coworker read-only OWA mailbox policy/binding contract design.
+- No repository edit, Pester, tenant/live state, credentials, commit, push or publish under either design grant.
+
+### Generation 446 Final Adapter Harness Authority
+
+Registry updated: 2026-09-29. Allocation generation: 445 -> 446. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** user authorized one final adapter invocation. ACK `silver-20260929T193000Z/Kanban/g446/final-EXR-007-A08-T01-adapter` embeds the absolute path directly in one fresh PowerShell process and compares its complete NUnit failure identities to the accepted 105-name baseline.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 closure review before rank 46.
+- No retry, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 445 Adapter Harness Block
+
+Registry updated: 2026-09-29. Allocation generation: 444 -> 445. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** replacement child failed parsing before Pester, so no current 171-case adapter evidence exists. Focused CAS is 74/74, manifest/client protocol 64/64 and adjacent lifecycle 100/100. Rank 45 remains In Progress; Silver waits for explicit authority for one corrected harness invocation.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 closure review before rank 46.
+- No retry, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 444 Adapter Zero-Discovery Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 443 -> 444. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** manifest/client protocol passed 64/64 and adjacent lifecycle passed 100/100. Adapter Coworker-3 lost its path and discovered zero tests, so no compatibility result exists. Replacement ACK `silver-20260929T191500Z/Kanban/g444/run-EXR-007-A08-T01-adapter` grants Coworker-3 one literal-path fresh-process invocation; no second replacement.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 closure review before rank 46.
+- No repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 443 Silver Rank 45 Closure Gates
+
+Registry updated: 2026-09-29. Allocation generation: 442 -> 443. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** generation 442 is green at **74/74** with stable hashes. ACK `silver-20260929T190000Z/Kanban/g443/verify-EXR-007-A08-T01` grants three read-only Coworkers for manifest/client-protocol, adjacent lifecycle, and 171-case ApprovedAdapter compatibility gates.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 closure review before rank 46.
+- No retry, repository edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 442 User-Authorized CAS Post-Attempt Correction
+
+Registry updated: 2026-09-29. Allocation generation: 441 -> 442. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** user authorized one bounded post-attempt correction after the stable 62/74 result. ACK `silver-20260929T184500Z/Kanban/g442/post-attempt-EXR-007-A08-T01` grants exactly three serialized top-level Coworkers: preserve first-seen duplicate identity casing, normalize `OtherClients.Inventory` at its helper boundary, independently review, then run the frozen 74-case set once.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, test/manifest/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 441 Rank 45 Attempt Exhaustion
+
+Registry updated: 2026-09-29. Allocation generation: 440 -> 441. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** final attempt 3/3 is stable red at **62/74**: evidence 26/28, plan 13/23, lifecycle 18/18, no-op 5/5. Two duplicate failures report second-seen casing; ten plan failures share singleton `OtherClients.Inventory` output unrolling before an `IList` check. Rank 45 remains In Progress. Silver is quiescent pending explicit post-attempt authority or disposition.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, product/test/manifest/config edit, broader suite, tenant/live state, credentials, commit, push or publish is authorized.
+
+### Generation 440 Silver Rank 45 Final Product Attempt
+
+Registry updated: 2026-09-29. Allocation generation: 439 -> 440. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** generation 439 attempt 2 is stable red at **8/74**: evidence 7/28, plan 0/23, lifecycle 1/18, no-op 0/5. CAS-local unary-comma returns nest evidence rows and member-name lists, explaining the three dominant failure families. ACK `silver-20260929T181500Z/Kanban/g440/recover-run-EXR-007-A08-T01-attempt-3` grants exactly three serialized top-level Coworkers: bounded CAS output-shape correction, independent no-edit review, then one fresh full 74-case run. This consumes final attempt 3/3.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, test/manifest/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 439 Silver Rank 45 Product Attempt 2 Run
+
+Registry updated: 2026-09-29. Allocation generation: 438 -> 439. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** unmasked evidence is 2/28; collection errors pass, while singleton-page normalization and missing `MailboxPlan` product projection cause the remaining failures. ACK `silver-20260929T175000Z/Kanban/g439/recover-run-EXR-007-A08-T01-attempt-2` grants exactly three serialized top-level Coworkers: evidence-function correction, independent delta review, then one full 74-case run. This consumes attempt 2/3.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, test/manifest/config/governance worker edit, broader suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 438 Silver Rank 45 Evidence Fixture Scope
+
+Registry updated: 2026-09-29. Allocation generation: 437 -> 438. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** evidence ran 28 cases, but 27 failures were mostly masked by reader closures resolving an invisible test-scope page helper inside the module. ACK `silver-20260929T174000Z/Kanban/g438/correct-run-EXR-007-A08-T01-evidence-fixtures` grants exactly three serialized top-level Coworkers: make all injected readers self-contained, independently review the fixture-only delta, then perform one replacement evidence invocation.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 437 Silver Rank 45 Evidence Process Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 436 -> 437. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** evidence contract is accepted at 28 cases, but the child process lost its path and discovered zero tests. Replacement ACK `silver-20260929T173000Z/Kanban/g437/run-EXR-007-A08-T01-evidence-red` grants Coworker-3 one literal-safe evidence invocation only.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, edit, other suite, tenant/live state, credentials, commit, push or publish.
+
+### Generation 436 Silver Rank 45 Evidence Contract Restore
+
+Registry updated: 2026-09-29. Allocation generation: 435 -> 436. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** generation-435 phase 1 added mailbox `MailboxPlan` but wrongly replaced critical plan-identity coverage. No Pester/product edit occurred. Replacement ACK `silver-20260929T172000Z/Kanban/g436/restore-run-EXR-007-A08-T01-evidence-red` adopts 74 total cases and grants exactly three serialized top-level Coworkers: restore the independent identity case, review the additive delta, then run the 28-case evidence leaf once. Attempt-2 product correction waits for exact failures.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No product/manifest/config/governance worker edit, retry, tenant/live state, credentials, commit, push or publish.
+
+### Generation 435 Silver Rank 45 Product Attempt 2
+
+Registry updated: 2026-09-29. Allocation generation: 434 -> 435. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** reject attempt 1 before Pester because evidence omits planner-required `MailboxPlan`; attempt 1/3 is consumed. ACK `silver-20260929T171000Z/Kanban/g435/recover-EXR-007-A08-T01-attempt-2` grants exactly three serialized top-level Coworkers: amend evidence test contract without changing 27 cases, run that leaf once for red/current evidence, then correct only the evidence function and statically validate. This is attempt 2/3.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, broader suite, tenant/live state, production adapter/deployment integration, credentials, commit, push or publish.
+
+### Generation 434 Silver Rank 45 Attempt 1 Review
+
+Registry updated: 2026-09-29. Allocation generation: 433 -> 434. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** freeze Common/manifest attempt-1 implementation and exports. ACK `silver-20260929T170000Z/Kanban/g434/review-run-EXR-007-A08-T01-attempt-1` grants exactly three serialized top-level Coworkers: contract/shape/export review, safety/scope review, then one focused invocation only if both accept. This consumes product attempt 1/3 regardless of result.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, edit, broader suite, tenant/live state, production adapter/deployment integration, credentials, commit, push or publish.
+
+### Generation 433 Silver Rank 45 Product Attempt 1
+
+Registry updated: 2026-09-29. Allocation generation: 432 -> 433. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept exact natural red 73/73 with 27/23/23 missing-function families. ACK `silver-20260929T165000Z/Kanban/g433/implement-EXR-007-A08-T01-attempt-1` grants exactly three serialized top-level Coworkers exclusive Common handoff: evidence function, plan function, lifecycle plus all exports. Static validation only; this is product attempt 1/3.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No test/config/governance worker edit, Pester, tenant/live state, production adapter/deployment integration, retry, credentials, commit, push or publish.
+
+### Generation 432 Silver Rank 45 Hash-Fixture Correction
+
+Registry updated: 2026-09-29. Allocation generation: 431 -> 432. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** retain exact 73-fail natural red, but lifecycle/no-op stopped at nonexistent test helper `Get-ConfigurationHash`. ACK `silver-20260929T164000Z/Kanban/g432/correct-run-EXR-007-A08-T01-red` grants exactly three serialized top-level Coworkers: add test-local deterministic hash fixture only, independently review it, then perform one replacement natural-red invocation after acceptance.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 431 Silver Rank 45 Natural Red
+
+Registry updated: 2026-09-29. Allocation generation: 430 -> 431. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept the final 73-case contract and independent review. ACK `silver-20260929T163000Z/Kanban/g431/run-EXR-007-A08-T01-red` grants Coworker-3 one fresh combined natural-red invocation only, expecting 27/23/23 failures across the three missing future-command families.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, edit, product/manifest/config change, tenant/live state, credentials, commit, push or publish.
+
+### Generation 430 Silver Rank 45 Safety Test Correction
+
+Registry updated: 2026-09-29. Allocation generation: 429 -> 430. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** generation 429 structure review accepts, semantic review rejects before Pester on six remaining safety gaps. ACK `silver-20260929T162000Z/Kanban/g430/correct-EXR-007-A08-T01-safety-tests` grants exactly three serialized top-level Coworkers: plan corrections, lifecycle/no-op corrections, then cross-unit static review. Preserve 27/23/18/5 totals.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No Pester, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 429 Silver Rank 45 Corrected Contract Review
+
+Registry updated: 2026-09-29. Allocation generation: 428 -> 429. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** freeze corrected 27/23/18/5 units and new hashes. ACK `silver-20260929T161000Z/Kanban/g429/review-run-EXR-007-A08-T01-red` grants exactly three serialized top-level Coworkers: structure/delta review, cross-unit semantic/safety review, then one natural-red invocation only after both accept.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, edit, product/manifest/config change, tenant/live state, credentials, commit, push or publish.
+
+### Generation 428 Silver Rank 45 Test Correction
+
+Registry updated: 2026-09-29. Allocation generation: 427 -> 428. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** generation 427 reviewers reject before Pester on seven semantic/structure blockers. ACK `silver-20260929T160000Z/Kanban/g428/correct-EXR-007-A08-T01-tests` returns the same disjoint files to exactly three top-level Coworkers for test-only correction while preserving 27/23/18/5 totals and AAA/negative-first ordering.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No Pester, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 427 Silver Rank 45 Contract Review And Red
+
+Registry updated: 2026-09-29. Allocation generation: 426 -> 427. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** freeze four authored units at 27, 23, 18 and 5 cases with stable hashes. ACK `silver-20260929T155000Z/Kanban/g427/review-run-EXR-007-A08-T01-red` grants exactly three serialized top-level Coworkers: file/hash/structure review, semantic/scope review, then one natural-red invocation only after both accept.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No retry, product/manifest/config/governance worker edit, tenant/live state, credentials, commit, push or publish.
+
+### Generation 426 Silver Rank 45 Test Authoring
+
+Registry updated: 2026-09-29. Allocation generation: 425 -> 426. Canonical counts remain **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept the rank-45 implementation contract: four negative-first units, 73 total cases, synthetic non-authoritative policy fixtures, exact supported-class/plan/impact/safety boundaries and no production adapter. ACK `silver-20260929T154000Z/Kanban/g426/author-EXR-007-A08-T01-tests` grants exactly three top-level Coworkers disjoint test-file ownership for 27 evidence, 23 plan, and 18+5 lifecycle/no-op cases. Static validation only; no Pester or product edit.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No product/manifest/config/governance worker edit, Pester, tenant/live state, credentials, commit, push or publish.
+
+### Generation 425 Silver Rank 45 Contract Design
+
+Registry updated: 2026-09-29. Allocation generation: 424 -> 425. Canonical counts become **39 To Do / 1 In Progress / 50 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept rank 42.2's unanimous independent review and move R01 Done; complete rank 42.3 canonical transition and move C01 Done. ACK `silver-20260929T153000Z/Kanban/g425/design-EXR-007-A08-T01-contract` claims dependency-clear rank 45 for read-only contract design by exactly three top-level Coworkers: prior-art inventory, semantic/scope review, then implementation-ready synthesis.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on Silver rank 45 before rank 46.
+- No repository edit, Pester, tenant/live state, credentials, commit, push or publish.
+
+### Generation 424 Silver Rank 42.2 Independent Review
+
+Registry updated: 2026-09-29. Allocation generation: 423 -> 424. Canonical counts become **41 To Do / 1 In Progress / 48 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept rank 42.1 evidence and move A01 to Done. ACK `silver-20260929T152000Z/Kanban/g424/review-EXR-007-A05-T03-L01-R01` claims dependency-clear rank 42.2 for a three-Coworker independent static review: evidence reconciliation, scope/anomaly review, then final synthesis. No Pester or edit.
+- **Purple:** waiting on rank 23.4 external dispositions/waiver authority.
+- **Gold:** waiting on rank 45 before rank 46.
+- No edit, external state, retry, tenant action, credentials, commit, push or publish.
+
+### Generation 423 Silver Rank 42.1 Activation
+
+Registry updated: 2026-09-29. Allocation generation: 422 -> 423. Canonical counts become **42 To Do / 1 In Progress / 47 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** startup proposal accepted. ACK `silver-20260929T151000Z/Kanban/g423/verify-EXR-007-A05-T03-L01-A01` claims rank 42.1 for read-only lifecycle/affected validation. The stale 12-case discriminator is reconciled to SendOnBehalf 13/13, with FullAccess 12/12, SendAs 13/13 and hierarchy-preserving ApprovedAdapter compatibility as the exact affected set. Exactly three serialized top-level Coworkers own impact derivation, execution and independent review.
+- **Purple:** waiting; rank 23.4 requires supported dispositions or dated waiver authority. No claim or authority.
+- **Gold:** waiting; rank 46 depends on rank 45. No claim or authority.
+- No edit, retry, full suite, tenant action, credentials, commit, push or publish is authorized.
 
 ### Generation 422 Board Metadata Reconciliation
 
