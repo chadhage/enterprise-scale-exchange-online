@@ -34,7 +34,37 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 384
+Allocation generation: 387
+
+### Generation 387 Publication Checkpoint
+
+Registry updated: 2026-09-28. Allocation generation: 386 -> 387. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** SendAs 13/13 and FullAccess 12/12 independently pass. ApprovedAdapter was not executed because preflight used `result="Failed"` instead of canonical `result="Failure"`. Compatibility proof remains outstanding.
+- **Silver:** Calendar implementation planning is rejected pending five contract clarifications: module loading, rollback-drift ordering, identity normalization, negative read counts, and rollback-plan versus actual-readback semantics.
+- **Gold:** hardened SendOnBehalf run is 11/13; singleton undeclared delegate remains accepted and the positive lacks `Operations`. Product attempt 3/3 remains unspent.
+- All cohorts are quiescent; no path/process ownership remains active.
+- RAID unchanged.
+
+### Generation 386 Three-Cohort Verification and Planning
+
+Registry updated: 2026-09-28. Allocation generation: 385 -> 386. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept SendAs attempt progression 11/13 -> 12/13 -> 13/13; all three attempts consumed. ACK `purple-20260928T231618Z/Kanban/g386/verify-EXR-007-A05-T02` grants independent read-only review plus SendAs, FullAccess and ApprovedAdapter runs in separate fresh processes.
+- **Silver:** accept Calendar exact 0/20 natural red. ACK `silver-20260928T231618Z/Kanban/g386/plan-EXR-007-A04-T02-implementation` grants read-only implementation-path diagnosis only.
+- **Gold:** accept hardened SendOnBehalf static contract SHA-256 `A08A40E707F4F76B5D3CD82411931A0236E4850E9E5A1FB2D5B9479EBBD9A005`. ACK `gold-20260928T231618Z/Kanban/g386/run-EXR-007-A05-T03-F01-R01-hardened` grants one unchanged focused run; product attempt 3/3 remains unspent.
+- Product/Common/ApprovedAdapters/manifest files are frozen and read-only for all cohorts.
+- Stop after the granted unit for canonical adjudication. RAID unchanged.
+
+### Generation 385 Three-Cohort Restart
+
+Registry updated: 2026-09-28. Allocation generation: 384 -> 385. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** ACK `purple-20260928T222712Z/Kanban/g385/implement-EXR-007-A05-T02`; Coworker-2 exclusively owns Common module/manifest and ApprovedAdapters for up to three focused SendAs implementation attempts.
+- **Silver:** ACK `silver-20260928T222712Z/Kanban/g385/run-EXR-007-A04-T02-red`; Coworker-1 has one process-only exact 20-case Calendar red run.
+- **Gold:** ACK `gold-20260928T222712Z/Kanban/g385/harden-EXR-007-A05-T03-F01-R01-contract`; Coworker-1 owns only the SendOnBehalf focused test for static hardening. Product attempt 3/3 is not granted.
+- Shared product files are Purple-exclusive; Silver is process-only; Gold is test-only. No path conflict exists.
+- Stop after the granted unit for canonical adjudication. RAID unchanged.
 
 ### Generation 384 Publication Checkpoint
 

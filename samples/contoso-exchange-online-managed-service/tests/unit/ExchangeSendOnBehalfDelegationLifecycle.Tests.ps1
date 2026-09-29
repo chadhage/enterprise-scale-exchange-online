@@ -188,7 +188,7 @@ BeforeAll {
         $drift = $null
         try { & $script:changeCommand -Stage Apply @driftArguments -Apply -Confirm:$false | Out-Null } catch { $drift = $_ }
         $driftWrites = $global:adapterCalls.Count - $writesBeforeDrift
-        $global:adapterState.Mailbox[0].GrantSendOnBehalfTo = @('existing@contoso.example','delegate@contoso.example')
+        $global:adapterState.Mailbox[0].GrantSendOnBehalfTo = @('delegate@contoso.example')
 
         $writesBeforeRollback = $global:adapterCalls.Count
         $rollback = & $script:changeCommand -Stage Rollback @Arguments -Apply -Confirm:$false
@@ -241,6 +241,18 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
     }
 
     Context 'Negative: explicit delegates require exact authorization and complete recipient coverage' {
+        It 'refuses exactly one undeclared existing SendOnBehalf delegate before writes' {
+            # Arrange
+            $arguments = New-SendOnBehalfFixture
+
+            # Act
+            $invoke = { Invoke-SendOnBehalfPreview $arguments }
+
+            # Assert
+            $invoke | Should -Throw '*SendOnBehalfUnauthorized*existing@contoso.example*'
+            $global:adapterCalls.Count | Should -Be 0
+        }
+
         It 'refuses an unauthorized explicit SendOnBehalf delegate before writes' {
             # Arrange
             $arguments = New-SendOnBehalfFixture
@@ -410,6 +422,7 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
         It 'applies user and shared delegates, reads raw state, no-ops, refuses drift, and rolls back typed values without other permission mutation' {
             # Arrange
             $arguments = New-SendOnBehalfFixture
+            $global:adapterState.Mailbox[0].GrantSendOnBehalfTo = @()
 
             # Act
             $result = Invoke-SendOnBehalfLifecycle -Arguments $arguments
@@ -420,7 +433,7 @@ Describe 'EXR-007-A05-T03 SendOnBehalf delegation lifecycle' {
             @($result.Mailboxes | ForEach-Object RecipientTypeDetails | Sort-Object) | Should -Be @('SharedMailbox','UserMailbox')
             @($result.RawReadback | ForEach-Object {
                     $mailbox = $_.Identity
-                    @($_.GrantSendOnBehalfTo | Where-Object { $_ -eq 'delegate@contoso.example' } | ForEach-Object { "$mailbox|$_" })
+                    @($_.GrantSendOnBehalfTo | ForEach-Object { "$mailbox|$_" })
                 } | Sort-Object) | Should -Be @(
                     'shared@contoso.example|delegate@contoso.example',
                     'user@contoso.example|delegate@contoso.example'

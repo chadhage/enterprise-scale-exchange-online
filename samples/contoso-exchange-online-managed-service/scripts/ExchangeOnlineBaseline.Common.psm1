@@ -14325,6 +14325,9 @@ function Invoke-BaselineApprovedChange {
         Operation = @($journal)
         CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
     }
+    if ('SendAs' -cin $Scope) {
+        $receipt.Operations = @(Get-ApprovedSendAsOperationEvidence -Context $context)
+    }
     if ($Stage -eq 'Apply') {
         $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
