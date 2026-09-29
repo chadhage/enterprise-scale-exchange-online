@@ -34,7 +34,15 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 421
+Allocation generation: 422
+
+### Generation 422 Board Metadata Reconciliation
+
+Registry updated: 2026-09-29. Allocation generation: 421 -> 422. Canonical counts remain **43 To Do / 0 In Progress / 47 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- Correct stale current metadata for `EXR-007-A06` from In Progress to Done, matching its accepted generation-281 closure and released Gold authority. This is metadata reconciliation only; the card was already included in canonical Done totals.
+- The generation-256 affinity table is explicitly labeled historical and grants no current ownership or execution authority.
+- Purple, Silver and Gold remain quiescent. No product/test/config edit, live-state read, tenant action, credentials, commit, push or publish occurred.
 
 ### Generation 421 Purple A07 Closure
 

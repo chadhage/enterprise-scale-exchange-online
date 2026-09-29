@@ -1,6 +1,10 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 421. Updated: 2026-09-29. Executable cards: 90; To Do 43, In Progress 0, Done 47; 24 summary parents excluded.
+Canonical generation: 422. Updated: 2026-09-29. Executable cards: 90; To Do 43, In Progress 0, Done 47; 24 summary parents excluded.
+
+Generation 422 override: **RECONCILE CURRENT CARD METADATA WITHOUT CHANGING COUNTS**. Correct the stale current metadata on `EXR-007-A06` from In Progress to Done, matching its accepted generation-281 closure, released Gold authority and every later zero-WIP aggregate. Retain Cohort Gold as the historical delivery owner and update the card metadata date. Label the generation-256 affinity table as a historical allocation snapshot; it is not the current executable queue and grants no ownership or authority. Current queue/allocation authority remains this top generation plus `.github/cohorts.md`.
+
+No executable transition occurs in generation 422: `EXR-007-A06` was already included in canonical Done totals, so counts remain **43 To Do / 0 In Progress / 47 Done**. Purple, Silver and Gold remain quiescent. No product/test/config edit, live-state read, tenant action, credentials, commit, push or publish occurred; RAID unchanged.
 
 Generation 421 override: **CLOSE EXR-007-A07 AND RELEASE PURPLE**. Accept the complete bounded closure packet: A07 focused **42/42**; independent static safety/export/frozen-hash review; ModuleManifest **17/17**; Calendar **20/20**; SharingPolicy **9/9**; FullAccess **12/12**; SendAs **13/13**; SendOnBehalf **13/13**; ApprovedAdapterRoundTrip **171 total / 66 Success / 105 accepted Failure / 0 other** with 105 complete hierarchical failed names ordinal-equal to the accepted historical set, zero added/removed. Current compatibility XML SHA-256 is `7C3C1E6A0F7EC29DE225CE01B69FBB265358E6A86C92B8B5466A1A347CC8CF49`. Frozen A07 hashes remain Common `689A3C2F9FDC8EF50AB9174D94FC72EA4495D61B1323DEC6D420FA5F98345830`, manifest `40D447AEE332BCD3DA3FE483345D52D47475833B67124173DC1746F9A9D8B7DB`, catalog `182F641BBE38B6BFA862E0CA0F0CCD980072374FA12A52934E24FFAFCFB97A65`, catalog test `4CB9E676AB5510EC3A6560B0057BC93DB9ECFDD08E3D2A99D42A943A8DFCCDF4`, normalization test `3B277429FD4754B2E6DA1271B274B7D68563E5B98FA4F03151747081269B225A`, lifecycle test `06AE1ED63763DEBA2B0C7E9673BF728D65BAA49135CD14156739CF525A8FF55A`.
 
@@ -922,9 +926,11 @@ Tenant-level dependencies are excluded and tracked in [RAID](RAID.md), including
 
 Each card inherits the board's test-first, ownership, WIP, evidence, and no-live-action-without-authorization rules. Dependencies below are delivery dependencies, not tenant provisioning tasks. Each acceptance clause requires an executable check; documentation checks must exercise the documented examples, not merely search for keywords.
 
-## Persisted Future Lane Affinities
+## Generation 256 Persisted Future Lane Affinities (Historical)
 
-Generation 130 defines two distinct states. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; the card remains To Do and receives no owner, WIP slot, repository/output path lock, attempt, ACK, dependency credit, worker grant or execution authority. An **executable reservation/active ownership** is available only for dependency-eligible work after the sole canonical writer issues a fresh generation-bound ACK following force-rank, dependency, external-prerequisite, WIP, quiescence and conflict checks; only that state controls WIP, paths/outputs, attempts and execution. This supersedes the older dependency-ineligible-unreserved rule. Generation 256 has no active rank; every executable open leaf is in the To Do affinity table.
+This table is the retained generation-256 allocation snapshot, not the current executable queue. Completed entries are intentionally preserved as historical allocation evidence. Current status and authority come only from the top canonical generation and `.github/cohorts.md`; this table grants no ownership, WIP slot, path/output lock, attempt, ACK or execution authority.
+
+Generation 130 defines two distinct states. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; the card remains To Do and receives no owner, WIP slot, repository/output path lock, attempt, ACK, dependency credit, worker grant or execution authority. An **executable reservation/active ownership** is available only for dependency-eligible work after the sole canonical writer issues a fresh generation-bound ACK following force-rank, dependency, external-prerequisite, WIP, quiescence and conflict checks; only that state controls WIP, paths/outputs, attempts and execution.
 
 | Affinity | Force-ranked, dependency-aware To Do queue | Count |
 | --- | --- | ---: |
@@ -2360,7 +2366,7 @@ Rank 42.3 - Final lifecycle acceptance transition.
 
 Rank 43 - Bound organization-relationship disclosure.
 
-- Dependencies: EXR-007, EXR-004, EXR-005. Owner: Cohort Gold / sole-canonical-writer/Gold/batch9. Workstream: Sharing. Updated: 2026-09-27. Status: In Progress.
+- Dependencies: EXR-007, EXR-004, EXR-005. Owner: Cohort Gold / sole-canonical-writer/Gold/batch9. Workstream: Sharing. Updated: 2026-09-29. Status: Done.
 - Provenance: EXR007-C06, A02, S23 reviewed 2026-09-21; child delivery contract applies. EXR-002 remote-domain OOF correctness does not cover organization relationships.
 - Acceptance: inventory enabled/disabled organization relationships, partner domains, free/busy detail and access scopes against independent disclosure approval. Configure and verify only local Exchange relationship values, retaining partner-side attestations as external readiness.
 - Verification: reject unknown partner domains, excessive free/busy detail, overbroad access scope and incomplete relationship evidence. One approved local relationship passes independent domain/detail/scope readback and rollback; an absent partner attestation stays Unverified rather than becoming a local or end-to-end Pass.
