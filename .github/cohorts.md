@@ -34,7 +34,26 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 486
+Allocation generation: 488
+
+### Generation 488 Platinum Disposition Request Packet
+
+Registry updated: 2026-09-29. Allocation generation: 487 -> 488. Canonical counts remain **37 To Do / 0 In Progress / 53 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Platinum:** read-only reconciliation proved the exact 150-record inventory and that no authoritative dispositions or waivers exist. ACK `platinum-20260929T360000Z/Kanban/g488/materialize-D01-disposition-request` grants exactly three serialized Coworkers to create and independently verify a session-artifact JSON decision packet and reviewer guide without prefilling or implying any decision.
+- **Purple, Silver, Gold:** no executable claim; quiescent behind the rank-23.4 chain.
+- D01 remains To Do and blocked until an authorized party completes all rows or supplies a compliant matrix-bound dated waiver.
+- No repository implementation/test edit, disposition, waiver, approval, tenant fact, live access, credentials, commit, push or publish is authorized.
+
+### Generation 487 Three-Cohort Startup Hold
+
+Registry updated: 2026-09-29. Allocation generation: 486 -> 487. Canonical counts remain **37 To Do / 0 In Progress / 53 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** startup proposal identified rank 23.4 `EXR-010-A12-L01-D01` as the lowest unresolved chain and blocked on authoritative dispositions or dated waiver evidence for 9 failed tests / 1 failed container / 140 container errors. No claim; quiescent.
+- **Silver:** proposed rank 48, but canonical reconciliation rejects activation because rank 48 depends on rank 23.6 `EXR-010-A12-L01-C01`, which remains blocked behind ranks 23.4–23.5. No claim; quiescent.
+- **Gold:** confirmed its rank 50 affinity is blocked by the same rank-23.4–23.6 chain. No claim; quiescent.
+- No Coworkers, reservations, edits, tests, live access, credentials, commit, push or publish are authorized.
+- The separate aggregate-adapter boundary remains open without a canonical card contract and is not activation authority.
 
 ### Generation 486 Purple Closure And Cohort Release
 
