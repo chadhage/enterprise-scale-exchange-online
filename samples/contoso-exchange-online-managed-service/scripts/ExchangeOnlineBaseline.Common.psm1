@@ -14328,6 +14328,9 @@ function Invoke-BaselineApprovedChange {
     if ('SendAs' -cin $Scope) {
         $receipt.Operations = @(Get-ApprovedSendAsOperationEvidence -Context $context)
     }
+    if ('SendOnBehalf' -cin $Scope) {
+        $receipt.Operations = @($receipt.Operations) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
+    }
     if ($Stage -eq 'Apply') {
         $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
@@ -14489,6 +14492,221 @@ function Test-SharingPolicyBindingControl {
     & $finish Pass ''
 }
 
+function ConvertTo-ExchangeCalendarPublicationState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$State,
+        [Parameter(Mandatory)][string]$FallbackMailbox,
+        [switch]$IncludePublishedUrls
+    )
+
+    $folderIdentity = [string](Get-BaselineRecordMember $State FolderIdentity)
+    if ([string]::IsNullOrWhiteSpace($folderIdentity)) {
+        $folderIdentity = [string](Get-BaselineRecordMember $State Identity)
+    }
+    $mailbox = [string](Get-BaselineRecordMember $State Mailbox)
+    if ([string]::IsNullOrWhiteSpace($mailbox)) { $mailbox = $FallbackMailbox }
+
+    $normalized = [ordered]@{
+        Mailbox = $mailbox.Trim().ToLowerInvariant()
+        FolderIdentity = $folderIdentity.Trim().ToLowerInvariant()
+        PublishEnabled = [bool](Get-BaselineRecordMember $State PublishEnabled)
+        DetailLevel = ([string](Get-BaselineRecordMember $State DetailLevel)).Trim()
+    }
+    if ($IncludePublishedUrls) {
+        foreach ($name in @('PublishedCalendarUrl','PublishedICalUrl')) {
+            $value = [string](Get-BaselineRecordMember $State $name)
+            $normalized[$name] = if ([string]::IsNullOrWhiteSpace($value)) { $null } else { $value.Trim() }
+        }
+    }
+    [pscustomobject]$normalized
+}
+
+function Invoke-ExchangeCalendarPublicationLifecycle {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]$InputObject,
+        [switch]$Apply,
+        [switch]$Rollback
+    )
+
+    $applicableMailboxes = @(Get-BaselineRecordMember $InputObject ApplicableMailboxes)
+    $calendarInventory = @(Get-BaselineRecordMember $InputObject CalendarInventory)
+    if ($applicableMailboxes.Count -eq 0 -or $calendarInventory.Count -eq 0) {
+        throw 'CalendarInventoryMissing: applicable mailbox and calendar inventory are required.'
+    }
+
+    $publicationState = @(Get-BaselineRecordMember $InputObject PublicationState)
+    if ($publicationState.Count -eq 0) {
+        throw 'CalendarPublicationStateMissing: calendar publication state is required.'
+    }
+    foreach ($row in $publicationState) {
+        if ((Get-BaselineRecordMember $row CollectionComplete) -ne $true) {
+            throw 'CalendarPublicationEvidenceIncomplete: calendar publication collection is incomplete.'
+        }
+        foreach ($name in @('Mailbox','FolderIdentity','PublishEnabled','DetailLevel','PublishedCalendarUrl','PublishedICalUrl')) {
+            if (-not (Test-BaselineNodeMember $row $name)) {
+                throw "CalendarPublicationEvidenceIncomplete: calendar publication state carries no '$name'."
+            }
+        }
+    }
+
+    $approval = Get-BaselineRecordMember $InputObject Approval
+    $requested = Get-BaselineRecordMember $InputObject RequestedState
+    $mailbox = ([string](Get-BaselineRecordMember $requested Mailbox)).Trim()
+    $folderIdentity = ([string](Get-BaselineRecordMember $requested FolderIdentity)).Trim()
+    if (@($publicationState | Where-Object { (Get-BaselineRecordMember $_ PublishEnabled) -eq $true }).Count -gt 0 -and
+        (Get-BaselineRecordMember $approval IndependentlyApproved) -ne $true) {
+        throw 'CalendarDisclosureApprovalRequired: enabled publication requires independent approval.'
+    }
+
+    $requestedAudience = [string](Get-BaselineRecordMember $requested Audience)
+    $allowAnonymous = (Get-BaselineRecordMember $approval AllowAnonymous) -eq $true
+    $approvedDomains = @((Get-BaselineRecordMember $approval ApprovedPartnerDomains) | ForEach-Object {
+            ([string]$_).Trim().ToLowerInvariant()
+        })
+    $requestedDomains = @((Get-BaselineRecordMember $requested PartnerDomains) | ForEach-Object {
+            ([string]$_).Trim().ToLowerInvariant()
+        })
+    if (($requestedAudience -ceq 'Anonymous' -and -not $allowAnonymous) -or
+        @($requestedDomains | Where-Object { $_ -notin $approvedDomains }).Count -gt 0) {
+        throw 'CalendarDisclosureAudienceUnauthorized: requested disclosure audience is not approved.'
+    }
+
+    $detailRank = @{ AvailabilityOnly = 1; LimitedDetails = 2; Reviewer = 3 }
+    $requestedDetail = [string](Get-BaselineRecordMember $requested DetailLevel)
+    $maximumDetail = [string](Get-BaselineRecordMember $approval MaximumDetail)
+    if (-not $detailRank.ContainsKey($requestedDetail) -or -not $detailRank.ContainsKey($maximumDetail) -or
+        $detailRank[$requestedDetail] -gt $detailRank[$maximumDetail]) {
+        throw 'CalendarDisclosureDetailExceedsApproval: requested detail exceeds the approved maximum.'
+    }
+
+    $boundIdentity = ([string](Get-BaselineRecordMember $approval BoundPublicationIdentity)).Trim()
+    if ([string]::IsNullOrWhiteSpace($boundIdentity) -or
+        $boundIdentity -ine $folderIdentity -or
+        (Get-BaselineRecordMember $approval ReadyForChange) -ne $true) {
+        throw 'CalendarApprovalNotBoundOrReady: approval is not bound and ready for this publication.'
+    }
+    if ([string](Get-BaselineRecordMember $InputObject PartnerReadiness) -ceq 'Verified' -and
+        $null -eq (Get-BaselineRecordMember $InputObject IndependentPartnerAttestation)) {
+        throw 'IndependentPartnerAttestationRequired: local readback cannot certify an external partner.'
+    }
+
+    $preChange = Get-BaselineRecordMember $InputObject PreChangeState
+    $expectedApply = Get-BaselineRecordMember $InputObject ExpectedReadback
+    if ($null -eq $preChange -or $null -eq $expectedApply) {
+        throw 'CalendarReversibleStateRequired: prechange and expected apply state are required.'
+    }
+    foreach ($state in @($preChange, $expectedApply)) {
+        foreach ($name in @('Mailbox','FolderIdentity','PublishEnabled','DetailLevel')) {
+            if (-not (Test-BaselineNodeMember $state $name)) {
+                throw 'CalendarReversibleStateRequired: reversible state is incomplete.'
+            }
+        }
+    }
+    foreach ($name in @('PublishedCalendarUrl','PublishedICalUrl')) {
+        if (-not (Test-BaselineNodeMember $preChange $name)) {
+            throw 'CalendarReversibleStateRequired: prechange state is incomplete.'
+        }
+    }
+
+    $expectedRollback = Get-BaselineRecordMember $InputObject ExpectedRollbackReadback
+    $rollbackComplete = $null -ne $expectedRollback
+    if ($rollbackComplete) {
+        foreach ($name in @('Mailbox','FolderIdentity','PublishEnabled','DetailLevel','PublishedCalendarUrl','PublishedICalUrl')) {
+            if (-not (Test-BaselineNodeMember $expectedRollback $name)) { $rollbackComplete = $false; break }
+        }
+    }
+    if (-not $rollbackComplete) {
+        throw 'CalendarRollbackReadbackMismatch: expected rollback state is incomplete.'
+    }
+    $normalizedPreChange = ConvertTo-ExchangeCalendarPublicationState -State $preChange -FallbackMailbox $mailbox -IncludePublishedUrls
+    $normalizedRollback = ConvertTo-ExchangeCalendarPublicationState -State $expectedRollback -FallbackMailbox $mailbox -IncludePublishedUrls
+    if ((ConvertTo-CanonicalJson $normalizedPreChange) -cne (ConvertTo-CanonicalJson $normalizedRollback)) {
+        throw 'CalendarRollbackReadbackMismatch: expected rollback state differs from prechange state.'
+    }
+    $normalizedExpectedApply = ConvertTo-ExchangeCalendarPublicationState -State $expectedApply -FallbackMailbox $mailbox
+
+    $invokeCalendarCommand = {
+        param([string]$Name, [hashtable]$Parameters)
+
+        $pipeline = [powershell]::Create([System.Management.Automation.Runspaces.RunspaceMode]::CurrentRunspace)
+        try {
+            $null = $pipeline.AddCommand($Name)
+            foreach ($entry in $Parameters.GetEnumerator()) {
+                $null = $pipeline.AddParameter([string]$entry.Key, $entry.Value)
+            }
+            $output = @($pipeline.Invoke())
+            if ($pipeline.HadErrors) { throw $pipeline.Streams.Error[0] }
+            if ($output.Count -eq 1) { return $output[0] }
+            $output
+        } finally {
+            $pipeline.Dispose()
+        }
+    }
+
+    try {
+        $current = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+    } catch {
+        throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
+    }
+    $normalizedCurrent = ConvertTo-ExchangeCalendarPublicationState -State $current -FallbackMailbox $mailbox -IncludePublishedUrls
+    if ((ConvertTo-CanonicalJson $normalizedCurrent) -cne (ConvertTo-CanonicalJson $normalizedPreChange)) {
+        throw 'CalendarPublicationStateDrift: current state differs from prechange state.'
+    }
+
+    if ($Apply) {
+        $null = & $invokeCalendarCommand 'Set-MailboxCalendarFolder' @{
+            Identity = $folderIdentity
+            PublishEnabled = [bool](Get-BaselineRecordMember $requested PublishEnabled)
+            DetailLevel = $requestedDetail
+        }
+    }
+    try {
+        $applyReadback = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+    } catch {
+        throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
+    }
+    if ((ConvertTo-CanonicalJson (ConvertTo-ExchangeCalendarPublicationState -State $applyReadback -FallbackMailbox $mailbox)) -cne
+        (ConvertTo-CanonicalJson $normalizedExpectedApply)) {
+        throw 'CalendarPublicationStateDrift: apply readback differs from expected state.'
+    }
+
+    try {
+        $rollbackPreflight = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+    } catch {
+        throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
+    }
+    if ((ConvertTo-CanonicalJson (ConvertTo-ExchangeCalendarPublicationState -State $rollbackPreflight -FallbackMailbox $mailbox)) -cne
+        (ConvertTo-CanonicalJson $normalizedExpectedApply)) {
+        throw 'CalendarPublicationStateDrift: current state changed before rollback.'
+    }
+
+    if ($Rollback) {
+        $null = & $invokeCalendarCommand 'Set-MailboxCalendarFolder' @{
+            Identity = $folderIdentity
+            PublishEnabled = [bool](Get-BaselineRecordMember $preChange PublishEnabled)
+            DetailLevel = [string](Get-BaselineRecordMember $preChange DetailLevel)
+        }
+    }
+    try {
+        $rollbackReadback = & $invokeCalendarCommand 'Get-MailboxCalendarFolder' @{ Identity = $folderIdentity }
+    } catch {
+        throw "CalendarPublicationCollectionFailed: $($_.Exception.Message)"
+    }
+    if ((ConvertTo-CanonicalJson (ConvertTo-ExchangeCalendarPublicationState -State $rollbackReadback -FallbackMailbox $mailbox -IncludePublishedUrls)) -cne
+        (ConvertTo-CanonicalJson $normalizedRollback)) {
+        throw 'CalendarRollbackReadbackMismatch: rollback readback differs from expected state.'
+    }
+
+    [pscustomobject][ordered]@{
+        ApplyReadback = $applyReadback
+        RollbackReadback = $rollbackReadback
+        PartnerReadiness = Get-BaselineRecordMember $InputObject PartnerReadiness
+        IndependentPartnerAttestation = Get-BaselineRecordMember $InputObject IndependentPartnerAttestation
+    }
+}
+
 Export-ModuleMember -Function @(
     'Resolve-BaselineConfiguration'
     'Assert-BaselineConfiguration'
@@ -14623,6 +14841,7 @@ Export-ModuleMember -Function @(
     'Test-IncidentExerciseControl'
     'Get-SharingPolicyBindingEvidence'
     'Test-SharingPolicyBindingControl'
+    'Invoke-ExchangeCalendarPublicationLifecycle'
     'Get-BaselineParameterHash'
     'New-BaselineEvidenceEnvelope'
     'Get-BaselineResultContract'

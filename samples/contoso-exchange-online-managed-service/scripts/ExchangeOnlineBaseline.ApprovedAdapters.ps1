@@ -845,7 +845,7 @@ function Get-ApprovedAdapterDefinitions {
                         if ($match.Count -ne 1) { throw "SendOnBehalfMailboxInventoryIncomplete: $mailbox is not present exactly once as $mailboxType." }
                         $delegate = ([string](Get-BaselineRecordMember $delegation delegate)).Trim()
                         $priorDelegates = @($currentByMailbox[$mailbox] | Where-Object { $_ -ine $delegate })
-                        if ($priorDelegates.Count -gt 1) { throw "SendOnBehalfUnauthorized: $($priorDelegates[1]) is an explicit SendOnBehalf delegate to $mailbox without approval." }
+                        if ($priorDelegates.Count -gt 0) { throw "SendOnBehalfUnauthorized: $($priorDelegates[0]) is an explicit SendOnBehalf delegate to $mailbox without approval." }
                     }
                     foreach ($mailboxRow in $applicable) {
                         if (-not $approvedByMailbox.ContainsKey(([string]$mailboxRow.PrimarySmtpAddress).Trim())) { throw "SendOnBehalfMailboxInventoryIncomplete: $($mailboxRow.PrimarySmtpAddress) is an applicable mailbox omitted from the approved inventory." }
@@ -862,7 +862,7 @@ function Get-ApprovedAdapterDefinitions {
                         if ($operation.Count -ne 1) { throw "ChangeOperationMismatch: approved SendOnBehalf operation is required for $mailbox." }
                         @($operation[0].Before.Value.GrantSendOnBehalfTo)
                     }
-                    $desiredDelegates = @(@($priorDelegates; $delegate) | Sort-Object -Unique)
+                    $desiredDelegates = @($delegate)
                     & $fixed SendOnBehalf Mailbox $target @{ GrantSendOnBehalfTo = $desiredDelegates } @{ GrantSendOnBehalfTo = 'Strings' }
                 }
             }

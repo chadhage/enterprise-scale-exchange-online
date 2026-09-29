@@ -143,6 +143,7 @@
         'Test-IncidentExerciseControl'
         'Get-SharingPolicyBindingEvidence'
         'Test-SharingPolicyBindingControl'
+        'Invoke-ExchangeCalendarPublicationLifecycle'
         'Get-BaselineParameterHash'
         'New-BaselineEvidenceEnvelope'
         'Test-BaselineControl'

@@ -34,7 +34,52 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 387
+Allocation generation: 392
+
+### Generation 392 Final Three-Cohort Outcome
+
+Registry updated: 2026-09-29. Allocation generation: 391 -> 392. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** `EXR-007-A05-T02` is Done with accepted focused, regression and exact hierarchical compatibility evidence.
+- **Silver:** blocked/quiescent at Calendar 16/20 after all three authorized attempts. Incomplete Common/manifest implementation is preserved; no lease or further attempt exists.
+- **Gold:** blocked/quiescent at SendOnBehalf 10/13 after final attempt 3/3. Singleton residual rejection passes; two fixtures now stop at the stricter earlier guard and the positive fails on absent `Operations` key append.
+- All workers, path leases and processes are released. No live-state read, tenant action, credentials, commit, push, or publish is authorized or occurred.
+
+### Generation 391 Silver Park and Gold Final Attempt
+
+Registry updated: 2026-09-29. Allocation generation: 390 -> 391. Canonical counts remain **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** retain three consumed Calendar product attempts at 16/20. Final Common/manifest hashes are `7B6F8D59B2F4F8CD3B6585B95C3C2B16E967739DD677C187F49F8A55A69FBC64` and `8A5EA46F34F3302A512D9146F33BD167FEC02D9406A5F9793EA069CF651E62D1`. Silver is blocked and quiescent; no fourth edit/run is granted and its lease is released.
+- **Gold:** ACK `gold-20260929T042500Z/Kanban/g391/implement-EXR-007-A05-T03-F01-R01-attempt-3`. Coworker-2 exclusively owns ApprovedAdapters and the exact Common receipt-evidence seam. Attempt 3/3 is consumed on first product edit; run the unchanged focused 13-case leaf once with no retry.
+- **Purple:** Done and quiescent; no leases.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 390 Purple Closure and Silver Calendar Implementation
+
+Registry updated: 2026-09-29. Allocation generation: 389 -> 390. Canonical counts become **44 To Do / 2 In Progress / 44 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** accept exact hierarchical compatibility equality at 171 total / 66 Success / 105 Failure, zero added/removed names, stable frozen hashes and zero mutation. `EXR-007-A05-T02` moves to Done; all Purple leases are released.
+- **Silver:** ACK `silver-20260929T041300Z/Kanban/g390/implement-EXR-007-A04-T02-calendar`. Coworker-2 exclusively owns Common module/manifest for at most three product attempts against frozen Calendar test SHA-256 `54D558D858F2E0A79A52B1F5289AE863FF449A3F8B7748E8A31B188CF2DACAD8`. ApprovedAdapters and tests remain read-only.
+- **Gold:** all workers remain queued/read-only; attempt 3/3 is unspent. No product execution may overlap Silver's Common/manifest lease.
+- No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 389 Calendar Acceptance and Purple Identity Verification
+
+Registry updated: 2026-09-29. Allocation generation: 388 -> 389. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Silver:** accept corrected Calendar contract SHA-256 `54D558D858F2E0A79A52B1F5289AE863FF449A3F8B7748E8A31B188CF2DACAD8`, static adjudication, and exact 0/20 natural red. Calendar is implementation-ready; all Silver workers are quiescent and Common/manifest ownership is queued.
+- **Purple:** generation-388 run counts and stability are accepted, but the 57-label comparison is rejected as lossy. ACK `purple-20260929T041100Z/Kanban/g389/verify-EXR-007-A05-T02-hierarchical-identities` grants Coworker-3 one fresh process producing current NUnit XML and full-name set equality against the accepted 105 historical identities. Coworkers 1 and 2 independently review; product/test inputs remain frozen.
+- **Gold:** queue affinity remains under the generation-388 waiting ACK. All workers remain read-only/quiescent and attempt 3/3 is unspent.
+- Silver and Gold product writes remain serialized behind Purple and behind each other. No live-state read, tenant action, credentials, commit, push, or publish is authorized.
+
+### Generation 388 Three-Cohort Recovery
+
+Registry updated: 2026-09-29. Allocation generation: 387 -> 388. The parent session is the sole canonical writer after generation-387 quiescence. Canonical counts remain **44 To Do / 3 In Progress / 43 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** ACK `purple-20260929T035746Z/Kanban/g388/verify-EXR-007-A05-T02-compatibility`. Coworker-3 owns one fresh PowerShell 7/Pester 5.7.1 full 171-case ApprovedAdapter process using corrected historical NUnit token `result="Failure"`; Coworkers 1 and 2 are independent read-only reviewers. Product and test files are frozen.
+- **Silver:** ACK `silver-20260929T035746Z/Kanban/g388/adjudicate-EXR-007-A04-T02-calendar-contract`. Coworker-1 exclusively owns `ExchangeCalendarPublicationLifecycle.Tests.ps1`; Coworker-2 is read-only; Coworker-3 receives verification/process authority only after Coworker-1 quiesces. Common, manifest, and ApprovedAdapters remain frozen.
+- **Gold:** waiting ACK `gold-20260929T035746Z/Kanban/g388/wait-EXR-007-A05-T03-F01-R01-attempt-3`. Queue affinity is retained, all Coworkers are read-only, and product attempt 3/3 is unspent. Product implementation must wait for Purple's compatibility process and explicit next-generation ownership.
+- Purple and Silver may run concurrently on disjoint surfaces. Gold must remain quiescent from product/test execution. No live-state read, tenant action, credentials, commit, push, or publish is authorized.
 
 ### Generation 387 Publication Checkpoint
 

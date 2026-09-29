@@ -2,7 +2,10 @@
 
 Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
     BeforeAll {
+        $script:sampleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+        Import-Module (Join-Path $script:sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
         $script:subject = 'Invoke-ExchangeCalendarPublicationLifecycle'
+        $script:publicationIdentity = 'executive@contoso.example:\Calendar'
 
         function Get-Mailbox {
             throw 'Unmocked Get-Mailbox call.'
@@ -22,14 +25,14 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                 CalendarInventory = @(
                     [pscustomobject]@{
                         Mailbox = 'executive@contoso.example'
-                        FolderIdentity = 'executive@contoso.example:\Calendar'
+                        FolderIdentity = $script:publicationIdentity
                         CollectionComplete = $true
                     }
                 )
                 PublicationState = @(
                     [pscustomobject]@{
                         Mailbox = 'executive@contoso.example'
-                        FolderIdentity = 'executive@contoso.example:\Calendar'
+                        FolderIdentity = $script:publicationIdentity
                         PublishEnabled = $false
                         DetailLevel = 'AvailabilityOnly'
                         PublishedCalendarUrl = $null
@@ -45,12 +48,12 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                     AllowAnonymous = $false
                     MaximumDetail = 'AvailabilityOnly'
                     IndependentlyApproved = $true
-                    BoundPublicationIdentity = 'executive@contoso.example:\Calendar'
+                    BoundPublicationIdentity = $script:publicationIdentity
                     ReadyForChange = $true
                 }
                 RequestedState = [pscustomobject]@{
                     Mailbox = 'executive@contoso.example'
-                    FolderIdentity = 'executive@contoso.example:\Calendar'
+                    FolderIdentity = $script:publicationIdentity
                     PublishEnabled = $true
                     DetailLevel = 'AvailabilityOnly'
                     Audience = 'NamedExternalPartner'
@@ -58,7 +61,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                 }
                 PreChangeState = [pscustomobject]@{
                     Mailbox = 'executive@contoso.example'
-                    FolderIdentity = 'executive@contoso.example:\Calendar'
+                    FolderIdentity = $script:publicationIdentity
                     PublishEnabled = $false
                     DetailLevel = 'AvailabilityOnly'
                     PublishedCalendarUrl = $null
@@ -66,13 +69,13 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                 }
                 ExpectedReadback = [pscustomobject]@{
                     Mailbox = 'executive@contoso.example'
-                    FolderIdentity = 'executive@contoso.example:\Calendar'
+                    FolderIdentity = $script:publicationIdentity
                     PublishEnabled = $true
                     DetailLevel = 'AvailabilityOnly'
                 }
                 ExpectedRollbackReadback = [pscustomobject]@{
                     Mailbox = 'executive@contoso.example'
-                    FolderIdentity = 'executive@contoso.example:\Calendar'
+                    FolderIdentity = $script:publicationIdentity
                     PublishEnabled = $false
                     DetailLevel = 'AvailabilityOnly'
                     PublishedCalendarUrl = $null
@@ -94,7 +97,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
         }
         Mock Get-MailboxCalendarFolder {
             [pscustomobject]@{
-                Identity = 'executive@contoso.example:\Calendar'
+                Identity = $script:publicationIdentity
                 PublishEnabled = $false
                 DetailLevel = 'AvailabilityOnly'
                 PublishedCalendarUrl = $null
@@ -116,6 +119,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarInventoryMissing*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects missing calendar inventory even when T01 policy evidence exists' {
@@ -129,6 +133,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarInventoryMissing*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects missing calendar publication state' {
@@ -142,6 +147,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationStateMissing*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects an incomplete calendar publication collection row' {
@@ -155,6 +161,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationEvidenceIncomplete*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects a calendar publication row missing a required field' {
@@ -168,6 +175,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationEvidenceIncomplete*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects collection or read failure instead of reporting compliance' {
@@ -181,6 +189,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationCollectionFailed*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 1 -Exactly
         }
 
         It 'rejects publication enabled without independently approved disclosure' {
@@ -195,6 +204,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarDisclosureApprovalRequired*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects an unauthorized anonymous disclosure audience' {
@@ -208,6 +218,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarDisclosureAudienceUnauthorized*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects an unapproved external partner domain' {
@@ -221,6 +232,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarDisclosureAudienceUnauthorized*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects disclosure detail broader than the approved maximum' {
@@ -234,6 +246,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarDisclosureDetailExceedsApproval*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects approval not bound to the publication identity' {
@@ -247,6 +260,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarApprovalNotBoundOrReady*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects approval not ready for the publication change' {
@@ -260,6 +274,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarApprovalNotBoundOrReady*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects local readback as certification of an external partner' {
@@ -274,6 +289,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*IndependentPartnerAttestationRequired*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects missing prechange state required for reversible handling' {
@@ -287,6 +303,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarReversibleStateRequired*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects missing expected apply readback required for reversible handling' {
@@ -300,6 +317,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarReversibleStateRequired*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
         It 'rejects state drift before apply without an unauthorized write' {
@@ -307,7 +325,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             $inputObject = New-CalendarPublicationInput
             Mock Get-MailboxCalendarFolder {
                 [pscustomobject]@{
-                    Identity = 'executive@contoso.example:\Calendar'
+                    Identity = $script:publicationIdentity
                     PublishEnabled = $true
                     DetailLevel = 'LimitedDetails'
                     PublishedCalendarUrl = 'https://example.invalid/drifted'
@@ -321,6 +339,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationStateDrift*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 1 -Exactly
         }
 
         It 'rejects state drift before rollback without an unauthorized write' {
@@ -332,8 +351,11 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                 if ($script:calendarRead -eq 1) {
                     return $inputObject.PreChangeState
                 }
+                if ($script:calendarRead -eq 2) {
+                    return $inputObject.ExpectedReadback
+                }
                 [pscustomobject]@{
-                    Identity = 'executive@contoso.example:\Calendar'
+                    Identity = $script:publicationIdentity
                     PublishEnabled = $true
                     DetailLevel = 'LimitedDetails'
                     PublishedCalendarUrl = 'https://example.invalid/drifted'
@@ -346,10 +368,13 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
 
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarPublicationStateDrift*'
-            Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Set-MailboxCalendarFolder -Times 1 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 3 -Exactly
         }
+    }
 
-        It 'rejects incomplete rollback readback' {
+    Context 'negative rollback-preflight consistency checks' {
+        It 'rejects incomplete rollback readback during rollback-preflight consistency checking' {
             # Arrange
             $inputObject = New-CalendarPublicationInput
             $inputObject.ExpectedRollbackReadback.PSObject.Properties.Remove('DetailLevel')
@@ -360,9 +385,10 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarRollbackReadbackMismatch*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
 
-        It 'rejects mismatched rollback readback' {
+        It 'rejects mismatched rollback readback during rollback-preflight consistency checking' {
             # Arrange
             $inputObject = New-CalendarPublicationInput
             $inputObject.ExpectedRollbackReadback.DetailLevel = 'LimitedDetails'
@@ -373,6 +399,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             # Assert
             $act | Should -Throw -ExpectedMessage '*CalendarRollbackReadbackMismatch*'
             Should -Invoke Set-MailboxCalendarFolder -Times 0 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 0 -Exactly
         }
     }
 
@@ -386,13 +413,8 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
                 if ($script:calendarRead -eq 1) {
                     return $inputObject.PreChangeState
                 }
-                if ($script:calendarRead -eq 2) {
-                    return [pscustomobject]@{
-                        Mailbox = 'executive@contoso.example'
-                        FolderIdentity = 'executive@contoso.example:\Calendar'
-                        PublishEnabled = $true
-                        DetailLevel = 'AvailabilityOnly'
-                    }
+                if ($script:calendarRead -in @(2, 3)) {
+                    return $inputObject.ExpectedReadback
                 }
                 $inputObject.ExpectedRollbackReadback
             }
@@ -407,7 +429,7 @@ Describe 'EXR-007-A04-T02 calendar publication lifecycle contract' {
             $result.PartnerReadiness | Should -BeExactly 'Unverified'
             $result.IndependentPartnerAttestation | Should -BeNullOrEmpty
             Should -Invoke Set-MailboxCalendarFolder -Times 2 -Exactly
-            Should -Invoke Get-MailboxCalendarFolder -Times 3 -Exactly
+            Should -Invoke Get-MailboxCalendarFolder -Times 4 -Exactly
         }
     }
 }
