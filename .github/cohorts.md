@@ -1,10 +1,10 @@
 # Cohort Coordination
 
-This protocol applies only to an explicitly started `Cohort <name> start` session. Creating these instructions starts no cohort and changes no card status. The Kanban board remains authoritative for card status/rank; this registry owns cohort identity, accepted reservations and writer coordination, never acceptance evidence by itself.
+This protocol applies only to an explicitly started `Cohort <name> start` session. Creating these instructions starts no cohort and changes no card status. `.github/backlog.md` is authoritative for inventory, status, rank, dependencies, dispatch profiles/manifests, and acceptance evidence. This registry is authoritative only for allocation, claim tokens, leases, reservations, and writer coordination. `.github/kanban.md` is subordinate compatibility.
 
 ## Coordination Authority
 
-- Exactly one canonical writer may update this registry, Kanban or backlog status/evidence at a time. In one orchestrating session, its designated Kanban steward is that writer and the root serializes steward invocations. Secondary Kanbans return proposals without editing shared state.
+- Exactly one canonical board writer may update this registry, backlog status/evidence, or the subordinate Kanban view at a time. In one orchestrating session, its designated steward is that writer and the root serializes steward invocations. Secondary stewards return proposals without editing shared state.
 - Independent sessions require an explicit acknowledged coordinator and a working request/response channel, or a host-provided exclusive coordination mechanism spanning claim read, validation and write. A plain Markdown read/edit, check-then-create, timestamp or best-effort file merge is not a lock. If these facilities are unavailable, keep other sessions read-only and serialize cohorts under the established coordinator. Do not run independently writing cohorts in the same checkout.
 - Startup with no confirmed writer is not permission for each session to elect itself. A sole session can designate its own steward only after confirming no other run is active. Ambiguous or simultaneous startup requires explicit coordination before claims. Record the session and acknowledgment, not just a friendly cohort name.
 - Every proposal carries the last observed allocation generation. The writer rereads state, rejects stale proposals, validates unique claims/dependencies/file reservations, applies the change, increments the generation and publishes an acknowledgment. No worker proceeds on a proposal alone. A generation check supplements exclusive ownership; it does not implement mutual exclusion.
@@ -34,7 +34,23 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 601
+Allocation generation: 602
+
+Allocation readiness: **BOARD READY — generation 602**. This declaration is valid only while `.github/backlog.md` also declares generation 602 ready and `.github/validate-dispatch-board.ps1` passes.
+
+### Generation 602 Canonical Dispatch Restructure
+
+Registry updated: 2026-09-30. Allocation generation: 601 -> 602. Counts are **36 To Do / 1 In Progress / 54 Done = 91 executable cards** with **24 summary parents excluded**.
+
+- **Canonical writer:** exactly one acknowledged steward. Every mutation proposal is rejected if its observed generation is not 602 at the start of the transaction or if another writer is active.
+- **Active claim:** `EXR-010-A12-L01-F02` remains In Progress; the published identity is commit `a2962e4`. Accepted evidence is focused+bounded **104/104**, live **83/83**, reporting **30/30**, reporting adapters **10/10**, and Pages publication success. Matrix **327/337**, safety **4/6**, and licensing **28/281** remain unresolved. F02 is not closed.
+- **Current claim token:** `EXR-010-A12-L01-F02/Purple/g602/retained-a2962e4`; heartbeat must be writer-acknowledged every 30 minutes and expires after 120 minutes. The retained product/test reservation is the F02 bounded surface recorded in backlog; no other cohort may overlap it.
+- **Current WIP:** one global coworker implementation card and one Purple card; all other cohorts are idle/read-only. `EXR-018-A01` is the only generation-602 `READY` To Do entry, but it cannot execute until F02 releases the global WIP slot. Its proposal may be prepared read-only.
+- **Atomic pull:** proposal fields are card, cohort, worker identities/envelope, observed generation, exact paths or `DISCOVER:<card>`, isolated worktree/branch, exclusive evidence root, expiry, and profile. The writer rereads both canonical files, checks dependencies/external gates/WIP/exact path and evidence-root overlap, runs `.github/validate-dispatch-board.ps1`, writes token/reservations/generation atomically, then mirrors Kanban.
+- **Expiry/requeue:** expiry immediately suspends writes. Requeue requires confirmed worker/process/worktree quiescence, preserved partial evidence, released reservations, generation increment, and passing validation. No elapsed-time inference or silent reassignment.
+- **Isolation:** accepted claims use `dispatch/<card>/<cohort>/g<generation>` and `.artifacts/dispatch/<card>/g<generation>/<cohort>/`. Workers may not share worktrees or evidence roots.
+- **Path discovery:** `DISCOVER:<card>` grants read-only preflight only. The resulting normalized exact files/directories are checked for equality, ancestor/descendant, glob-expansion, F02, and evidence-root conflicts and require a later generation-bound ACK before writing.
+- **Idle/handoff/merge:** idle workers perform read-only work only. Handoff and merge follow the profile envelope in backlog; prior roles quiesce in order, the independent reviewer verifies, and only the canonical writer accepts completion, releases reservations, transitions status, increments generation, and synchronizes compatibility.
 
 ### Generation 601 F02 EXO-010 Review Classification
 
