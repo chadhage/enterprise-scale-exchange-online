@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contoso - Exchange Online &amp; MDO Baseline Configuration</title>
+    <title>Contoso - Exchange Online Protection Baseline</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%230078d4'/%3E%3Ctext x='50' y='55' font-size='60' fill='white' text-anchor='middle' font-weight='bold'%3EM%3C/text%3E%3C/svg%3E">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='45' fill='%230078d4'/%3E%3Ctext x='50' y='55' font-size='60' fill='white' text-anchor='middle' font-weight='bold'%3EE%3C/text%3E%3C/svg%3E">
 </head>
 <body>
-    <!-- Navigation -->
     <nav class="navbar">
         <div class="nav-container">
             <div class="nav-logo">
-                <span>MDO Baseline Configuration Template</span>
+                <span>Exchange Online Protection Baseline</span>
             </div>
             <button class="menu-toggle" id="menuToggle" type="button" aria-label="Open navigation" aria-controls="navigationDrawer" aria-expanded="false">
                 <span class="menu-toggle-icon" aria-hidden="true"></span>
@@ -23,20 +22,14 @@
     <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
     <aside class="navigation-drawer" id="navigationDrawer" aria-labelledby="drawerTitle" aria-hidden="true">
         <div class="drawer-header">
-            <div>
-                <h2 id="drawerTitle" class="product-icons">
-                    <img class="logo-icon" src="https://cdn-dynmedia-1.microsoft.com/is/image/microsoftcorp/425151-MoreMicrosoft365-Icon-5-Defender-26x26?resMode=sharp2&amp;op_usm=1.5,0.65,15,0&amp;qlt=85" alt="">
-                    <img class="logo-icon" src="https://upload.wikimedia.org/wikipedia/commons/e/ea/Microsoft_Exchange_%282019-present%29.svg" alt="">
-                    <span>Navigation</span>
-                </h2>
-            </div>
+            <h2 id="drawerTitle">Navigation</h2>
             <button class="drawer-close" id="drawerClose" type="button" aria-label="Close navigation">&times;</button>
         </div>
         <div class="nav-menu" aria-label="Microsite sections">
             <button class="nav-item active" type="button" data-section="overview">Overview</button>
-            <button class="nav-item" type="button" data-section="configurator">Configurator</button>
-            <button class="nav-item" type="button" data-section="deployment">Deployment</button>
-            <button class="nav-item" type="button" data-section="testing">Testing</button>
+            <button class="nav-item" type="button" data-section="configurator">Configuration</button>
+            <button class="nav-item" type="button" data-section="deployment">Administrator journey</button>
+            <button class="nav-item" type="button" data-section="testing">Validation</button>
             <button class="nav-item" type="button" data-section="faq">FAQ</button>
             <button class="nav-item" type="button" data-section="resources">Resources</button>
         </div>
@@ -53,803 +46,255 @@
         </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-container">
-        
-        <!-- Overview Section -->
         <section id="overview" class="section active">
             <div class="hero">
-                <h1>Exchange Online with MDO Baseline Configuration</h1>
-                <p class="subtitle">Security configuration templates for Exchange Online mail flow protection</p>
+                <h1>Exchange Online Protection Baseline</h1>
+                <p class="subtitle">A documentation-led, evidence-oriented example for an Exchange Online administrator journey</p>
             </div>
 
-            <!-- Disclaimer Banner -->
             <div class="disclaimer-banner" role="alert">
-                <strong>Disclaimer:</strong> The information and templates provided in this repository are for example purposes only and are provided “as is, where is” without any warranty of any kind, express or implied. Use of this repository is entirely at your own risk. This is <strong>not</strong> an official Microsoft product, and it does not replace, equate to, or represent any official Microsoft product or service.
+                <strong>Example only:</strong> This repository is not an official Microsoft product or service. It does not provision a tenant, establish licensing, grant access, or certify production readiness. Every deployment requires independently approved inputs, current entitlement evidence, least-privilege access, and change authorization.
             </div>
 
             <div class="content-grid">
                 <article class="card">
-                    <h2>Overview</h2>
-                    <p>This microsite provides example baseline configuration templates for Microsoft Defender for Office 365 (MDO) in both Standard and Strict protection levels. The templates are based on Microsoft's published recommended settings for EOP and Defender for Office 365 and can be deployed using Infrastructure as Code (IaC) automation.</p>
-                </article>
-
-                <article class="card">
-                    <h2>Protection Levels</h2>
-                    <div class="protection-levels">
-                        <div class="level-card">
-                            <h3>Standard Protection</h3>
-                            <p>Recommended for most organizations</p>
-                            <ul>
-                                <li>Anti-phishing with spoofing detection</li>
-                                <li>Anti-malware with file type filtering</li>
-                                <li>Anti-spam with bulk threshold tuning</li>
-                                <li>Safe Attachments scanning</li>
-                                <li>Safe Links detonation</li>
-                            </ul>
-                        </div>
-                        <div class="level-card strict">
-                            <h3>Strict Protection</h3>
-                            <p>For high-risk environments</p>
-                            <ul>
-                                <li>All Standard features plus:</li>
-                                <li>User & domain impersonation protection</li>
-                                <li>Aggressive phishing thresholds</li>
-                                <li>Quarantine by default actions</li>
-                                <li>Automated Investigation & Response (AIR)</li>
-                            </ul>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Key Features</h2>
-                    <div class="features-grid">
-                        <div class="feature">
-                            <span class="feature-icon">📋</span>
-                            <h4>JSON Configuration Schema</h4>
-                            <p>Parameterized configuration templates that separate settings from tenant-specific values</p>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">🚀</span>
-                            <h4>PowerShell Automation</h4>
-                            <p>IaC deployment scripts with dry-run and audit mode support</p>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">✓</span>
-                            <h4>Validation &amp; Testing</h4>
-                            <p>Schema validation and configuration checking tools</p>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">📊</span>
-                            <h4>Policy Coverage</h4>
-                            <p>Support for the MDO threat policies listed below</p>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">🔐</span>
-                            <h4>Aligned to Microsoft Guidance</h4>
-                            <p>Based on Microsoft's published recommended settings for EOP and Defender for Office 365</p>
-                        </div>
-                        <div class="feature">
-                            <span class="feature-icon">📦</span>
-                            <h4>SPFx Package</h4>
-                            <p>SharePoint Framework app package structure</p>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Supported Policies</h2>
-                    <div class="policies-table">
-                        <div class="policy-group">
-                            <h3>Core Protection Policies</h3>
-                            <ul>
-                                <li>✓ Anti-Phishing Policies</li>
-                                <li>✓ Anti-Malware Policies</li>
-                                <li>✓ Anti-Spam Policies</li>
-                                <li>✓ Connection Filter Policies</li>
-                                <li>✓ Outbound Spam Policies</li>
-                            </ul>
-                        </div>
-                        <div class="policy-group">
-                            <h3>Advanced Protection (MDO Plan 1+)</h3>
-                            <ul>
-                                <li>✓ Safe Attachments Policies</li>
-                                <li>✓ Safe Links Policies</li>
-                                <li>✓ Tenant Allow/Block Lists</li>
-                                <li>✓ Impersonation Protection</li>
-                                <li>✓ User & Domain Spoofing Detection</li>
-                            </ul>
-                        </div>
-                        <div class="policy-group">
-                            <h3>Authentication & Email Validation</h3>
-                            <ul>
-                                <li>✓ DMARC Configuration</li>
-                                <li>✓ DKIM Signing</li>
-                                <li>✓ SPF Validation</li>
-                                <li>✓ Email Authentication Reports</li>
-                            </ul>
-                        </div>
-                    </div>
-                </article>
-            </div>
-        </section>
-
-        <!-- Configurator Section -->
-        <section id="configurator" class="section">
-            <h1>Interactive Configuration Builder</h1>
-            <p class="subtitle">Create your custom MDO baseline configuration</p>
-
-            <div class="configurator-container">
-                <form class="config-form" id="configForm">
-                    <!-- Organization Settings -->
-                    <fieldset class="form-section">
-                        <legend>Organization Settings</legend>
-                        
-                        <div class="form-group">
-                            <label for="tenantId">Tenant ID (GUID)*</label>
-                            <input 
-                                type="text" 
-                                id="tenantId" 
-                                name="tenantId" 
-                                placeholder="e.g., 12345678-1234-1234-1234-123456789012"
-                                pattern="^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-                                required
-                            />
-                        </div>
-
-                        <div class="form-group">
-                            <label for="tenantName">Organization Name*</label>
-                            <input 
-                                type="text" 
-                                id="tenantName" 
-                                name="tenantName" 
-                                placeholder="e.g., Contoso Inc"
-                                required
-                            />
-                        </div>
-
-                        <div class="form-group">
-                            <label for="tenantDomain">Primary Domain*</label>
-                            <input 
-                                type="text" 
-                                id="tenantDomain" 
-                                name="tenantDomain" 
-                                placeholder="e.g., contoso.com"
-                                pattern="^\w+(\.\w+)*$"
-                                required
-                            />
-                        </div>
-
-                        <div class="form-group">
-                            <label for="securityAdminEmail">Security Admin Email*</label>
-                            <input 
-                                type="email" 
-                                id="securityAdminEmail" 
-                                name="securityAdminEmail" 
-                                placeholder="e.g., security@contoso.com"
-                                required
-                            />
-                        </div>
-                    </fieldset>
-
-                    <!-- Protection Level -->
-                    <fieldset class="form-section">
-                        <legend>Protection Level</legend>
-                        
-                        <div class="form-group radio-group">
-                            <label>
-                                <input 
-                                    type="radio" 
-                                    name="protectionLevel" 
-                                    value="Standard" 
-                                    checked
-                                    onchange="updateProtectionDescription(this.value)"
-                                />
-                                <span>Standard Protection (Recommended)</span>
-                            </label>
-                            <label>
-                                <input 
-                                    type="radio" 
-                                    name="protectionLevel" 
-                                    value="Strict"
-                                    onchange="updateProtectionDescription(this.value)"
-                                />
-                                <span>Strict Protection (High-Risk)</span>
-                            </label>
-                        </div>
-
-                        <div id="protectionDescription" class="info-box">
-                            <p>Standard protection is recommended for most organizations as a starting point and automatically protects against current threats.</p>
-                        </div>
-                    </fieldset>
-
-                    <!-- Deployment Settings -->
-                    <fieldset class="form-section">
-                        <legend>Deployment Settings</legend>
-                        
-                        <div class="form-group radio-group">
-                            <label>
-                                <input 
-                                    type="radio" 
-                                    name="deploymentMode" 
-                                    value="Audit" 
-                                    checked
-                                />
-                                <span>Audit Mode (Detect Only)</span>
-                            </label>
-                            <label>
-                                <input 
-                                    type="radio" 
-                                    name="deploymentMode" 
-                                    value="Enforce"
-                                />
-                                <span>Enforce Mode (Block Threats)</span>
-                            </label>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="rolloutPhase">Rollout Phase</label>
-                            <select id="rolloutPhase" name="rolloutPhase">
-                                <option value="1">Phase 1 - Pilot (Selected Users)</option>
-                                <option value="2">Phase 2 - Staged (Department/Teams)</option>
-                                <option value="3">Phase 3 - Organization-wide</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group checkbox">
-                            <label>
-                                <input 
-                                    type="checkbox" 
-                                    name="enableAIR" 
-                                    id="enableAIR"
-                                />
-                                <span>Enable Automated Investigation & Response (AIR)</span>
-                            </label>
-                        </div>
-                    </fieldset>
-
-                    <!-- Allow/Block List -->
-                    <fieldset class="form-section">
-                        <legend>Allow/Block List Configuration</legend>
-                        
-                        <div class="form-group">
-                            <label for="allowedSenders">Allowed Senders (comma-separated emails)</label>
-                            <textarea 
-                                id="allowedSenders" 
-                                name="allowedSenders"
-                                rows="3"
-                                placeholder="e.g., trusted@partner.contoso.com, billing@supplier.contoso.com"
-                            ></textarea>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="blockedSenders">Blocked Senders (comma-separated emails)</label>
-                            <textarea 
-                                id="blockedSenders" 
-                                name="blockedSenders"
-                                rows="3"
-                                placeholder="e.g., spam@malicious-simulation.contoso.com"
-                            ></textarea>
-                        </div>
-                    </fieldset>
-
-                    <!-- Form Actions -->
-                    <div class="form-actions">
-                        <button type="button" class="btn btn-primary" onclick="generateConfig()">
-                            Generate Configuration
-                        </button>
-                        <button type="button" class="btn btn-secondary" onclick="downloadConfig()">
-                            Download JSON
-                        </button>
-                        <button type="reset" class="btn btn-secondary">
-                            Clear Form
-                        </button>
-                    </div>
-                </form>
-
-                <!-- Generated Config Preview -->
-                <div id="configPreview" class="config-preview" style="display: none;">
-                    <h2>Generated Configuration</h2>
-                    <div class="preview-toolbar">
-                        <button class="btn btn-small" onclick="copyToClipboard()">📋 Copy to Clipboard</button>
-                        <button class="btn btn-small" onclick="downloadConfigFile()">💾 Download</button>
-                    </div>
-                    <pre id="configContent" class="code-block"></pre>
-                </div>
-            </div>
-        </section>
-
-        <!-- Deployment Section -->
-        <section id="deployment" class="section">
-            <h1>Deployment Guide</h1>
-            <p class="subtitle">Step-by-step instructions for deploying baseline configurations</p>
-
-            <div class="content-grid">
-                <article class="card">
-                    <h2>Prerequisites</h2>
-                    <ul class="checklist">
-                        <li>PowerShell 7.0 or later</li>
-                        <li>ExchangeOnlineManagement module</li>
-                        <li>Global Administrator or Security Administrator role</li>
-                        <li>Microsoft Defender for Office 365 Plan 1 or Plan 2 license</li>
-                        <li>Generated configuration JSON file</li>
+                    <h2>Supported scope</h2>
+                    <p>The active workflow evaluates a versioned Exchange-only profile for a Worldwide tenant. It uses Microsoft-managed Standard and Strict preset security policies without copying or modifying their individual settings.</p>
+                    <ul>
+                        <li>Standard preset for the approved broad recipient population</li>
+                        <li>Strict preset for an approved priority-user group</li>
+                        <li>Exchange Online hardening and evidence collection</li>
+                        <li>Fail-closed input, entitlement, approval, and evidence contracts</li>
                     </ul>
                 </article>
 
                 <article class="card">
-                    <h2>Installation Steps</h2>
+                    <h2>Protection profiles</h2>
+                    <div class="protection-levels">
+                        <div class="level-card">
+                            <h3>Standard</h3>
+                            <p>Microsoft's recommended baseline profile for broad recipient coverage.</p>
+                        </div>
+                        <div class="level-card strict">
+                            <h3>Strict</h3>
+                            <p>A more aggressive Microsoft-managed profile for selected high-value targets or priority users.</p>
+                        </div>
+                    </div>
+                    <p>Automated Investigation and Response, Threat Explorer, and Attack Simulation Training are separate Microsoft Defender for Office 365 Plan 2 capabilities. Assigning Strict does not enable them.</p>
+                </article>
+
+                <article class="card full-width">
+                    <h2>What this repository does not claim</h2>
+                    <ul>
+                        <li>It does not reproduce Microsoft-managed preset values in local templates.</li>
+                        <li>It does not provide a generic detect-only mode for Standard or Strict presets.</li>
+                        <li>It does not infer entitlement from a suite name or declare that capabilities have no additional licensing cost.</li>
+                        <li>It does not certify DNS, identity, licensing, client, Purview, or other externally owned readiness.</li>
+                        <li>It does not validate sovereign-cloud or hybrid deployment paths.</li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <section id="configurator" class="section">
+            <h1>Supported configuration contract</h1>
+            <p class="subtitle">The legacy browser configuration generator has been removed</p>
+
+            <div class="disclaimer-banner" role="alert">
+                The former generator emitted a quarantined custom-policy format and could not be used with the active schema. Use the versioned configuration, manifest, schema, and parameter contracts below.
+            </div>
+
+            <div class="content-grid">
+                <article class="card">
+                    <h2>Active artifacts</h2>
+                    <ul>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.v1.json</a> - retained Exchange control configuration</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.schema.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.schema.v1.json</a> - closed validation schema</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.manifest.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.manifest.v1.json</a> - retained controls and explicit exclusions</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/parameters.exchange-only.sample.json" target="_blank" rel="noopener noreferrer">parameters.exchange-only.sample.json</a> - synthetic input example, not approval</li>
+                    </ul>
+                </article>
+
+                <article class="card">
+                    <h2>Input rules</h2>
+                    <ul>
+                        <li>Keep resolved tenant input outside source control.</li>
+                        <li>Replace every <code>__ADMIN_REQUIRED:...</code> token with independently approved data.</li>
+                        <li>Supply current tenant- and recipient-bound entitlement evidence.</li>
+                        <li>Bind domain inventory, recipient scope, approvals, exceptions, and external handoffs to named owners and evidence references.</li>
+                        <li>Stop on missing, stale, malformed, unresolved, or scope-mismatched input.</li>
+                    </ul>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Customization boundary</h2>
+                    <p>Virtually all individual settings in Standard and Strict preset security policies are Microsoft-managed and cannot be customized. Administrators can manage supported recipient scope and exclusions. Custom policies require a documented business need and do not override an applicable Strict or Standard preset because presets have higher precedence.</p>
+                    <p>Repository values identify their provenance as a Microsoft recommendation, local policy, or approved exception. A local choice must never be represented as a Microsoft default.</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="deployment" class="section">
+            <h1>Exchange administrator journey</h1>
+            <p class="subtitle">Resolve inputs, preview approved scope, apply through change control, and verify frozen evidence</p>
+
+            <div class="content-grid">
+                <article class="card">
+                    <h2>Runtime</h2>
+                    <ul class="checklist">
+                        <li>PowerShell 7.6 or later</li>
+                        <li>ExchangeOnlineManagement 3.10.0 or later</li>
+                        <li>Worldwide tenant (<code>O365Default</code>)</li>
+                        <li>Approved Exchange identity with least-privilege access</li>
+                        <li>Protected input and artifact locations outside source control</li>
+                    </ul>
+                    <p>Pin and validate the exact module version used by the approved change. Do not rely on an unqualified "PowerShell 7+" prerequisite.</p>
+                </article>
+
+                <article class="card">
+                    <h2>Least privilege</h2>
+                    <p>Use the narrowest supported permissions for each operation. Preset policies can be managed through applicable Defender Unified RBAC permissions or Exchange Online Organization Management or Security Administrator role groups.</p>
+                    <p>Global Administrator is highly privileged and should be limited to emergency scenarios or cases where a narrower role cannot be used.</p>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Offline input validation and plan</h2>
+                    <p>From <code>samples\contoso-exchange-online-managed-service</code>, start with the synthetic parameter file only for offline structure validation:</p>
+                    <pre><code>.\scripts\Deploy-ExchangeOnlineBaseline.ps1 `
+    -ParameterPath .\config\parameters.exchange-only.sample.json `
+    -SkipConnection</code></pre>
+                    <p>The unmodified sample must stop because its licensing handoff is unverified. With approved input, this command produces an Exchange-only plan and configuration hash; it makes no changes and is not a signed approval artifact.</p>
+                </article>
+
+                <article class="card">
+                    <h2>Approved change</h2>
                     <ol class="ordered-list">
-                        <li>
-                            <strong>Install Required Modules</strong>
-                            <pre><code>Install-Module ExchangeOnlineManagement -Force -AllowClobber
-Install-Module Microsoft.Graph.Authentication -Force
-Install-Module Microsoft.Graph.Users -Force</code></pre>
-                        </li>
-                        <li>
-                            <strong>Generate Configuration</strong>
-                            <p>Use the Configurator above to generate your organization's configuration file.</p>
-                        </li>
-                        <li>
-                            <strong>Validate Configuration</strong>
-                            <pre><code>.\Validate-MDOConfiguration.ps1 -ConfigPath "contoso-standard.json"</code></pre>
-                        </li>
-                        <li>
-                            <strong>Test Deployment (Dry Run)</strong>
-                            <pre><code>.\Deploy-MDOBaseline.ps1 `
-    -ConfigPath "contoso-standard.json" `
-  -TenantId "tenant-guid" `
-    -TenantName "Contoso Inc" `
-    -TenantDomain "contoso.com" `
-    -SecurityAdminEmail "admin@contoso.com" `
-  -DryRun</code></pre>
-                        </li>
-                        <li>
-                            <strong>Deploy Configuration</strong>
-                            <pre><code>.\Deploy-MDOBaseline.ps1 `
-    -ConfigPath "contoso-standard.json" `
-  -TenantId "tenant-guid" `
-    -TenantName "Contoso Inc" `
-    -TenantDomain "contoso.com" `
-    -SecurityAdminEmail "admin@contoso.com"</code></pre>
-                        </li>
+                        <li>Resolve all owner handoffs and administrator inputs.</li>
+                        <li>Validate the closed schema, manifest, domain inventory, entitlement, and recipient matrix.</li>
+                        <li>Initialize Standard and Strict preset objects in the Microsoft Defender portal.</li>
+                        <li>Create an immutable preview bound to exact before-state and approval.</li>
+                        <li>Apply only adapters explicitly supported by the approved-change contract.</li>
+                        <li>Recollect the complete evidence matrix and verify the exact configuration hash.</li>
                     </ol>
                 </article>
 
                 <article class="card">
-                    <h2>Monitoring & Validation</h2>
-                    <ul>
-                        <li>Review Configuration Analyzer in Microsoft Defender portal</li>
-                        <li>Check mail flow logs for policy impacts</li>
-                        <li>Review quarantine reports</li>
-                        <li>Monitor threat and detection reports</li>
-                        <li>Validate Safe Links and Safe Attachments functionality</li>
-                    </ul>
-                </article>
-
-                <article class="card">
-                    <h2>Rollback Procedures</h2>
-                    <p>If issues occur, you can revert to previous configurations:</p>
-                    <pre><code># Export current configuration
-$policy = Get-AntiPhishPolicy -Identity "Policy Name"
-$policy | ConvertTo-Json | Out-File "backup.json"
-
-# Restore from backup
-# Recreate policies from exported JSON</code></pre>
-                </article>
-            </div>
-
-            <article class="card full-width">
-                <h2>Phased Rollout Strategy</h2>
-                <div class="phase-timeline">
-                    <div class="phase">
-                        <h3>Phase 1: Pilot (Week 1-2)</h3>
-                        <p>Deploy to pilot group (10-20% of users)</p>
-                        <ul>
-                            <li>Test in Audit mode first</li>
-                            <li>Monitor threat reports</li>
-                            <li>Gather user feedback</li>
-                            <li>Adjust thresholds if needed</li>
-                        </ul>
-                    </div>
-                    <div class="phase">
-                        <h3>Phase 2: Staged (Week 3-4)</h3>
-                        <p>Expand to departments/teams (50-70% of users)</p>
-                        <ul>
-                            <li>Switch to Enforce mode</li>
-                            <li>Train users on phishing recognition</li>
-                            <li>Establish support procedures</li>
-                            <li>Monitor false positive rates</li>
-                        </ul>
-                    </div>
-                    <div class="phase">
-                        <h3>Phase 3: Organization-wide (Week 5+)</h3>
-                        <p>Deploy to all users</p>
-                        <ul>
-                            <li>Full policy enforcement</li>
-                            <li>Comprehensive monitoring</li>
-                            <li>Regular review and tuning</li>
-                            <li>Continuous education program</li>
-                        </ul>
-                    </div>
-                </div>
-            </article>
-        </section>
-
-        <!-- Testing Section -->
-        <section id="testing" class="section">
-            <h1>Testing Framework</h1>
-            <p class="subtitle">Test suite of 150+ tests covering unit, feature, integration, end-to-end, and acceptance levels</p>
-
-            <div class="content-grid">
-                <article class="card">
-                    <h2>Test Coverage</h2>
-                    <div class="testing-summary">
-                        <div class="test-level">
-                            <h3>Unit Tests (50+)</h3>
-                            <p>Individual function testing with mocked dependencies</p>
-                            <ul>
-                                <li>PowerShell script functions</li>
-                                <li>Parameter validation</li>
-                                <li>Configuration parsing</li>
-                                <li>Error handling paths</li>
-                                <li>Code coverage: 80%+</li>
-                            </ul>
-                        </div>
-                        <div class="test-level">
-                            <h3>Feature Tests (20+)</h3>
-                            <p>Individual features working correctly</p>
-                            <ul>
-                                <li>Configuration generation</li>
-                                <li>Policy deployment</li>
-                                <li>Protection levels</li>
-                                <li>Recipient targeting</li>
-                                <li>Advanced features</li>
-                            </ul>
-                        </div>
-                        <div class="test-level">
-                            <h3>Integration Tests (25+)</h3>
-                            <p>Component interactions and data flow</p>
-                            <ul>
-                                <li>Config-to-deployment pipeline</li>
-                                <li>Policy coordination</li>
-                                <li>Allow/Block list processing</li>
-                                <li>Recipient consistency</li>
-                                <li>Error scenarios</li>
-                            </ul>
-                        </div>
-                        <div class="test-level">
-                            <h3>End-to-End Tests (10+)</h3>
-                            <p>Complete workflows from start to finish</p>
-                            <ul>
-                                <li>Full deployment flow</li>
-                                <li>Dry-run to enforcement</li>
-                                <li>Three-phase rollout</li>
-                                <li>Configuration consistency</li>
-                                <li>Rollback procedures</li>
-                            </ul>
-                        </div>
-                    </div>
-                </article>
-
-                <article class="card">
-                    <h2>Acceptance Testing</h2>
-                    <p>Business requirement validation with 50+ checklist items:</p>
-                    <ul>
-                        <li>✓ Configuration requirements (8 items)</li>
-                        <li>✓ Deployment capabilities (12 items)</li>
-                        <li>✓ Documentation completeness (4 files)</li>
-                        <li>✓ Interface functionality (10 items)</li>
-                        <li>✓ Testing requirements (5 levels)</li>
-                        <li>✓ Quality assurance metrics</li>
-                        <li>✓ Customer readiness sign-off</li>
-                    </ul>
-                </article>
-
-                <article class="card">
-                    <h2>Running Tests</h2>
-                    <pre><code># Install Pester
-Install-Module Pester -Force -SkipPublisherCheck
-
-# Run all tests
-Invoke-Pester -Path ".\tests" -Output Detailed
-
-# Using master runner
-.\tests\Run-Tests.ps1 -TestLevel All -WithCodeCoverage
-
-# By level
-.\tests\Run-Tests.ps1 -TestLevel Unit
-.\tests\Run-Tests.ps1 -TestLevel Integration
-.\tests\Run-Tests.ps1 -TestLevel E2E</code></pre>
-                </article>
-
-                <article class="card">
-                    <h2>Test Framework</h2>
-                    <ul>
-                        <li><strong>Framework:</strong> Pester 5.3+ (PowerShell unit testing)</li>
-                        <li><strong>Patterns:</strong> Arrange-Act-Assert structure</li>
-                        <li><strong>Fixtures:</strong> JSON test data files included</li>
-                        <li><strong>Specifications:</strong> BDD-style Gherkin features</li>
-                        <li><strong>Mocking:</strong> Exchange Online command simulation</li>
-                        <li><strong>CI/CD:</strong> GitHub Actions integration examples</li>
-                        <li><strong>Coverage:</strong> Code and workflow coverage tracking</li>
-                    </ul>
+                    <h2>Recovery</h2>
+                    <p>Rollback uses before-state captured by the approved-change workflow and restores only settings covered by reviewed adapters. Never recreate Microsoft-managed preset backing policies from serialized PowerShell output.</p>
+                    <p>After recovery, recollect and verify the complete evidence matrix. Configuration recovery cannot reverse messages already delivered, quarantined, or otherwise processed.</p>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Test Documentation</h2>
-                    <div class="doc-links">
-                        <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/tests/SecureBaseline.Tests.ps1" target="_blank" rel="noopener noreferrer">SecureBaseline.Tests.ps1</a></h4>
-                            <p>Static Pester guardrails covering both deployment profiles</p>
-                        </div>
-                        <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/CONTROL-CATALOG.md" target="_blank" rel="noopener noreferrer">CONTROL-CATALOG.md</a></h4>
-                            <p>MUST / SHOULD / AVOID matrix with an evidence command per control</p>
-                        </div>
-                        <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a></h4>
-                            <p>Portal path, exact cmdlet and value, verification command, expected output</p>
-                        </div>
-                        <div class="doc-item">
-                            <h4><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/deprecated/README.md" target="_blank" rel="noopener noreferrer">deprecated/README.md</a></h4>
-                            <p>Quarantined custom-policy solution and the defects recorded against it</p>
-                        </div>
-                    </div>
+                    <h2>Government and sovereign clouds</h2>
+                    <p>Microsoft Defender for Office 365 is available in GCC, GCC High, and DoD with environment-specific portals, licensing, and capability differences. This repository's active journey is limited to Worldwide tenants and has not validated sovereign-cloud or hybrid endpoints, authentication, licensing, or feature behavior.</p>
+                    <p>Do not use this microsite as evidence that GCC High, DoD, or hybrid deployments are supported.</p>
                 </article>
             </div>
         </section>
 
-        <!-- FAQ Section -->
-        <section id="faq" class="section">
-            <h1>Frequently Asked Questions</h1>
-            <p class="subtitle">Common questions about MDO baseline configurations</p>
+        <section id="testing" class="section">
+            <h1>Validation and evidence</h1>
+            <p class="subtitle">Repository tests establish repository behavior; Microsoft documentation establishes product behavior</p>
 
+            <div class="content-grid">
+                <article class="card">
+                    <h2>Static baseline guardrails</h2>
+                    <pre><code>Invoke-Pester `
+    .\samples\contoso-exchange-online-managed-service\tests\SecureBaseline.Tests.ps1</code></pre>
+                    <p>These tests inspect shipped configuration. They do not certify a live tenant.</p>
+                </article>
+
+                <article class="card">
+                    <h2>Microsite content guardrails</h2>
+                    <pre><code>Invoke-Pester `
+    .\samples\contoso-exchange-online-managed-service\tests\unit\MicrositeContent.Tests.ps1</code></pre>
+                    <p>The content tests reject legacy scripts, obsolete schemas, detect-only preset claims, and other unsupported concepts.</p>
+                </article>
+
+                <article class="card full-width">
+                    <h2>Evidence contract</h2>
+                    <p>Live collection must use the same configuration, parameters, entitlement handoff, recipient matrix, manifest, and approval that governed the change. Pass, NotEntitled, ApprovedException, Fail, and Error remain distinct. Externally owned readiness remains unverified until its accountable owner supplies admissible evidence.</p>
+                </article>
+            </div>
+        </section>
+
+        <section id="faq" class="section">
+            <h1>Frequently asked questions</h1>
             <div class="faq-container">
                 <details class="faq-item">
-                    <summary>What's the difference between Standard and Strict protection?</summary>
+                    <summary>Does preview create a detect-only mail-flow mode?</summary>
                     <div class="faq-content">
-                        <p><strong>Standard Protection</strong> is recommended for most organizations. It provides protection against common threats including spoofing, malware, and phishing using Microsoft's recommended Standard preset thresholds.</p>
-                        <p><strong>Strict Protection</strong> is recommended for high-risk organizations such as financial institutions, government agencies, and organizations handling sensitive data. It includes aggressive settings and additional protections like impersonation protection and Automated Investigation & Response.</p>
+                        <p>No. The supported plan and approved preview describe proposed administrative changes. Standard and Strict presets enforce their documented actions when assigned. Microsoft Defender evaluation is a separate feature and is not configured by this workflow.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary>Can I use Audit mode before enforcing policies?</summary>
+                    <summary>Can I tune Standard or Strict thresholds?</summary>
                     <div class="faq-content">
-                        <p>Yes. Audit mode is recommended for initial deployment. In Audit mode, policies detect threats but don't block or quarantine messages. This allows you to:</p>
-                        <ul>
-                            <li>Monitor policy impact</li>
-                            <li>Identify false positives</li>
-                            <li>Adjust settings before enforcement</li>
-                            <li>Review detection reports</li>
-                        </ul>
-                        <p>After validation, switch to Enforce mode for active protection.</p>
+                        <p>No. Virtually all individual preset settings are Microsoft-managed. Manage supported recipient scope and exclusions instead. A custom policy does not override an applicable Strict or Standard preset.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary>How do I handle false positives?</summary>
+                    <summary>Does Strict include AIR?</summary>
                     <div class="faq-content">
-                        <p>If legitimate emails are blocked:</p>
-                        <ul>
-                            <li>Review logs in Microsoft Defender portal</li>
-                            <li>Add sender to Allow List via Tenant Allow/Block List</li>
-                            <li>Adjust policy thresholds (e.g., phishing threshold level)</li>
-                            <li>Create exception policies for specific users/groups</li>
-                            <li>Report false positives via Submissions</li>
-                        </ul>
+                        <p>No. Strict is a Microsoft-managed protection profile. AIR and other advanced investigation capabilities are separate Plan 2 features and require applicable tenant and recipient entitlement.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary>What's the cost of implementing these configurations?</summary>
+                    <summary>Are all capabilities included at no extra cost?</summary>
                     <div class="faq-content">
-                        <p>These configurations use existing Microsoft Defender for Office 365 features included in your Microsoft 365 subscription. No additional costs for:</p>
-                        <ul>
-                            <li>Policy configuration and deployment</li>
-                            <li>Threat detection and enforcement</li>
-                            <li>Safe Attachments/Links scanning</li>
-                            <li>Anti-phishing protections</li>
-                        </ul>
-                        <p><em>Note: Automated Investigation & Response and some advanced features require MDO Plan 2 licenses.</em></p>
+                        <p>No general cost claim can be made. Required licensing depends on the capability and every recipient who benefits from it. Verify current tenant service plans and recipient assignments; do not infer entitlement from a suite display name.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary>Can I customize these baseline configurations?</summary>
+                    <summary>How should false positives be handled?</summary>
                     <div class="faq-content">
-                        <p>Yes. The configuration templates can be customized:</p>
-                        <ul>
-                            <li>Modify JSON templates with your preferred settings</li>
-                            <li>Create custom policies after baseline deployment</li>
-                            <li>Adjust thresholds and actions per organizational needs</li>
-                            <li>Add recipient exceptions and allow/block lists</li>
-                        </ul>
-                        <p>The baseline serves as a best-practice starting point that can be tailored to your organization.</p>
+                        <p>Submit legitimate messages, URLs, or attachments to Microsoft first. When Microsoft filtering caused the block, the service can create the applicable temporary allow entry. Entity type controls behavior and expiration. Broad or permanent sender allows must not replace authentication fixes, correct scope, or verdict review.</p>
+                        <p>The active configuration prohibits permanent allow entries and requires owner, ticket, timestamps, expiry, and justification for governed entries.</p>
                     </div>
                 </details>
 
                 <details class="faq-item">
-                    <summary>How do I monitor policy effectiveness?</summary>
+                    <summary>Does this workflow support GCC High or DoD?</summary>
                     <div class="faq-content">
-                        <p>Use these Microsoft Defender portal tools:</p>
-                        <ul>
-                            <li><strong>Configuration Analyzer:</strong> Review policy settings vs. recommended baselines</li>
-                            <li><strong>Mail flow reports:</strong> Monitor message actions (delivered, quarantined, etc.)</li>
-                            <li><strong>Threat reports:</strong> Analyze detected malware, phishing, and spam</li>
-                            <li><strong>Detection tuning:</strong> Track and tune automated detections</li>
-                            <li><strong>Submissions:</strong> Review user-reported messages</li>
-                        </ul>
-                    </div>
-                </details>
-
-                <details class="faq-item">
-                    <summary>Is there support for government clouds (GCC, DoD)?</summary>
-                    <div class="faq-content">
-                        <p>Yes. The configuration schema includes environment selection:</p>
-                        <ul>
-                            <li>Cloud (Commercial)</li>
-                            <li>GCC</li>
-                            <li>GCC-High</li>
-                            <li>DoD</li>
-                        </ul>
-                        <p>Select your environment during configuration generation, and the deployment scripts will connect to the appropriate endpoint.</p>
-                    </div>
-                </details>
-
-                <details class="faq-item">
-                    <summary>What testing is included?</summary>
-                    <div class="faq-content">
-                        <p>The repository includes a testing framework with 150+ tests:</p>
-                        <ul>
-                            <li><strong>Unit Tests (50+):</strong> Individual function testing with 80%+ code coverage</li>
-                            <li><strong>Feature Tests (20+):</strong> Individual feature validation</li>
-                            <li><strong>Integration Tests (25+):</strong> Component interaction testing</li>
-                            <li><strong>E2E Tests (10+):</strong> Complete workflow testing</li>
-                            <li><strong>Acceptance Tests (50+):</strong> Business requirement validation</li>
-                        </ul>
-                        <p>All tests are built with Pester and include CI/CD integration examples. See the Testing section for details.</p>
-                    </div>
-                </details>
-
-                <details class="faq-item">
-                    <summary>Is all source code and documentation included?</summary>
-                    <div class="faq-content">
-                        <p>Yes. The repository includes the following source artifacts:</p>
-                        <ul>
-                            <li><strong>Configuration Templates:</strong> Schema and two baseline templates (JSON)</li>
-                            <li><strong>PowerShell Scripts:</strong> Deploy, Generate, and Validate scripts</li>
-                            <li><strong>Microsite:</strong> HTML, CSS, and JavaScript source</li>
-                            <li><strong>SharePoint App:</strong> SPFx project structure</li>
-                            <li><strong>Documentation:</strong> Setup, deployment, customization, and troubleshooting guides</li>
-                            <li><strong>Testing Framework:</strong> 150+ tests with source</li>
-                        </ul>
-                        <p>The repository contents are provided as source files that can be reviewed and customized. Refer to the repository license for terms of use.</p>
+                        <p>No validated support is claimed. The active administrator journey is Worldwide-only. Sovereign and hybrid environments require a separately reviewed and tested journey.</p>
                     </div>
                 </details>
             </div>
         </section>
 
-        <!-- Resources Section -->
         <section id="resources" class="section">
-            <h1>Resources & Documentation</h1>
-            <p class="subtitle">Links to documentation, scripts, and support materials</p>
-
+            <h1>Resources and documentation</h1>
             <div class="resources-grid">
                 <article class="resource-card">
-                    <h3>📚 Microsoft Learn</h3>
+                    <h3>Active repository guidance</h3>
                     <ul>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/" target="_blank">Microsoft Defender for Office 365 Documentation</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/mdo-deployment-guide" target="_blank">MDO Deployment Guide</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/preset-security-policies" target="_blank">Preset Security Policies</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/configuration-analyzer-for-security-policies" target="_blank">Configuration Analyzer</a></li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-ADMINISTRATOR-JOURNEY.md" target="_blank" rel="noopener noreferrer">Exchange administrator journey</a></li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-ONLY.md" target="_blank" rel="noopener noreferrer">Exchange-only execution boundary</a></li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/APPROVED-CHANGE.md" target="_blank" rel="noopener noreferrer">Approved change and rollback</a></li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md" target="_blank" rel="noopener noreferrer">Frozen evidence gate</a></li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-EMAIL-PROTECTION.md" target="_blank" rel="noopener noreferrer">Exchange email protection contract</a></li>
                     </ul>
                 </article>
 
                 <article class="resource-card">
-                    <h3>🛠️ Scripts &amp; Tools</h3>
+                    <h3>Microsoft product documentation</h3>
                     <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/scripts/Deploy-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Deploy-ExchangeOnlineBaseline.ps1</a> - WhatIf-by-default deployment</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Test-ExchangeOnlineBaseline.ps1</a> - Evidence collector</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.microsoft-native.json" target="_blank" rel="noopener noreferrer">Microsoft-native baseline</a> - No third-party gateway</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.json" target="_blank" rel="noopener noreferrer">Gateway baseline</a> - Third-party SMTP gateway</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/config/exchange-online-secure-baseline.schema.json" target="_blank" rel="noopener noreferrer">Baseline schema</a> - Includes the gateway conditional</li>
-                    </ul>
-                </article>
-
-                <article class="resource-card">
-                    <h3>🧪 Testing Framework</h3>
-                    <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/tests/SecureBaseline.Tests.ps1" target="_blank" rel="noopener noreferrer">SecureBaseline.Tests.ps1</a> - Static Pester guardrails</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/CONTROL-CATALOG.md" target="_blank" rel="noopener noreferrer">CONTROL-CATALOG.md</a> - MUST / SHOULD / AVOID matrix</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a> - Per-control verification steps</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/deprecated/README.md" target="_blank" rel="noopener noreferrer">deprecated/README.md</a> - Quarantined solution and its defects</li>
-                    </ul>
-                </article>
-
-                <article class="resource-card">
-                    <h3>🔗 References</h3>
-                    <ul>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/anti-phishing-policies-mdo-configure" target="_blank">Anti-Phishing Policies</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/safe-attachments-about" target="_blank">Safe Attachments</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/safe-links-about" target="_blank">Safe Links</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/anti-malware-policies-configure" target="_blank">Anti-Malware Policies</a></li>
-                    </ul>
-                </article>
-
-                <article class="resource-card">
-                    <h3>📖 Best Practices</h3>
-                    <ul>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365" target="_blank">Recommended Settings for EOP & MDO</a></li>
-                        <li><a href="https://learn.microsoft.com/defender-office-365/try-microsoft-defender-for-office-365" target="_blank">Trial & Evaluation Guide</a></li>
-                        <li><a href="https://learn.microsoft.com/microsoft-365-apps/security/security-baseline" target="_blank">Microsoft 365 Security Baselines</a></li>
-                        <li><a href="https://security.microsoft.com/configuration-analyzer" target="_blank">Configuration Analyzer Portal</a></li>
-                    </ul>
-                </article>
-
-                <article class="resource-card">
-                    <h3>📦 Intellectual Property</h3>
-                    <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/SOLUTION_SUMMARY.md" target="_blank" rel="noopener noreferrer">SOLUTION_SUMMARY.md</a> - Control coverage and evidence map</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/IMPLEMENTATION-GUIDE.md" target="_blank" rel="noopener noreferrer">IMPLEMENTATION-GUIDE.md</a> - Ordered end-to-end setup</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/LICENSING-GATE.md" target="_blank" rel="noopener noreferrer">LICENSING-GATE.md</a> - Control availability by licence tier</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/master/samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md" target="_blank" rel="noopener noreferrer">RUNBOOKS.md</a> - Portal path, cmdlet, value, expected output</li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/preset-security-policies" target="_blank" rel="noopener noreferrer">Preset security policies</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/mdo-about" target="_blank" rel="noopener noreferrer">Defender for Office 365 overview and licensing</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/tenant-allow-block-list-about" target="_blank" rel="noopener noreferrer">Tenant Allow/Block List</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/submissions-admin" target="_blank" rel="noopener noreferrer">Admin submissions</a></li>
+                        <li><a href="https://learn.microsoft.com/defender-office-365/mdo-gov" target="_blank" rel="noopener noreferrer">US government availability and differences</a></li>
+                        <li><a href="https://learn.microsoft.com/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps" target="_blank" rel="noopener noreferrer">Exchange Online PowerShell module requirements</a></li>
                     </ul>
                 </article>
             </div>
-
-            <article class="card full-width">
-                <h2>Project Structure</h2>
-                <p>All project files are organized as follows:</p>
-                <pre><code>exchange-online-protection/
-├── .github/workflows/
-│   └── deploy-pages.yml
-├── samples/
-│   └── contoso-exchange-online-managed-service/   # Supported solution
-│       ├── config/
-│       │   ├── exchange-online-secure-baseline.json                  # Gateway profile
-│       │   ├── exchange-online-secure-baseline.microsoft-native.json # Native profile
-│       │   ├── exchange-online-secure-baseline.schema.json
-│       │   ├── parameters.sample.json
-│       │   └── parameters.microsoft-native.sample.json
-│       ├── dashboard/
-│       │   ├── index.html
-│       │   ├── mail-flow.svg
-│       │   ├── script.js
-│       │   └── styles.css
-│       ├── docs/
-│       │   ├── CONTROL-CATALOG.md      # MUST / SHOULD / AVOID matrix
-│       │   ├── IMPLEMENTATION-GUIDE.md # Ordered end-to-end setup
-│       │   ├── LICENSING-GATE.md       # Control availability by licence tier
-│       │   └── RUNBOOKS.md             # Setting-level procedures
-│       ├── scripts/
-│       │   ├── Deploy-ExchangeOnlineBaseline.ps1
-│       │   └── Test-ExchangeOnlineBaseline.ps1
-│       ├── tests/
-│       │   └── SecureBaseline.Tests.ps1
-│       └── README.md
-├── deprecated/                                     # Quarantined, do not deploy
-│   ├── README.md                                   # Recorded defects
-│   └── mdo-baseline-config-custom-policies/
-├── microsite/
-│   ├── .nojekyll
-│   ├── index.html                      # This published page
-│   ├── script.js
-│   └── styles.css
-└── SOLUTION_SUMMARY.md</code></pre>
-            </article>
         </section>
     </main>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <p class="footer-disclaimer"><strong>Disclaimer:</strong> The information and templates provided in this repository are for example purposes only and are provided “as is, where is” without any warranty of any kind, express or implied. Use of this repository is entirely at your own risk. This is not an official Microsoft product, and it does not replace, equate to, or represent any official Microsoft product or service.</p>
-            <p>&copy; 2026 MDO Baseline Configuration Template</p>
-            <p>Exchange Online Protection Baseline</p>
-        </div>
-    </footer>
 
     <script src="script.js"></script>
 </body>
