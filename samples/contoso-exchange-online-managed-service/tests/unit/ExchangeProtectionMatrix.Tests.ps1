@@ -568,6 +568,7 @@ Describe 'EXR-010 effective email setting matrix' {
         $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[4].defender = $false
         $fixture.Context.Entitlement.recipients[4].servicePlans = @('EXCHANGE_S_ENTERPRISE')
         $fixture.Raw['Get-ATPBuiltInProtectionRule'].Items[0].ExceptIfSentTo = @('secops@contoso.example')
+        $fixture.Raw['Get-AntiPhishRule'].Items[0].ExceptIfSentTo = @('secops@contoso.example')
         Set-A02Exception $fixture
         $expectedRecipients = @(
             @{ Address = 'user@contoso.example'; Policy = 'Standard Preset Security Policy'; Profile = 'Standard'; Defender = $true; Outbound = 'Default' }
@@ -614,7 +615,7 @@ Describe 'EXR-010 effective email setting matrix' {
         # Act
         $result = Invoke-ProtectionRawRegistry $fixture $script:matrixModule | Where-Object ControlId -eq MDO-001
         # Assert
-        $result.Result.Status | Should -BeExactly ApprovedException
+        $result.Result.Status | Should -BeExactly ApprovedException -Because $result.Result.Reason
         $result.Result.Reason | Should -Match '^EmailProtectionVerified:'
         $result.Evidence.ControlId | Should -BeExactly 'MDO-001'
         @($result.Evidence.Value.Matrix).Count | Should -Be 28

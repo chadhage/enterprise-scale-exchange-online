@@ -1,5 +1,16 @@
 # Licensing and Capability Gate
 
+Exchange action planning and evidence evaluation consume a supplied licensing-owner handoff. The
+handoff must be current, tenant-bound, domain-bound, and recipient-bound, and must explicitly name
+`EXCHANGE_S_ENTERPRISE` for Exchange Online plus `ATP_ENTERPRISE` wherever Defender email
+capabilities are requested. The offline gate does not assign licenses, query Graph, or connect to
+Exchange Online to repair missing evidence.
+
+The current projection is deliberately narrow and does not yet model every Exchange plan or infer
+entitlement from suite labels such as `SPE_E5`. P2 priority-account capabilities, AIR, and similar
+optional features require separate, exact recipient-scoped capability attestations. Those
+attestations establish licensing only; operational readiness remains independently evidenced.
+
 Every control in the [control catalog](CONTROL-CATALOG.md) carries a **Tier**: the minimum licence that entitles you to configure it. Declare your tier once in the baseline configuration and the tooling branches accordingly.
 
 ```json

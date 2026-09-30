@@ -1096,126 +1096,251 @@ Describe 'EXR-010-A12-L01-F02 bounded compatibility negatives' {
     }
 
     Describe 'EXR-010-A12-L01-F02 bounded compatibility positive' {
-        AfterEach {
-            if ($null -ne $script:positiveCertificate) { $script:positiveCertificate.Dispose() }
-            if ($null -ne $script:positiveKey) { $script:positiveKey.Dispose() }
-        }
-
         It 'resolves and exercises the complete offline compatibility surface without weakening refusal shapes' {
             # Arrange
-            $module = $script:commonModule
-            $fixture = New-ProtectionFixture
-            $script:positiveKey = [Security.Cryptography.RSA]::Create(2048)
-            $positiveRequest = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
-                'CN=Offline Positive Signer',
-                $script:positiveKey,
-                [Security.Cryptography.HashAlgorithmName]::SHA256,
-                [Security.Cryptography.RSASignaturePadding]::Pkcs1
-            )
-            $script:positiveCertificate = $positiveRequest.CreateSelfSigned(
-                [datetimeoffset]::UtcNow.AddMinutes(-5),
-                [datetimeoffset]::UtcNow.AddHours(1)
-            )
-            $global:PublicSurfacePositiveThumbprint = $script:positiveCertificate.Thumbprint
-            $directory = Join-Path $TestDrive 'positive'
-            $null = New-Item -ItemType Directory -Path $directory
-            $configurationPath = Join-Path $directory 'configuration.json'
-            $parameterPath = Join-Path $directory 'parameters.json'
-            $evidencePath = Join-Path $directory 'evidence.json'
-            $signaturePath = Join-Path $directory 'evidence.p7s'
-            $authorizedSignerPath = Join-Path $directory 'authorized-signers.json'
-            $fixture.Context.Configuration | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $configurationPath
-            $fixture.Context.Parameters | ConvertTo-Json -Depth 100 | Set-Content -LiteralPath $parameterPath
-            @{ Check = @(); Evidence = @() } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $evidencePath
-            @(@{
-                    Identity = 'offline-positive-reviewer'
-                    Authority = 'ExchangeOnlineChangeApproval'
-                    Thumbprint = $script:positiveCertificate.Thumbprint
-                    Subject = $script:positiveCertificate.Subject
-                }) | ConvertTo-Json -Depth 10 -AsArray | Set-Content -LiteralPath $authorizedSignerPath
-            $evidenceHash = (Get-FileHash -LiteralPath $evidencePath -Algorithm SHA256).Hash
-            Mock Test-BaselineEvidenceCertificateChain -ModuleName ExchangeOnlineBaseline.Common {
-                param($Certificate, $CertificateCollection, $DecisionTimeUtc)
-                $additional = @($CertificateCollection | Where-Object {
-                        $_.Thumbprint -ine $Certificate.Thumbprint
-                    })
-                $root = if ($additional.Count -gt 0) { $additional[-1] } else { $Certificate }
-                [ordered]@{
-                    Thumbprint = $Certificate.Thumbprint
-                    LeafThumbprint = $Certificate.Thumbprint
-                    RootThumbprint = $root.Thumbprint
-                    DecisionTimeUtc = if ($null -ne $DecisionTimeUtc) {
-                        [datetimeoffset]$DecisionTimeUtc
-                    }
-                    else {
-                        [datetimeoffset]::UtcNow
-                    }
-                    ChainTrusted = $true
-                    RevocationStatus = 'Good'
+            $childPath = Join-Path $TestDrive 'fresh-public-surface.ps1'
+            $helperPath = Join-Path $script:sampleRoot 'tests/helpers/ExchangeProtectionFixture.ps1'
+            @'
+param(
+    [Parameter(Mandatory)][string]$ManifestPath,
+    [Parameter(Mandatory)][string]$HelperPath,
+    [Parameter(Mandatory)][int]$ParentProcessId
+)
+$ErrorActionPreference = 'Stop'
+$WarningPreference = 'SilentlyContinue'
+
+function Invoke-OfflineRegistryWithRealChain {
+    param($Fixture, $Module)
+    & $Module {
+        param(
+            $context,
+            $protectionRawFixture,
+            $acceptedLeafThumbprint,
+            $acceptedRootThumbprint
+        )
+        $context.Configuration = Convert-BaselinePlaceholderNode $context.Configuration $context.Parameters
+        $installedCommands = @($protectionRawFixture.Keys)
+        $originalFunctions = @{}
+        $originalChainVerifier =
+            (Get-Command 'Test-BaselineEvidenceCertificateChain' -CommandType Function).ScriptBlock
+        $originalPinnedRootVerifier =
+            (Get-Command 'Test-BaselinePinnedRootEvidenceCertificateChain' -CommandType Function).ScriptBlock
+        $fixtureChainVerifier = {
+            param($Certificate, $CertificateCollection, $TrustedRoot, $DecisionTimeUtc)
+            [ordered]@{
+                Thumbprint = $Certificate.Thumbprint
+                LeafThumbprint = $acceptedLeafThumbprint
+                RootThumbprint = $acceptedRootThumbprint
+                DecisionTimeUtc = if ($null -ne $DecisionTimeUtc) {
+                    [datetimeoffset]$DecisionTimeUtc
+                }
+                else {
+                    [datetimeoffset]::UtcNow
+                }
+                ChainTrusted = $true
+                RevocationStatus = 'Good'
+                FailureStatus = @()
+            }
+        }.GetNewClosure()
+        Set-Item 'Function:\script:Test-BaselineEvidenceCertificateChain' $fixtureChainVerifier
+        Set-Item 'Function:\script:Test-BaselinePinnedRootEvidenceCertificateChain' $fixtureChainVerifier
+        foreach ($command in $installedCommands) {
+            $original = Microsoft.PowerShell.Management\Get-Item "Function:\$command" -ErrorAction SilentlyContinue
+            if ($null -ne $original) {
+                $originalFunctions[$command] = $original.ScriptBlock
+            }
+            $body = {
+                [CmdletBinding()]
+                param($Identity,$ResultSize,$QuarantinePolicyType,$Policy,$ListType,[switch]$Allow,[switch]$Block,$Mailbox,[switch]$IncludeHidden,[switch]$RetrieveEwsOperationAccessPolicy,[switch]$GetEffectiveUsers,[switch]$InactiveMailboxOnly,[switch]$SoftDeletedMailbox,[switch]$IncludeSoftDeletedRecipients,[switch]$ExtendedProperties,$Sender,$Recipient)
+                $response = $protectionRawFixture[$MyInvocation.MyCommand.Name]
+                if ($response['Error']) { throw $response['Error'] }
+                $items = $response['Items']
+                if ($response['ByIdentity'] -and $Identity) { $items = $response['ByIdentity'][$Identity] }
+                elseif ($Identity -and $MyInvocation.MyCommand.Name -notin @('Get-DistributionGroupMember','Get-RoleGroupMember','Export-MailboxDiagnosticLogs','Get-MailboxStatistics')) { $items = @($items | Where-Object { $_['Identity'] -eq $Identity -or $_['Name'] -eq $Identity -or $_['PrimarySmtpAddress'] -eq $Identity }) }
+                if ($response['ByType'] -and $QuarantinePolicyType) { $items = $response['ByType'][$QuarantinePolicyType] }
+                if ($GetEffectiveUsers) { $items = $response['Effective'] }
+                if ($InactiveMailboxOnly) { $items = $response['Inactive'] }
+                if ($SoftDeletedMailbox) { $items = $response['SoftDeleted'] }
+                foreach ($item in $items) { [pscustomobject]$item }
+            }.GetNewClosure()
+            Set-Item "Function:$command" $body
+        }
+        try {
+            @(Invoke-BaselineExchangeRegistry -Context $context)
+        }
+        finally {
+            Set-Item 'Function:\script:Test-BaselineEvidenceCertificateChain' $originalChainVerifier
+            Set-Item 'Function:\script:Test-BaselinePinnedRootEvidenceCertificateChain' $originalPinnedRootVerifier
+            foreach ($command in $installedCommands) {
+                if ($originalFunctions.ContainsKey($command)) {
+                    Set-Item "Function:$command" $originalFunctions[$command]
+                }
+                else {
+                    Remove-Item "Function:$command" -ErrorAction SilentlyContinue
                 }
             }
-            Mock Get-BaselineEvidenceContentHash -ModuleName ExchangeOnlineBaseline.Common {
-                @{ Hash = ('a' * 64) }
-            }
-            Mock Test-BaselineGoLive -ModuleName ExchangeOnlineBaseline.Common {
-                [ordered]@{
-                    Admitted = $true
-                    Reason = 'OfflineSignedEvidenceAdmitted'
-                    Result = [ordered]@{ ControlId = 'GATE-003'; Status = 'Pass' }
-                    ExternalReadiness = (Get-BaselineExchangeManifest).ExternalReadiness
+        }
+    } $Fixture.Context $Fixture.Raw $Fixture.ArtifactLeaf.Thumbprint $Fixture.ArtifactRoot.Thumbprint
+}
+
+$fixture = $null
+try {
+    $module = Import-Module $ManifestPath -Force -DisableNameChecking -PassThru
+    . $HelperPath
+    $fixture = New-ProtectionFixture
+    $builtInSafeLinks = @(
+        $fixture.Raw['Get-SafeLinksPolicy'].Items |
+            Where-Object Name -CEQ 'Built-In Protection Policy'
+    )[0]
+    $builtInSafeLinks.EnableForInternalSenders = $true
+    $builtInSafeLinks.DisableURLRewrite = $false
+    $builtInSafeLinks.AllowClickThrough = $false
+    $rootPath = Join-Path $fixture.ArtifactDirectory 'offline-fixture-root.cer'
+    [IO.File]::WriteAllBytes(
+        $rootPath,
+        $fixture.ArtifactRoot.Export(
+            [Security.Cryptography.X509Certificates.X509ContentType]::Cert
+        )
+    )
+    $rootHash = [Convert]::ToHexString(
+        [Security.Cryptography.SHA256]::HashData([IO.File]::ReadAllBytes($rootPath))
+    ).ToLowerInvariant()
+    foreach ($reference in $fixture.Context.Parameters.operationalEvidence.Values) {
+        $reference.trustedRoot = @{ path = $rootPath; sha256 = $rootHash }
+    }
+    $certificateCollection =
+        [Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
+    $null = $certificateCollection.Add($fixture.ArtifactRoot)
+    $chainEvidence = & $module {
+        param($leaf, $collection, $root)
+        Test-BaselineEvidenceCertificateChain -Certificate $leaf `
+            -CertificateCollection $collection -TrustedRoot $root `
+            -DecisionTimeUtc ([datetimeoffset]::UtcNow)
+    } $fixture.ArtifactLeaf $certificateCollection $fixture.ArtifactRoot
+    $publicCommands = @(Get-Command -Module ExchangeOnlineBaseline.Common -Name @(
+                'Get-BaselineExchangeManifest'
+                'Get-BaselineExchangeContext'
+                'Invoke-BaselineExchangeRegistry'
+                'Invoke-BaselineExchangeGoLive'
+            ) -ErrorAction SilentlyContinue)
+    $manifest = Get-BaselineExchangeManifest
+    $execution = @(Invoke-OfflineRegistryWithRealChain -Fixture $fixture -Module $module)
+    $mdo001 = @($execution | Where-Object ControlId -CEQ 'MDO-001')[0]
+    $mdo006 = @($execution | Where-Object ControlId -CEQ 'MDO-006')[0]
+    $goLiveDirectory = Join-Path $fixture.ArtifactDirectory 'go-live'
+    $null = New-Item -ItemType Directory -Path $goLiveDirectory
+    $evidencePath = Join-Path $goLiveDirectory 'evidence.json'
+    $signaturePath = Join-Path $goLiveDirectory 'evidence.p7s'
+    $authorityPath = Join-Path $goLiveDirectory 'authorized-signers.json'
+    @{ Check = @(); Evidence = @() } |
+        ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $evidencePath
+    @(@{
+            Identity = 'offline-positive-reviewer'
+            Authority = 'ExchangeOnlineChangeApproval'
+            Thumbprint = $fixture.ArtifactLeaf.Thumbprint
+            Subject = $fixture.ArtifactLeaf.Subject
+        }) | ConvertTo-Json -Depth 10 -AsArray | Set-Content -LiteralPath $authorityPath
+    $evidenceHash = (Get-FileHash -LiteralPath $evidencePath -Algorithm SHA256).Hash
+    $goLiveRefusal = try {
+        $null = Invoke-BaselineExchangeGoLive -Context $fixture.Context `
+            -EvidencePath $evidencePath -SignaturePath $signaturePath `
+            -MaximumEvidenceAge ([timespan]::FromHours(1)) `
+            -SignerIdentity 'offline-positive-reviewer' -AuthorizedSignerPath $authorityPath `
+            -ExpectedEvidenceHash $evidenceHash -ExpectedConfigurationHash $fixture.Context.Hash `
+            -SignEvidence -SigningCertificate $fixture.ArtifactLeaf
+        $null
+    }
+    catch {
+        $_.Exception.Message
+    }
+    [pscustomobject]@{
+        ChildProcessId = $PID
+        FreshProcess = $PID -ne $ParentProcessId
+        ModulePath = $module.Path
+        PublicCommandCount = $publicCommands.Count
+        PublicCommandName = @($publicCommands.Name | Sort-Object)
+        ManifestControlId = @($manifest.ControlId)
+        ResultCount = $execution.Count
+        UniqueControlCount = @($execution.ControlId | Select-Object -Unique).Count
+        ErrorCount = @($execution.Result | Where-Object Status -EQ 'Error').Count
+        ErrorResult = @(
+            $execution |
+                Where-Object { $_.Result.Status -CEQ 'Error' } |
+                ForEach-Object {
+                    [ordered]@{
+                        ControlId = $_.ControlId
+                        Reason = $_.Result.Reason
+                    }
                 }
-            }
-            Mock Get-BaselineRunOutcome -ModuleName ExchangeOnlineBaseline.Common {
-                [pscustomobject]@{ Success = $true; ExitCode = 0 }
-            }
+        )
+        Mdo001Status = $mdo001.Result.Status
+        Mdo001Reason = $mdo001.Result.Reason
+        Mdo006Status = $mdo006.Result.Status
+        Mdo006Reason = $mdo006.Result.Reason
+        ChainTrusted = $chainEvidence.ChainTrusted
+        ChainRevocationStatus = $chainEvidence.RevocationStatus
+        ChainLeafThumbprint = $chainEvidence.LeafThumbprint
+        ChainRootThumbprint = $chainEvidence.RootThumbprint
+        ExpectedLeafThumbprint = $fixture.ArtifactLeaf.Thumbprint
+        ExpectedRootThumbprint = $fixture.ArtifactRoot.Thumbprint
+        ChainFailureCount = @($chainEvidence.FailureStatus).Count
+        GoLiveRefusal = $goLiveRefusal
+        SignatureCreated = Test-Path -LiteralPath $signaturePath
+    } | ConvertTo-Json -Depth 20 -Compress
+}
+finally {
+    if ($null -ne $fixture) {
+        $fixture.ArtifactLeaf.Dispose()
+        $fixture.ArtifactLeafKey.Dispose()
+        $fixture.ArtifactRoot.Dispose()
+        $fixture.ArtifactRootKey.Dispose()
+        Remove-Item -LiteralPath $fixture.ArtifactDirectory -Recurse -Force -ErrorAction SilentlyContinue
+    }
+}
+'@ | Set-Content -LiteralPath $childPath
+            $expectedCommands = @(
+                'Get-BaselineExchangeContext'
+                'Get-BaselineExchangeManifest'
+                'Invoke-BaselineExchangeGoLive'
+                'Invoke-BaselineExchangeRegistry'
+            )
 
             # Act
-            $actual = & {
-                $publicCommands = @(Get-Command -Module ExchangeOnlineBaseline.Common -Name @(
-                            'Get-BaselineExchangeManifest'
-                            'Get-BaselineExchangeContext'
-                            'Invoke-BaselineExchangeRegistry'
-                            'Invoke-BaselineExchangeGoLive'
-                        ) -ErrorAction SilentlyContinue)
-                $manifest = Get-BaselineExchangeManifest
-                $fixture.Context = Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath
-                $execution = @(Invoke-ProtectionRawRegistry -Fixture $fixture -Module $module)
-                $mdo001 = @($execution | Where-Object ControlId -CEQ 'MDO-001')[0]
-                $mdo006 = @($execution | Where-Object ControlId -CEQ 'MDO-006')[0]
-                $goLive = Invoke-BaselineExchangeGoLive -Context $fixture.Context -EvidencePath $evidencePath `
-                    -SignaturePath $signaturePath -MaximumEvidenceAge ([timespan]::FromHours(1)) `
-                    -SignerIdentity 'offline-positive-reviewer' -AuthorizedSignerPath $authorizedSignerPath `
-                    -ExpectedEvidenceHash $evidenceHash -ExpectedConfigurationHash $fixture.Context.Hash `
-                    -SignEvidence -SigningCertificate $script:positiveCertificate
+            $childOutput = @(& (Get-Process -Id $PID).Path -NoLogo -NoProfile -NonInteractive `
+                    -File $childPath -ManifestPath $script:manifestPath `
+                    -HelperPath $helperPath -ParentProcessId $PID 2>&1)
+            $childExitCode = $LASTEXITCODE
+            $actual = if ($childExitCode -eq 0) {
+                $childOutput[-1] | ConvertFrom-Json
+            }
+            else {
                 [pscustomobject]@{
-                    PublicCommandCount = $publicCommands.Count
-                    ManifestControlId = @($manifest.ControlId)
-                    ResultCount = $execution.Count
-                    UniqueControlCount = @($execution.ControlId | Select-Object -Unique).Count
-                    ErrorCount = @($execution.Result | Where-Object Status -EQ 'Error').Count
-                    Mdo001Status = $mdo001.Result.Status
-                    Mdo006Status = $mdo006.Result.Status
-                    GoLive = $goLive
-                    SignatureCreated = Test-Path -LiteralPath $signaturePath
+                    FreshProcess = $false
+                    ChildFailure = ($childOutput | Out-String).Trim()
                 }
             }
 
             # Assert
+            $childExitCode | Should -Be 0 -Because "the fresh import failed: $($actual.ChildFailure)"
+            $actual.FreshProcess | Should -BeTrue
+            $actual.ChildProcessId | Should -Not -Be $PID
+            $actual.ModulePath | Should -BeExactly $script:modulePath
             $actual.PublicCommandCount | Should -Be 4
+            $actual.PublicCommandName | Should -Be $expectedCommands
             $actual.ManifestControlId | Should -Be $script:exchangeControlId
             $actual.ResultCount | Should -Be 25
             $actual.UniqueControlCount | Should -Be 25
-            @($actual.GoLive.Outcome) | Should -HaveCount 1
-            $actual.Mdo001Status | Should -Be 'Pass'
-            $actual.Mdo006Status | Should -Be 'Pass'
-            $actual.ErrorCount | Should -Be 0
-            $actual.GoLive.Decision.Admitted | Should -BeTrue
-            $actual.GoLive.Decision.Result.ControlId | Should -BeExactly 'GATE-003'
-            $actual.GoLive.Decision.Result.Status | Should -BeExactly 'Pass'
-            $actual.GoLive.Decision.ExternalReadiness.Status | Should -BeExactly 'Unverified'
-            $actual.GoLive.Decision.Stage | Should -Be 'Sign'
-            $actual.GoLive.Outcome.Success | Should -BeTrue
-            $actual.SignatureCreated | Should -BeTrue
+            $actual.Mdo001Status | Should -Be 'Pass' -Because $actual.Mdo001Reason
+            $actual.Mdo001Reason | Should -Match '^EmailProtectionVerified:'
+            $actual.Mdo006Status | Should -Be 'Pass' -Because $actual.Mdo006Reason
+            $actual.ErrorCount | Should -Be 0 -Because ($actual.ErrorResult | ConvertTo-Json -Depth 5 -Compress)
+            $actual.ChainTrusted | Should -BeFalse
+            $actual.ChainRevocationStatus | Should -BeExactly 'Unknown'
+            $actual.ChainLeafThumbprint | Should -BeExactly $actual.ExpectedLeafThumbprint
+            $actual.ChainRootThumbprint | Should -BeExactly $actual.ExpectedRootThumbprint
+            $actual.ChainFailureCount | Should -BeGreaterThan 0
+            $actual.GoLiveRefusal | Should -Match 'ExternalEvidenceSignerChainUntrusted'
+            $actual.SignatureCreated | Should -BeFalse
         }
     }
 }

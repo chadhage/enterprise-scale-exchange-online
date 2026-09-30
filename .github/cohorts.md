@@ -34,9 +34,38 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 605
+Allocation generation: 608
 
-Allocation readiness: **BOARD READY — generation 605**. This declaration is valid only while `.github/backlog.md` also declares generation 605 ready and `.github/validate-dispatch-board.ps1` passes.
+Allocation readiness: **BOARD READY — generation 608**. This declaration is valid only while `.github/backlog.md` also declares generation 608 ready and `.github/validate-dispatch-board.ps1` passes.
+
+### Generation 608 Platinum F02 Acceptance And Release
+
+Registry updated: 2026-09-30. Allocation generation: 607 -> 608. Counts are **35 To Do / 0 In Progress / 56 Done = 91 executable cards** with **24 summary parents excluded**.
+
+- **Acceptance:** `PublicCommandSurface.Tests.ps1` passed **98/98** and `ExchangeEmailIntegratedWorkflow.Tests.ps1` passed **6/6**. The ordered affected vector passed **337/281/6/30/10/68/6/9 = 747/747**, with zero failures, skips, not-runs, or failed containers. `git diff --check` passed.
+- **Security and scope:** locally generated chains with unknown offline revocation remain untrusted; go-live refuses them. The canonical writer accepts the bounded compatibility, entitlement projection, reporting-route, Matrix fixture, and licensing-gate changes, including the two user-authorized paths discovered beyond the generation-606 initial reservation.
+- **Release:** F02 moves In Progress -> Done. Release token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`, its heartbeat/lease, exact writable reservations, and all three generation-606 evidence-root reservations. The isolated branch/worktree and retained evidence remain preserved as historical acceptance input, not active ownership.
+- **Next pull:** `EXR-010-A12-L01-C01` is To Do, unassigned, dependency-clear and the sole `READY` card. Its three governance-file paths have no active reservation conflict and require a fresh generation-bound claim before mutation.
+
+### Generation 607 Platinum F02 Paused Heartbeat
+
+Registry updated: 2026-09-30. Allocation generation: 606 -> 607. Counts remain **35 To Do / 1 In Progress / 55 Done = 91 executable cards** with **24 summary parents excluded**.
+
+- **Heartbeat ACK:** `Platinum-20260930T162551Z-193ba78-g605/Kanban/g607/heartbeat-pause-EXR-010-A12-L01-F02` at `2026-09-30T17:24:29Z` retains generation-606 token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`, exact file reservations, three evidence roots, isolated branch/worktree, and F02 In Progress ownership.
+- **Quiescence and blocker:** all three Platinum Coworkers are quiescent. Current focused acceptance is 98/97/1. The strengthened fresh-process/real-chain positive exposes three fail-closed unknown-revocation results, while its MDO-001 Pass expectation conflicts with frozen Matrix Default SafeLinks drift negatives. The earlier independent affected run stopped at Matrix 333/337. No current affected-vector or independent acceptance exists, so F02 is not Done.
+- **Preservation:** retain the uncommitted test/Common edits and all evidence. No other card is pull-ready; no waiver, test revision, security weakening, live action, commit, push, or reservation release is authorized. Resume requires a bounded acceptance/fixture reconciliation under this same claim.
+
+### Generation 606 Platinum F02 Claim
+
+Registry updated: 2026-09-30. Allocation generation: 605 -> 606. Counts are **35 To Do / 1 In Progress / 55 Done = 91 executable cards** with **24 summary parents excluded**.
+
+- **Canonical writer and competing-session reconciliation:** session `Platinum-20260930T162551Z-193ba78-g605`, coordinated by the current root orchestrator, is the sole canonical writer for this unblock. Generation 605 recorded every prior cohort and worker quiescent and no active ownership. No other Platinum claim, reservation, branch, worktree, or evidence root was present; generic host processes were not treated as ownership and were not stopped. No unrelated session or user work was changed.
+- **Claim ACK:** token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`; ACK `Platinum-20260930T162551Z-193ba78-g605/Kanban/g606/claim-EXR-010-A12-L01-F02`; acknowledged at `2026-09-30T16:33:21Z`. Heartbeats are due every 30 minutes and the claim expires after 120 minutes without writer acknowledgment.
+- **Isolation:** base `193ba7860995d007bb5ce25f837e3622cc112759`; branch `dispatch/EXR-010-A12-L01-F02/Platinum/Coworker-1/g606`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-010-A12-L01-F02-Platinum-Coworker-1-g606`.
+- **Exact writable reservations:** Platinum/Coworker-1 exclusively owns `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1` for negative-first red and the bounded positive phase. After accepted red and an explicit quiescent handoff, Platinum/Coworker-2 exclusively owns `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1` and `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`. Platinum/Coworker-3 owns no repository file and independently verifies only after both writers quiesce. No two roles may write the same file concurrently.
+- **Evidence-root reservations:** `.artifacts/dispatch/EXR-010-A12-L01-F02/g606/Platinum/Coworker-1/`, `.artifacts/dispatch/EXR-010-A12-L01-F02/g606/Platinum/Coworker-2/`, and `.artifacts/dispatch/EXR-010-A12-L01-F02/g606/Platinum/Coworker-3/`. Each role owns only its root and the required claim/input/result/diff/handoff records.
+- **Worker grant:** exactly three logical roles are active on this one card: Coworker-1 test author, Coworker-2 implementation owner waiting for accepted red, and Coworker-3 independent verifier/reviewer read-only until writers quiesce. Workers may not spawn, edit the board/registry, commit, push, use credentials, contact a tenant, or perform live/external changes.
+- **Transition:** `EXR-010-A12-L01-F02` moves To Do -> In Progress. Its dependency is Done, offline prerequisites are satisfied, exact-path/evidence conflicts are zero, and retained Purple evidence remains historical input rather than completion evidence. No other To Do card is `READY` while the F02 freeze is active.
 
 ### Generation 605 Global Stop Reconciliation
 

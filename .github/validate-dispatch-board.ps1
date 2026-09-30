@@ -116,8 +116,8 @@ $inProgress = @($executables | Where-Object Status -eq 'In Progress')
 $done = @($executables | Where-Object Status -eq 'Done')
 Assert-Board ($executables.Count -eq 91) "expected 91 executable cards, found $($executables.Count)."
 Assert-Board ($summaries.Count -eq 24) "expected 24 summary parents, found $($summaries.Count)."
-Assert-Board ($todo.Count -eq 36 -and $inProgress.Count -eq 0 -and $done.Count -eq 55) "expected 36/0/55 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
-Assert-Board (($todo | Where-Object Id -eq 'EXR-010-A12-L01-F02').Count -eq 1) 'F02 must be requeued To Do.'
+Assert-Board ($todo.Count -eq 35 -and $inProgress.Count -eq 0 -and $done.Count -eq 56) "expected 35/0/56 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board (($done | Where-Object Id -eq 'EXR-010-A12-L01-F02').Count -eq 1) 'F02 must be Done.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-018-A01').Count -eq 1) 'EXR-018-A01 must be Done.'
 
 $allIds = @{} 
@@ -148,7 +148,7 @@ Assert-Board ($profiles.Count -ge 1) 'no dispatch profiles resolved.'
 $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest' 'card')
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
-Assert-Board ($manifest.Count -eq 36) "expected 36 manifest entries, found $($manifest.Count)."
+Assert-Board ($manifest.Count -eq 35) "expected 35 manifest entries, found $($manifest.Count)."
 $todoIds = @($todo.Id | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
 Assert-Board (($todoIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match To Do IDs.'
@@ -175,7 +175,7 @@ function Normalize-Reservation {
 
 $eligible = @($manifest | Where-Object Dependency -match '`READY`')
 Assert-Board ($eligible.Id -notcontains 'EXR-018-A01') 'Done card EXR-018-A01 must not remain pull-ready.'
-Assert-Board ($eligible.Count -eq 1 -and $eligible[0].Id -eq 'EXR-010-A12-L01-F02') 'F02 must be the sole pull-ready card after global stop.'
+Assert-Board ($eligible.Count -eq 1 -and $eligible[0].Id -eq 'EXR-010-A12-L01-C01') 'C01 must be the sole pull-ready card after F02 acceptance.'
 $a02 = @($manifest | Where-Object Id -eq 'EXR-018-A02')
 Assert-Board ($a02.Count -eq 1 -and $a02[0].Dependency -match '`WAIT-EXT`') 'EXR-018-A02 must remain externally gated after A01 completion.'
 $reservations = @(

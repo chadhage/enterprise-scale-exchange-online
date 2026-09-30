@@ -1,10 +1,16 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 605. Updated: 2026-09-30. Executable cards: 91; To Do 36, In Progress 0, Done 55; 24 summary parents excluded.
+Canonical generation: 608. Updated: 2026-09-30. Executable cards: 91; To Do 35, In Progress 0, Done 56; 24 summary parents excluded.
 
-Board readiness: **BOARD READY — generation 605**. This declaration is valid only with the matching generation in `.github/cohorts.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+Board readiness: **BOARD READY — generation 608**. This declaration is valid only with the matching generation in `.github/cohorts.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
 
-Generation 605 global stop reconciliation: all four cohorts and their worker roles are quiescent. Release Purple's retained F02 claim, lease, writable paths, and evidence-root reservation; preserve all partial evidence and return `EXR-010-A12-L01-F02` to To Do as the sole `READY` card. No card remains In Progress. `EXR-018-A01` remains Done and `EXR-018-A02` remains `WAIT-EXT`.
+Generation 608 Platinum F02 acceptance: focused verification passed **98/98** and **6/6**; the exact ordered affected vector passed **337/281/6/30/10/68/6/9 = 747/747**, with zero failures, skips, not-runs, or failed containers. `git diff --check` passed. The canonical writer accepts the bounded compatibility, entitlement, reporting-route, Matrix-fixture and licensing-gate changes, moves F02 In Progress -> Done, and releases token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`, its lease, all writable reservations and all evidence-root reservations. C01 is the sole `READY` To Do card after dependency and conflict revalidation.
+
+Generation 607 Platinum F02 paused heartbeat: ACK `Platinum-20260930T162551Z-193ba78-g605/Kanban/g607/heartbeat-pause-EXR-010-A12-L01-F02` retains the generation-606 claim, exact reservations and F02 In Progress ownership. All three workers are quiescent after current focused 98/97/1 and an earlier rejected Matrix 333/337 exposed an acceptance/fixture contradiction. Preserve all dirty work and evidence; no Done/requeue/release/waiver/security weakening is authorized.
+
+Generation 606 Platinum F02 claim: canonical ACK `Platinum-20260930T162551Z-193ba78-g605/Kanban/g606/claim-EXR-010-A12-L01-F02` binds token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`, base `193ba7860995d007bb5ce25f837e3622cc112759`, branch/worktree and the exact product/test/evidence reservations recorded in `.github/cohorts.md`. F02 moved To Do -> In Progress for exactly three Platinum roles.
+
+Generation 605 global stop reconciliation: all four prior cohorts and their worker roles were quiescent. Purple's retained F02 claim, lease, writable paths, and evidence-root reservation were released; all partial evidence remains preserved as historical input.
 
 ## Canonical atomic pull protocol
 
@@ -30,12 +36,11 @@ Every manifest entry below inherits all fields in its named profile. An entry ov
 
 ## Canonical To Do dispatch manifest
 
-`READY` means dependency-clear after generation-603 validation and immediately pullable into an available coworker slot after the writer's conflict recheck and ACK. `WAIT-DEP`, `WAIT-EXT`, and `WAIT-F02` are non-eligible. `DISCOVER:<card>` requires a read-only reservation-discovery preflight and a later writer ACK; it is mechanically pullable as a preflight but not executable write authority. Read-only surface `CARD+DEPS` means the named card section, dependency evidence, shipped product/tests/docs, and active claims, all without mutation.
+`READY` means dependency-clear and immediately pullable into an available coworker slot after the writer's conflict recheck and ACK. Generation 608 has one unclaimed `READY` entry, C01. `WAIT-DEP`, `WAIT-EXT`, and `WAIT-F02` are non-eligible. `DISCOVER:<card>` requires a read-only reservation-discovery preflight and a later writer ACK; it is mechanically pullable as a preflight but not executable write authority. Read-only surface `CARD+DEPS` means the named card section, dependency evidence, shipped product/tests/docs, and active claims, all without mutation.
 
 | Card | Dependencies / eligibility | Profile | Writable reservation or prerequisite | Read-only surfaces | Focused / affected binding |
 | --- | --- | --- | --- | --- | --- |
-| `EXR-010-A12-L01-F02` | `EXR-010-A12-L01-V01` Done; `READY` | `OFFLINE-3W` | `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`; `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`; `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1` | `CARD+DEPS`; retained F02 evidence | `F=Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1' -Output Detailed -PassThru`; `A=PROFILE` |
-| `EXR-010-A12-L01-C01` | `EXR-010-A12-L01-F02`; `WAIT-F02` | `GOV-3W` | `.github/backlog.md`; `.github/cohorts.md`; `.github/kanban.md` | `CARD+DEPS`; F02 evidence | `F=pwsh -NoProfile -File .github/validate-dispatch-board.ps1`; `A=PROFILE` |
+| `EXR-010-A12-L01-C01` | `EXR-010-A12-L01-F02`; `READY` | `GOV-3W` | `.github/backlog.md`; `.github/cohorts.md`; `.github/kanban.md` | `CARD+DEPS`; F02 evidence | `F=pwsh -NoProfile -File .github/validate-dispatch-board.ps1`; `A=PROFILE` |
 | `EXR-012-A01` | `EXR-006,EXR-008,EXR-009,EXR-010-A12-L01-C01,EXR-011-A01,EXR-011-A02,EXR-011-A03,EXR-011-A04,EXR-007-A01,EXR-007-A02-T01,EXR-007-A02-T02,EXR-007-A02-T03,EXR-007-A02-T04,EXR-007-A03-T01,EXR-007-A03-T02-L01,EXR-007-A04-T01,EXR-007-A04-T02,EXR-007-A05-T01,EXR-007-A05-T02,EXR-007-A05-T03-L01-C01,EXR-007-A06,EXR-007-A07,EXR-007-A08-T01,EXR-007-A08-T02,EXR-007-A08-T03`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A01` | `CARD+DEPS`; active operator docs | `F=DISCOVER-FREEZE:documentation-structure`; `A=PROFILE` |
 | `EXR-012-A02` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A02` | `CARD+DEPS`; command/help docs | `F=DISCOVER-FREEZE:command-surface-docs`; `A=PROFILE` |
 | `EXR-012-A03` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A03` | `CARD+DEPS`; evidence/signing docs | `F=DISCOVER-FREEZE:evidence-docs`; `A=PROFILE` |
@@ -3140,7 +3145,7 @@ Rank 23.5 - Independent closure review.
 
 Rank 23.55 - Restore current-runtime compatibility required by frozen L01 contracts.
 
-- Dependencies: EXR-010-A12-L01-V01. Owner: unassigned after generation-605 global stop; retained evidence preserved. Workstream: Email verification. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-010-A12-L01-V01. Owner: Cohort Platinum / `Platinum-20260930T162551Z-193ba78-g605`; generation-606 token and reservations released after acceptance. Workstream: Email verification. Updated: 2026-09-30. Status: Done.
 - Bounded outcome: restore behavior-compatible `Invoke-BaselineExchangeRegistry` and `New-BaselineEvidenceCertificateChain` over the current Common implementation without weakening security or revising frozen tests.
 - Writable surface: `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`, and `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1`.
 - Negative cases: public registry command absent from the module definition; absent from either export list; duplicate/invalid registry input; incomplete or mismatched retained Exchange registry; private certificate-chain seam absent; chain permits downloads or non-offline revocation; and any compatibility path that bypasses existing signer/refusal decisions. Every test uses Arrange-Act-Assert and must fail for its intended reason before implementation.
@@ -3148,12 +3153,13 @@ Rank 23.55 - Restore current-runtime compatibility required by frozen L01 contra
 - Focused verification: unchanged `PublicCommandSurface.Tests.ps1` after accepted red, followed by the exact six V01 names in `ExchangeEmailIntegratedWorkflow.Tests.ps1`; required final result 6/6.
 - Affected verification: exact ordered V01 suite vector 337/281/6/30/10/68/6/9; required aggregate 747/747, zero other outcomes, complete NUnit and stable pre/post scoped identity.
 - Evidence required: historical/current mapping, red command/counts/hashes, implementation diff, public/private visibility proof, focused and affected commands/counts/exits/hashes, and stable repository identity. No live tenant, credentials, deployment, `-Apply`, waiver, retry without a new generation, commit, push or publish.
+- Generation 608 accepted evidence: PowerShell 7.6.6 / Pester 5.7.1 focused **98/98** and **6/6**; ordered affected suites **337/337**, **281/281**, **6/6**, **30/30**, **10/10**, **68/68**, **6/6**, and **9/9**, aggregate **747/747**, zero other outcomes or failed containers. Runtime unknown revocation remains untrusted and go-live fails closed. `git diff --check` passed. Accepted bounded changed paths are `docs/LICENSING-GATE.md`, `scripts/ExchangeOnlineBaseline.Common.psm1`, `tests/unit/ExchangeProtectionMatrix.Tests.ps1`, and `tests/unit/PublicCommandSurface.Tests.ps1`.
 
 ### EXR-010-A12-L01-C01
 
 Rank 23.6 - Final canonical acceptance/Done transition.
 
-- Dependencies: EXR-010-A12-L01-F02. Owner: unassigned pending F02 closure and fresh validation. Workstream: Email verification. Updated: 2026-09-29. Status: To Do (blocked by F02).
+- Dependencies: EXR-010-A12-L01-F02. Owner: unassigned; generation-608 dependency and conflict validation makes this the sole `READY` card. Workstream: Email verification. Updated: 2026-09-30. Status: To Do.
 - Bounded outcome: perform the single canonical acceptance decision and, only on supported ACCEPT evidence, transition this leaf Done and satisfy the L01 summary.
 - Writable surface: `.github/kanban.md`, `.github/backlog.md`, `.github/cohorts.md`; no product/test path.
 - Acceptance: exact review verdict, tested working-tree identity, all prior leaf statuses/evidence and counts reconcile; REJECT leaves the card To Do with blockers.
