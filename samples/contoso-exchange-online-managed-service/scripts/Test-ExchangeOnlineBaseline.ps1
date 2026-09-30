@@ -15,7 +15,7 @@ param(
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ParameterPath,
 
-    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.json'),
+    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-only.v1.json'),
 
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.schema.json'),
 
@@ -41,6 +41,20 @@ param(
 
     [object[]]$RbacPimFallbackAuthorizedSigner = @(),
 
+    [string]$SignaturePath,
+
+    [string]$SignerSubject,
+
+    [string]$SignerIdentity,
+
+    [string]$AuthorizedSignerPath,
+
+    [string]$ExpectedEvidenceHash,
+
+    [switch]$SignEvidence,
+
+    [System.Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate,
+
     [switch]$SkipConnection
 )
 
@@ -60,6 +74,102 @@ $exitCode = Get-BaselineExitCodeContract
 trap {
     Write-Error "InternalFault: $($_.Exception.Message)" -ErrorAction Continue
     exit $exitCode.Internal
+}
+
+# The deployment profile is read before any service connection. ExchangeOnly has a closed,
+# Exchange-specific execution path; generic profiles retain the established multi-service path.
+try {
+    $configurationMetadata = Get-Content -LiteralPath $ConfigurationPath -Raw -ErrorAction Stop |
+        ConvertFrom-Json -Depth 20 -ErrorAction Stop
+    $deploymentProfile = [string]$configurationMetadata.metadata.deploymentProfile
+}
+catch {
+    Write-Error "ConfigurationUnusable: $($_.Exception.Message)" -ErrorAction Continue
+    exit $exitCode.Configuration
+}
+
+if ($deploymentProfile -ceq 'ExchangeOnly') {
+    try {
+        $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    }
+    catch {
+        Write-Error "ConfigurationUnusable: $($_.Exception.Message)" -ErrorAction Continue
+        exit $exitCode.Configuration
+    }
+
+    if (-not $SkipConnection) {
+        try {
+            Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
+            Connect-ExchangeOnline -ShowBanner:$false
+        }
+        catch {
+            Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+            exit $exitCode.Connection
+        }
+    }
+
+    try {
+        $manifestControlId = @($exchangeContext.Manifest.ControlId)
+        $projection = @(Invoke-BaselineExchangeRegistry -Context $exchangeContext)
+        $projectedControlId = @($projection | ForEach-Object { [string]$_.ControlId })
+        if ($projection.Count -ne $manifestControlId.Count -or
+            @($projectedControlId | Sort-Object -Unique).Count -ne $manifestControlId.Count -or
+            @(Compare-Object -ReferenceObject $manifestControlId -DifferenceObject $projectedControlId -SyncWindow 0).Count -ne 0) {
+            throw 'ExchangeRegistryProjectionInvalid: every manifest control must have one unique ordered projection.'
+        }
+
+        $collectedAtUtc = [datetimeoffset]::UtcNow.ToString('o')
+        $exchangeEnvelope = [ordered]@{
+            TenantId = [string]$exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID
+            DeploymentProfile = 'ExchangeOnly'
+            ConfigurationHash = [string]$exchangeContext.Hash
+            CollectedAtUtc = $collectedAtUtc
+            Entitlement = $exchangeContext.Entitlement
+            Check = @($projection | ForEach-Object { $_.Result })
+            Evidence = @($projection | ForEach-Object { $_.Evidence })
+            ManifestHash = [string]$exchangeContext.Manifest.Hash
+            Exclusion = $exchangeContext.Manifest.Exclusion
+            ExternalCheck = $exchangeContext.Manifest.ExternalCheck
+            ExternalReadiness = $exchangeContext.Manifest.ExternalReadiness
+        }
+
+        $null = New-Item -ItemType Directory -Path $OutputPath -Force
+        $exchangeResultPath = Join-Path $OutputPath 'exchange-online-evidence.json'
+        $temporaryResultPath = Join-Path $OutputPath ('.exchange-online-evidence.{0}.tmp' -f [guid]::NewGuid().ToString('N'))
+        try {
+            $exchangeJson = $exchangeEnvelope | ConvertTo-Json -Depth 100
+            [IO.File]::WriteAllText(
+                $temporaryResultPath,
+                $exchangeJson,
+                [Text.UTF8Encoding]::new($false)
+            )
+            [IO.File]::Move($temporaryResultPath, $exchangeResultPath, $true)
+        }
+        finally {
+            if (Test-Path -LiteralPath $temporaryResultPath) {
+                Remove-Item -LiteralPath $temporaryResultPath -Force
+            }
+        }
+    }
+    catch {
+        Write-Error "CollectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+        exit $exitCode.Collection
+    }
+
+    if ($GoLive) {
+        $exchangeGoLive = Invoke-BaselineExchangeGoLive -Context $exchangeContext `
+            -EvidencePath $exchangeResultPath -SignaturePath $SignaturePath `
+            -SignerSubject $SignerSubject -MaximumEvidenceAge $MaximumEvidenceAge `
+            -SignerIdentity $SignerIdentity -AuthorizedSignerPath $AuthorizedSignerPath `
+            -ExpectedEvidenceHash $ExpectedEvidenceHash `
+            -ExpectedConfigurationHash $ExpectedConfigurationHash `
+            -SignEvidence:$SignEvidence -SigningCertificate $SigningCertificate
+        exit $exchangeGoLive.Outcome.ExitCode
+    }
+
+    $exchangeOutcome = Get-BaselineRunOutcome -Check @($exchangeEnvelope.Check)
+    Write-Host ("Outcome: {0} ({1}) {2}" -f $exchangeOutcome.Outcome, $exchangeOutcome.ExitCode, $exchangeOutcome.Reason)
+    exit $exchangeOutcome.ExitCode
 }
 
 # LIC-008: DES-003 makes the runtime tenant service-plan inventory the only entitlement authority,

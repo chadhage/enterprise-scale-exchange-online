@@ -1,4 +1,4 @@
-function New-ExchangeLiveRawFixture {
+function New-ExchangeLiveBaseRawFixture {
     param($Parameters)
     $domain = $Parameters.PRIMARY_SMTP_DOMAIN
     $secops = $Parameters.SECURITY_OPERATIONS_MAILBOX
@@ -10,15 +10,16 @@ function New-ExchangeLiveRawFixture {
             @{ Identity = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; Name = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; DomainName = $Parameters.INITIAL_ONMICROSOFT_DOMAIN; DomainType = 'Authoritative' }
         ) }
         'Get-TransportConfig' = @{ Items = @(@{ Identity = 'Transport Settings'; SmtpClientAuthenticationDisabled = $true; ExternalPostmasterAddress = $Parameters.EXTERNAL_POSTMASTER_SMTP_ADDRESS }) }
-        'Get-CASMailbox' = @{ Items = @(@{ Identity = 'Mailbox One'; PrimarySmtpAddress = "user@$domain"; SmtpClientAuthenticationDisabled = $null; PopEnabled = $false; ImapEnabled = $false; EwsEnabled = $null; EwsApplicationAccessPolicy = $null; EwsAllowList = @() }) }
+        'Get-CASMailbox' = @{ Items = @(@{ Identity = 'Mailbox One'; PrimarySmtpAddress = "user@$domain"; SmtpClientAuthenticationDisabled = $null; PopEnabled = $false; ImapEnabled = $false; EwsEnabled = $false; EwsApplicationAccessPolicy = $null; EwsAllowList = @() }) }
         'Get-HostedOutboundSpamFilterPolicy' = @{ Items = @(@{ Identity = 'Default'; Name = 'Default'; AutoForwardingMode = 'Off' }) }
+        'Get-HostedOutboundSpamFilterRule' = @{ Items = @() }
         'Get-Mailbox' = @{ Items = @(@{ Identity = 'Mailbox One'; PrimarySmtpAddress = "user@$domain"; ForwardingAddress = $null; ForwardingSmtpAddress = $null; RetentionPolicy = $retention; LitigationHoldEnabled = $false }) }
         'Get-InboxRule' = @{ Items = @() }
         'Get-OrganizationConfig' = @{ Items = @(@{ Identity = 'Tenant'; AuditDisabled = $false; EwsEnabled = $false; EwsApplicationAccessPolicy = 'EnforceAllowList'; EwsAllowList = @(); EwsAllowedAppIDs = @() }) }
         'Get-MailboxAuditBypassAssociation' = @{ Items = @(@{ Identity = 'Mailbox One'; AuditBypassEnabled = $false }) }
         'Get-ExternalInOutlook' = @{ Items = @(@{ Identity = 'Tenant'; Enabled = $true; AllowList = @() }) }
         'Get-RemoteDomain' = @{ Items = @(@{ Identity = 'Default'; Name = 'Default'; DomainName = '*'; AutoForwardEnabled = $false; AutoReplyEnabled = $false; AllowedOOFType = 'None'; DeliveryReportEnabled = $false; NDREnabled = $false }) }
-        'Get-CASMailboxPlan' = @{ Items = @(@{ Identity = 'ExchangeOnlineEnterprise'; PopEnabled = $false; ImapEnabled = $false }) }
+        'Get-CASMailboxPlan' = @{ Items = @(@{ Identity = 'ExchangeOnlineEnterprise'; EwsEnabled = $false; EwsAllowList = @(); PopEnabled = $false; ImapEnabled = $false }) }
         'Get-RoleGroup' = @{ Items = @(@{ Identity = 'Organization Management'; Name = 'Organization Management' }) }
         'Get-RoleGroupMember' = @{ Items = @() }
         'Get-ManagementRoleAssignment' = @{ Items = @(@{ Identity = 'MyBaseOptions-Default Role Assignment Policy'; Role = 'MyBaseOptions'; RoleAssignee = 'Default Role Assignment Policy'; RoleAssigneeType = 'RoleAssignmentPolicy' }) }
@@ -39,9 +40,15 @@ function New-ExchangeLiveRawFixture {
         'Get-ExoSecOpsOverrideRule' = @{ Items = @(@{ Identity = '_Exe:SecOpsOverrid:11111111-1111-1111-1111-111111111111'; Mode = 'Enforce' }) }
         'Get-TenantAllowBlockListItems' = @{ Items = @() }
         'Get-QuarantinePolicy' = @{ ByType = @{
-            GlobalQuarantinePolicy = @(@{ Name = 'DefaultGlobalTag'; QuarantinePolicyType = 'GlobalQuarantinePolicy'; EndUserSpamNotificationFrequency = '1.00:00:00'; IncludeMessagesFromBlockedSenderAddress = $false })
-            QuarantinePolicy = @(@{ Name = 'AdminOnlyAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 0 }, @{ Name = 'LimitedAccess'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 106 })
-        }; Items = @(@{ Name = 'AdminOnlyAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 0 }, @{ Name = 'LimitedAccess'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 106 }) }
+            GlobalQuarantinePolicy = @(@{ Name = 'DefaultGlobalTag'; QuarantinePolicyType = 'GlobalQuarantinePolicy'; EndUserQuarantinePermissionsValue = $null; EndUserSpamNotificationFrequency = '1.00:00:00'; IncludeMessagesFromBlockedSenderAddress = $false })
+            QuarantinePolicy = @(
+                @{ Name = 'AdminOnlyAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 0; EndUserSpamNotificationFrequency = $null; IncludeMessagesFromBlockedSenderAddress = $null }
+                @{ Name = 'LimitedAccess'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 106; EndUserSpamNotificationFrequency = $null; IncludeMessagesFromBlockedSenderAddress = $null }
+            )
+        }; Items = @(
+            @{ Name = 'AdminOnlyAccessPolicy'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 0; EndUserSpamNotificationFrequency = $null; IncludeMessagesFromBlockedSenderAddress = $null }
+            @{ Name = 'LimitedAccess'; QuarantinePolicyType = 'QuarantinePolicy'; EndUserQuarantinePermissionsValue = 106; EndUserSpamNotificationFrequency = $null; IncludeMessagesFromBlockedSenderAddress = $null }
+        ) }
         'Get-HostedContentFilterPolicy' = @{ Items = @(@{ Name = 'Default'; HighConfidencePhishQuarantineTag = 'AdminOnlyAccessPolicy'; PhishQuarantineTag = 'LimitedAccess'; HighConfidenceSpamQuarantineTag = 'LimitedAccess'; SpamQuarantineTag = 'LimitedAccess'; BulkQuarantineTag = 'LimitedAccess' }) }
         'Get-MalwareFilterPolicy' = @{ Items = @(@{ Name = 'Default'; QuarantineTag = 'AdminOnlyAccessPolicy' }) }
         'Get-AntiPhishPolicy' = @{ Items = @(@{ Name = 'Contoso Impersonation'; IsDefault = $false; EnableTargetedUserProtection = $true; EnableTargetedDomainsProtection = $true; TargetedUsersToProtect = @("SecOps;$secops"); TargetedDomainsToProtect = @($domain); ExcludedSenders = @(); ExcludedDomains = @(); SpoofQuarantineTag = 'LimitedAccess' }) }

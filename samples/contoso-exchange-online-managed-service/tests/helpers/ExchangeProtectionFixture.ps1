@@ -112,6 +112,7 @@ function Add-ProtectionGovernanceFixture {
 function New-ProtectionFixture {
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $parameters = Get-Content (Join-Path $sampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable
+    $domain = [string]$parameters.PRIMARY_SMTP_DOMAIN
     . (Join-Path $PSScriptRoot 'ExchangeGovernanceRawFixture.ps1')
     $fixture = New-ExchangeGovernanceRawFixture $parameters
     $raw = $fixture.Raw
@@ -165,13 +166,179 @@ function New-ProtectionFixture {
         }
         $raw["Get-${family}Rule"] = @{ Items = @($rule) }
     }
-    @{ Context = @{ Configuration = $configuration; Parameters = $parameters; Entitlement = $parameters.entitlement }; Raw = $raw }
+    $raw['Get-CASMailboxPlan'] = @{ Items = @(@{
+                Identity = 'Offline mailbox plan'
+                EwsEnabled = $false
+                EwsAllowList = [string[]]::new(0)
+                PopEnabled = $false
+                ImapEnabled = $false
+            }) }
+    $raw['Get-ActivePimAssignment'] = @{ Items = @() }
+    $raw['Get-EligiblePimAssignment'] = @{ Items = @() }
+    $raw['Get-AccessReview'] = @{ Items = @() }
+    $raw['Get-AntiPhishRule'].Items[0].State = 'Enabled'
+    $raw['Get-AntiPhishRule'].Items[0].AntiPhishPolicy = 'Custom email'
+    $raw['Get-AntiPhishRule'].Items[0].SentTo = @()
+    $raw['Get-AntiPhishRule'].Items[0].SentToMemberOf = @()
+    $raw['Get-AntiPhishRule'].Items[0].RecipientDomainIs = @($domain)
+    foreach ($policy in @($raw['Get-HostedContentFilterPolicy'].Items)) {
+        $reference = if ([string]$policy.Name -ceq 'Strict Preset Security Policy') { $strict } else { $standard }
+        $policy.SpoofQuarantineTag = $reference.AntiPhish.SpoofQuarantineTag
+    }
+    $raw['Get-DkimSigningConfig'] = @{ ByIdentity = @{
+            $domain = @(@{
+                    Identity = $domain
+                    Domain = $domain
+                    Enabled = $true
+                    Status = 'Valid'
+                    Selector1CNAME = "selector1-$domain._domainkey.tenant.onmicrosoft.com"
+                    Selector2CNAME = "selector2-$domain._domainkey.tenant.onmicrosoft.com"
+                    Selector1KeySize = 2048
+                    Selector2KeySize = 2048
+                })
+        }; Items = @() }
+    $raw['Resolve-DkimSelectorDns'] = @{ ByIdentity = @{
+            "selector1._domainkey.$domain" = @(@{
+                    Authoritative = $true
+                    CanonicalName = "selector1-$domain._domainkey.tenant.onmicrosoft.com"
+                })
+            "selector2._domainkey.$domain" = @(@{
+                    Authoritative = $true
+                    CanonicalName = "selector2-$domain._domainkey.tenant.onmicrosoft.com"
+                })
+        }; Items = @() }
+    foreach ($policyType in @('GlobalQuarantinePolicy', 'QuarantinePolicy')) {
+        foreach ($policy in @($raw['Get-QuarantinePolicy'].ByType[$policyType])) {
+            foreach ($member in @(
+                    'EndUserQuarantinePermissionsValue',
+                    'EndUserSpamNotificationFrequency',
+                    'IncludeMessagesFromBlockedSenderAddress'
+                )) {
+                if (-not $policy.ContainsKey($member)) { $policy[$member] = $null }
+            }
+        }
+    }
+    $mailboxes = @($raw['Get-Mailbox'].Items)
+    $mailboxIdentity = @($mailboxes | ForEach-Object { $_.PrimarySmtpAddress })
+    $raw['Get-MailboxRetentionDistribution'] = @{ Items = @(@{
+                Status = 'Success'
+                CoveredMailboxes = $mailboxIdentity
+            }) }
+    $raw['Resolve-PriorityIdentity'] = @{ Items = @(@{
+                Resolved = $true
+                Identities = @($configuration.controls['GOV-004'].holds | ForEach-Object { $_.mailbox })
+                Unresolved = @()
+            }) }
+    $raw['Resolve-Custodian'] = @{ Items = @(@{
+                Resolved = $true
+                Identities = @($configuration.controls['GOV-004'].custodians)
+                Unresolved = @()
+            }) }
+    $raw['Get-IRMConfiguration'].Items[0].LicensingLocation = 'Online'
+    $raw['Get-OMEFunctionalEvidence'] = @{ Items = @(@{
+                TestName = 'OME encrypted-message round trip'
+                Succeeded = $true
+                Protected = $true
+                DecryptedByAuthorizedRecipient = $true
+                RejectedUnauthorizedRecipient = $true
+            }) }
+    $parameters.operationalEvidence = @{}
+    $contextScope = [guid]::NewGuid().ToString('N')
+    $configurationPath = Join-Path ([IO.Path]::GetTempPath()) "$contextScope-configuration.json"
+    $parameterPath = Join-Path ([IO.Path]::GetTempPath()) "$contextScope-parameters.json"
+    try {
+        $configuration | ConvertTo-Json -Depth 100 |
+            Set-Content -LiteralPath $configurationPath
+        $parameters | ConvertTo-Json -Depth 100 |
+            Set-Content -LiteralPath $parameterPath
+        $resolvedContext = Get-BaselineExchangeContext `
+            -ConfigurationPath $configurationPath `
+            -ParameterPath $parameterPath
+    }
+    finally {
+        Remove-Item -LiteralPath $configurationPath -Force -ErrorAction SilentlyContinue
+        Remove-Item -LiteralPath $parameterPath -Force -ErrorAction SilentlyContinue
+    }
+    $configuration = $resolvedContext.Configuration
+    $parameters = $resolvedContext.Parameters
+    $configurationHash = $resolvedContext.Hash
+    $manifest = $resolvedContext.Manifest
+    $generated = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
+    $artifactRootKey = [Security.Cryptography.RSA]::Create(2048)
+    $rootRequest = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+        'CN=Offline Fixture Root', $artifactRootKey,
+        [Security.Cryptography.HashAlgorithmName]::SHA256,
+        [Security.Cryptography.RSASignaturePadding]::Pkcs1
+    )
+    $rootRequest.CertificateExtensions.Add(
+        [Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]::new($true, $false, 0, $true)
+    )
+    $artifactRoot = $rootRequest.CreateSelfSigned(
+        [datetimeoffset]::UtcNow.AddDays(-1), [datetimeoffset]::UtcNow.AddDays(1)
+    )
+    $artifactLeafKey = [Security.Cryptography.RSA]::Create(2048)
+    $leafRequest = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+        'CN=Offline Fixture Signer', $artifactLeafKey,
+        [Security.Cryptography.HashAlgorithmName]::SHA256,
+        [Security.Cryptography.RSASignaturePadding]::Pkcs1
+    )
+    $issuedLeaf = $leafRequest.Create(
+        $artifactRoot, [datetimeoffset]::UtcNow.AddHours(-1),
+        [datetimeoffset]::UtcNow.AddHours(1), [byte[]](9, 8, 7, 6, 5, 4, 3, 2)
+    )
+    $artifactLeaf = [System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::CopyWithPrivateKey($issuedLeaf, $artifactLeafKey)
+    $issuedLeaf.Dispose()
+    $artifactDirectory = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N'))
+    $null = New-Item -ItemType Directory -Path $artifactDirectory
+    foreach ($artifact in @{
+            'MON-003' = @{ Complete = $true; ScheduledCollection = $true; CollectionFrequencyHours = 24; RetentionDays = 90; DriftDetected = $false; Findings = @() }
+            'OPS-001' = @{ Complete = $true; ChangeId = 'OFFLINE'; Preview = @{ ChangeId = 'OFFLINE'; Completed = $true }; Pilot = @{ ChangeId = 'OFFLINE'; Completed = $true }; Approval = @{ ChangeId = 'OFFLINE'; Completed = $true }; Rollback = @{ ChangeId = 'OFFLINE'; Completed = $true }; PostChange = @{ ChangeId = 'OFFLINE'; Completed = $true } }
+            'OPS-002' = @{ ExerciseId = 'OFFLINE'; CompletedAtUtc = $generated; ExerciseTypes = @('ExchangeIncidentResponse'); Owners = @($parameters.SECURITY_OPERATIONS_MAILBOX); Actions = @(@{ ActionId = 'A1'; Owner = $parameters.SECURITY_OPERATIONS_MAILBOX; Status = 'Closed'; TrackingReference = 'OFFLINE' }) }
+        }.GetEnumerator()) {
+        $document = [ordered]@{
+            ControlId = $artifact.Key
+            TenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
+            DeploymentProfile = 'ExchangeOnly'
+            ConfigurationHash = $configurationHash
+            ManifestHash = $manifest.Hash
+            GeneratedAtUtc = $generated
+            Payload = $artifact.Value
+        }
+        $unsignedJson = $document | ConvertTo-Json -Depth 50
+        $document = $unsignedJson | ConvertFrom-Json -AsHashtable -DateKind String
+        $content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $document))
+        $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+            [Security.Cryptography.Pkcs.ContentInfo]::new($content), $true
+        )
+        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($artifactLeaf)
+        $null = $signer.SignedAttributes.Add(
+            [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow.AddMinutes(-1))
+        )
+        $cms.ComputeSignature($signer)
+        $document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
+        $artifactPath = Join-Path $artifactDirectory "$($artifact.Key).json"
+        $document | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $artifactPath
+        $parameters.operationalEvidence[$artifact.Key] = @{
+            path = $artifactPath
+            signerIdentity = 'offline-fixture'
+            authorizedSigner = @(@{ Identity = 'offline-fixture'; Authority = 'ExchangeOnlineChangeApproval'; Thumbprint = $artifactLeaf.Thumbprint; Subject = $artifactLeaf.Subject })
+        }
+    }
+    @{
+        Context = @{ Configuration = $configuration; Parameters = $parameters; Entitlement = $parameters.entitlement; Hash = $configurationHash; Manifest = $manifest }
+        Raw = $raw
+        ArtifactRoot = $artifactRoot
+        ArtifactRootKey = $artifactRootKey
+        ArtifactLeaf = $artifactLeaf
+        ArtifactLeafKey = $artifactLeafKey
+        ArtifactDirectory = $artifactDirectory
+    }
 }
 
 function Invoke-ProtectionRawRegistry {
     param($Fixture, $Module)
     & $Module {
-        param($context, $protectionRawFixture)
+        param($context, $protectionRawFixture, $offlineRoot)
         $context.Configuration = Convert-BaselinePlaceholderNode $context.Configuration $context.Parameters
         $installedCommands = @($protectionRawFixture.Keys)
         $originalFunctions = @{}
@@ -197,10 +364,28 @@ function Invoke-ProtectionRawRegistry {
 '@
             Set-Item "Function:$command" ([scriptblock]::Create($body).GetNewClosure())
         }
+        $originalChainEvidence = (Get-Item Function:\Test-BaselineEvidenceCertificateChain).ScriptBlock
+        $chainEvidence = {
+            param($Certificate, $CertificateCollection, $DecisionTimeUtc)
+            [pscustomobject][ordered]@{
+                Thumbprint = $Certificate.Thumbprint
+                LeafThumbprint = $Certificate.Thumbprint
+                RootThumbprint = $offlineRoot.Thumbprint
+                Anchor = $offlineRoot
+                ChainTrusted = $true
+                RevocationStatus = 'Good'
+                EvaluationTimeUtc = [datetimeoffset]$DecisionTimeUtc
+                DecisionTimeUtc = [datetimeoffset]$DecisionTimeUtc
+                EvidenceSource = 'OfflineFixtureChainEvidence'
+                FailureStatus = @()
+            }
+        }.GetNewClosure()
+        Set-Item Function:\Test-BaselineEvidenceCertificateChain $chainEvidence
         try {
             @(Invoke-BaselineExchangeRegistry $context)
         }
         finally {
+            Set-Item Function:\Test-BaselineEvidenceCertificateChain $originalChainEvidence
             foreach ($command in $installedCommands) {
                 if ($originalFunctions.ContainsKey($command)) {
                     Set-Item "Function:$command" $originalFunctions[$command]
@@ -210,5 +395,10 @@ function Invoke-ProtectionRawRegistry {
                 }
             }
         }
-    } $Fixture.Context $Fixture.Raw
+    } $Fixture.Context $Fixture.Raw $Fixture.ArtifactRoot
+    $Fixture.ArtifactLeaf.Dispose()
+    $Fixture.ArtifactLeafKey.Dispose()
+    $Fixture.ArtifactRoot.Dispose()
+    $Fixture.ArtifactRootKey.Dispose()
+    Remove-Item -LiteralPath $Fixture.ArtifactDirectory -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -1,6 +1,1028 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 488. Updated: 2026-09-29. Executable cards: 90; To Do 37, In Progress 0, Done 53; 24 summary parents excluded.
+Canonical generation: 601. Updated: 2026-10-01. Executable cards: 91; To Do 36, In Progress 1, Done 54; 24 summary parents excluded.
+
+Generation 601 override: **ACCEPT FOCUSED 6/6; RESTORE EXO-010 MISSING-REVIEW FAIL CLASSIFICATION**. Generation 600 achieved focused **6/6**. Bounded is 96/98; its only direct regression and derivative positive failure are EXO-010 collection Error for a missing review.
+
+Canonical writer may change only normalized access-review collection so:
+
+- zero reviews can be retained as a complete collection;
+- missing governed roles are passed to the existing EXO-010 evaluator and classified Fail;
+- blank scope, duplicate role review and surplus unrelated role remain Error.
+
+Parse and run one fresh focused 6 plus bounded 98 gate. Require 104/104, bounded 97 negatives plus one positive, zero failed containers/skips/not-run/errors and no retry. No other edit/suite/live access/commit/push/publish. Coworkers quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 600 override: **ACCEPT FINAL FOCUSED IMPLEMENTATION; RUN FROZEN 104-CASE GATE**. Accept C2's Common-only correction with zero parse errors. Common SHA-256 is `E1DAFD6F05191560AD7B74ED9C8333E334486DD25D1D251B3FD245AC1478475A` (1,088,702 bytes); the pinned-root helper remains private.
+
+Release only C3 under ACK `purple-20261001T180000Z/Kanban/g600/run-final-focused-bounded-gate-EXR-010-A12-L01-F02`. Run focused 6 then bounded 98 once in one fresh PowerShell 7/Pester 5.7.1 process. Require exact 104 discovery/execution, **104/104**, bounded 97 negatives plus one positive, zero failed containers/skips/not-run/errors, valid complete NUnit and no retry. Verify hashes before/after. No edit, affected/live suite, live access, commit, push or publish. C1/C2 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 599 override: **ACCEPT FINAL FOCUSED TRACE; IMPLEMENT DEDICATED PINNED-ROOT VERIFICATION AND REVIEW BINDING**. Accept C1's exact focused-only analysis.
+
+Release only C2 under ACK `purple-20261001T170000Z/Kanban/g599/implement-pinned-root-and-review-binding-EXR-010-A12-L01-F02`, Common PSM1 only:
+
+1. Add a private pinned-root chain helper with signer certificate, CMS certificate collection, typed trusted root and decision time. It must execute the real custom-root algorithm directly: factory chain, `CustomRootTrust`, only the explicit root in `CustomTrustStore`, non-root CMS certs in `ExtraStore`, offline revocation, downloads disabled, exact root termination and full Good/Revoked/Unknown/failure evidence.
+2. `Test-BaselineExchangeEvidenceSignature` must route explicit `TrustedRoot` exclusively through this pinned helper. Root-absent verification continues through the existing replaceable `Test-BaselineEvidenceCertificateChain` seam. No retry/fallback from explicit-root failure.
+3. Preserve post-chain root-thumbprint comparison and all CMS signer/time/subject/thumbprint checks.
+4. Invoke normalized `Get-AccessReview` without Identity arguments. Validate every returned record's required members, canonically compare the exact returned role set to governed roles, reject surplus/ambiguous scope, then pass retained reviews to the existing evaluator. Do not copy desired roles into evidence.
+
+Do not change public exports, tests/fixtures, payloads, root reference parsing, system trust, caller chainState or admission logic. Parse/hash and quiesce. No tests/live access/commit/push/publish. C1/C3 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 598 override: **ACCEPT BOUNDED 98/98; TRACE TWO FOCUSED FAILURES ONLY**. Generation 597 completed bounded **98/98** with exactly 97 negatives and one positive, zero failed containers/skips/not-run/errors. Focused remains **4/6**; aggregate 102/104.
+
+Direct inspection confirms EXO-010 calls the normalized `Get-AccessReview` seam with an Identity argument, causing the focused fixture's stale `ByIdentity` entry to override its explicitly updated `Items`. This must be corrected by argument-free normalized collection plus exact role comparison after return.
+
+Release only C1 under ACK `purple-20261001T160000Z/Kanban/g598/trace-focused-operational-errors-EXR-010-A12-L01-F02`. Read-only reproduce/trace the focused fixture's MON-003, OPS-001 and OPS-002 exact Error reasons through `Read-BaselineExchangeOperationalArtifact` and signature/chain helpers. Confirm whether they share one root/signature issue or payload binding, and whether EXO-010 argument-free access-review collection is sufficient for that control. Return smallest Common-only correction preserving bounded 98/98 and live 83/83; no test/fixture changes or security weakening.
+
+Do not edit, run Pester, retry, access a tenant, commit, push or publish. C2/C3 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 597 override: **ACCEPT NORMALIZED-SEAM CORRECTION; RERUN FROZEN 104-CASE GATE**. Accept C2's Common-only implementation with zero parse errors. Common SHA-256 is `92C9B584E25FE4638A0D5BE33571C59DEED60369E069891577EEB83FA9B2C1BD` (1,082,895 bytes).
+
+Release only C3 under ACK `purple-20261001T150000Z/Kanban/g597/run-normalized-focused-bounded-gate-EXR-010-A12-L01-F02`. Run focused 6 then bounded 98 once in one fresh PowerShell 7/Pester 5.7.1 process. Require exact 104 discovery/execution, bounded 97 negatives plus one positive, zero failed containers/skips/not-run/errors, valid complete NUnit and no retry. Verify hashes and report every residual. No edit, affected/live suite, live access, commit, push or publish. C1/C2 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 596 override: **ACCEPT 98/104; CORRECT NORMALIZED-SEAM DISPATCH**. Generation 595 executed exactly 104 with focused 4/6, bounded 94/98, aggregate **98/104**, zero failed containers/skips/not-run/errors and no retry. AUTH-001 is closed.
+
+Direct diagnostic through the frozen fixture proves:
+
+- GOV-003 passes `Identity` to normalized `Get-MailboxRetentionDistribution`; the historical command returns a bound normalized record without Identity/Name, so the generic harness filters it to zero.
+- GOV-004 likewise passes `Identity` to normalized `Resolve-PriorityIdentity`/`Resolve-Custodian`, filtering valid normalized records to zero.
+- GOV-005 ignores the historical explicit `Get-OMEFunctionalEvidence` command and requires only the newer parameter recipient-flow path.
+
+Release only C2 under ACK `purple-20261001T140000Z/Kanban/g596/correct-normalized-seam-dispatch-EXR-010-A12-L01-F02`, Common PSM1 only:
+
+1. Invoke the three normalized logical seams without lookup arguments; continue exact desired-versus-returned comparisons after collection, so no desired value is trusted as observed.
+2. GOV-005: when `Get-OMEFunctionalEvidence` exists, collect exactly one complete normalized record through the raw seam and validate its required functional members; otherwise use the current tenant-bound recipient-flow plus `Test-IRMConfiguration` path.
+3. Explicit command presence plus failure remains Error; no empty success synthesis.
+4. Preserve the newer live keyed fixtures and all semantic comparisons.
+
+Parse/hash and quiesce. No tests/fixtures/other files/live access/commit/push/publish. C1/C3 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 595 override: **ACCEPT SECURE FALLBACK IMPLEMENTATION; RERUN FROZEN 104-CASE GATE**. Accept C2's Common-only implementation with zero parse errors. Common SHA-256 is `AFDD5AB5F45071A7808CC13E7824F36FDCC13C8E2BEA33CF0AD992FBA598F4BA` (1,081,262 bytes).
+
+Release only C3 under ACK `purple-20261001T130000Z/Kanban/g595/run-fallback-focused-bounded-gate-EXR-010-A12-L01-F02`. In one fresh PowerShell 7/Pester 5.7.1 process run focused 6 then bounded 98. Require exact 104 discovery/execution, bounded composition 97 negatives plus one positive, `FailedContainers.Count = 0`, zero skipped/not-run/errors, valid complete NUnit and no retry. Verify Common/frozen hashes before/after and report every residual. No edit, affected/live suite, live access, commit, push or publish. C1/C2 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 594 override: **ACCEPT FOUR-SEAM COMPATIBILITY DESIGN; IMPLEMENT HISTORICAL FALLBACKS**. Accept C1's exact analysis.
+
+Release only C2 under ACK `purple-20261001T120000Z/Kanban/g594/implement-secure-seam-fallbacks-EXR-010-A12-L01-F02`, Common PSM1 only:
+
+1. AUTH-001: accept observed `Identity` as the `Name` source only when nonblank and canonical `Identity`, `Domain`, and requested domain all match; normalize output `Name` from that observed identity. Missing/mismatched identity remains Error. Selector DNS remains mandatory.
+2. GOV-003: conditionally supply tag and diagnostic collectors only when their commands exist. Make only those two new parameters optional. If tags are absent, project link-only records from observed `RetentionPolicyTagLinks`; never invent type/action/age. If diagnostics are absent, project explicit empty only when normalized distribution independently reports complete Success and covers the complete mailbox population. Explicit command failure remains Error.
+3. GOV-004: conditionally supply mailbox-statistics collection only when the command exists. Make only that new parameter optional and project explicit empty when absent; retain mailbox, priority identity, custodian and hold-state requirements. Remove only the unconditional nonempty-statistics gate.
+4. GOV-005: conditionally supply transport-rule collection only when the command exists. Make only that new parameter optional and project explicit empty when absent; retain IRM and all functional OME assertions. Explicit command failure remains Error.
+5. Preserve member presence and all historical semantic checks; do not change EXO-010, MON/OPS, CMS, trust, entitlement or admission logic.
+
+Parse/hash and quiesce. No tests/fixtures/other files/live access/commit/push/publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 593 override: **ACCEPT 97/104; CLASSIFY FOUR MANDATORY-SEAM REGRESSIONS AND FOCUSED CASCADE**. Generation 592 executed exactly 104 with **97 passed / 7 failed / 0 failed containers/skips/not-run/errors**, no retry. Focused remains 4/6; bounded improved to 93/98 with exactly 97 negatives and one positive.
+
+The bounded direct failures are AUTH-001, GOV-003, GOV-004 and GOV-005 degrading to Error because a mandatory seam is missing; the positive contains those same four errors. Focused admission additionally reports EXO-010 Fail and MON/OPS errors.
+
+Release only C1 under ACK `purple-20261001T110000Z/Kanban/g593/classify-mandatory-seam-regressions-EXR-010-A12-L01-F02`. Read-only trace the four exact Error reasons and parameter-binding boundaries in current Common versus the frozen positive fixture and historical accepted contracts. For each new retained command seam, determine the secure backwards-compatible source when the explicit new scriptblock is absent:
+
+- existing parent collection/evidence shape;
+- existing normalized signed/offline evidence;
+- explicit empty only when semantically legitimate;
+- or mandatory Error where the frozen contract already supplies it.
+
+Also trace focused EXO-010/AUTH/MON/OPS/GOV errors to distinguish direct new-seam regressions from derivative signing admission. Return exact function/parameter changes and smallest Common-only correction; no test/fixture edits or security weakening. Do not edit, run tests, retry, access a tenant, commit, push or publish. C2/C3 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 592 override: **ACCEPT ROOT-PRECEDENCE CORRECTION; RERUN FROZEN 104-CASE GATE**. Accept C2's Common-only correction with zero parse errors. Common SHA-256 is `9BE84B5B25E33C752440507F5D9160691E4148798730B5E2B08B3D1863CBD2A0` (1,078,163 bytes). Explicit roots remain strict and hash-pinned; absent roots defer to typed custom-root/system trust without changing chain helpers.
+
+Release only C3 under ACK `purple-20261001T100000Z/Kanban/g592/run-corrected-focused-bounded-gate-EXR-010-A12-L01-F02`. In one fresh PowerShell 7/Pester 5.7.1 process, run exactly:
+
+1. Focused `ExchangeEmailIntegratedWorkflow.Tests.ps1` — 6
+2. Bounded `PublicCommandSurface.Tests.ps1` — 98, exactly 97 negatives and one positive
+
+Require exact 104 discovery/execution, 104/104 pass, `FailedContainers.Count = 0`, zero skipped/not-run/errors, valid complete NUnit and no retry. Verify Common and frozen test hashes before/after. No edit, affected/live suite, live access, commit, push or publish. C1/C2 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 591 override: **ACCEPT TRUST-PRECEDENCE ANALYSIS; CORRECT OPTIONAL ROOT-REFERENCE HANDLING**. Accept C1's exact 17-failure reconciliation. All fifteen bounded failures and the two focused failures share one reader boundary: `Read-BaselineExchangeOperationalArtifact` unconditionally requires `trustedRoot.path` before CMS and chain verification.
+
+Release only C2 under ACK `purple-20261001T093000Z/Kanban/g591/correct-operational-root-precedence-EXR-010-A12-L01-F02`, Common PSM1 only:
+
+1. Detect whether the operational reference explicitly declares a `trustedRoot` member.
+2. When present, retain the current strict path/hash/read/fixed-time comparison/X.509 parsing/custom-root behavior unchanged; present-null/missing/unreadable/malformed/mismatched input must refuse with no fallback.
+3. When absent, perform no root-file operation and invoke `Test-BaselineExchangeEvidenceSignature` without `TrustedRoot`, allowing the existing chain factory's typed custom-root policy or system trust to apply.
+4. Build the signature-verification splat and add `TrustedRoot` only when a typed pinned certificate was successfully created.
+5. Dispose only the certificate created by the reader.
+
+Do not modify chain helpers, trust caller `chainState`, trust CMS-carried roots, weaken signer/time/thumbprint pins, revocation, download blocking or fail-closed findings. No tests/fixtures/other files. Parse/hash and quiesce. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 590 override: **ACCEPT FROZEN REGRESSION RED; CLASSIFY 17 TRUST-COMPATIBILITY FAILURES**. Generation 589 discovered exactly 104 and produced **87 passed / 17 failed / 0 failed containers/skips/not-run/errors**, no retry:
+
+- Focused workflow: **4/6**
+- Bounded security contract: **83/98**, with exactly 97 negatives and one positive retained
+
+All frozen hashes remained unchanged. Focused failures are the tampered-evidence refusal and licensed mixed-recipient workflow, both blocked by signing admission across EXO-010, AUTH-001, MON-003, OPS-001, OPS-002, GOV-003 and GOV-004. Fifteen bounded failures show trusted-root readability refusal preempting established untrusted/revoked/revocation-specific outcomes.
+
+Release only C1 under ACK `purple-20261001T083000Z/Kanban/g590/classify-trust-regressions-EXR-010-A12-L01-F02`. Read-only reconcile all 17 failures one-to-one against the accepted 98-case contract, focused fixture trust shape, current operational-artifact reader and chain helpers. Determine:
+
+- which callers supply `trustedRoot.path/sha256`, typed additional certificates, custom-root policy, or system trust;
+- exact precedence required to preserve hash-pinned operational roots without forcing unrelated evidence paths through a missing file;
+- how to retain the accepted untrusted/revoked/unknown-revocation findings and focused CMS behavior;
+- smallest Common-only correction, with no test/fixture changes and no weakening of detached CMS, signer pins, custom-root hash validation, offline revocation or fail-closed decisions.
+
+Return exact cluster counts, functions/lines and implementation order. Do not edit, run tests, access a tenant, retry, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 589 override: **ACCEPT COMPLETE LIVE GREEN; REVALIDATE FROZEN FOCUSED AND SECURITY CONTRACTS**. Generation 588 completed exactly **83/83**:
+
+- LiveContract: **68/68**, NUnit `3E4288833D10A08602385792C4F1EE66DF898C5ED736E44D9C90E4176E7EB948`
+- LiveAdapters: **6/6**, NUnit `7DEADA15F26DC1FC691CAA6BA6AC7450E7DA4CB05AD75F69C34BD5AC4B0D202D`
+- SignedRoundTrip: **9/9**, NUnit `0B04C6D3D4C5F6D3EE3D7631F57D592AD4CAAA7C6B58C12E455047232591FDCE`
+
+Exact discovery/execution, zero failed containers/skips/not-run/errors, valid NUnit and no retry. Current Common SHA-256 is `37CF39A49CC37549D267FEF45EE642629E89B6472C3AA9E203D6CA12A01F6FD5` (1,077,339 bytes).
+
+Release only C3 under ACK `purple-20261001T073000Z/Kanban/g589/run-focused-and-bounded-regression-EXR-010-A12-L01-F02`. In one fresh PowerShell 7/Pester 5.7.1 process, run exactly:
+
+1. `ExchangeEmailIntegratedWorkflow.Tests.ps1` — require 6/6.
+2. `PublicCommandSurface.Tests.ps1` — require 98/98, exactly 97 negative cases and one positive.
+
+Require exact discovery, `FailedContainers.Count = 0`, zero skipped/not-run/errors, valid complete NUnit and no retry. Verify before/after Common and both frozen test hashes. No edit, affected-suite run, live access, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 588 override: **ACCEPT G587 WIRING RED; MOVE GOV-005 TRANSPORT COLLECTION TO SIBLING ARGUMENT SCOPE**. Accept generation-587 as **83/83 executed, 72 passed / 11 failed / 0 failed containers/skips/not-run/errors**, no retry. Exact root cause: `TransportRuleCollection` was inserted inside the `OmeFunctionalEvidenceCollection` scriptblock rather than as a sibling key in `$collectorArguments`. Therefore the mandatory parameter was absent and GOV-005 failed before IRM observations.
+
+Canonical writer may move the existing transport-rule scriptblock unchanged to sibling collector-argument scope, parse Common, run `git diff --check`, then run one fresh ordered 83-case gate. No other edit/suite/live access/commit/push/publish. All Coworkers quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 587 override: **ACCEPT COMPLETE RETAINED COLLECTION; RUN 83 LIVE CASES ONCE**. Accept generation-586 implementations:
+
+- Common parses with zero errors at SHA-256 `740B776B27A148B830585517BDF72FBC335C693EF25C05EB3978CED2F8B08216` (1,077,391 bytes), with nine restored service-command collections bound into evidence/evaluators and no `Get-OMEFunctionalEvidence` reference.
+- Governance fixture parses with zero errors at SHA-256 `FFB59E638878B26286180CE618D06C1DFE2C9361A1B56534B7853D4FCC71E9A0` (11,924 bytes); recipient flow and keyed `Test-IRMConfiguration` remain.
+- `git diff --check` passed.
+
+Release only C3 under ACK `purple-20261001T060000Z/Kanban/g587/run-complete-83-live-gate-EXR-010-A12-L01-F02`. Run exactly LiveContract 68, LiveAdapters 6, SignedRoundTrip 9 in one fresh PowerShell 7/Pester 5.7.1 process. Require exact 83 discovery/execution, `FailedContainers.Count = 0`, zero skips/not-run/errors, plain text, valid complete per-file NUnit and no retry. Report counts, residuals, hashes and before/after governed identity. No edits, other suites, live access, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 586 override: **ACCEPT 81/83; RESTORE THE COMPLETE RETAINED RAW COMMAND SET**. Accept generation-585 as LiveContract **67/68**, LiveAdapters **5/6**, SignedRoundTrip **9/9**, aggregate **81/83**, exact discovery/execution, zero failed containers/skips/not-run/errors and no retry. The signed gate remains fully green.
+
+The one full-roundtrip failure proves explicit raw fixture commands are not all invoked. Exact missing commands are:
+
+`Export-MailboxDiagnosticLogs`, `Get-HostedContentFilterRule`, `Get-MailboxStatistics`, `Get-MalwareFilterRule`, `Get-ManagementScope`, `Get-OMEFunctionalEvidence`, `Get-RetentionPolicyTag`, `Get-SafeAttachmentPolicy`, `Get-SafeAttachmentRule`, and `Get-TransportRule`.
+
+`Get-OMEFunctionalEvidence` is a superseded test-only normalized seam: GOV-005 now binds explicit recipient flow and `Test-IRMConfiguration`, and no contract lists this as a service cmdlet. Remove only that raw fixture key and keyed dispatch. Restore observation-aware collection for the other nine commands in their owning controls:
+
+- EXO-010: `Get-ManagementScope`
+- MDO protection: hosted-content rule, malware rule, safe-attachment policy/rule
+- GOV-003: retention tags and mailbox diagnostics
+- GOV-004: mailbox statistics
+- GOV-005: transport rules
+
+Retain raw output, exact arguments, cardinality and completeness; bind the collected values into existing evidence/evaluator inputs rather than observation-only side effects. Empty collections are legitimate only where the contract permits them.
+
+The EXO-004 outbound-spam rule remains an optional retained observation for minimal adapter compatibility: when the command exists, collect it through the raw seam; when it is genuinely unavailable, preserve an explicit empty collection without failing EXO-004. An exact supplied command failure must still fail closed.
+
+Release C2 for Common-only implementation under ACK `purple-20261001T050000Z/Kanban/g586/restore-complete-raw-collection-EXR-010-A12-L01-F02`. Release C3 only to remove the superseded `Get-OMEFunctionalEvidence` raw fixture/dispatch under ACK `purple-20261001T050000Z/Kanban/g586/remove-superseded-ome-raw-seam-EXR-010-A12-L01-F02`. Both parse/hash only; no tests. No other edits, live access, commit, push or publish. C1 quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 585 override: **ACCEPT 82/83; ADD THE RETAINED EXO-004 OUTBOUND-RULE OBSERVATION**. Accept generation-584 as LiveContract **67/68**, LiveAdapters **6/6**, SignedRoundTrip **9/9**, aggregate **82/83**, with exact discovery/execution, `FailedContainers.Count = 0`, no skipped/not-run/errors and no retry. The sole failure is the passing full-roundtrip contract's missing `Get-HostedOutboundSpamFilterRule` invocation.
+
+Canonical writer may extend EXO-004's injected collection/evidence contract to:
+
+- require an `OutboundSpamRuleCollection`;
+- invoke `Get-HostedOutboundSpamFilterRule` through the observation-aware raw seam;
+- retain `OutboundSpamFilterRule` as an explicit collection-valued evidence member;
+- include the command in the evidence command identity and completeness member list;
+- preserve existing policy/mailbox/inbox semantics without treating an explicitly empty rule collection as missing evidence.
+
+Add an explicit empty base-fixture response; governance augmentation may replace it with explicit rule data. Parse, `git diff --check`, then run one fresh ordered 83-case measurement. Require 83/83, zero failed containers/skips/not-run/errors, valid complete NUnit and no retry. No other suite, live access, commit, push or publish. All Coworkers remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 584 override: **ACCEPT 72/83; CORRECT THREE DIRECT RESIDUALS AND RERUN ONCE**. Accept generation-583 as **83/83 executed, 72 passed / 11 failed / 0 setup failures / 0 skipped/not-run/errors**, no retry. LiveContract is 65/68, LiveAdapters 6/6 and SignedRoundTrip 1/9. All eight signed failures now reach their intended assertions and are derivative only of EXO-009 and MDO-008 fixture completeness.
+
+Canonical writer may make only these coherent corrections:
+
+1. Extend the raw collection identity contract to accept ordered one-of identity properties while preserving scalar callers and duplicate detection. Use `PrimarySmtpAddress|Identity` for `Get-RoleGroupMember` so a malformed record is rejected inside the raw seam and its observation is retained with `Complete = false`; valid mail and non-mail principals remain supported.
+2. AUTH-001 must bind both returned `Name` and returned `Domain` to the requested sending domain after canonical hostname normalization.
+3. Explicit live fixture data: set CAS mailbox `EwsEnabled = false`; ensure every enriched CAS mailbox remains explicit; ensure every hosted-content-filter policy has the intended explicit `SpoofQuarantineTag` (`DefaultFullAccessWithNotificationPolicy` for Strict, otherwise `DefaultFullAccessPolicy`).
+
+Parse edited files, run `git diff --check`, then one fresh ordered 83-case LiveContract/LiveAdapters/SignedRoundTrip measurement. Require exact discovery/execution, `FailedContainers.Count = 0`, zero skipped/not-run/errors, valid complete NUnit and no retry. Do not run other suites, access a tenant, commit, push or publish. All Coworkers remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 583 override: **ACCEPT RECONCILED G582 IMPLEMENTATION; RUN 83 LIVE CASES ONCE**. Accept both generation-582 implementations with zero parse errors and no tests:
+
+- Common: `6557F1CE66571F7B0AEA8E0D0391447ED14506F19D91E0EFEB50E90D1EB235AB` (1,064,962 bytes)
+- Harness: `613DA6F3659DD02B295E7405418A5860218DC07559B5651C05641ED898AB0959`
+- Base raw fixture: `D00707C7E03F6E2DA2557971E00F0695C01B2E99052B621F2BB9F1E85B5D922F`
+- Governance raw fixture: `7DF91CE3BF2C4AE4222DA9709C6572073546828DCD6F200BCECDAB8C27DFAA06`
+- Signed roundtrip test: `27E4E11E6407A6845D09415F26A23166891DDB6B55A02D0A92147FC057A0DB91`
+
+`git diff --check` passed. The Common change preserves system trust where no explicit custom-root contract is supplied and uses only a hash-pinned local root for `CustomRootTrust`.
+
+Release only C3 under ACK `purple-20261001T030000Z/Kanban/g583/run-83-live-after-trust-and-dispatch-EXR-010-A12-L01-F02`. In one fresh PowerShell 7/Pester 5.7.1 process run exactly, in order:
+
+1. LiveContract 68
+2. LiveAdapters 6
+3. SignedRoundTrip 9
+
+Require exact 83 discovery, all 83 executed, `FailedContainers.Count = 0`, zero skipped/not-run/errors, plain-text output and valid complete per-file NUnit XML. No retry. Report per-file/aggregate counts, every residual one-to-one, NUnit hashes, and before/after governed hashes. Do not edit, run focused/bounded/other affected suites, access a tenant, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 582 override: **ACCEPT 17-FAILURE RECONCILIATION; IMPLEMENT PRODUCT AND EXPLICIT TEST SIDES**. Accept C1's exact reconciliation: nine LiveContract and eight SignedRoundTrip failures, zero setup/container failures. The direct clusters are harness unscoped/partition dispatch (five), EXO-010 semantics (two), AUTH-001 binding (one), aggregate derivatives (one), and signed CMS/trust (eight).
+
+Release two disjoint implementation grants; neither worker may run tests in this generation.
+
+**C2 ACK `purple-20261001T020000Z/Kanban/g582/correct-live-common-and-root-trust-EXR-010-A12-L01-F02`**, Common PSM1 only:
+
+1. EXO-010 must retain immutable top-level member records with `Group`, canonical `Member`, `IdentitySource` (`PrimarySmtpAddress` or `Identity`) and complete `Raw`, while preserving existing role-group `Members` strings. Do not drop non-mail principals. Reject every observed unapproved role group, including records beyond 1,000; malformed group identity is Error.
+2. AUTH-001 must bind the single returned DKIM signing configuration `Domain` to the requested domain after canonical hostname normalization. Missing/null/non-string/mismatched identity cannot Pass; mismatch is Error under response/request binding.
+3. Operational signed-artifact verification must securely consume explicit `trustedRoot.path` plus `trustedRoot.sha256`: require both, read locally, verify exact file hash before certificate parsing, pass only that pinned certificate into chain verification, set `CustomRootTrust`, add only the pinned root to `CustomTrustStore`, and retain offline revocation, disabled downloads, validity, signer/root pins and fail-closed Good/Revoked/Unknown handling. A CMS-embedded root must never become trusted merely by inclusion.
+4. Preserve system-trust behavior when no custom-root contract is permitted by the existing public path; do not accept caller chain state or weaken detached CMS/signer authorization.
+
+Parse Common, report hash, and quiesce. No tests or other files.
+
+**C3 ACK `purple-20261001T020000Z/Kanban/g582/correct-live-harness-fixtures-signing-EXR-010-A12-L01-F02`**, only `ExchangeLiveRawHarness.ps1`, `ExchangeLiveRawFixture.ps1`, `ExchangeGovernanceRawFixture.ps1`, and `ExchangeLiveSignedRoundTrip.Tests.ps1`:
+
+1. Harness identity dispatch: when `Identity` is supplied and `ByIdentity` exists, require the exact key and never fall back; when no identity is supplied and explicit `Items` exists, use it; refuse when neither applies.
+2. TABL/list dispatch: exact keyed partition wins; if a requested partition is absent but explicit `Items` exists, use that explicit response; refuse only when neither exact partition nor explicit `Items` exists. Preserve wrong supplied identity/partition refusal.
+3. Add explicit `EwsAllowList = @()` to every mailbox-plan fixture record.
+4. Add explicit `EndUserSpamNotificationFrequency` and `IncludeMessagesFromBlockedSenderAddress` to every quarantine-policy fixture record, retaining existing permissions values.
+5. Add explicit `LicensingLocation = 'Online'` to the governance `Get-IRMConfiguration` fixture record.
+6. Signed artifact setup must add exactly one authenticated `Pkcs9SigningTime` before `ComputeSignature` and include the generated certificate's exact `Thumbprint` in every authorized-signer record. Do not change signed assertions or trust expectations.
+
+Parse all owned files, run `git diff --check`, report hashes, and quiesce. No tests or other files. No expectation weakening, synthesized product defaults, live access, commit, push or publish. C1 remains quiescent. After both results, a new generation will authorize one ordered 83-case run.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 581 override: **ACCEPT FIRST UNOBSTRUCTED 83-CASE RESULT; CLASSIFY 17 PRODUCT/HARNESS RESIDUALS**. Generation 580 constructor smoke passed with 56 explicit raw commands and one recipient flow. The one fresh ordered live run discovered exactly **83** and produced **66 passed / 17 failed / 0 skipped or not run**, with no setup exception and no retry:
+
+- LiveContract: **59/68**, NUnit `9DFE28DEFF5762CA10A8C350028BF0040E90BD3FB893D9CDBA1CCCDD53F169D4`
+- LiveAdapters: **6/6**, NUnit `C190F1D3531A61C6DFA098B1D6B0677475D70D42B5425D7C760D04C8C4614DD1`
+- SignedRoundTrip: **1/9**, NUnit `959AFA68F85C88C78F6F7511B9AAAA4A3D4DFB8904AE95446F25B2E0FA7400FC`
+
+All three are valid complete `test-results` XML. The failed Pester container results reflect contained test failures, not container setup/discovery failures.
+
+Release only C1 under ACK `purple-20261001T013000Z/Kanban/g581/classify-17-live-residuals-EXR-010-A12-L01-F02`. Read-only reconcile all 17 NUnit failures one-to-one against current Common, harness, governance/base/protection fixtures and signed-roundtrip setup. At minimum distinguish:
+
+- `OFFLINE_FIXTURE_IDENTITY_REQUIRED:Get-Mailbox` when collectors legitimately request unscoped inventory despite `ByIdentity`;
+- missing TABL partitions when explicit `Items` fallback is present;
+- null observation indexing in malformed EXO-004/GOV-003 cases;
+- EXO-009 mailbox-plan completeness;
+- GOV-005 missing `LicensingLocation`;
+- EXO-010 large-role and RBAC identity semantics;
+- signed operational CMS/signing-time/thumbprint/custom-root failures versus derivative Exchange collection errors.
+
+Return an exact count-reconciled cluster table, owning file/function, smallest secure correction, and whether each correction is Common-only, harness-only, explicit fixture-only or signed-test setup. Confirm the proper no-setup-failure metric from Pester. Do not edit, run tests, access a tenant, retry, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 580 override: **ACCEPT G579 SETUP RED; CONSUME THE ENRICHED FIXTURE RETURN VALUE**. Accept generation-579 as **83 discovered / 6 passed / 77 failed / 2 failed containers / no retry**. The absent-key assignment defect is closed. Direct constructor tracing establishes the root cause: `Add-ProtectionGovernanceFixture` returns a new enriched fixture containing `Raw` and `Context.Configuration`, but `New-ExchangeGovernanceRawFixture` ignored that return value and continued indexing the original base `$raw`; therefore the explicit PIM/GOV commands were genuinely absent from the object being keyed.
+
+Canonical writer may edit only `ExchangeGovernanceRawFixture.ps1` to capture the protection augmenter output, require exactly one dictionary result with present non-null `Raw`, `Context`, and `Context.Configuration`, then continue from that returned raw/configuration while preserving the existing recipient-flow collection. No side-effect assumption, synthesized command, copied reference value or fallback is allowed.
+
+Parse and `git diff --check`, then perform one constructor-only smoke check that verifies the enriched raw contains the explicit PIM/access-review/DKIM/retention/priority/custodian/IRM/OME keys and their required keyed dispatch members. If and only if that smoke check passes, run one fresh ordered 83-case live measurement in generation 580. No retry. Report exact counts, failed containers, residuals and valid NUnit identities. No other edits/suites/live access/commit/push/publish. All Coworkers remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 579 override: **ACCEPT FIRST SCOPE FIX; CORRECT NEW-KEY DICTIONARY ASSIGNMENT AND RERUN ONCE**. Accept generation-578 as **83 discovered / 6 passed / 77 failed / 2 failed containers / no retry**. The missing `Get-ProtectionReferenceValues` scope defect is closed. Both remaining failed containers now stop at `New-ExchangeGovernanceRawFixture` line 77 because `ByIdentity` is added to a dictionary through property notation even though the key does not yet exist. This is one setup-only assignment defect; no product case executed in the two affected files. All NUnit documents are valid complete `test-results` XML.
+
+Release only C3 under ACK `purple-20261001T000000Z/Kanban/g579/fix-dictionary-key-and-run-live-EXR-010-A12-L01-F02`:
+
+1. Edit only `ExchangeGovernanceRawFixture.ps1`.
+2. Replace property-notation creation of absent dictionary keys, including `ByIdentity`, with exact dictionary indexer assignment. Inspect the same fixture function for any identical absent-key property assignment and correct it in the same coherent edit; preserve existing-key mutation behavior and fail-closed dispatch.
+3. Do not alter values, expected observations, constructor ordering, dynamic-module scope, product code, harness, base/protection fixture or tests.
+4. Parse the file and run `git diff --check`.
+5. In one fresh PowerShell 7/Pester 5.7.1 process, run exactly LiveContract 68, LiveAdapters 6, SignedRoundTrip 9 in order. Require exact 83 discovery, plain-text output, valid complete NUnit XML, zero failed containers and zero skipped/not-run. No retry.
+
+Report counts, all genuine residuals one-to-one, NUnit hashes/XML validity, and before/after governed hashes. Do not run other suites, access a live tenant, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 578 override: **ACCEPT G577 SETUP RED; RESTORE AUGMENTER DEPENDENCY SCOPE AND RERUN ONCE**. Accept the generation-577 one-run result as **83 discovered / 6 passed / 77 failed / 2 failed containers / no retry**. LiveAdapters passed 6/6. All 68 LiveContract and all nine SignedRoundTrip cases failed during container setup at `Add-ProtectionGovernanceFixture` because the captured augmenter could not resolve its private `Get-ProtectionReferenceValues` dependency. This is one fixture-scope regression, not 77 product failures. All three NUnit files are valid complete `test-results` documents; use `DocumentElement.LocalName`, not the PowerShell XML adapter collision on `.Name`.
+
+Release only C3 under ACK `purple-20260930T230000Z/Kanban/g578/fix-augmenter-scope-and-run-live-EXR-010-A12-L01-F02`:
+
+1. Edit only `ExchangeGovernanceRawFixture.ps1` and, only if strictly required for the same scope correction, `ExchangeProtectionFixture.ps1`.
+2. Preserve the renamed stable base constructor and deterministic base -> governance -> protection enrichment sequence.
+3. Ensure `Add-ProtectionGovernanceFixture` executes in a scope where all of its private dependencies, including `Get-ProtectionReferenceValues`, resolve. Prefer retaining the protection fixture functions in one private script scope or capturing the complete dependency set; do not copy reference values, synthesize defaults, reintroduce same-name constructor clobbering, or weaken missing-key refusal.
+4. Parse every edited file and run `git diff --check`.
+5. In one new fresh PowerShell 7/Pester 5.7.1 process, run exactly LiveContract 68, LiveAdapters 6, SignedRoundTrip 9 in that order. Require exact 83 discovery, plain-text output, valid complete per-file NUnit XML, zero failed containers and zero skipped/not-run. No retry.
+
+Report per-file/aggregate counts, one-to-one residuals, NUnit hashes/XML validity via `DocumentElement.LocalName`, and before/after hashes for Common, harness, governance fixture, base fixture, and protection fixture. Do not edit product/Common/harness/base fixture/tests/manifest/PSD1/Test/Deploy/adapters, run focused/bounded/other affected suites, access a tenant, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 577 override: **ACCEPT RECONCILED DEFERRED SEAMS; RUN 83 LIVE CASES ONCE**. Accept both generation-576 implementations. C2 changed Common only, with zero parse errors; Common SHA-256 is `DB65C03C447114CEA829139DFF4A7605408DA1C8A58DD88F6B484DF217797B55` (1,056,320 bytes). C3 stabilized the enriched fixture path and explicit offline dispatch, with zero parse errors and `git diff --check` green:
+
+- `ExchangeLiveRawHarness.ps1`: `0D1122E1C78C68F81EDF175E6506A3D94B8D437D8B656C9BA51217F6163C8500` (8,043 bytes)
+- `ExchangeGovernanceRawFixture.ps1`: `CDE69E5E091F5C68FD7B7D4C4405811EF5441EFA61B684BE446E9D841A9B1025` (8,205 bytes)
+- `ExchangeLiveRawFixture.ps1`: `BC5A5FA11FC667492A80814D4CFC4A5A12EFF083D8B339E4C42AD13FF5C266A7` (8,208 bytes)
+
+Release only C3 under ACK `purple-20260930T220000Z/Kanban/g577/run-83-live-after-seams-EXR-010-A12-L01-F02`. In one fresh PowerShell 7/Pester 5.7.1 process, run exactly and in this order:
+
+1. `ExchangeLiveContract.Tests.ps1` — 68
+2. `ExchangeLiveAdapters.Tests.ps1` — 6
+3. `ExchangeLiveSignedRoundTrip.Tests.ps1` — 9
+
+Require exact discovery **83**, zero failed containers, zero skipped/not-run, plain-text child output, and valid complete NUnit XML. No retry. Report per-file and aggregate counts, every residual one-to-one, NUnit size/hash/XML validity, and before/after hashes for Common plus the three live fixture/harness files. Do not edit, run focused/bounded/other affected suites, access a live tenant, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 576 override: **ACCEPT DEFERRED-SEAM DESIGN; IMPLEMENT PRODUCT AND EXPLICIT OFFLINE SIDES**. Accept C1's generation-575 recovery. Compatible history defines injected, private collection contracts rather than exported helpers. Runtime must fail closed when dependencies are unavailable; the offline harness may expose only fixture-explicit observations. The current live fixture is losing its governance augmentation because repeated dot-sourcing redefines/clobbers `New-ExchangeLiveRawFixture`. Common plus harness alone is insufficient; the constructor must be stabilized. Signed-roundtrip also requires the independent MDO-006 malformed dynamic member-name correction.
+
+Release two disjoint implementation grants; neither worker may run tests in this generation:
+
+**C2 ACK `purple-20260930T210000Z/Kanban/g576/restore-deferred-common-seams-EXR-010-A12-L01-F02`**, Common PSM1 only:
+
+1. Keep EXO-010 active/eligible PIM and access-review, AUTH-001 DKIM DNS, GOV-003 retention distribution, GOV-004 identity/custodian, and GOV-005 OME dependencies private/injected and fail closed when absent, incomplete, unauthorized, partial or malformed. Do not synthesize empty/success results and do not import/connect Graph.
+2. Bind exact context inputs and exact command arguments at current registry call sites. GOV-004 must pass configured identities; GOV-005 must pass resolved sender/recipient/recipient-flow inputs.
+3. Make GOV-005 collect `Test-IRMConfiguration` through `Invoke-BaselineExchangeRawCollection`, retaining the inner observation and validating one `Results` member before combining it with explicit functional recipient-flow evidence. Command unavailability/malformed result is Error; semantic flow failure remains Fail.
+4. Preserve explicit collection cardinality and immutable shapes for EXO-010/AUTH/GOV dependencies.
+5. Correct the MDO-006 malformed dynamic member-name projection so Junk/NotJunk/Phish mailbox members are resolved by their exact string property names, not a method-signature string.
+6. Keep all helpers private; no export/PSD1 change.
+
+**C3 ACK `purple-20260930T210000Z/Kanban/g576/stabilize-live-offline-fixture-EXR-010-A12-L01-F02`**, only `ExchangeLiveRawHarness.ps1`, `ExchangeGovernanceRawFixture.ps1`, and if required `ExchangeLiveRawFixture.ps1`:
+
+1. Eliminate constructor name/scope clobber so the stable path is always base raw -> governance augmentation -> `Add-ProtectionGovernanceFixture` -> enriched raw. Rename/capture/load privately rather than repeatedly dot-sourcing a same-named constructor.
+2. Preserve explicit fixture keys and observations for active/eligible PIM, access reviews, DKIM selectors, retention distribution, priority identities, custodians, `Test-IRMConfiguration`, and OME recipient flow. Missing keys/identity/URI/partition must throw; never become empty/success.
+3. Add exact harness signatures/dispatch for identity, sender/recipient, URI and structured collection arguments while preserving generic command behavior.
+4. Ensure every mailbox-plan record explicitly includes Boolean `EwsEnabled` and every quarantine-policy record includes `EndUserQuarantinePermissionsValue`; do not inherit or default these in product code.
+5. Set child-process output rendering to plain text before execution so NUnit serialization cannot contain ANSI ESC.
+
+Both workers must parse their owned PowerShell files, report hashes, and quiesce. No tests, fixture expectation changes, manifest/PSD1/Test/Deploy/adapters edits, exports, desired-as-observed substitution, live access, commit, push or publish. After both results, a new generation will authorize exactly one 83-case live run. C1 remains quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 575 override: **ACCEPT EXACT 70/74; DESIGN DEFERRED LIVE DEPENDENCY RECOVERY**. Accept C2's generation-574 Common-only implementation and exact expected one-run result: LiveContract 64/68, LiveAdapters 6/6, aggregate **70 passed / 4 failed / 74 total / 0 failed containers / 0 skipped or not run**. Common parses with zero errors and now SHA-256 `8FC83ACEBCE000DA1850542002C79D616CC3A8576CC302CC6B7F2F04F9B8E58A` (1,045,802 bytes). NUnit SHA-256 is `66BE7F619B7732F7B61B1BC28ACC5CDAB5CDAC18C2D3F809792BB5C88B63DA15` (33,945 bytes). No retry.
+
+The four residuals are: EXO-010 large RoleGroup inventory missing PIM/access-review collection; RBAC non-mail principal case dominated by EXO-009 mailbox-plan completeness; malformed `Test-IRMConfiguration` missing the GOV private dependency path; and the derivative full-retained-control roundtrip dominated by EXO-009 plus EXO-010.
+
+Release only C1 under ACK `purple-20260930T201500Z/Kanban/g575/design-deferred-live-seams-EXR-010-A12-L01-F02`. Read-only recover the smallest coherent private seam design from compatible repository history and current callers/tests for:
+
+- active and eligible PIM assignments and access reviews for EXO-010;
+- DKIM selector DNS for AUTH-001;
+- mailbox retention distribution for GOV-003;
+- priority identity/custodian resolution for GOV-004;
+- OME functional evidence including malformed `Test-IRMConfiguration` for GOV-005.
+
+Also define the exact explicit offline harness/fixture shapes needed for those seams plus EXO-009 mailbox-plan `EwsEnabled` and MDO-008 `EndUserQuarantinePermissionsValue`. For every seam, provide function signature, source command/input, immutable return shape, completeness/error rules, evaluator binding, historical source commit/lines if available, and exact test/harness injection point. Distinguish product collection from test-only offline observations; no empty/success defaults for unavailable dependencies. Identify whether one coherent Common plus `ExchangeLiveRawHarness.ps1` edit can close the four 74-case residuals and unlock the nine signed-roundtrip cases.
+
+Do not edit, run tests, access a tenant, retry, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 574 override: **ACCEPT 11-FAILURE CLASSIFICATION; CORRECT SEVEN COMMON-ONLY FAILURES**. Accept C1's one-to-one reconciliation. Seven direct failures are owned by four Common-only defects: three TABL private-scope failures, two independent MDO-006 route semantics, one EXO-006 explicit-null/non-Boolean admission, and one EXO-001 initial-domain denominator omission. The remaining four expected failures are two EXO-010 dependency seams, one GOV-005 dependency seam, and the derivative full-roundtrip aggregate; they remain deferred.
+
+Release only C2 under ACK `purple-20260930T184500Z/Kanban/g574/correct-seven-live-common-EXR-010-A12-L01-F02` with Common PSM1 ownership only:
+
+1. Restore MDO-007 access to the existing module-private `Invoke-BaselineExchangeRawCollection` seam from the eight-partition collector. Prefer module dynamic scope by removing the closure that severs private resolution; if lexical capture is necessary, capture/invoke the private function scriptblock without exporting or duplicating it. Preserve exact eight partitions, observations and governance identity joining.
+2. Evaluate MDO-006 Junk, NotJunk and Phish as three independently required routes. Each route requires its Boolean custom-route state, exactly the approved reporting mailbox and no surplus recipient; a valid route must not compensate for a disabled or misrouted peer route.
+3. Make EXO-006 distinguish explicit Boolean false from absent/null/non-Boolean `AuditBypassEnabled`. True is Fail, false is valid no-bypass, and unresolved/non-Boolean is Error. Keep the generic raw helper generic.
+4. For EXO-001, construct the expected accepted-domain denominator from primary domain, initial onmicrosoft domain and every tenant-bound inventory domain explicitly marked accepted, canonicalized and deduplicated. `Get-AcceptedDomain` remains the observed authority.
+
+Do not add deferred EXO-010/AUTH/GOV helpers, product defaults, fixture/harness/test/manifest/PSD1/Test/Deploy/adapters edits, exports, security weakening or unrelated changes. Parse Common and run exactly LiveContract plus LiveAdapters once in fresh PowerShell 7/Pester 5.7.1, requiring exact 74 discovery and zero failed containers. Expected direct improvement is 63/74 to 70/74, with four residuals; classify any variance. No retry, signed-roundtrip/focused/bounded/other affected suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 573 override: **ACCEPT LIVE OBSERVATION RESTORATION; CLASSIFY 11 RESIDUALS**. Accept C2's generation-572 Common-only implementation and one-run measurement. Common parses with zero errors and now SHA-256 `4C6FE8443FC7362682CA9A4DB21FA87C498215EEA614B9F36F7B84E10741F67C` (1,040,890 bytes). Exact two-file discovery was **74**, with **63 passed / 11 failed / 0 failed containers / 0 skipped or not run**: LiveContract 58/68 and LiveAdapters 5/6. This improves the prior comparable result from 13/74 to 63/74. NUnit SHA-256 is `963347A0FF51338230D18631AD44B2D5FC9B5CB312C1B8693D79B14840AE4E1C` (39,989 bytes). No retry.
+
+Release only C1 under ACK `purple-20260930T181500Z/Kanban/g573/classify-11-live-residuals-EXR-010-A12-L01-F02`. Read-only inspect the 11 failed NUnit cases, their exact AAA assertions, harness seams and current Common implementation. Produce a one-to-one table with test name, control, expected/actual, root cause, owning function/region, and smallest secure correction. Explicitly distinguish:
+
+- intentionally deferred EXO-010 PIM/access-review and GOV private seams;
+- TABL closed-script/private-seam resolution versus TABL product semantics;
+- MDO-006 phish and disabled-NotJunk route semantics;
+- EXO-006 explicit-null audit bypass validation;
+- full-roundtrip derivative failures;
+- initial-domain EXO-001 adapter failure.
+
+Confirm whether each failure requires Common only or a separately authorized harness/fixture edit, and identify any shared fix/cascade. Do not edit, run tests, access a tenant, retry, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 572 override: **ACCEPT 69-LIVE-FAILURE CLASSIFICATION; RESTORE OBSERVATION-AWARE RAW COLLECTION**. Accept C1's generation-571 count reconciliation. Of 69 residuals, 35 lack retained raw observations, 20 ignore or under-project mutated command seams, two require partitioned TABL arguments, two lack EXO-010 dependency seams, one loses warning-only truncation, one aggregate exposes eight missing live dependencies, and eight are signed-artifact setup/trust preemption. Begin with the shared raw observation and mandatory projection surface.
+
+Release only C2 under ACK `purple-20260930T164500Z/Kanban/g572/restore-live-observations-EXR-010-A12-L01-F02` with Common PSM1 ownership only:
+
+1. Upgrade the private Exchange raw invocation seam to record one immutable observation per command invocation with `Command`, exact `Arguments`, `StartedAtUtc`, `FinishedAtUtc`, `Complete`, typed-array `Raw`, captured `Warnings`, paging/result-size metadata, and `Error`. Preserve partial output when warning/error follows; classify truncation/incomplete warnings as incomplete and rethrow only after appending the observation.
+2. Route every retained Exchange registry command invocation through that seam, including per-mailbox/per-rule calls. Preserve empty/singleton/multi-item cardinality and exact command arguments. On registry catch, retain accumulated observations in the failed evidence/result projection rather than replacing them with an unobservable null-only record. Project `Observation` on each final check record.
+3. Complete mandatory command projections and pre-semantic completeness validation for:
+   - EXO-004 mailbox inventory, outbound-spam policy and inbox rules;
+   - EXO-006 mailbox audit-bypass identity/state;
+   - MDO-006 report-submission policy/rule, SecOps policy/rule, binding and routing;
+   - MDO-009 anti-phish rule scope.
+   Missing/malformed required raw members must produce Error before compliance evaluation.
+4. Invoke all eight MDO-007 TABL partitions explicitly: Sender/Url/FileHash/IP × Allow/Block, retaining one observation per invocation and joining governance only after exact type/action/value identity.
+5. Do not add the still-separate EXO-010/DKIM/GOV helper implementations or signed custom-root changes in this generation.
+
+Do not edit tests/fixture/manifest/PSD1/Test/Deploy/adapters, weaken evaluator/security behavior, synthesize observations from desired state, or touch unrelated code. Parse Common and run exactly `ExchangeLiveContract.Tests.ps1` then `ExchangeLiveAdapters.Tests.ps1` once, **68/6 = 74**; require exact discovery, zero failed containers and report residuals. No retry, signed-roundtrip/focused/bounded/other affected suite, live tenant access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 571 override: **ACCEPT LIVE CASCADE REMOVAL; CLASSIFY 69 RESIDUAL LIVE FAILURES**. Accept C2's generation-570 ordered measurement as **83 total / 14 passed / 69 failed / 0 failed containers**, no retry. Per-file: LiveContract 13/68, LiveAdapters 0/6, SignedRoundTrip 1/9. The empty-certificate chain case now passes. Current Common SHA-256 is `F5B2ED61A7C70773F74409551052822D39CA21B910947A1D520733B626FAEFFC`; Test entrypoint is `3C29657E6751995901375A3B24645F4F3A6F4C6E799565EB32E59BA31324D79A`. The NUnit file SHA-256 `7031C82E33317784B148ED63D5AFE8B6FFAA2681D31892E8D74379D0040590D5` is truncated/invalid and is diagnostic only.
+
+Release only C1 under ACK `purple-20260930T163000Z/Kanban/g571/classify-live-residuals-EXR-010-A12-L01-F02` for read-only trace of all 69 residual live failures from the updated three tests, harness, current Common and Test entrypoint. Reconcile exact counts across null-array indexing, EXO-009 collection errors, exit-code mismatches, one-control roundtrip projections and any remaining fixture seams. Identify first shared boundaries, whether truncation obscures evidence, and the smallest correction set. Explicitly verify whether the entrypoint passes registry Context with the required invocation syntax and whether process `exit` inside the same host truncates Pester/NUnit output. No Pester, edit, implementation, retry, focused/bounded/affected/other suite, live tenant access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 570 override: **ACCEPT LIVE DESIGN; IMPLEMENT EARLY EXCHANGE-ONLY TEST ENTRYPOINT**. Accept C1's generation-569 plan for all 83 live cases. Current blockers are unconditional Graph/legacy routing and mandatory binding rejection of an intentionally supplied empty extra-certificate collection.
+
+Release only C2 under ACK `purple-20260930T161500Z/Kanban/g570/implement-live-entrypoint-EXR-010-A12-L01-F02` with Common PSM1 and `Test-ExchangeOnlineBaseline.ps1` ownership only:
+
+1. Allow an explicitly supplied empty `X509Certificate2Collection` in private `Test-BaselineEvidenceCertificateChain`; keep the signer certificate mandatory, null disallowed, real offline chain build authoritative and all trust/revocation refusal unchanged.
+2. Change the Test script default configuration to `exchange-only.v1.json`.
+3. Before any connection, parse configuration metadata and route exact `ExchangeOnly` to an early branch. Resolve `Get-BaselineExchangeContext` offline; without `SkipConnection`, import/connect Exchange exactly once and never import/connect Graph or Purview; with `SkipConnection`, make no connection.
+4. Invoke only `Invoke-BaselineExchangeRegistry`; require one unique projection for each manifest control. Construct the accepted Exchange envelope with context tenant/hash/entitlement, 25 evidence/results, manifest hash, exclusions, external checks and external readiness. Write atomically to stable `exchange-online-evidence.json`.
+5. Resolve exit through `Get-BaselineRunOutcome`, write the envelope before Collection/Compliance exits, and return before all generic Graph, legacy collection/envelope and inline-CMS logic.
+6. If ExchangeOnly `GoLive` is requested, delegate only to `Invoke-BaselineExchangeGoLive` with explicit Exchange evidence/signature/signer inputs; do not reuse legacy risk-acceptance CMS or duplicate chain/signature code.
+7. Preserve the explicit legacy branch for non-ExchangeOnly configurations.
+
+Do not edit tests/fixture/PSD1/deploy/adapters, add product test branches, duplicate Common collectors/security, weaken connection/exit semantics or touch unrelated files. Parse both authorized files and run exactly the three live files once in order **68/6/9 = 83**; require exact discovery, zero failed containers, and report all residuals. No retry, focused/bounded/other affected suite, live tenant access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 569 override: **ACCEPT TEST-SETUP MEASUREMENT; DESIGN EARLY EXCHANGE-ONLY LIVE ENTRYPOINT**. Accept C2's generation-568 ordered measurement as **633 total / 42 passed / 591 failed / 0 failed containers**, NUnit SHA-256 `AB43A1BF244D87DBC9E0251E64747ECBFFF1C5D0874CAB61877014D30F80ECF5`. Invalid Clone and lexical chain assertions are removed; four corrected test hashes are frozen at Matrix `1F44C4D77F013A1A1B7D881AC0BDE7DF97C12FF7050B17B01886A597E2FDCD82`, Licensing `7725671D418E25B32B5051377CBFEEA3CC752DB73A64AAA14FF776F92096B870`, Safety `98EDD83EB15A395B4621670AEEBA84777FE90DA79E4EB2D75743A19F66216562`, RoundTrip `5563D0D091326FCDAD50D5A1C1519446C44723861A0EC9567B64EC8ABA92E7AE`.
+
+Release only C1 under ACK `purple-20260930T160000Z/Kanban/g569/design-live-entrypoint-EXR-010-A12-L01-F02` for read-only mapping of the updated live contract, adapter and signed-roundtrip tests plus `ExchangeLiveRawHarness.ps1` and `Test-ExchangeOnlineBaseline.ps1`. Specify the exact ExchangeOnly detection point, connection behavior with/without `SkipConnection`, canonical context/registry invocation, stable evidence envelope schema/path, exit semantics, go-live/signing interactions, and which existing Common helpers must be reused rather than duplicated. Also diagnose the replacement chain behavioral test's empty mandatory `CertificateCollection` setup. Produce an implementable bounded plan covering all 83 live cases without changing assertions. No Pester, edit, implementation, retry, focused/bounded/affected/other suite, live tenant access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 568 override: **ACCEPT 708-FAILURE CLASSIFICATION; CORRECT UNSUPPORTED TEST SETUP ONLY**. Accept C1's generation-567 count-reconciled classification. Shared/setup/compatibility cascades account for 223 failures, while 485 are substantive. Begin by correcting only unsupported test assumptions so product restoration is measured against valid fixtures.
+
+Release only C2 under ACK `purple-20260930T154500Z/Kanban/g568/correct-affected-test-setup-EXR-010-A12-L01-F02` with `ExchangeProtectionMatrix.Tests.ps1`, `ExchangeProtectionLicensing.Tests.ps1`, `ExchangeProtectionSafety.Tests.ps1`, and `ExchangeLiveSignedRoundTrip.Tests.ps1` ownership only:
+
+1. Replace invalid `OrderedDictionary.Clone()` fixture use with a member-preserving ordered copy; keep all exception mutations and assertions unchanged.
+2. When Matrix/Licensing fixtures narrow recipient scope, rebuild both Standard EOP/ATP exclusion observations from the narrowed approved recipient set so strict preset validation remains meaningful and does not preempt the intended assertion.
+3. Replace the obsolete lexical assertion requiring chain policy inline in `Read-BaselineExchangeOperationalArtifact` with a behavioral/private-delegation assertion over the actual chain factory/evaluator path; do not duplicate chain code or weaken expected offline/download-disabled/revocation behavior.
+
+Do not change product/helper/shared fixture, expected statuses/reasons, test names/counts, PSD1/deploy/adapters, or unrelated tests. Parse the four files and run exactly those four files once in order **337/281/6/9 = 633**. This is a setup-correction measurement, not a green gate; require exact discovery, zero failed containers, and removal of the 86 stale-preset, 18 Clone and one lexical-assertion failures without retry. No other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 567 override: **REJECT AFFECTED 39/747; CLASSIFY FAILURE CASCADES**. Accept C3's sole generation-566 ordered run with exact discovery **337/281/6/30/10/68/6/9 = 747** as **39 passed / 708 failed / 0 other / 0 failed containers**, no retry. Per-file results: Matrix 10/337, Licensing 15/281, Safety 2/6, ReportingContract 2/30, ReportingAdapters 10/10, LiveContract 0/68, LiveAdapters 0/6, LiveSignedRoundTrip 0/9. All frozen before/after hashes matched. Validation packet SHA-256 `9215D5E1A5FE7B50A3FCE57266D6CEB0B0D96205096D3905826DBBF1BAF99D44`.
+
+Release only C1 under ACK `purple-20260930T153000Z/Kanban/g567/classify-affected-failures-EXR-010-A12-L01-F02` for read-only inspection of the generation-566 packet and all eight NUnit files. Cluster all 708 failures by exact root exception/assertion and first shared call boundary; distinguish container/setup cascades, unsupported current-test assumptions, product regressions and missing historical compatibility surfaces. For each cluster report affected files/counts, exact representative test/reason, responsible symbol/file, and smallest correction class. Explicitly identify whether a small number of setup failures accounts for the matrix/licensing/live cascades. No Pester, edit, implementation, retry, focused/bounded/affected/other suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 566 override: **ACCEPT FINAL INDEPENDENT REVIEW; RELEASE ORDERED AFFECTED 747**. Accept C1's generation-565 final `ACCEPT`: all frozen hashes match; generation-553 manifest/disposition, entitlement and evidence-record blockers are closed; legitimate empty collections and strict missing/null refusal coexist; no high-confidence all-control, CMS, signer, trust/revocation, bypass, approved-change, structured-parameter or legacy-isolation blocker remains.
+
+Release only C3 under ACK `purple-20260930T151500Z/Kanban/g566/run-affected-747-EXR-010-A12-L01-F02` for the exact ordered affected vector **337 / 281 / 6 / 30 / 10 / 68 / 6 / 9 = 747** previously mapped for F02. Execute each file once in the recorded order in fresh PowerShell 7/Pester 5.7.1, collect per-file and aggregate NUnit evidence, require **747/747**, zero failed containers and no retries. Verify before and after the frozen hashes: Common `FEB9615E0BF4ADE1CBD3402ABA3397BD35CD9570BC3848B90EE291E694A6A8D1`, expanded bounded test `4A5B1EBA5D95B0D220EECE9821C584D49E71AC58CB706AF5E6F58AE8EDF43B05`, Deploy `A7206345E8811AD69322E04076D9588F01D91ABE967C75679D6644FB50060B5F`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, focused test `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`, ApprovedAdapters `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`. No edit, retry, focused/bounded/other suite, live access, commit, push or publish. C1/C2 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 565 override: **ACCEPT FINAL FOCUSED 6/6 AND EXPANDED 98/98; RELEASE FINAL INDEPENDENT REVIEW**. Accept C2's generation-564 regression as **98 total / 98 passed / 0 failed / 0 other / 0 failed containers**, exactly one positive and all 12 go-live binding negatives green, NUnit SHA-256 `5CEDDD3605026203F234B5FD001AD81F9A0A855FF2F0B5E8F19E529B0605831C`. Final frozen hashes: Common `FEB9615E0BF4ADE1CBD3402ABA3397BD35CD9570BC3848B90EE291E694A6A8D1`, expanded bounded test `4A5B1EBA5D95B0D220EECE9821C584D49E71AC58CB706AF5E6F58AE8EDF43B05`, Deploy `A7206345E8811AD69322E04076D9588F01D91ABE967C75679D6644FB50060B5F`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, focused test `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`, ApprovedAdapters `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`.
+
+Release only C1 under ACK `purple-20260930T150000Z/Kanban/g565/final-review-EXR-010-A12-L01-F02` for independent read-only acceptance/security review of the complete frozen F02 delta, with special verification that generation-553 blockers are closed: signed manifest/disposition binding, current entitlement binding, evidence collected/value/time integrity, legitimate empty collection preservation, and missing/null refusal. Reverify prior all-control, CMS, signer, trust/revocation, bypass, approved-change, structured-parameter and legacy-isolation invariants. Return ACCEPT or REJECT with exact high-confidence findings and hash verification. No Pester, edit, implementation, retry, affected suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 564 override: **ACCEPT FOCUSED 6/6; REVALIDATE EXPANDED 98-CASE CONTRACT**. Accept C2's generation-563 focused run as **6 total / 6 passed / 0 failed / 0 other / 0 failed containers**, NUnit SHA-256 `8374B51F6583791098980FAAC7FFEE9DFB8C29A6166E7BD682167812DEB98E44`. Freeze Common `FEB9615E0BF4ADE1CBD3402ABA3397BD35CD9570BC3848B90EE291E694A6A8D1`; all protected files remain unchanged.
+
+Release only C2 under ACK `purple-20260930T144500Z/Kanban/g564/rerun-expanded-98-EXR-010-A12-L01-F02` for one read-only execution of expanded `PublicCommandSurface.Tests.ps1` SHA-256 `4A5B1EBA5D95B0D220EECE9821C584D49E71AC58CB706AF5E6F58AE8EDF43B05` in fresh PowerShell 7/Pester 5.7.1. Require 98/98, zero failed containers, exactly one positive, all 12 go-live binding negatives green, and unchanged before/after hashes. No edit, retry, focused/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 563 override: **REJECT G562 MECHANICAL 0/6; RELOCATE ACCESSOR SWITCH**. Accept C2's sole generation-562 run as **6 total / 0 passed / 6 failed / 1 failed container**, NUnit SHA-256 `4580812C2C70002CE4D26E5A162443BC6AED1F6552102E528D2EB28B201FD6E7`. The intended accessor logic parses, but `NoEnumerate` was inserted into the unrelated function at lines 1588-1597 instead of `Get-BaselineRecordMember`; strict mode therefore fails every default accessor call.
+
+Release only C2 under replacement ACK `purple-20260930T143000Z/Kanban/g563/relocate-noenumerate-switch-EXR-010-A12-L01-F02` with Common PSM1 ownership only. Remove the mistakenly added `NoEnumerate` switch from the unrelated earlier function and add it to the `Get-BaselineRecordMember` parameter block after `Name`; leave the already authored dictionary/property handling and the go-live `-NoEnumerate` call unchanged. No other edit. Parse Common and run the exact six focused cases exactly once; require 6/6. No retry, bounded/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 562 override: **ACCEPT POST-EVIDENCE TRACE; ADD NON-ENUMERATING VALUE ACCESS**. Accept C1's generation-561 proof that MDO-007/PP-005 records remain non-null `Value: []` through registry, focused projection and JSON roundtrip. The false missing-value finding occurs only because `Get-BaselineRecordMember` enumerates an empty collection to no pipeline output.
+
+Release only C2 under ACK `purple-20260930T141500Z/Kanban/g562/nonenumerating-golive-value-read-EXR-010-A12-L01-F02` with Common PSM1 ownership only. Add an opt-in non-enumerating mode to `Get-BaselineRecordMember` for both dictionary and object-property branches using `Write-Output -NoEnumerate`; preserve existing behavior for all default callers. In the Exchange evidence-integrity gate only, retrieve `Value` through that mode before applying the existing member-present/non-null refusal. Do not change the stored record, evaluator behavior, JSON projection, null refusal, collection shape, tests/fixture/manifest/PSD1/deploy/adapters or unrelated callers. Parse Common and run the exact six focused cases exactly once; require 6/6. No retry, bounded/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 561 override: **REJECT G560 FOCUSED 4/6; TRACE POST-EVIDENCE EMPTY COLLECTION LOSS**. Accept C2's generation-560 run as **6 total / 4 passed / 2 failed / 1 failed container**, NUnit SHA-256 `6A8AE8E48B02FA5C7C4B13B4078B9458BD49C6C66DC067E4E23CE5D77B1A88E6`. The converter correction is present. A direct module-scope probe against current Common confirms `Get-BaselineEvidence -CollectionValue` now returns a non-null `ReadOnlyCollection[object]` count zero and serializes as `"Value":[]`; the focused envelope still reaches go-live with null for MDO-007/PP-005.
+
+Release only C1 under ACK `purple-20260930T140000Z/Kanban/g561/trace-post-evidence-collapse-EXR-010-A12-L01-F02` for read-only trace from the collector's verified non-null evidence record through `Invoke-BaselineExchangeRegistry` assignment/output, `Invoke-ProtectionRawRegistry`, focused `Execution | ForEach-Object Evidence`, envelope JSON serialization/deserialization, and `Test-BaselineGoLive`. Identify the exact first stage where `[]` becomes null using current code, not the pre-fix converter hypothesis. Distinguish pipeline property enumeration from record mutation and propose the smallest correction preserving array shape and all missing/null negatives. No Pester suite, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 560 override: **ACCEPT RECURSIVE COLLAPSE DIAGNOSIS; PRESERVE NESTED EMPTY IMMUTABLE COLLECTIONS**. Accept C1's generation-559 trace: collection mode and `[object]$Value` binding preserve the empty array; the second recursive `ConvertTo-ImmutableBaselineNode` pass drops empty child collections during direct pipeline-to-dictionary assignment.
+
+Release only C2 under ACK `purple-20260930T134500Z/Kanban/g560/fix-immutable-empty-collections-EXR-010-A12-L01-F02` with Common PSM1 ownership only. In `ConvertTo-ImmutableBaselineNode`:
+
+1. in dictionary and PSCustomObject branches, capture each recursive child result into a local variable before assigning it to the generic dictionary;
+2. in the IList branch, accumulate recursively converted children into a typed `List[object]` before creating the read-only array, so nested empty lists remain elements rather than disappearing.
+
+Preserve the existing null/string branch, read-only output types, scalar behavior, `CollectionValue` opt-in, evidence immutability and go-live missing/null refusal. Do not add unary-comma outer arrays, change parameter types, skip recursive freezing, edit tests/fixture/manifest/PSD1/deploy/adapters or unrelated code. Parse Common and run the exact six focused cases exactly once; require 6/6. No retry, bounded/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 559 override: **REJECT G558 FOCUSED 4/6; DIAGNOSE VALUE-ARGUMENT EMPTY ARRAY COLLAPSE**. Accept C2's generation-558 result as **6 total / 4 passed / 2 failed / 1 failed container**, NUnit SHA-256 `1D6717CEA3077E6BD08F71640C1435DEB2FF18D14302515CF4EED48D2B91A99D`. The collection-valued mode creates typed empty arrays, but they collapse again when passed to `New-BaselineEvidence -Value`.
+
+Release only C1 under ACK `purple-20260930T133000Z/Kanban/g559/diagnose-value-binding-EXR-010-A12-L01-F02` for read-only inspection of current `Get-BaselineEvidence` and `New-BaselineEvidence` invocation/parameter binding. Identify the exact PowerShell binding semantics, the smallest type-safe way to transmit an empty collection as one non-null value into immutable conversion, and whether the correction belongs at call site, parameter contract or a pre-converted immutable node. Confirm missing/null scalar behavior and the 12 go-live negatives remain intact. No Pester, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 558 override: **ACCEPT EMPTY-VALUE DIAGNOSIS; ADD EXPLICIT COLLECTION CARDINALITY**. Accept C1's generation-557 finding that MDO-007 and PP-005 lose legitimate empty observations at `$payload = & $Collection`; the resulting evidence contains present-null `Value`. Immutable conversion and go-live null refusal are correct.
+
+Release only C2 under ACK `purple-20260930T131500Z/Kanban/g558/preserve-empty-collection-evidence-EXR-010-A12-L01-F02` with Common PSM1 ownership only. Add a private opt-in collection-valued mode to `Get-BaselineEvidence`: when declared, capture collection output inside an explicit typed array so zero/one/many outputs remain empty/singleton/multiple collections before immutable conversion; otherwise retain scalar assignment so zero output remains null. Declare this mode for the direct MDO-007 tenant allow/block collection and PP-005 inbound-connector collection only. Do not globally wrap collectors, translate null to empty, change immutable conversion, weaken missing/null go-live refusal, alter evaluators, or edit tests/fixture/manifest/PSD1/deploy/adapters/unrelated seams. Parse Common and run the exact six focused cases exactly once; require 6/6. No retry, bounded/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 557 override: **REJECT FOCUSED REVALIDATION 4/6; DIAGNOSE EMPTY EVIDENCE VALUE COLLAPSE**. Accept C2's generation-556 read-only run as **6 total / 4 passed / 2 failed / 1 failed container**, NUnit SHA-256 `FCB62F9A05D756142F897A50C8ED5037FD6C852AB340F956CDDC0DFB176ACB5A`. All frozen hashes matched. Tampered and positive cases now fail the new evidence-integrity gate because legitimate empty observations for MDO-007 and PP-005 appear as null `Value`.
+
+Release only C1 under ACK `purple-20260930T130000Z/Kanban/g557/diagnose-empty-evidence-values-EXR-010-A12-L01-F02` for read-only trace of MDO-007 and PP-005 collection output through collector return, `New-BaselineEvidence`, immutable conversion, envelope serialization/deserialization and go-live validation. Identify whether the property is absent or present-null, the exact empty-array collapse point, and the smallest shared correction that preserves a present typed/read-only empty value while still refusing genuinely missing or explicit null evidence. Verify implications for the 98-case contract and other collection-valued controls. No Pester, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 556 override: **ACCEPT EXPANDED BOUNDED 98/98; REVALIDATE FOCUSED SIX**. Accept C2's generation-555 run as **98 total / 98 passed / 0 failed / 0 other / 0 failed containers**, exactly 97 negative and one positive, NUnit SHA-256 `F5288B17BAC601B176D9A50B961E117EBB0C17EFE2D154AE6E29F4BC4F2A0C3E`. Freeze Common `BC6209904B8903D10F70CF5C8142B83E63954D6ADBBA7C0C7806DC8CE3757E48` and expanded bounded test `4A5B1EBA5D95B0D220EECE9821C584D49E71AC58CB706AF5E6F58AE8EDF43B05`; all other protected hashes remain unchanged.
+
+Release only C2 under ACK `purple-20260930T124500Z/Kanban/g556/rerun-focused-six-EXR-010-A12-L01-F02` for one read-only execution of the exact six named focused cases in `ExchangeEmailIntegratedWorkflow.Tests.ps1` SHA-256 `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`. Require 6/6, zero failed containers, and before/after Common and all protected hashes unchanged. No edit, retry, bounded/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 555 override: **ACCEPT 86/98 INTENDED RED; IMPLEMENT EXCHANGE GO-LIVE BINDINGS**. Accept C2's generation-554 expanded bounded contract SHA-256 `4A5B1EBA5D95B0D220EECE9821C584D49E71AC58CB706AF5E6F58AE8EDF43B05` as **98 total / 86 passed / 12 failed / 0 other / 1 failed container**, exactly 97 negative and one positive, NUnit SHA-256 `79B2D37332A1E3B0C0DF17086CF3B4926FA1D10E0F9E3D3900F4B7E9E282CB2A`. All existing 86 cases remain green; each new binding negative is wrongly admitted.
+
+Release only C2 under ACK `purple-20260930T123000Z/Kanban/g555/implement-golive-bindings-EXR-010-A12-L01-F02` with Common PSM1 ownership only. In the ExchangeOnly branch of `Test-BaselineGoLive`, before admission and before projecting readiness:
+
+1. require signed `Envelope.ManifestHash` equals current `Get-BaselineExchangeManifest().Hash`;
+2. canonically compare signed `Exclusion`, `ExternalCheck`, and `ExternalReadiness` with current manifest dispositions;
+3. accept the current context entitlement as an explicit expected argument from `Invoke-BaselineExchangeGoLive` and canonically compare it with signed `Envelope.Entitlement`;
+4. for every retained evidence record require `Collected = true`, non-null present `Value`, readable `CollectedAtUtc`, nonfuture time, and age within the same maximum evidence age/decision time used by the envelope gate.
+
+Emit only the closed historical findings required by the 12 negatives. Project manifest-bound `ExternalReadiness` only after successful comparison; keep `Unverified` orthogonal to admission. Do not trust/copy envelope readiness, weaken CMS/catalog/control/result checks, alter generic profiles, edit tests/fixture/manifest/PSD1/deploy/adapters, or touch unrelated code. Parse Common and run the frozen expanded 98-case contract exactly once; require 98/98. No retry, focused/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 554 override: **REJECT FINAL DELTA REVIEW; AUTHOR GO-LIVE BINDING RED**. Accept C1's generation-553 `REJECT` with all frozen hashes matching. The final Exchange-only go-live gate does not bind the signed envelope to current manifest hash/dispositions or entitlement and does not validate each evidence record's collected/value/time integrity. The outward readiness projection can therefore mask a signed disposition mismatch.
+
+Release only C2 under ACK `purple-20260930T121500Z/Kanban/g554/red-golive-bindings-EXR-010-A12-L01-F02` with `PublicCommandSurface.Tests.ps1` ownership only. Preserve all existing 86 cases and exactly one positive; add negative-first AAA coverage that a correctly signed Exchange-only envelope is refused for:
+
+1. mismatched or missing current `ManifestHash`;
+2. canonical mismatch of each `Exclusion`, `ExternalCheck`, or `ExternalReadiness`;
+3. signed `Entitlement` mismatch with the current Exchange context;
+4. any retained evidence record with `Collected != true`, null/missing `Value`, unreadable `CollectedAtUtc`, future time, or age beyond the gate maximum.
+
+Require closed historical refusal reasons (`ExchangeManifestMismatch`, `ExchangeDispositionMismatch`, `ExchangeEntitlementChanged`, `ExchangeEvidenceUncollected`, `ExchangeEvidenceValueMissing`, `ExchangeEvidenceRecordTimeUnreadable`, `ExchangeEvidenceRecordFromFuture`, `ExchangeEvidenceRecordStale`) and verify valid offline conformance still projects manifest-bound `ExternalReadiness.Status = Unverified` without changing `Admitted` or control result. Do not edit product/helper/fixture/focused/manifest/PSD1/deploy/adapters, weaken CMS/security, change existing assertions, or add another positive. Parse and run the expanded bounded file exactly once as intended red. No implementation, retry, focused/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 553 override: **ACCEPT FOCUSED 6/6 AND BOUNDED 86/86; RELEASE FINAL DELTA SECURITY REVIEW**. Accept C2's generation-552 read-only regression as **86 total / 86 passed / 0 failed / 0 other / 0 failed containers**, exactly 85 negative and one positive, NUnit SHA-256 `7ABDB2950B382001EC6A88A1EE557FF6346ED189AC34A7AD019FB40902630D8A`. All frozen before/after hashes matched.
+
+Release only C1 under ACK `purple-20260930T120000Z/Kanban/g553/review-final-delta-EXR-010-A12-L01-F02` for independent read-only review of the final frozen delta since generation 539, including Common `718DFAD451A25F37439A8F2391170E94815A5C19AAADB24C5434B87D3463714A`, Deploy `A7206345E8811AD69322E04076D9588F01D91ABE967C75679D6644FB50060B5F`, ApprovedAdapters `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`, focused test `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`, and bounded test `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD`.
+
+Verify strict JSON catalog parsing, independent recipient/reporting evidence, immutable evidence ownership, recipient-level entitlement, structured parameter validation, Transport-only signed operation planning, requester separation, ExchangeOnly early return before legacy mutations, exact-path module reuse, focused fixture security corrections, manifest-bound external readiness, and preservation of all generation-539 CMS/artifact/signer/trust/revocation invariants. Return ACCEPT or REJECT with exact high-confidence findings. No Pester, edit, implementation, retry, affected suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 552 override: **ACCEPT FOCUSED SIX 6/6; RELEASE BOUNDED 86 REGRESSION**. Accept C2's sole generation-551 focused run as **6 total / 6 passed / 0 failed / 0 other / 0 failed containers**, NUnit SHA-256 `B87C5BAF7F108DA4FF6369E9C7F79D01CBF4FDF49E01199877804847379E0D54`. Freeze current Common `718DFAD451A25F37439A8F2391170E94815A5C19AAADB24C5434B87D3463714A`, Deploy `A7206345E8811AD69322E04076D9588F01D91ABE967C75679D6644FB50060B5F`, ApprovedAdapters `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`, focused test `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`.
+
+Release only C2 under ACK `purple-20260930T114500Z/Kanban/g552/run-bounded-86-regression-EXR-010-A12-L01-F02` for one read-only execution of `PublicCommandSurface.Tests.ps1` SHA-256 `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD` in fresh PowerShell 7/Pester 5.7.1. Require 86/86, zero failed containers, exactly one positive, and unchanged before/after frozen hashes above. No edit, retry, focused/affected/other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 551 override: **ACCEPT READINESS DIAGNOSIS; RESTORE MANIFEST-BOUND EXTERNAL READINESS**. Accept C1's generation-550 historical/current comparison. `Test-BaselineGoLive` no longer projects the Exchange manifest's orthogonal `ExternalReadiness`, so both sign and verify decisions omit it even though admission and CMS validation succeed.
+
+Release only C2 under ACK `purple-20260930T113000Z/Kanban/g551/restore-external-readiness-EXR-010-A12-L01-F02` with Common PSM1 ownership only. After constructing the immutable-decision source member and before freezing it, when `ExpectedDeploymentProfile` is exactly `ExchangeOnly`, add `ExternalReadiness` from `(Get-BaselineExchangeManifest).ExternalReadiness`. Preserve manifest `Status`, `Reference` and `Meaning`; do not hard-code readiness, accept caller readiness, alter `Admitted`, findings, result status, CMS/security checks, generic profile decisions or unrelated output. Parse Common and run the exact six focused cases exactly once; require 6/6. No retry, affected/bounded suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 550 override: **ACCEPT MODULE-IDENTITY FIX; DIAGNOSE FINAL READINESS PROJECTION**. Accept C2's generation-549 run as **6 total / 5 passed / 1 failed / 1 failed container**, NUnit SHA-256 `4DE9DA058C3FF4C8AEE5573453FDA3F7643AA6CCA2DDDD838C16BF14C810528C`. The former chain-trust failure is resolved. The positive completes deployment and evidence verification, then its final assertion observes `$null` instead of `Unverified` at `Decision.ExternalReadiness.Status`. Deploy is `A7206345E8811AD69322E04076D9588F01D91ABE967C75679D6644FB50060B5F`; Common remains `1E41C0A38D5F503CE18A16F7209ABE62BAD6E1F8E7F82D5161B8395476DBF654`.
+
+Release only C1 under ACK `purple-20260930T111500Z/Kanban/g550/diagnose-readiness-projection-EXR-010-A12-L01-F02` for read-only comparison of historical and current `Invoke-BaselineExchangeGoLive` sign/verify result shapes. Identify where `Decision.ExternalReadiness` was lost, the required `Status/Reason` semantics for an otherwise valid offline workflow, and the smallest projection correction that preserves CMS/security decisions and accepted bounded behavior. No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 549 override: **ACCEPT APPLY ADAPTER; PRESERVE LOADED COMMON MODULE IDENTITY**. Accept C2's generation-548 result as **6 total / 5 passed / 1 failed / 1 failed container**, NUnit SHA-256 `813A3CE981668F3B5EB2CDD0099CD7066B04A6D2A896348E2BC7EAA40388A0C2`. All focused behavior reaches the approved ExchangeOnly apply path. The sole residual occurs afterward because Deploy force-reimports Common at line 42 and replaces the already loaded module instance containing the scoped private chain-evidence seam.
+
+Release only C2 under ACK `purple-20260930T110000Z/Kanban/g549/preserve-common-module-identity-EXR-010-A12-L01-F02` with `Deploy-ExchangeOnlineBaseline.ps1` ownership only. Resolve the exact Common module path; if that exact module path is not already loaded, import it normally with existing name-check behavior. If the exact module is already loaded, reuse that instance and do not force-reimport or replace its private scope. Do not skip loading when absent, select a different module path/version, expose private seams, change Common/tests/fixture/PSD1/ApprovedAdapters, or weaken cryptographic behavior. Parse Deploy and run the exact six focused cases exactly once; require 6/6. No retry, affected/bounded suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 548 override: **ACCEPT FINAL DEPLOY DIAGNOSIS; ADD CANONICAL EXCHANGE-ONLY APPLY ADAPTER**. Accept C1's generation-547 end-to-end trace. Exchange-only approved deployment must not enter the legacy `administratorInputs`/`desiredState` mutation engine. Preview, approval, validation, apply, registry and go-live must share the canonical resolved Exchange context and hash.
+
+Release only C2 under ACK `purple-20260930T104500Z/Kanban/g548/implement-exchange-apply-adapter-EXR-010-A12-L01-F02` with Common PSM1 and `Deploy-ExchangeOnlineBaseline.ps1` ownership.
+
+1. In `Invoke-BaselineApprovedChange`, replace manual raw configuration/parameter parsing and raw hash construction with `Get-BaselineExchangeContext`. Use its resolved `Configuration`, `Parameters`, tenant GUID, `DeploymentProfile`, entitlement and canonical `Hash`; require exact `ExchangeOnly`. Keep all existing preview/approval/requester/signature/operation safeguards.
+2. In Deploy, detect the declared `ExchangeOnly` profile before the legacy generic resolver. Validate through `Get-BaselineExchangeContext`; for apply require the existing artifact/change/preview/approval/requester inputs; delegate exactly once to `Invoke-BaselineApprovedChange -Stage Apply` with the shared bundle and return immediately. Scope and operations must come from the signed frozen preview, not caller reconstruction. `AuthorizedSignerPath` remains compatibility metadata and must not authorize trust.
+3. Leave the `MicrosoftNative`/`ThirdPartyGateway` legacy branch unchanged. Do not synthesize `administratorInputs`, `desiredState`, licensing or post-change shapes from Exchange controls and do not run unrelated legacy mutation functions for ExchangeOnly.
+
+Do not change focused/shared tests, fixture, PSD1, ApprovedAdapters, CMS/security behavior or unrelated files. Parse both authorized files and run the exact six focused cases exactly once; require 6/6. No retry, affected/bounded suite, live tenant access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 547 override: **ACCEPT FOCUSED 5/6; DIAGNOSE FINAL DEPLOY CONFIGURATION-SHAPE BOUNDARY**. Accept C2's sole generation-546 run as **6 total / 5 passed / 1 failed / 1 failed container**, NUnit SHA-256 `19B1733C95D1500A95D1BAA2E798C6E6DDD1FBEE6A21A038F37D50CF7E91A426`. All five negative focused cases now pass. The sole positive reaches `Deploy-ExchangeOnlineBaseline.ps1:1380` and fails because the resolved Exchange-only configuration has no legacy `administratorInputs` property. Current Common is `43BCF40F3382AC3F159CEA0E17022EEE2C92C58A6C3D29CEA81A947D9BB35709`; focused test is `D4E8CD8159A10208FC12DB688DC00B60E90CA8EB2F341679C5FBB7ECA651A070`; Deploy remains `535484B8535A3377FE548984B4C5DDBAD2794B051E4EB35C65E7382B15F1D37F`.
+
+Release only C1 under ACK `purple-20260930T103000Z/Kanban/g547/diagnose-final-deploy-shape-EXR-010-A12-L01-F02` for read-only trace of the positive deploy path from generic resolution through tenant/configuration hash, approval, apply and go-live. Identify every remaining legacy `administratorInputs`/deployment-profile assumption that the Exchange-only configuration cannot satisfy, the correct current sources, and the smallest coherent adapter that avoids duplicating or weakening `Get-BaselineExchangeContext`. No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 546 override: **ACCEPT FINAL-TWO DIAGNOSIS; CORRECT SECURITY-INCOMPATIBLE FOCUSED ARRANGEMENT AND STRUCTURED PARAMETERS**. Accept C1's generation-545 findings. The tampered test cannot establish an otherwise signable baseline because its integrated fixture retains null EWS, lacks the required access review, and replaces secure operational artifacts with CMS lacking authenticated signing time and thumbprint pins. Product checks must not be weakened. The positive deploy path rejects structured offline seams because the generic resolver applies scalar placeholder rules to every parameter, unlike the strict Exchange context path.
+
+Release only C2 under ACK `purple-20260930T101500Z/Kanban/g546/correct-focused-arrangement-EXR-010-A12-L01-F02` with Common PSM1 and `ExchangeEmailIntegratedWorkflow.Tests.ps1` ownership. Apply only:
+
+1. In the focused fixture arrangement, explicitly observe the existing mailbox with `EwsEnabled = false` and an empty allow list; add one current independently observed `MyBaseOptions` access review.
+2. In the focused operational-artifact factory, sign with exactly one authenticated `Pkcs9SigningTime` within certificate validity and add the actual signer certificate thumbprint to every authorized signer record. Retain identity, subject and authority. Do not change test names, assertions, expected outcomes or positive count.
+3. In generic configuration resolution, collect the names actually referenced by configuration placeholders. Keep string/string-array requirements for those bound values. For all other structured offline-seam parameters, recursively allow only JSON dictionaries, lists, scalar primitives and null; scan every string leaf for unresolved/embedded administrator placeholders and reject unsupported runtime types. Preserve later resolved configuration schema validation. Do not add key-specific exceptions or stringify structured seams.
+
+Do not interpret null as disabled, remove access-review enforcement, relax CMS/signing-time/pins/trust/revocation, weaken placeholder substitution, alter shared fixture/PSD1/ApprovedAdapters/Deploy, or touch unrelated tests. Parse Common and the focused file; run the exact six focused cases exactly once; require 6/6. No retry, affected/bounded suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 545 override: **ACCEPT FOCUSED 4/6; DIAGNOSE TAMPER-FREEZE AND DEPLOY PARAMETER RESIDUALS**. Accept C2's sole generation-544 run as **6 total / 4 passed / 2 failed / 1 failed container**, NUnit SHA-256 `0FC6F74CC02AD14AF7182F59C373C305901ADFC8DE30F54002004F0551DDAE64`. Recipient drift, effective rule-scope drift, missing reporting proof and unsupported recipient capability now pass. Current Common is `B33933BBA4B43E42B8990432EDBE526460F0D5C43FB203322A8317656752BA7D`; Deploy is `535484B8535A3377FE548984B4C5DDBAD2794B051E4EB35C65E7382B15F1D37F`; ApprovedAdapters remains `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`.
+
+Release only C1 under ACK `purple-20260930T100000Z/Kanban/g545/diagnose-focused-two-EXR-010-A12-L01-F02` for read-only trace of: (a) tampered-evidence setup admission failures for EXO-009, EXO-010, MON-003, OPS-001 and OPS-002 under the focused fixture; and (b) positive deploy rejection of structured `domainInventory` by configuration resolution. For each identify exact active context/fixture shape, first boundary, why the accepted bounded fixture passes but the frozen workflow fixture does not, and the smallest correction preserving strict configuration validation and accepted 86/86 security behavior. No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 544 override: **ACCEPT INTEGRATION DIAGNOSIS; APPLY OWNERSHIP, SCOPE AND DEPLOYMENT CORRECTIONS**. Accept C1's generation-543 findings: MDO-001 illegally decorates frozen evidence and contains desired-as-observed fallback/unused group scope; MDO-006 resolves a private helper inside a dynamic closure and its proof validation is narrower than the historical contract; the deploy entry point masks explicit requester identity and does not accept the shared bundle's signer path.
+
+Release only C2 under ACK `purple-20260930T094500Z/Kanban/g544/correct-focused-integration-EXR-010-A12-L01-F02` with Common PSM1 and `Deploy-ExchangeOnlineBaseline.ps1` ownership; ApprovedAdapters remains frozen at `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`.
+
+1. Move the neutral, independently observed MDO-001 matrix projection into the collector before evidence freezing; the evaluator consumes but never mutates it. Remove desired-policy/desired-Level fallback. Resolve `SentToMemberOf` through the existing independent resolver seam or fail closed when unresolved.
+2. Resolve `reportingEvidence` from `ExchangeContext.Parameters` before creating the dynamic collection closure. Require exact DLP state `Excluded|NotApplicable`, exactly three Junk/NotJunk/Phish deliveries, cross-category unique message/submission/feedback IDs, valid reporter address, and nonfuture evidence no older than 30 days.
+3. Add deploy parameters `RequestedBy` and `AuthorizedSignerPath`. For `-Apply`, require nonblank `RequestedBy` and pass it unchanged to `Test-BaselineChangeApproval`; never substitute `configurationOwner`. Accept `AuthorizedSignerPath` only as shared-bundle compatibility metadata, validate a supplied path is a readable leaf, and do not treat presence/content as authorization or alter existing cryptographic trust.
+
+Do not make evidence mutable, export private helpers, restore wholesale historical functions, copy desired into observations, weaken reporting proof, change ApprovedAdapters/frozen tests/fixture/manifest/security path, or touch unrelated files. Parse both authorized files and run the exact six frozen focused cases exactly once; require 6/6. No retry, affected/bounded suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 543 override: **REJECT G542 FOCUSED RUN; DIAGNOSE THREE INTEGRATION DEFECTS**. Accept C2's sole generation-542 run as **6 total / 0 passed / 6 failed / 1 failed container**, NUnit SHA-256 `A209EE66109A7F3F81A38C7CA2815B5BB9B65A71469D11FF197D430D68BAFCE9`. Frozen tests, fixture, PSD1 and bounded contract remained unchanged. Current Common SHA-256 is `E7AB58E54FC6E0051C24EE294F528D1F471C093920B3077CD6BBC7222D7E289F`; ApprovedAdapters is `6A1A11BBABF5E0E78154D5668FB11B45881B553F7BA46C3B80D6A824AF0FF139`. MDO-001 reaches the restored evaluator but attempts to add `Matrix` to read-only evidence; MDO-006's closure cannot resolve private `Get-BaselineRecordMember`; the positive supplies unsupported adapter parameter `RequestedBy`.
+
+Release only C1 under ACK `purple-20260930T093000Z/Kanban/g543/diagnose-focused-integration-EXR-010-A12-L01-F02` for read-only inspection of the two changed files and generation-542 NUnit. For each defect identify exact call/ownership boundary and smallest correction, including whether the +1241 Common diff contains only the bounded historical private surface or copied obsolete infrastructure. Verify the expected adapter signature from the frozen caller rather than deleting caller arguments blindly. No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 542 override: **ACCEPT FOCUSED DIAGNOSIS; IMPLEMENT BOUNDED WORKFLOW COMPATIBILITY**. Accept C1's generation-541 six-case trace and historical reference `142d93ff4e278d3ccb5450f76421e22a3450543a`. The failures share strict JSON-manifest catalog support, incomplete mixed-recipient MDO-001 evaluation, missing independent MDO-006 reporting proof, recipient-level entitlement loss, and omitted TransportConfig adapter scope.
+
+Release only C2 under ACK `purple-20260930T091500Z/Kanban/g542/implement-focused-compatibility-EXR-010-A12-L01-F02` with Common PSM1 and `ExchangeOnlineBaseline.ApprovedAdapters.ps1` ownership. Implement only:
+
+1. Extend `Get-BaselineControlCatalog` to parse either the existing Markdown catalog or a strict JSON `ControlId` array, preserving nonempty, exact-ID-format and duplicate refusal.
+2. Keep the current Standard-preset structural gate, but derive its expected exclusions consistently from the resolved integrated recipient matrix. Restore only the private historical mixed-recipient evidence/evaluation surface needed for exact inventory, independently observed rule/policy precedence, approved exceptions, and recipient-level entitlement. Require Exchange for every recipient and tenant-plus-recipient ATP for `defender = true`; preserve `NotEntitled` with recipient-specific reason.
+3. Add an independent MDO-006 reporting-evidence seam sourced from `Context.Parameters.reportingEvidence`; require mailbox binding, current approval, DLP disposition/approval, and independently identified Junk/NotJunk/Phish deliveries before Pass. Policy configuration alone must not satisfy proof.
+4. Add canonical approved scope `Transport` mapped to exactly one tenant-wide `TransportConfig` definition containing EXO-002 `SmtpClientAuthenticationDisabled` and EXO-005 `ExternalPostmasterAddress`, with Boolean/String typing and existing preview/approval/apply/rollback safeguards.
+
+Do not restore obsolete live/mutation infrastructure, copy desired state into observations, weaken the Standard-preset gate, broaden tenant MDO-001 entitlement to unconditional ATP, alias Transport to Organization, change frozen tests/fixture/manifest, alter the accepted CMS/security path, or touch unrelated files. Parse both authorized files and run the exact six frozen focused cases exactly once; require 6/6. No retry, affected suite, bounded 86 regression, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 541 override: **REJECT FOCUSED 0/6; DIAGNOSE FROZEN WORKFLOW COMPATIBILITY GAPS**. Accept C2's sole generation-540 read-only run as **6 selected / 0 passed / 6 failed / 0 other / 0 failed containers**, NUnit SHA-256 `354778D9FBD9E2C6879351EFEAE958867F066E9580FFA08A27C9F4D3E9A09994`. All frozen before/after hashes matched. Failures: tampered evidence `CatalogDeclaresNoControl`; recipient/rule/capability cases stop early at `StandardPresetDrift`; missing-reporting case unexpectedly passes; positive rejects empty `Transport` at `ChangeScopeUnsupported`.
+
+Release only C1 under ACK `purple-20260930T090000Z/Kanban/g541/diagnose-focused-six-EXR-010-A12-L01-F02` for read-only trace of each exact frozen case through current Common and fixture. For each, identify the expected historical boundary, current first divergent boundary, actual/required value or shape, shared causes, and smallest compatibility correction that preserves the accepted 86/86 security contract. Explicitly separate catalog lookup, preset-gating, independent reporting proof, entitlement routing and change-scope normalization. No Pester, edit, implementation, retry, affected execution, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 540 override: **ACCEPT INDEPENDENT F02 REVIEW; RELEASE EXACT FOCUSED SIX**. Accept C1's generation-539 `ACCEPT`: all frozen hashes match; no high-confidence F02 blocker exists; exact exports, private visibility, 25-control orchestration, mandatory seams, closed statuses, pre-collection refusal, secure artifact binding/CMS/signer/trust/revocation, bypass prevention, independent observations and 85-negative/one-positive coverage are accepted.
+
+Release only C2 under ACK `purple-20260930T084500Z/Kanban/g540/run-focused-six-EXR-010-A12-L01-F02` for the exact six named frozen cases in `ExchangeEmailIntegratedWorkflow.Tests.ps1` only. Verify before and after that the focused file SHA-256 remains `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, Common PSM1 `5E4280568D7CC4D0BD9E4F9E8B547177723EE134B3E9045AB6FC38F4E6632429`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, and bounded test `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD`. Run exactly once in fresh PowerShell 7/Pester 5.7.1; require 6/6 with zero failed containers. No edit, retry, other suite, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 539 override: **ACCEPT F02 BOUNDED CONTRACT 86/86; RELEASE INDEPENDENT ALL-CONTROL SECURITY REVIEW**. Accept C2's sole generation-538 run as **86 total / 86 passed / 0 failed / 0 other / 0 failed containers**, NUnit SHA-256 `38D79C77BFBFE1E6FC9EE275BBEED8919394FB7B379EE50CFAACEB8325733248`. Freeze Common PSM1 `5E4280568D7CC4D0BD9E4F9E8B547177723EE134B3E9045AB6FC38F4E6632429`, PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`, fixture `2DDB249D47472FC8125E455BC30BE87D01B1D9736EFA54DF5359E2C4BB14060D`, and bounded test `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD`.
+
+Release only C1 under ACK `purple-20260930T083000Z/Kanban/g539/review-all-controls-security-EXR-010-A12-L01-F02` for independent read-only review of the frozen Common/PSD1/fixture/test diff against F02 acceptance. Verify exact four-command exports, private helper visibility, exact 25-control orchestration, mandatory collector/evaluator seams, closed statuses, pre-collection refusal, artifact tenant/configuration/manifest/control/time binding, real detached CMS, signer identity/subject/authority/thumbprint pins, fail-closed trust/revocation, no inline/caller verification bypass, no desired-as-observed reuse, and negative-first/one-positive coverage. Return ACCEPT or REJECT with exact high-confidence findings and frozen-hash verification. No Pester, edit, implementation, retry, focused/affected execution, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 538 override: **ACCEPT POSITIVE-ONLY DIAGNOSIS; CORRECT FIXTURE CONFIGURATION IDENTITY**. Accept C1's generation-537 finding that MON-003, OPS-001 and OPS-002 all fail before cryptography at `ExchangeOperationalArtifactConfigurationMismatch`: the fixture signs artifacts with a compressed unresolved JSON hash, while the positive replaces context with the public runtime's canonical placeholder-resolved hash.
+
+Release only C2 under ACK `purple-20260930T081500Z/Kanban/g538/correct-fixture-context-EXR-010-A12-L01-F02` with `ExchangeProtectionFixture.ps1` ownership only. Before constructing or signing operational artifacts, materialize the fully mutated fixture configuration and parameters to scoped temporary JSON files, call public `Get-BaselineExchangeContext`, replace the fixture configuration with its resolved `Configuration`, and use its exact `Hash` and `Manifest` in the returned fixture context and every MON-003/OPS-001/OPS-002 signed document. Clean up only those exact temporary files in `finally`. Do not overwrite the later positive context hash, weaken artifact binding, change product/test/manifest, alter CMS/chain/signer checks, or touch unrelated fixture behavior. Parse the fixture and run frozen corrected test SHA-256 `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD` exactly once; require 86/86. No retry, focused/affected execution, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 537 override: **ACCEPT F02 85/86; DIAGNOSE THREE POSITIVE-ONLY CONTROL ERRORS**. Accept C2's sole generation-536 corrected run as **86 total / 85 passed / 1 failed / 0 other / 0 failed containers**, NUnit SHA-256 `B3435C9DCDF933C4349C3E115569235B983EFF4C086F7DDA93C50B3B84DAD8F4`. All 85 negative cases pass, including secure chain evidence, distinct refusal routing, unauthorized precondition, EXO-009, MDO-009 and mandatory seams. The sole positive observes three Error statuses. Frozen corrected hashes are test `42F9FFC66498A2F0DC509AC11165FA7A6043A8E85CC20E9236959F26985BC8FD`, Common `5E4280568D7CC4D0BD9E4F9E8B547177723EE134B3E9045AB6FC38F4E6632429`, fixture `9766762C5DD3FB8ED4F5E7E58D712C2C2D58FD8C507F751A593AC32AEF093AA2`.
+
+Release only C1 under ACK `purple-20260930T080000Z/Kanban/g537/diagnose-positive-three-EXR-010-A12-L01-F02` for read-only inspection of current Common/fixture/test and generation-536 NUnit. Identify the exact three controls, their full nested Error reasons, the first failing boundary and smallest correction. Confirm the 85 negative cases do not rely on the proposed correction changing a refusal path. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 536 override: **ACCEPT RESIDUAL DIAGNOSIS WITH SECURITY-PRESERVING TEST CORRECTION; IMPLEMENT FINAL BOUNDED FIXES**. Accept C1's generation-535 technical findings except the proposal to make authorized-signer subject optional. The established F02 security contract requires identity, subject, authority and thumbprint pinning; explicit chain-evidence arrangements that omit the generated certificate subject are unsupported test setup, not a reason to weaken product authorization. An empty authorized-signer list may also fail closed before CMS/chain work; requiring chain evaluation for an already unauthorized request adds cost without security value.
+
+Release only C2 under ACK `purple-20260930T074500Z/Kanban/g536/correct-final-contract-and-runtime-EXR-010-A12-L01-F02` with Common PSM1, `ExchangeProtectionFixture.ps1` and `PublicCommandSurface.Tests.ps1` ownership. Apply only:
+
+1. In the explicit Good/Revoked/Unknown and legacy revoked chain-evidence arrangements, add the actual generated signer certificate `Subject` to the authorized signer record; retain identity, authority and thumbprint.
+2. For the empty authorized-signer negative, require the existing fail-closed unauthorized refusal and zero chain-evidence invocations; do not weaken the product precondition.
+3. Preserve EXO-009 `ewsAllowList` before RHS pipeline assignment by capturing the raw member inside an array subexpression in the collection-specific branch; retain absent/null refusal for required scalar members.
+4. In the shared offline fixture, mock only private `Test-BaselineEvidenceCertificateChain` to return explicit Good evidence bound to the generated leaf/root and decision time. Keep real detached-CMS verification and all signer pins.
+
+Keep exactly 86 cases and one positive. Do not remove subject matching, change Good/Revoked/Unknown routing, mock the signature verifier, add a bypass, alter MDO-009, exports, manifest, schemas, evaluators or unrelated files. Parse all three authorized files and run the corrected 86-case contract exactly once; require 86/86. No retry, focused/affected execution, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 535 override: **ACCEPT F02 76/86; DIAGNOSE AUTHORIZATION-BOUNDARY AND EXO-009 RESIDUALS**. Accept C2's sole generation-534 run against frozen test SHA-256 `E1C2C91C98E59CA4596DBF70BFD07CD8689C9876EAD8914C51F9D6E04F8360A6` as **86 total / 76 passed / 10 failed / 0 other / 0 failed containers**, NUnit SHA-256 `522F6C51C92813FD0EC5D02FA341CCFBB6DDF9B68A1FB1AFB02F7F76C943BE53`. MDO-009 is green. Remaining control errors are EXO-009, MON-003, OPS-001 and OPS-002; Good/Revoked/Unknown evidence reaches `ExternalEvidenceSignerUnauthorized`, the unauthorized-signer case refuses before chain evaluation, one legacy revoked-artifact case has the wrong refusal path, and the positive observes four Error controls.
+
+Release only C1 under ACK `purple-20260930T073000Z/Kanban/g535/diagnose-chain-authorization-EXR-010-A12-L01-F02` for read-only inspection of current Common, frozen test and generation-534 NUnit. Identify exact actual/required values and ordering for identity/subject/authority/thumbprint authorization, chain-evidence invocation, Good/Revoked/Unknown routing, unauthorized-signer routing and the legacy revoked-artifact path. Determine why EXO-009 remains null despite the local wrapper, including exact PowerShell return/assignment semantics and the smallest non-enumerating correction. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 534 override: **ACCEPT 67/86 INTENDED RED; IMPLEMENT BOUNDED CHAIN EVIDENCE AND COLLECTION PRESERVATION**. Accept C2's generation-533 test-only run of frozen strengthened contract SHA-256 `E1C2C91C98E59CA4596DBF70BFD07CD8689C9876EAD8914C51F9D6E04F8360A6` as **86 total / 67 passed / 19 failed / 0 other / 0 failed containers**, NUnit SHA-256 `3B02E39954042EF67CE2DC97534E7B19A878E651C67D6F85F4FFFDF9A62656C9`. Fourteen failures require the missing private chain-evidence dependency; five are the established EXO-009, MDO-009 and operational residuals.
+
+Release only C2 under ACK `purple-20260930T071500Z/Kanban/g534/implement-chain-evidence-EXR-010-A12-L01-F02` with Common PSM1 ownership only. Implement exactly the accepted generation-532 design: add private `Test-BaselineEvidenceCertificateChain`; production uses the existing offline/download-disabled chain factory and returns signer-thumbprint-bound trust, trust-anchor, explicit Good/Revoked/Unknown revocation, evaluation time, source and failure statuses; replace only the inline chain block in the real signature verifier and reject blank/mismatched evidence thumbprints. Preserve all CMS, signing-time, certificate-validity, signer-pin and fail-closed checks. Locally preserve EXO-009 `ewsAllowList` as a non-enumerated empty/singleton collection after member-presence validation. In MDO-009 preserve `TargetedUsersToProtect`, `TargetedDomainsToProtect`, `ExcludedSenders` and `ExcludedDomains` as explicit arrays while retaining Boolean `Enabled`. No public export, fixture, test, manifest, evaluator, artifact-schema or unrelated edit. Parse Common and run the frozen 86-case contract exactly once; require 86/86. No retry, focused/affected execution, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 533 override: **ACCEPT SECURE CHAIN-EVIDENCE DESIGN; STRENGTHEN NEGATIVE-FIRST CONTRACT**. Accept C1's generation-532 design for a module-private `Test-BaselineEvidenceCertificateChain` dependency that binds explicit trust/revocation evidence to the exact CMS signer thumbprint while leaving detached-CMS verification, signing-time validation, signer pins and fail-closed admission in product code.
+
+Release only C2 under ACK `purple-20260930T070000Z/Kanban/g533/red-chain-evidence-EXR-010-A12-L01-F02` with `PublicCommandSurface.Tests.ps1` ownership only. Preserve 86 cases and exactly one positive while strengthening existing AAA cases to require: the private chain-evidence dependency exists and is not exported; malformed CMS/multiple signers/signing-time failures do not invoke it; valid CMS invokes the real signature verifier and then the private dependency once; returned evidence is bound to the leaf thumbprint; explicit Good/Revoked/Unknown/untrusted evidence reaches the existing distinct refusal paths; caller `chainState` and inline `verifiedDocument` remain ineffective. In the existing full-positive arrangement, mock only the private chain-evidence dependency with explicit Good evidence bound to the generated leaf/root and decision time; do not mock the signature verifier. Preserve collection-shape expectations for EXO-009 and MDO-009. Run the unchanged-count file exactly once as intended red. No product/helper/manifest/frozen edit, implementation, retry, focused/affected execution, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 532 override: **ACCEPT FIVE-CONTROL DIAGNOSIS; DESIGN CONCLUSIVE OFFLINE CHAIN EVIDENCE**. Accept C1's generation-531 findings: EXO-009 loses an explicit empty allow list through `Get-BaselineRecordMember`; MDO-009 loses empty/singleton collection shape for four policy members after its now-correct Boolean `Enabled` projection; MON-003/OPS-001/OPS-002 pass canonical-content, CMS and signer-pin checks but fail before projection at `ExternalEvidenceSignerChainUntrusted` because the ephemeral custom-root chain cannot prove offline non-revocation.
+
+Release only C1 under ACK `purple-20260930T064500Z/Kanban/g532/design-offline-chain-evidence-EXR-010-A12-L01-F02` for read-only design of the smallest production-shaped private chain dependency that permits a test to supply explicit custom-root trust and conclusive offline revocation evidence without caller-controlled artifact data, a mocked successful signature verifier, `NoCheck`, ignored revocation flags, or a product test branch. Map the exact existing chain factory/signature-verifier call boundary, the concrete return type/fields, production default behavior, test-only mock arrangement, and negative-test preservation. Also state the exact local non-enumerating changes for EXO-009 and MDO-009. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 531 override: **ACCEPT F02 80/86; DIAGNOSE FIVE RESIDUAL CONTROL ERRORS**. Accept C2's sole generation-530 parse and frozen-test run as **86 total / 80 passed / 6 failed / 0 other / 0 failed containers**, NUnit SHA-256 `029659B21295A58A1E1D05F8F6EBF2F2AADA175480C122149312B85CE5762D30`. MDO-008 is now non-Error. Remaining Error controls are EXO-009, MDO-009, MON-003, OPS-001 and OPS-002 plus the aggregate positive. Frozen test SHA-256 remains `F3C9A6F39FD39002746346C14767739961D0E0C2BC2080A35A117CCE8ABB0441`; current Common and fixture SHA-256 values are `A595877282B8548FD116D2E41C9BD69B3F938ED6F4E22B4890C780AB7A765C0A` and `15DAF694D8633A4D5358DBF468C1F7586FD1DBAB4555D06CFA9AD595DCC4B62C`.
+
+Release only C1 under ACK `purple-20260930T063000Z/Kanban/g531/diagnose-five-EXR-010-A12-L01-F02` for read-only inspection of current Common/fixture and generation-530 NUnit. For each of the five controls, identify the exact first Error boundary, actual runtime value/type/shape versus required shape, and the smallest shared or control-specific correction. Explicitly verify whether EXO-009 and MDO-009 values are being flattened after projection and whether the three operational failures occur at signer admission, verified-document projection, or evaluator binding. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 530 override: **ACCEPT SIX-CONTROL DIAGNOSIS; APPLY FOUR SHARED CORRECTIONS**. Accept C1's generation-529 findings: canonical bytes, CMS, trust injection and payload/document boundaries are correct; no verification bypass remains. Residual causes are EXO-009 empty `ewsAllowList` collapsing to null, MDO-008 missing observed spoof quarantine tag, MDO-009 projection not guaranteeing Boolean `Enabled`, and missing authorized-signer `Subject` shared by MON-003/OPS-001/OPS-002.
+
+Release only C2 under ACK `purple-20260930T061500Z/Kanban/g530/correct-final-six-EXR-010-A12-L01-F02` with Common PSM1 and shared fixture ownership:
+
+1. In EXO-009 desired resolution, distinguish absent/null from an explicitly declared empty collection and preserve `ewsAllowList` as a typed empty array.
+2. In the offline fixture, add the evaluator-required observed `SpoofQuarantineTag` to hosted-content-filter records from the fixture's independently observed protection-policy reference, not from desired settings.
+3. In MDO-009 policy/rule joining, construct an explicit dictionary per policy and set `Enabled` by key to a Boolean for every bound or unbound policy before emission.
+4. Add the ephemeral leaf `Subject` to each pinned operational authorized-signer record; retain identity/authority/thumbprint. Add the common `ChangeId = 'OFFLINE'` to every OPS-001 phase so the fully passing fixture does not downgrade to binding drift.
+
+No other product/helper/test/manifest change. Parse both files and run unchanged 86-case suite exactly once; require 86/86. No retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 529 override: **ACCEPT F02 79/86; DIAGNOSE SIX FINAL CONTROL ERRORS**. Accept C2's sole generation-528 parse and frozen-test run as **86 total / 79 passed / 7 failed / 0 other / 0 failed containers**, NUnit SHA-256 `D1F96102239D10F7DBE11774D970C13C8990E74628BD1797EC888D55EA98B25F`. EXO-010, MDO-007, AUTH-001 and GOV-003/004/005 are now non-Error; all crypto/bypass cases remain green. Remaining Error controls are EXO-009, MDO-008, MDO-009, MON-003, OPS-001 and OPS-002 plus the aggregate positive.
+
+Release only C1 under ACK `purple-20260930T060500Z/Kanban/g529/diagnose-six-EXR-010-A12-L01-F02` for read-only inspection of current Common/fixture and generation-528 NUnit. For each of the six controls, identify exact first post-change Error, the current observed/desired shape at the failure boundary, and the smallest correction. For the three operational controls, verify canonical bytes, CMS/trust/signer admission and payload/document shape separately. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 528 override: **ACCEPT CLEAN 73/86 PRODUCT RED; IMPLEMENT TWELVE EXACT CORRECTIONS**. Accept C2's sole generation-527 corrected-test run of `PublicCommandSurface.Tests.ps1` SHA-256 `F3C9A6F39FD39002746346C14767739961D0E0C2BC2080A35A117CCE8ABB0441`: **86 total / 73 passed / 13 failed / 0 other / 0 failed containers**, NUnit SHA-256 `BF97F4DED55BBC30BB0E3E9DB13655885269596962ABEC31900FBBE5CC860F2C`. All crypto-refusal and bypass cases now pass. Remaining failures are exactly twelve controls plus the zero-Error positive.
+
+Release only C2 under ACK `purple-20260930T055000Z/Kanban/g528/implement-twelve-EXR-010-A12-L01-F02` with Common PSM1 and shared fixture ownership. Implement only the generation-526 diagnosed corrections:
+
+- EXO-009 fixture mailbox plans include explicit `EwsEnabled`/`EwsAllowList` and complete current members.
+- EXO-010 Common joins role groups/members and consumes independently shaped active PIM, eligible PIM and access-review fixture commands with current governed-role arguments.
+- MDO-007 Common adapts desired state with the explicit empty-inventory `registerLocation`.
+- MDO-008 fixture normalizes every quarantine policy to all mandatory members, using explicit null only when type-inapplicable.
+- MDO-009 Common removes unsupported evaluator arguments and joins policy to active rule for `Enabled`.
+- AUTH-001 fixture supplies complete signing status/key-size/CNAME data plus independent authoritative DNS; Common consumes `{Authoritative, CanonicalName}` instead of synthetic publication.
+- Operational fixture signs the exact canonical bytes reconstructed by product after JSON round trip; Common passes product-verified payload with derived signature metadata to MON-003/OPS-001, wraps verified document for OPS-002 and supplies plan-bound entitlement.
+- GOV-003/004/005 Common adapts current desired state, plan-bound entitlement and complete independently shaped population/distribution/identity/OME evidence.
+
+Preserve all 73 green cases and secure verification. Do not reuse desired state as observations, duplicate unrelated sources, add bypasses or coerce statuses. Parse both files and run unchanged 86-case suite exactly once; require 86/86. No retry, contract/manifest/frozen edit, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 527 override: **ACCEPT RESIDUAL CLASSIFICATION; CORRECT UNSUPPORTED CRYPTO TEST SETUP**. Accept C1's generation-526 matrix. Product now always uses file-backed binding checks and invokes private cryptographic verification for artifacts reaching that stage; inline bypass and caller-controlled chain authority are removed. Nine signature-related failures are test-side: an independent `BeforeAll` still uses unsupported instance `CopyWithPrivateKey`, and three legacy tests feed malformed CMS then expect caller `chainState` to produce trust/revocation-specific errors.
+
+Release only C2 under ACK `purple-20260930T053500Z/Kanban/g527/correct-crypto-tests-EXR-010-A12-L01-F02` to edit only `PublicCommandSurface.Tests.ps1`. Replace the remaining test-side instance `CopyWithPrivateKey` with static `RSACertificateExtensions.CopyWithPrivateKey`. Rewrite only the three legacy untrusted/revoked/inconclusive operational-artifact arrangements so they use cryptographically valid detached CMS and inject the intended trust/revocation outcome through the private certificate-chain/verifier test seam; caller `chainState` must not decide the result. Preserve their refusal assertions, the six new bypass cases, all other cases, and exactly one positive. Parse and run the corrected suite exactly once to establish the remaining product red. No product/helper/manifest/frozen edit, implementation, retry, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 526 override: **ACCEPT F02 64/86; DIAGNOSE SIGNATURE AND TWELVE-CONTROL RESIDUALS**. Accept C2's sole generation-525 parse and test run as **86 total / 64 passed / 22 failed / 0 other / 0 failed containers**, NUnit SHA-256 `5D2E145BFC06E76B030BD8E1527E0DBEFBDADF87241D345CA72C86BCF8437C2D`. Static private-key copy resolves fixture construction. Residuals comprise twelve Error controls, signature-refusal message mismatches and one verification-context setup failure.
+
+Release only C1 under ACK `purple-20260930T052000Z/Kanban/g526/diagnose-residuals-EXR-010-A12-L01-F02` for read-only inspection of current Common/fixture/test and existing generation-525 NUnit. Enumerate every failed case by exact name/message; classify product defect, fixture-shape defect, or unsupported test expectation/setup; provide smallest correction and identify shared causes. Specifically verify whether product always calls `Test-BaselineExchangeEvidenceSignature`, whether signed bytes match reconstructed canonical bytes, whether signer metadata/trust injection is correctly scoped, and why each of the twelve controls remains Error after generation 524. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 525 override: **ACCEPT SECURE-FIXTURE CASCADE; CORRECT RSA EXTENSION INVOCATION**. Accept C2's sole generation-524 parse and test run as **86 total / 29 passed / 57 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `D33948F2C4F1752CAB96233485FD1728147D649B638CAF517A026EEE4D51FBCC`. Product bypass removal and secure fixture construction parse, but fixture creation cascades because PowerShell cannot bind `CopyWithPrivateKey` as an instance extension method on the issued leaf certificate.
+
+Release only C2 under replacement ACK `purple-20260930T051000Z/Kanban/g525/static-copy-private-key-EXR-010-A12-L01-F02` to replace exactly `$issuedLeaf.CopyWithPrivateKey($artifactLeafKey)` with the equivalent static `[System.Security.Cryptography.X509Certificates.RSACertificateExtensions]::CopyWithPrivateKey($issuedLeaf, $artifactLeafKey)`. No other fixture/product/test/manifest change. Parse both files and run unchanged 86-case file exactly once. No retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 524 override: **ACCEPT 86-CASE RED; REMOVE VERIFICATION BYPASS AND CORRECT TWELVE SHAPES**. Accept C2's sole generation-523 run of `PublicCommandSurface.Tests.ps1` SHA-256 `7DF6D7B763A28F61A09B363988A5967399B714DBFFC1DB71B8B3ABF2275AD0A8`: **86 total / 67 passed / 19 failed / 0 other / 0 failed containers**, NUnit SHA-256 `FBD414559950522BE74924AF4814AC6ABC465C170BCECE1871D48C3B6D650D41`. All six new bypass cases fail as intended; the twelve known controls and aggregate positive remain red.
+
+Release only C2 under ACK `purple-20260930T050000Z/Kanban/g524/secure-twelve-EXR-010-A12-L01-F02` with exclusive Common PSM1 and shared fixture ownership. Remove `ExplicitOfflineTestVerification`/inline `verifiedDocument` admission entirely. Product reader must always read bound bytes/document, reconstruct signed content, invoke `Test-BaselineExchangeEvidenceSignature`, enforce pinned authorized signer plus cryptographic/trust/revocation results, then return a verified payload/document boundary with product-derived `SignatureVerified`; caller `chainState` is never authority. In the fixture, generate real detached CMS artifacts with ephemeral root/leaf certificates and inject custom-root trust only through the private chain seam during offline registry invocation; dispose keys/chains safely.
+
+Apply the exact generation-522 twelve-control corrections: complete EXO-009 EWS members; EXO-010 role-group join and independent PIM/review commands; MDO-007 current desired register location; MDO-008 normalized complete policy members; MDO-009 policy/rule Enabled join and removal of unsupported evaluator arguments; AUTH-001 full signing configuration plus authoritative canonical DNS evidence; verified payload shapes for MON-003/OPS-001 and admitted document/plan verdict for OPS-002; current desired/evidence/plan-bound contracts for GOV-003/004/005. Preserve all already-green behavior; do not copy desired state as observation, synthesize publication success, reuse unrelated sources, or add a test-only product branch. Parse both files and run unchanged 86-case file exactly once; require 86/86. No retry, contract/manifest/frozen edit, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 523 override: **ACCEPT TWELVE-CONTROL MATRIX; RED-PROVE REMOVAL OF FIXTURE VERIFICATION BYPASS**. Accept C1's generation-522 diagnosis. Exact remaining shapes are now known, but generation-520 introduced an unacceptable path: `verificationSeam = ExplicitOfflineTestVerification` plus caller-supplied `verifiedDocument` bypasses file reading and cryptographic verification; product then trusts fixture-controlled signature/chain metadata without calling `Test-BaselineExchangeEvidenceSignature`.
+
+Release only C2 under ACK `purple-20260930T044500Z/Kanban/g523/red-verification-bypass-EXR-010-A12-L01-F02` to edit only `PublicCommandSurface.Tests.ps1`. Preserve the existing 80 cases and one positive. Add negative-first coverage that inline `verifiedDocument`/`ExplicitOfflineTestVerification` cannot bypass file/CMS verification, and that operational artifact admission invokes the private cryptographic verifier and fails closed for cryptographic, trust, revocation and signer failures rather than accepting caller-controlled `chainState`. The valid test path may inject trust only by mocking `New-BaselineEvidenceCertificateChain` with a custom-root test chain around a real ephemeral certificate and real detached CMS bytes. Run only the expanded file once to establish intended red. No product/helper/manifest/frozen edit, implementation, retry, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 522 override: **ACCEPT F02 67/80; RE-DIAGNOSE TWELVE POST-CORRECTION ERRORS**. Accept C2's sole generation-521 parse and frozen-test run as **80 total / 67 passed / 13 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `E1AC1D947E27DF567EC5D37BFE56AA963EBAC0BEB01B6AD42919F2C62E64CC65`. The domain initialization removes the fixture cascade and EXO-007 now passes. Remaining Error controls are EXO-009/010, MDO-007/008/009, AUTH-001, MON-003, OPS-001/002, GOV-003/004/005 plus the aggregate positive.
+
+Release only C1 under ACK `purple-20260930T043000Z/Kanban/g522/diagnose-twelve-EXR-010-A12-L01-F02` for read-only inspection of current Common/fixture code and existing generation-521 NUnit. For each remaining control, identify the post-correction first Error reason, why the generation-520 adapter/fixture addition did not satisfy the current collector/evaluator, and the smallest exact correction with required input shape. Group shared causes and flag any fixture behavior that improperly bypasses product verification. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 521 override: **ACCEPT F02 FIXTURE-CASCADE FAILURE; INITIALIZE DKIM DOMAIN KEY**. Accept C2's sole generation-520 parse and test run as **80 total / 29 passed / 51 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `12E846B34D2C25EB8C370CF8D3FFC43354BDEDEF5932B8762872D35B710B5DC0`. Both authorized files parse. The 51 failures cascade from `New-ProtectionFixture` construction: newly added DKIM `ByIdentity` uses `$domain` before assignment, producing `A null key is not allowed in a hash literal`.
+
+Release only C2 under replacement ACK `purple-20260930T042000Z/Kanban/g521/initialize-domain-EXR-010-A12-L01-F02` to add exactly one initialization near the start of `New-ProtectionFixture`: `$domain = [string]$parameters.PRIMARY_SMTP_DOMAIN`, before any use of `$domain`. No other fixture/product/test/manifest change. Parse both authorized files and run unchanged 80-case file exactly once. No retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 520 override: **ACCEPT THIRTEEN-CONTROL DIAGNOSIS; CORRECT ADAPTERS AND OFFLINE FIXTURE SHAPES**. Accept C1's read-only generation-519 matrix. Shared causes are empty-array collapse; raw fixture records predating current helper contracts; older desired-state shapes; incomplete plan-bound entitlement verdicts; settings reused as observations; absent operational artifacts; and outer-document versus verified-payload mismatch.
+
+Release only C2 under ACK `purple-20260930T041000Z/Kanban/g520/correct-thirteen-EXR-010-A12-L01-F02` with exclusive write authority for Common PSM1 and `tests/helpers/ExchangeProtectionFixture.ps1`. In Common, preserve empty EXO-007 allow-list as typed empty; add current desired-state adapters and plan-bound entitlement verdicts for MDO-007 and GOV-003/004/005; join/project EXO-010 role groups and MDO-009 policy/rule enablement; consume authoritative DNS evidence for AUTH-001; feed verified artifact Payload/document shapes to MON-003 and OPS-001/002. In the offline fixture, add independent current-contract observations for EXO-009 mailbox plans, EXO-010 role/PIM/review evidence, MDO-008 typed quarantine members, MDO-009 rule bindings, AUTH-001 DNS, GOV population/identity/OME evidence, and current bound operational artifacts for MON-003/OPS-001/002 through an explicit test verification seam. Do not copy desired state as observed proof, duplicate one source into unrelated governance seams, weaken product artifact verification, fabricate live success, or edit the 80-test contract/manifest/frozen tests. Parse both files and run unchanged 80-case file exactly once; require 80/80. No retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 519 override: **ACCEPT F02 66/80; DIAGNOSE THIRTEEN REMAINING CONTROL ERRORS**. Accept C2's sole generation-518 parse and frozen-test run as **80 total / 66 passed / 14 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `14C496AEF1FDADE9EAE45E1DE14B4BC4D4D8A3BB7C09D1DA704F98A958B714B8`. Syntax is clean and twelve previously failing control seams now pass. Remaining failures are the thirteen Error controls EXO-007/009/010, MDO-007/008/009, AUTH-001, MON-003, OPS-001/002, GOV-003/004/005 plus the aggregate positive.
+
+Release only C1 under ACK `purple-20260930T035500Z/Kanban/g519/diagnose-thirteen-EXR-010-A12-L01-F02` for read-only inspection of the existing generation-518 NUnit/evidence, current code, collector/evaluator signatures and offline fixture raw data. For each of the thirteen controls, return the exact first Error reason, missing/wrong argument or data shape, and smallest current-helper-compatible correction; identify shared root causes. No Pester, edit, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 518 override: **ACCEPT ZERO-TEST SECOND PARSE FAILURE; MOVE ONE CLOSING BRACE**. Accept generation-517 as parse evidence only: nested cases are removed from hashtable literals, but eleven parser errors remain at the sibling cases because the `MDO-006` switch case was not closed after its `$collectorArguments` hashtable. The closing brace remains after `GOV-005`, so those cases are still syntactically inside `MDO-006`.
+
+Release only C2 under replacement ACK `purple-20260930T034500Z/Kanban/g518/close-mdo006-case-EXR-010-A12-L01-F02` to move exactly that one closing brace: close `MDO-006` immediately after its collector-argument hashtable and remove the corresponding brace after `GOV-005`. No other byte/behavior/test/manifest change. Parse first; only if zero errors, run unchanged 80-case file exactly once. No retry, frozen/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 517 override: **ACCEPT ZERO-TEST PARSE FAILURE; REPAIR SWITCH-BLOCK PLACEMENT ONLY**. Accept generation-516 as parse-gate evidence only: 17 parser errors, zero Pester invocation and zero tests. Inspection localizes the syntax defect to control `switch` cases accidentally inserted inside the `MDO-001` and `MDO-006` collector-argument hashtable literals; resulting brace errors are cascading.
+
+Release only C2 under replacement ACK `purple-20260930T034000Z/Kanban/g517/repair-switch-syntax-EXR-010-A12-L01-F02` to move the `MDO-002`, `MDO-003`, `MDO-007`, `MDO-008`, `MDO-009`, `PP-005`, `AUTH-001`, `MON-003`, `OPS-001`, `OPS-002`, `GOV-003`, `GOV-004` and `GOV-005` case blocks out of the two hashtable literals and into sibling cases of the existing control switch. Preserve every scriptblock/argument body byte-for-byte except indentation/braces necessary for valid syntax. No behavioral, test or manifest change. Parse first; only if zero errors, run unchanged 80-case file exactly once. No retry, frozen/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 516 override: **ACCEPT CLEAN 22-SEAM RED; RELEASE EXPLICIT PER-CONTROL WIRING**. Accept C2's sole generation-515 corrected-test run as **80 total / 57 passed / 23 failed / 0 other / 0 failed containers**, NUnit SHA-256 `E39D82BC212A2DC3BF6102CD80C7886845DA1B352E0E3A3120AC2402BFF6095D`. Test SHA-256 is `1E876D12A3E2413BDF6940DA55438F655946CA77B3A4E1C6003B5C2DF7C3D2EC`. The retained mismatch fixture now correctly passes. Remaining failures are exactly the 22 named command-specific seams plus the zero-Error positive.
+
+Release only C2 under ACK `purple-20260930T033500Z/Kanban/g516/wire-all-controls-EXR-010-A12-L01-F02` to edit Common PSM1 only. Replace generic placeholder argument population for the 22 failing controls with explicit offline closures and evaluator arguments matching each current function signature and the generation-507 seam map, using the existing `Invoke-BaselineExchangeRawCollection`, fixture-provided raw commands, `Read-BaselineExchangeOperationalArtifact`, context parameters/settings, group resolver and entitlement verdicts. Cover EXO-002/004-010/012, MDO-002/003/007-009, PP-005, AUTH-001, MON-003, OPS-001/002 and GOV-003/004/005. Preserve the already-green schema/projection/artifact-security/public/private/cryptographic behavior and three working controls. No fabricated empty data, test-only branching, live command execution outside injected fixture seams, mutation, or status coercion. Parse and run unchanged 80-case file exactly once; require 80/80. No retry, test/manifest edit, frozen/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 515 override: **ACCEPT F02 56/80; CORRECT CONFLICTING EXCLUDED-REGISTRY TEST**. Accept C2's sole generation-514 parse and frozen-test run as **80 total / 56 passed / 24 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `58D2967F97FD2376D648F34A13F92903DDF3FEBD43F6CF1EAE35E3AE0765D466`. Retained setting/schema refusals, isolated projection, retained drift checks and all eleven operational-artifact security refusals now pass. Twenty-two controls still return explicit Error because generic parameter population does not provide their required offline data shapes. One legacy mismatch case mutates the final broad-registry entry, which is excluded; expecting retained projection rejection conflicts with the now-correct isolation contract.
+
+Release only C2 under replacement ACK `purple-20260930T032500Z/Kanban/g515/correct-retained-mismatch-EXR-010-A12-L01-F02` to edit only that legacy mismatched-registry Arrange branch so it mutates a retained manifest entry rather than an excluded broad entry. Preserve every assertion and all other 79 cases. No product/manifest/frozen edit. Parse and run corrected 80-case file exactly once to establish the clean remaining seam red. No implementation, retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 514 override: **ACCEPT 80-CASE ALL-CONTROL RED; RELEASE COMPLETE BOUNDED IMPLEMENTATION**. Accept C2's sole generation-513 PowerShell 7.6.6 / Pester 5.7.1 execution of `PublicCommandSurface.Tests.ps1` SHA-256 `746E5F1E7180582B6F8BE7C05B5205BC73EF88D3336D8AF50D6F65DADD92B050`: **80 total / 42 passed / 38 failed / 0 other / 0 failed containers**, NUnit SHA-256 `E4418F8E0B2E34CB4A574F14D6CF567D8C15ECF93AD70DAD7DCE45604FAD01A2`. The intended failures are exactly three retained-schema checks, one excluded-registry projection isolation, eleven operational-artifact security refusals, twenty-two missing command-specific seams, and the strengthened zero-Error positive.
+
+Release only C2 under ACK `purple-20260930T031500Z/Kanban/g514/implement-all-controls-EXR-010-A12-L01-F02` to edit Common PSM1 only; test and manifest hashes are frozen. Implement exact retained setting/schema validation before collectors; construct/validate the authoritative expected registry solely from the ordered 25 manifest IDs so excluded broad-registry drift is irrelevant while retained drift refuses; supply every mandatory current collector/evaluator argument for the 22 named controls through offline fixture/raw/artifact seams; and make operational artifact ingestion fail closed on signature, signer authority, trust/revocation, age/future time, tenant, configuration, manifest and control binding before returning payload. Reuse the existing hardened detached-CMS path and current collectors/evaluators; no live call, mutation, obsolete governance-boundary restoration, permissive trust, or test-specific success fallback. Parse and run unchanged 80-case file exactly once; require 80/80. No retry, frozen/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 513 override: **REJECT F02 STATIC REVIEW; EXPAND ALL-25 AND ARTIFACT ASSERTIONS**. Accept C1's generation-512 REJECT. Frozen identity matches, but only EXO-001, MDO-001 and MDO-006 have complete mandatory current collector/evaluator arguments; 22/25 controls can become Error solely from parameter binding. Registry admission still validates the broad registry before late selection rather than an authoritative exact ordered 25-entry projection; scope assertion omits schema and exact setting-member validation; `Read-BaselineExchangeOperationalArtifact` parses local JSON without tenant/configuration/manifest/control/age/signature/signer/trust/revocation binding.
+
+Release only C2 under ACK `purple-20260930T030000Z/Kanban/g513/expand-all-controls-red-EXR-010-A12-L01-F02` to edit only `PublicCommandSurface.Tests.ps1`. Preserve the existing 38 cases and exactly one positive. Add negative-first coverage for malformed retained setting/schema refusal before collectors; authoritative 25-entry projection that ignores drift in excluded broad-registry entries while refusing retained-entry drift; unsigned, stale/future, wrong-tenant/configuration/manifest/control, unauthorized signer, untrusted/revoked/inconclusive operational artifacts; and missing mandatory command-specific seams. Strengthen the sole positive to require exactly 25 results with **zero Error solely from missing seams**, exercising all current collectors/evaluators against the offline fixture and signed/bound operational artifacts. Run only the expanded file once in fresh PowerShell 7/Pester 5.7.1 and stop on intended red. No product/manifest/frozen edit, implementation, retry, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 512 override: **ACCEPT F02 38/38; INDEPENDENT ALL-CONTROL REVIEW BEFORE FROZEN EXECUTION**. Accept C2's sole generation-511 parse and corrected-test run as **38/38**, zero other outcomes/failed containers, exit 0, NUnit SHA-256 `DA8A499139B251722937BB3D549E151C5B4CCFE78F3E6D3A134B3F370B18997E`. Freeze identity: `PublicCommandSurface.Tests.ps1` SHA-256 `6F9017FA5DAE36BC5AB61F80ECA2F7EE05CE7BF02C1B15672660BABDFEE3CD71`; Common PSM1 `767AD7074D90EF614A34E94471B2362F8F8BBDC09F3A4BBAECF487D655779D4B`; Common PSD1 `02F37C7498CFA873B0DD8D9280CF24C7A0F90C7E217AD032243C28DFDBE1CEA6`.
+
+Release only C1 under ACK `purple-20260930T025000Z/Kanban/g512/review-all-controls-EXR-010-A12-L01-F02` for independent read-only static review. Verify every one of the exact 25 manifest controls has all mandatory current collector and evaluator arguments supplied through offline seams; exact pre-collection admission and closed statuses remain enforced; all four public commands and private helpers are correctly visible; go-live signature flow is fail closed; no obsolete or live/mutation path was restored. Return ACCEPT only if no control can fall into Error merely because its required seam is absent. No Pester, edit, frozen/affected execution, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 511 override: **ACCEPT F02 37/38; CORRECT UNSUPPORTED POSITIVE EXPECTATION**. Accept C2's sole generation-510 parse and frozen-test run as **38 total / 37 passed / 1 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `FA1C3BBA9F419457B2643331A4F355354C513D32E835112DF6D3D6865EC62B13`. All four generation-510 corrections pass. The sole failure is assertion-only: `New-ProtectionFixture` arranges compliant Standard preset state, and current `Test-StandardPresetControl` has a closed compliant outcome of `Pass`; it has no ApprovedException input or branch. Expecting MDO-001 `ApprovedException` in this positive is unsupported and cannot be repaired by product code without changing behavior.
+
+Release only C2 under replacement ACK `purple-20260930T024500Z/Kanban/g511/correct-positive-EXR-010-A12-L01-F02` to change only the single positive assertion from expected MDO-001 `ApprovedException` to `Pass`. Preserve all other 37 negatives and positive assertions. No product/manifest/frozen-test edit. Parse and run the corrected 38-case file exactly once; require 38/38. No retry, focused/affected execution, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 510 override: **ACCEPT COHERENT 33/38; CORRECT FIVE BOUNDED CONTRACT DEFECTS**. Accept C2's sole generation-509 parse and frozen-test run as **38 total / 33 passed / 5 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `87EA1C29B2F9D31F160B821E52C3AEFE00DDB60124FB106375D41C7F662E5F54`. Public definitions/exports, private visibility, manifest projection, reduced/expanded admission, real collector seam, malformed registry, chain hardening and fail-closed CMS tests pass.
+
+Release only C2 under replacement ACK `purple-20260930T024000Z/Kanban/g510/correct-five-EXR-010-A12-L01-F02` for exactly four code-shape corrections addressing five tests: (1) in closed-scope assertion, reject non-manifest control IDs before reporting missing manifest IDs so excluded replacement returns `ExchangeScopeViolation`; (2) retain `Get-Command` only for collector parameter metadata but invoke the collector by its string command name so module mocks intercept; (3) do the same for evaluator dispatch; (4) remove obsolete unsupported `-ExpectedEntitlement` from the current `Test-BaselineGoLive` call. No test/manifest change or other product edit. Parse and run unchanged 38-case file exactly once; require 38/38. No retry, frozen/affected test, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 509 override: **ACCEPT EXPANDED 38-CASE RED; RELEASE COHERENT IMPLEMENTATION**. Accept C2's sole generation-508 PowerShell 7.6.6 / Pester 5.7.1 execution of `PublicCommandSurface.Tests.ps1` SHA-256 `848E45A68497D0088CE41B49A6B7F056C3C43C3BD01BB9B55FB17C8845147692`: **38 total / 11 passed / 27 failed / 0 skipped / 0 not-run / 0 failed containers**, NUnit SHA-256 `11DC3B2B401FF9A495B17BA8268C2E10200DA5D72A8F35928A460E7C19A69F39`. The 27 failures map exactly to nine missing public definition/export assertions, six private helpers, manifest projection, three pre-collector scope refusals, real collector seams, two evaluator-status refusals, explicit error evidence, three CMS trust/revocation refusals, and the single strengthened positive. No syntax/import/fixture/container defect occurred.
+
+Release only C2 under ACK `purple-20260930T022500Z/Kanban/g509/implement-coherent-runtime-EXR-010-A12-L01-F02` to edit Common PSM1/PSD1 only; the 38-test file is frozen. Restore/adapt the four public compatibility commands and exact dual exports; restore the minimum private scope, context/capability/domain-inventory, raw offline collection, operational-artifact, and detached-CMS helpers required by the current frozen workflow. Replace the generic registry with exact ordered 25-control manifest projection, complete pre-collection admission, command-specific offline seam injection into current collectors/evaluators, closed result statuses, and explicit per-control Error evidence. Preserve private chain hardening and fail-closed signature behavior. Use ancestor `142d93ff4e278d3ccb5450f76421e22a3450543a` as behavioral source but do not restore governance-boundary or mutation infrastructure. Parse and run unchanged 38-case file exactly once; require 38/38 and stop. No frozen/affected test, retry, unrelated edit, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 508 override: **ACCEPT COHERENT RUNTIME MAP; EXPAND ASSERTIONS BEFORE IMPLEMENTATION**. Accept C1's generation-507 diagnosis. The frozen chain requires four public compatibility commands exported exactly once in module and manifest: `Get-BaselineExchangeManifest`, `Get-BaselineExchangeContext`, `Invoke-BaselineExchangeRegistry`, and `Invoke-BaselineExchangeGoLive`. Required private behavior comprises closed-scope assertion, capability/domain-inventory context helpers, raw offline collection, operational-artifact import, detached-CMS verification, and the already restored private chain seam. The registry must project exactly the 25 Exchange-only manifest IDs, validate complete/order/member/callability before collection, inject every current collector's mandatory offline seam, and require one matching result with status in `Pass/Fail/Error/NotEntitled/Unverified/ApprovedException`. No obsolete governance-boundary or mutation runtime may be restored.
+
+Release only C2 under ACK `purple-20260930T021000Z/Kanban/g508/expand-red-EXR-010-A12-L01-F02` to edit only `PublicCommandSurface.Tests.ps1`. Preserve the existing 11 tests and add negative-first assertions for the three missing public definitions/dual exports; private helper non-export; exact 25-control projection and refusal of reduced/expanded/excluded configuration before zero collectors; mandatory collector seam success rather than 25 Error records; missing/arbitrary evaluator status refusal; explicit error evidence; and detached-CMS use of the private hardened chain with untrusted/revoked/inconclusive refusal. Strengthen the single positive to require representative expected statuses including MDO-001 ApprovedException and MDO-006 Pass plus admitted signed offline go-live evidence. Maintain visible Arrange-Act-Assert and exactly one positive for the bounded unit. Run only this expanded file once in fresh PowerShell 7/Pester 5.7.1 and stop on intended red. No product/manifest/frozen-test edit, implementation, retry, live access, commit, push or publish. C1/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 507 override: **REJECT F02 CLOSURE; DIAGNOSE COHERENT RUNTIME CONTRACT**. Accept stable-identity generation-506 evidence. C1 returns REJECT despite hash compliance: restored registry dispatch does not supply mandatory current collector seams, admission validates the global registry rather than the closed 25-control Exchange scope, and evaluator success accepts missing/arbitrary status. C2 exact focused run is **0/6**, all failing at fixture construction because `Get-BaselineExchangeContext` is also absent; NUnit SHA-256 `03D4ED4FE9EDCBE14CFE2BF8987C32BD1BC3298DD5015C4247E707BDEFDE7BD8`. C3 first affected suite is **337 total / 1 passed / 336 failed**, with expected Pass observed Error; NUnit SHA-256 `701D43A437FD55AF8289502D9E465E849C092D50850169BB09C10D257799D5CA`; suites 2-8 correctly did not run. Frozen hashes remained unchanged. The generation-505 11/11 surface test is therefore necessary but insufficient and F02 remains In Progress.
+
+Release only C1 under ACK `purple-20260930T020000Z/Kanban/g507/diagnose-runtime-EXR-010-A12-L01-F02` for read-only static dependency mapping. Starting from the exact frozen focused six and affected first-suite helper paths, enumerate every missing runtime command and every required historical dependency needed for successful 25-control offline execution; distinguish commands that must be restored from behavior that can map to current helpers; map the closed Exchange-only manifest/context, collector argument seams, result-status contract, and public/private export requirements. Produce a minimal coherent restoration plan and assertion gaps. No repository edit, Pester, implementation, retry, live access, commit, push or publish. C2/C3 remain quiescent.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 506 override: **ACCEPT F02 11/11; RELEASE FROZEN CLOSURE GATES**. Accept C2's sole generation-505 parse and unchanged-test run as **11/11**, zero other outcomes/failed containers, exit 0, NUnit SHA-256 `102FC7F80E00765BE036C388995FB5B73716CBABB1BC2F5F0D4EA6CA57E72D7F`. Freeze implementation identity: `PublicCommandSurface.Tests.ps1` SHA-256 `35D837D4192B14005821C289A8DE7B0433A4D4BBEEA2D868B750E35467406206`; Common PSM1 `BA16F163D5D6F71B084EF26FADF84AA0780DA024FD949978C5AD72DAB897CCAB`; Common PSD1 `3AB5559606209C01A1DB04154CF95A4BB681FF22EF395AA2842CD67E11889ED9`.
+
+Under ACK `purple-20260930T014500Z/Kanban/g506/validate-runtime-EXR-010-A12-L01-F02`, release C1 for independent read-only review of the exact implementation diff against generation-502/503 invariants; C2 for one fresh exact-six focused run from unchanged `ExchangeEmailIntegratedWorkflow.Tests.ps1` SHA-256 `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, required 6/6; and C3 for one fresh ordered eight-suite affected run with required vector 337/281/6/30/10/68/6/9 and aggregate 747/747. C2/C3 must verify the three frozen implementation hashes before and after, emit complete NUnit/evidence, and make no repository edit. No retry, broader/full suite, live access, commit, push or publish.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 505 override: **ACCEPT F02 NORMALIZATION; CORRECT STRICT EMPTY COMPARISON COUNT**. Accept C2's sole generation-504 parse and unchanged-test run as **11 total / 9 passed / 2 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `7B8AA60F2703E5A43D56F6D9637DDD2AE860750F7ADBEF4C4A80D30C92D46FA5`. The two authorized explicit materializations are correct and move execution beyond wrapper rejection. Both remaining failures reach the authoritative-member comparison at current line 6167, where strict mode rejects `.Count` on an empty/scalar `Compare-Object` result.
+
+Release only C2 under replacement ACK `purple-20260930T014000Z/Kanban/g505/normalize-comparison-EXR-010-A12-L01-F02` to wrap only that `Compare-Object` invocation in `@(...)` before reading `.Count`. No other product/test/manifest edit is authorized. Parse, then run unchanged `PublicCommandSurface.Tests.ps1` exactly once; require 11/11. C1/C3 remain quiescent. No frozen/affected test, retry, unrelated edit, live access, commit, push or publish.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 504 override: **ACCEPT F02 10/11; CORRECT READ-ONLY COLLECTION NORMALIZATION**. Accept C2's sole generation-503 run against unchanged test SHA-256 `35D837D4192B14005821C289A8DE7B0433A4D4BBEEA2D868B750E35467406206` as **11 total / 10 passed / 1 failed / 0 other / 0 failed containers**, exit 1, NUnit SHA-256 `EBD9B4BFBEAC4B13FC594E73A38B8726B26F9D22A9C5E8F0C7C70CFE0A0D13AC`. Definition/export, malformed-registry, hardened-chain and refusal tests pass. The sole positive reaches restored runtime and fails because `Get-BaselineControlRegistry` intentionally returns a unary-wrapped read-only collection; `@(...)` preserved the wrapper and `New-BaselineControlRegistry -Definition $registry` received one collection object instead of its entries.
+
+Release only C2 under replacement ACK `purple-20260930T013500Z/Kanban/g504/normalize-registry-EXR-010-A12-L01-F02` to replace only the two registry/expected assignments at the start of `Invoke-BaselineExchangeRegistry` with explicit `foreach` materialization of individual entries from the returned read-only collections. No other product/test/manifest change is authorized. Parse, then run unchanged `PublicCommandSurface.Tests.ps1` exactly once; require 11/11. C1/C3 remain quiescent. No frozen/affected test, retry, unrelated edit, live access, commit, push or publish.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 503 override: **ACCEPT F02 INTENDED RED; RELEASE SMALLEST IMPLEMENTATION**. Bind Purple/C1 `306413d3-e9c8-49b7-830f-c28a2b62bc35`, C2 `27070e69-067b-418d-b451-8afbd32b30ce`, and C3 `9e375393-b4aa-4299-9c61-34fe94d1197c`. Accept `PublicCommandSurface.Tests.ps1` SHA-256 `35D837D4192B14005821C289A8DE7B0433A4D4BBEEA2D868B750E35467406206` and its sole fresh-process PowerShell 7.6.6 / Pester 5.7.1 run as **11 total / 0 passed / 11 failed / 0 skipped / 0 not-run / 0 failed containers**, exit 1, NUnit SHA-256 `1B49AF3EE6D0C2F8A9E97D01DF8FCEBAAAFC5029DE60209268B7BFB6BE6872D0`. All failures are intended: zero registry definition/exports, invalid-registry cases receive CommandNotFound instead of `ExchangeRegistryInvalid`, positive fixture stops at the missing registry command, and private-chain cases stop at the missing chain seam. No parse/import/fixture failure occurred.
+
+C1 and C3 independently bind the last compatible ancestor to `142d93ff4e278d3ccb5450f76421e22a3450543a` and reject blind restoration of removed surrounding infrastructure. Release only C2 under replacement ACK `purple-20260930T012500Z/Kanban/g503/implement-runtime-EXR-010-A12-L01-F02` to edit the already reserved Common module/manifest. Required implementation: add one public `Invoke-BaselineExchangeRegistry` definition adapted to current authoritative registry/definitions and current collectors/evaluators; globally validate complete/unique/matching/callable retained entries before any collector; preserve deterministic one-result-per-control, entitlement and explicit Error evidence/refusal shapes; export it exactly once in module and manifest. Add one module-private `New-BaselineEvidenceCertificateChain` returning a fresh disposable chain with offline revocation and certificate downloads disabled; do not export it or add permissive trust flags. Do not resurrect obsolete raw collection, boundary, go-live, mutation or artifact helpers. After editing, C2 runs only unchanged `PublicCommandSurface.Tests.ps1` once; require 11/11 and stop. C1/C3 remain quiescent. No frozen-test run, affected suite, retry, unrelated edit, live access, commit, push or publish.
+
+Counts remain **36 To Do / 1 In Progress / 54 Done**.
+
+Generation 502 override: **AUTHORIZE RECOMMENDED RUNTIME-COMPATIBILITY RESTORATION**. The maintainer explicitly selected restoration of the missing runtime commands rather than revision of the frozen contracts. Create and activate `EXR-010-A12-L01-F02` immediately before C01. F02 restores behavior-compatible `Invoke-BaselineExchangeRegistry` as a shipped public command and `New-BaselineEvidenceCertificateChain` as the module-private certificate-verification seam required by the frozen security contract. The change must recover supported historical behavior over current helpers; it must not copy obsolete surrounding implementation blindly, weaken trust/revocation/refusal behavior, change frozen acceptance tests, add a bypass, or access a tenant.
+
+F02 uses exactly three Purple Coworkers under ACK `purple-20260930T011000Z/Kanban/g502/restore-runtime-EXR-010-A12-L01-F02`: C1 owns read-only historical/current contract analysis and returns exact source/export/behavior evidence; C2 exclusively owns `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, `ExchangeOnlineBaseline.Common.psd1`, and a new `tests/unit/PublicCommandSurface.Tests.ps1`, authors all Arrange-Act-Assert negatives first and proves intended red before the single positive and smallest implementation; C3 owns read-only review and validation evidence. C2 must stop after red and await canonical acceptance before implementation. C3 must not execute until implementation release. Frozen `ExchangeEmailIntegratedWorkflow.Tests.ps1` and the eight affected suites remain read-only. No commit, push, publish, live access, deployment, waiver, test rewrite, or unrelated correction.
+
+Counts become **36 To Do / 1 In Progress / 54 Done = 91 executable cards**. Purple owns F02; Silver and Gold remain quiescent.
+
+Generation 501 override: **C01 REJECT; L01 REMAINS OPEN**. Complete the static final canonical reconciliation without product/test execution. D01 is Done with 150 supported `Known` dispositions; V01 is Done with an independent, current-tree, scope-compliant **REJECT**. The tested identity is exact and stable, but required behavior is not: focused is **0/6** rather than 6/6, affected stopped at the first suite with **1/337** rather than the required eight-suite 747/747, and the current Common module lacks `New-BaselineEvidenceCertificateChain` and `Invoke-BaselineExchangeRegistry` required by the frozen contracts. C01 acceptance therefore fails. Move C01 In Progress -> To Do, clear its temporary steward ownership, and retain exact blockers: restore supported current-runtime command compatibility or reconcile the frozen test contracts through a separately authorized implementation card, then produce fresh focused 6/6 and affected 747/747 on a stable tested identity. No correction card, product/test write, retry, waiver, live access, commit, push or publish is authorized by this generation.
+
+Canonical counts are **36 To Do / 0 In Progress / 54 Done**. Dependency-safe ranks 48-50 remain blocked by C01 and are not allocated. Purple, Silver and Gold are released and quiescent.
+
+Generation 500 override: **V01 REJECT; ACTIVATE C01 FINAL CANONICAL DECISION**. Accept the generation-499 exact-once current-tree evidence as scope-compliant rejection evidence. C2 parsed runner SHA-256 `F17F316E522293C3E30D3A1702B615D197DA77506E59E90E018A52C311F79213`, discovered exactly the six required names, and produced NUnit SHA-256 `B138C03AE88C79F826BEBA0F8B9018228237CA7357DB1DC91B1749F889EF12C8`: **0 passed / 6 failed**, one failed container. Shared setup failed because `New-BaselineEvidenceCertificateChain` is absent from the current Common module; the cleanup then also observed unset `$global:adapterCommands`. C2's post identity retained HEAD and governance-only status, but its independently rewritten manifest serialization was not protocol-identical and packet packaging stopped on empty `Compare-Object`; these harness defects do not convert the six observed failures into passes. C3 parsed runner SHA-256 `C03CDF1E0D8DBD48B6E66C39C3BC63D786E04EEC0344C7B2CED67DA68E3BCA0C` and ran the first ordered affected suite exactly once: `ExchangeProtectionMatrix.Tests.ps1` observed **337 total / 1 passed / 336 failed**, then correctly stopped before suites 2-8; NUnit SHA-256 `EC9341B05FFC4DD01617992265EEAD5A98B43374748E667E2CF5909468BAFDA4`. Its first failure proves required `Invoke-BaselineExchangeRegistry` is absent from the current Common module. C3 post identity exactly matched HEAD `3fb40559239dc16bb107e25e9b2cfb82d89305d3`, governance-only status, 334 present files and manifest SHA-256 `8C8FBB47622985E8DBA71941EA171A27D1704A6FD3F1E0B79793595BDE011D22`. No repository/product/test mutation, retry, live access, commit, push or publish occurred.
+
+V01 therefore returns **REJECT / ScopeCompliant / ClosureEligible=false** with exact blockers: focused 6/6 is not met; affected 747/747 is not met; current runtime/test compatibility is disproved. Move V01 In Progress -> Done as a completed independent rejection review. Activate dependency-ready C01 To Do -> In Progress under the sole canonical steward for static governance reconciliation only. Counts remain **35 To Do / 1 In Progress / 54 Done**.
+
+Generation 499 override: **ACCEPT CURRENT-TREE IDENTITY BARRIER; RELEASE FOCUSED AND AFFECTED RUNS**. Accept generation-498 C1 runner SHA-256 `ACEA6929B3D2AECD6AEC3AD4397990B15DE3B74122EF11C09AC9841ADFDF1753` and `pre-identity.json` SHA-256 `B31BD255AC9F8A5B141D4A2EF3323DE39F7BDD1DFA67E7B8129F8C017F2D4A6C`. All barriers passed: HEAD `3fb40559239dc16bb107e25e9b2cfb82d89305d3`; only `.github/backlog.md` and `.github/cohorts.md` modified; governance diff 31,961 bytes / SHA-256 `9EAA9D673EC6C0DCE16AA327AE5095C1294A38669C27A648521DF53C3DC618B9`; scoped tracked manifest 334 entries / SHA-256 `8C8FBB47622985E8DBA71941EA171A27D1704A6FD3F1E0B79793595BDE011D22`; all files present.
+
+Under ACK `purple-20260930T003500Z/Kanban/g499/test-current-EXR-010-A12-L01-V01`, release Purple/Coworker-2 agent `0333fff9-fcbf-4466-ae3a-aa76852dce58` to exclusive root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g499-EXR-010-A12-L01-V01\coworker-2` and Purple/Coworker-3 agent `2152a462-424d-418d-9972-98cfdb74b090` to exclusive root `...\coworker-3`. All generation-495 exact case/suite identities and invocation contracts remain binding. C2 creates/parses `run-focused.ps1`, executes the exact six-case file once in fresh PowerShell 7/Pester 5.7.1, emits complete NUnit, and repeats the generation-498 scoped HEAD/status/manifest protocol after testing, requiring manifest SHA-256 `8C8F...011D22`. C3 creates/parses `run-affected.ps1`, executes the ordered eight suites exactly once each in one fresh process, requires vector 337/281/6/30/10/68/6/9 and aggregate 747/747, emits complete evidence, and repeats the same post identity. C2/C3 may run concurrently. No retry, repository/governance edit, full regression, live access, commit, push or publish.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**; C01 remains To Do.
+
+Generation 498 override: **ALLOW ZERO-BYTE FILES IN C1 MANIFEST HASHING**. Accept generation-497 runner parse and sole invocation, which reached tracked-file manifest construction but exited before output because mandatory `[byte[]]` parameter binding rejected a legitimate zero-length file. No identity claim, test, repository edit or retry occurred.
+
+Under replacement ACK `purple-20260930T003000Z/Kanban/g498/capture-current-EXR-010-A12-L01-V01`, Purple/Coworker-1 agent `d66b36de-23fd-49b4-b700-45ac175c5124` exclusively owns `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g498-EXR-010-A12-L01-V01\coworker-1`. Copy the generation-497 runner, add `[AllowEmptyCollection()]` to the `Get-Sha256Hex` `[byte[]]$Bytes` parameter, and update only protocol/root metadata to generation 498. Preserve every other byte-level behavior. Parse and execute exactly once using `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g498-EXR-010-A12-L01-V01\coworker-1\capture-identity.ps1'`; require nonempty `pre-identity.json` and all barriers true. Coworkers 2/3 remain quiescent. No further harness correction, tests, repository/governance edit, live access, commit, push or publish.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**.
+
+Generation 497 override: **REPLACE C1 HARNESS AFTER ZERO IDENTITY OUTPUT**. Accept generation-496 C1 runner parse and sole invocation, which exited 1 before writing `pre-identity.json` because `(Invoke-GitText ...)[0]` indexed the scalar SHA string as a character. Static inspection also found the runner mistakenly listed `.github/kanban.md` instead of canonical `.github/backlog.md` in `$governancePaths`. No identity claim, test, repository edit or retry occurred.
+
+Under replacement ACK `purple-20260930T002500Z/Kanban/g497/capture-current-EXR-010-A12-L01-V01`, Purple/Coworker-1 agent `d66b36de-23fd-49b4-b700-45ac175c5124` exclusively owns `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g497-EXR-010-A12-L01-V01\coworker-1`. Copy the generation-496 runner into that root and change exactly: `$governancePaths = @('.github/backlog.md', '.github/cohorts.md')`; and `$head = ([string](Invoke-GitText -Arguments @('rev-parse', 'HEAD') | Select-Object -First 1)).Trim()`. Update only protocol/root metadata to generation 497. Parse and execute the corrected runner exactly once using `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g497-EXR-010-A12-L01-V01\coworker-1\capture-identity.ps1'`; require nonempty `pre-identity.json` and all barriers true. Coworkers 2/3 remain quiescent. No second replacement, tests, repository/governance edit, live access, commit, push or publish.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**.
+
+Generation 496 override: **BIND THREE FRESH V01 COWORKER IDENTITIES**. Accept generation-495 as zero execution: the reused Purple coordinator could not independently prove its runtime identity. Three fresh Coworker sessions explicitly registered without reading files or running commands. ACK `purple-20260930T002000Z/Kanban/g496/run-current-EXR-010-A12-L01-V01` binds Purple/Coworker-1 agent `d66b36de-23fd-49b4-b700-45ac175c5124`, Purple/Coworker-2 agent `0333fff9-fcbf-4466-ae3a-aa76852dce58`, and Purple/Coworker-3 agent `2152a462-424d-418d-9972-98cfdb74b090`.
+
+All generation-495 authority resolution, exact six names, ordered eight suite paths/counts, identity normalization, HEAD/status/diff/manifest protocol and prohibitions are incorporated unchanged. Worker roots are respectively `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g496-EXR-010-A12-L01-V01\coworker-1`, `...\coworker-2`, and `...\coworker-3`; each agent exclusively owns its root. Release only Coworker-1 initially to create/execute the literal `capture-identity.ps1` protocol once and return nonempty `pre-identity.json`. The root canonical writer validates C1 before separately releasing Coworkers 2/3. No other coordinator identity or worker may execute this grant. No retry, repository/governance edit, full regression, live access, commit, push or publish.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**; C01 remains To Do.
+
+Generation 495 override: **ISSUE FULLY LITERAL CURRENT-TREE V01 VALIDATION ACK**. Accept generation-494 as zero execution. `.github/backlog.md` is the sole canonical status authority; `.github/kanban.md` explicitly declares itself a historical compatibility view at revision 284 and its historical 36/0/193 counts do not conflict with canonical generation-495 counts. Bind Purple agent `1402b777-2bab-4122-bc65-e28124e31dae` / resumed run `Purple-20260929T231713.512Z-g488` and valid UTC ACK `purple-20260930T001500Z/Kanban/g495/run-current-EXR-010-A12-L01-V01`.
+
+Authorize exactly these disjoint roots: `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g495-EXR-010-A12-L01-V01\coworker-1`, `...\coworker-2`, `...\coworker-3`. C1 creates `capture-identity.ps1` and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g495-EXR-010-A12-L01-V01\coworker-1\capture-identity.ps1'`. Identity protocol: require HEAD `3fb40559239dc16bb107e25e9b2cfb82d89305d3`; capture `git status --porcelain=v1 --untracked-files=all`, normalize CRLF/CR to LF while preserving line order and require the only entries are modified `.github/backlog.md` and `.github/cohorts.md`; capture `git diff --no-ext-diff --binary HEAD --` by redirecting native stdout to a binary file and record exact byte count/SHA-256; capture `git ls-files -z`, preserve Git order, exclude only `.github/backlog.md` and `.github/cohorts.md`, and record each remaining tracked path/byte count/SHA-256 plus a canonical LF-delimited `path<TAB>bytes<TAB>sha256` manifest hash. Emit nonempty `pre-identity.json`; steward validates before C2/C3 release. Both test workers repeat the identical scoped manifest/status/HEAD protocol after execution and require equality to C1; governance diff bytes are recorded but not an equality gate because this canonical ACK itself changes them.
+
+C2 creates `run-focused.ps1` and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g495-EXR-010-A12-L01-V01\coworker-2\run-focused.ps1'`. It runs only `C:\Users\chhage\repos\sony\GISC\exchange-online-protection\samples\contoso-exchange-online-managed-service\tests\unit\ExchangeEmailIntegratedWorkflow.Tests.ps1`, whose SHA-256 is `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, and requires exactly these six literal cases, 6/6: `refuses tampered frozen evidence against its detached signature`; `refuses recipient drift before any approved write`; `refuses effective rule scope drift before any approved write`; `refuses missing independent reporting proof before any approved write`; `refuses unsupported recipient capability before any approved write`; `runs one licensed mixed-recipient approved workflow through raw evidence, signing and rollback`.
+
+C3 creates `run-affected.ps1` and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File 'C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g495-EXR-010-A12-L01-V01\coworker-3\run-affected.ps1'`. In one fresh PowerShell 7/Pester 5.7.1 process it invokes each ordered suite exactly once and aggregates: `ExchangeProtectionMatrix.Tests.ps1` 337; `ExchangeProtectionLicensing.Tests.ps1` 281; `ExchangeProtectionSafety.Tests.ps1` 6; `ExchangeReportingContract.Tests.ps1` 30; `ExchangeReportingAdapters.Tests.ps1` 10; `ExchangeLiveContract.Tests.ps1` 68; `ExchangeLiveAdapters.Tests.ps1` 6; `ExchangeLiveSignedRoundTrip.Tests.ps1` 9; all under `C:\Users\chhage\repos\sony\GISC\exchange-online-protection\samples\contoso-exchange-online-managed-service\tests\unit`, total 747/747. Require complete NUnit/aggregate evidence and post-identity equality. C2/C3 may run concurrently only after C1 ACCEPT. No retry, repository/governance edit by Purple, full regression, live access, commit, push or publish.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**; C01 remains To Do.
+
+Generation 494 override: **BIND PURPLE SESSION, DISJOINT ROOTS AND LITERAL V01 RUNNERS**. Accept generation-493 as zero execution: the secondary steward rejected before worker launch because the persisted ACK lacked unique orchestration-session binding, explicit per-worker subdirectories and literal runner commands. No evidence or test failure occurred. The root canonical writer explicitly hands off this bounded V01 continuation to Purple Cohort agent `1402b777-2bab-4122-bc65-e28124e31dae`, resumed run `Purple-20260929T231713.512Z-g488`, under this generation only.
+
+Under ACK `purple-20260929T390000Z/Kanban/g494/run-current-EXR-010-A12-L01-V01`, authorize creation of exactly these disjoint temporary roots: `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g494-EXR-010-A12-L01-V01\coworker-1`, `...\coworker-2`, and `...\coworker-3`. Coworker-1 alone creates `capture-identity.ps1` in its root and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File '<coworker-1>\capture-identity.ps1'` once; the script must emit nonempty `pre-identity.json` containing exact HEAD, normalized `git status --short`, normalized `git diff --binary --no-ext-diff` bytes/SHA-256, tracked-file manifest and all focused/affected hashes. The steward validates that artifact before release. Coworker-2 alone creates `run-focused.ps1` in its root, embedding the exact six-case selector statically accepted in generation 492, and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File '<coworker-2>\run-focused.ps1'` once with Pester 5.7.1, NUnit and post-identity equality. Coworker-3 alone creates `run-affected.ps1` in its root, embedding the exact ordered suite vector `337,281,6,30,10,68,6,9`, and executes exactly `& 'C:\Program Files\PowerShell\7\pwsh.exe' -NoLogo -NoProfile -NonInteractive -File '<coworker-3>\run-affected.ps1'` once with aggregate 747, complete evidence and post-identity equality. Coworkers 2/3 may run concurrently only after the steward accepts C1.
+
+No retry, repository or canonical-governance edit by Purple, full regression, live access, commit, push or publish is authorized. Counts remain **35 To Do / 1 In Progress / 54 Done**; C01 remains To Do.
+
+Generation 493 override: **REPLACE ZERO-ARTIFACT CURRENT-IDENTITY CAPTURE**. Accept generation-492 static reconstruction of the exact focused six cases and eight-suite 747 inventory, but no empirical result: Coworker-1's authorized capture exited 0 while producing no artifacts or stdout, so no frozen identity barrier existed and Coworkers 2/3 correctly ran zero tests. This is a harness-evidence failure, not an identity mismatch or product/test failure. V01 remains In Progress.
+
+Under replacement ACK `purple-20260929T383000Z/Kanban/g493/run-current-EXR-010-A12-L01-V01`, use exactly three serialized/then-parallel read-only/process top-level Coworkers with output root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g493-EXR-010-A12-L01-V01`. Coworker-1 creates a bounded temporary `.ps1` identity-capture runner, parses it, and executes it once to emit nonempty JSON containing exact HEAD, normalized `git status --short`, `git diff --binary --no-ext-diff` byte count/SHA-256, tracked-file manifest and all focused/affected hashes; the steward must validate the artifact before releasing tests. After acceptance, Coworker-2 runs the statically verified focused six cases exactly once in one fresh PowerShell 7/Pester 5.7.1 process with NUnit and matching post-identity proof. Coworker-3 runs the exact eight-suite affected inventory serially exactly once in one fresh process with aggregate **747/747**, complete evidence and matching post-identity proof. The steward reconciles all packets and returns current-tree ACCEPT/REJECT. No retry, edit, full regression, live access, commit, push or publish is authorized.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**. C01 remains To Do; Silver and Gold remain quiescent.
+
+Generation 492 override: **ACCEPT V01 HISTORICAL REVIEW; VALIDATE CURRENT TREE IDENTITY**. Accept generation-491 independent review as REJECT for current closure while preserving historical focused **6/6**, affected **747/747**, regression reconciliation, D01 matrix and scope compliance. The exact blockers are that the historical 311-file manifest does not match current Common SHA-256 `3B46141AD5811959CF43EE492C2003F129686EB16E7A7E218C1ECE7198C4CF83`, historical packets omit tested Git revision, and two current diff-byte hashes were not reconciled by a recorded normalization command. V01 remains In Progress.
+
+Under ACK `purple-20260929T380000Z/Kanban/g492/validate-current-EXR-010-A12-L01-V01`, use exactly three parallel read-only/process top-level Coworkers with output root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g492-EXR-010-A12-L01-V01`. Coworker-1 records exact current HEAD, normalized `git status --short`, `git diff --binary --no-ext-diff` bytes/hash, tracked-file manifest and all focused/affected product/test hashes before and after; no test or edit. Coworker-2 reconstructs the historical focused six-case selector, statically verifies it, then runs it exactly once in one fresh PowerShell 7/Pester 5.7.1 process against the current tree with complete NUnit output. Coworker-3 reconstructs the exact historical eight-suite affected inventory and expected 747 cases, independently verifies paths/count contract, then runs it exactly once serially in one fresh process against the same frozen current-tree identity with complete evidence. The steward reconciles all three packets and returns ACCEPT/REJECT for current-tree closure. No edit, retry, full regression, live access, commit, push or publish is authorized.
+
+Counts remain **35 To Do / 1 In Progress / 54 Done**. `EXR-010-A12-L01-C01` remains To Do pending accepted V01 evidence; Silver and Gold remain quiescent.
+
+Generation 491 override: **ACCEPT COMPLETED D01 MATRIX; CLOSE D01; ACTIVATE INDEPENDENT V01 REVIEW**. Accept corrected completed packet `C:\Users\chhage\.copilot\session-state\8bc8fb39-53be-4b75-a6d2-52d4b4a03f5e\files\EXR-010-A12-L01-D01-dispositions-completed.json`, 347,870 bytes, SHA-256 `EF262FFBBFFA1060A19B87AC112E478643451801762145EA51AB5A0E9E5D5294`. Independent validation found **0 issues**: exact 9/1/140/150 counts, 150 unique IDs, all source hashes/locators valid, 150 `Known` selections with required evidence/scope, every unselected option null, canonical inventory digest `FD4D7F94498F350378EA6200389B2A116D4541C874DBF599C24552A1B3F99ED9`, and no waiver/readiness/ownership/approval/root-cause overclaim. The sole stale request-state rule was corrected without changing any disposition or immutable inventory field.
+
+Move `EXR-010-A12-L01-D01` **To Do -> Done**. Under ACK `purple-20260929T373000Z/Kanban/g491/review-EXR-010-A12-L01-V01`, Purple claims rank 23.5 for independent static closure review using exactly three parallel read-only top-level Coworkers and output root `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-g491-EXR-010-A12-L01-V01`. Coworker-1 verifies focused 6/6 and affected 747/747 evidence identities/results; Coworker-2 verifies regression reconciliation, original L01 behavior, scope compliance and tested working-tree identity; Coworker-3 independently reviews the D01 matrix, all prior leaf statuses/evidence and synthesizes an ACCEPT/REJECT closure verdict with exact blockers and matching review records. No test execution, repository edit, live access, commit, push or publish is authorized.
+
+Move `EXR-010-A12-L01-V01` **To Do -> In Progress**. `EXR-010-A12-L01-C01` remains To Do pending accepted V01 evidence. Silver and Gold remain quiescent. Counts become **35 To Do / 1 In Progress / 54 Done**.
+
+Generation 490 override: **ACCEPT SUBSTANTIVE D01 REVIEW; CORRECT ONE STALE REQUEST-STATE RULE**. Accept generation-489 validation of all immutable inventory, source bindings, locators and 150 `Known` scopes as **150 ACCEPT / 0 REJECT / 0 unreviewed**. The completed packet retains one unconditional request-only integrity rule requiring every Decision to remain blank, which conflicts with its completed state and populated `Known` fields. Origin generation/ACK fields correctly preserve provenance and require no change. `EXR-010-A12-L01-D01` remains To Do pending correction and revalidation.
+
+Under ACK `platinum-20260929T370000Z/Kanban/g490/correct-D01-completion-rule`, use exactly three serialized top-level Coworkers. Coworker-1 edits only `C:\Users\chhage\.copilot\session-state\8bc8fb39-53be-4b75-a6d2-52d4b4a03f5e\files\EXR-010-A12-L01-D01-dispositions-completed.json` to condition the blank-decision rule on `AWAITING_EXTERNAL_DECISIONS` and state that `EXTERNAL_DECISIONS_COMPLETED` requires exactly one valid completed option per row; no other byte-level semantic field may change. Coworker-2 independently compares pre/post packets, proving only that rule changed and immutable inventory digest/source bindings/150 decisions remain identical. Coworker-3 reruns the full structural, locator, evidence-binding and substantive-scope validation and returns ACCEPT/REJECT with corrected file hash. No repository implementation edit, disposition change, test, live access, commit, push or publish is authorized.
+
+Counts remain **37 To Do / 0 In Progress / 53 Done**. Purple, Silver, Gold and Platinum retain no executable claims.
+
+Generation 489 override: **USER COMPLETES ALL 150 D01 DISPOSITIONS; GRANT INDEPENDENT VALIDATION**. The authorized user selected the recommended `Known` disposition across all 150 records. The completed packet is `C:\Users\chhage\.copilot\session-state\8bc8fb39-53be-4b75-a6d2-52d4b4a03f5e\files\EXR-010-A12-L01-D01-dispositions-completed.json`, 347,645 bytes, SHA-256 `6232C5977744B7B0895BBC0287CA3117274F5D5B681D9771FA0A97DF900B0714`. Initial structural verification reports exactly **9 FailedTest / 1 FailedContainer / 140 ContainerError / 150 total**, all 150 selecting `Known`, all required `Known.evidence` and `Known.scope` fields nonblank, all unselected-option fields null, and zero invalid rows. Each disposition is strictly scoped to its stable record and bound artifacts; ContainerError rows record the known bounded evidence limitation of an empty preserved Error value, not a fabricated root cause. No waiver, tenant-readiness, approval or ownership claim is made.
+
+Under ACK `platinum-20260929T363000Z/Kanban/g489/validate-D01-dispositions`, use exactly three parallel read-only top-level Coworkers. Coworker-1 independently validates the completed packet schema, 9/1/140/150 counts, stable IDs, source hashes/locators, required fields and null unselected options. Coworker-2 recomputes the canonical inventory projection/digest and compares every completed row against the original blank request and authoritative source artifacts, proving only Decision/request-state metadata changed and every evidence locator resolves. Coworker-3 reviews whether each `Known` scope is narrow, evidence-backed and free of waiver/readiness/root-cause overclaim, then synthesizes ACCEPT/REJECT and exact remaining D01/V01/C01 transition requirements. No edit, test, live access, commit, push or publish is authorized.
+
+`EXR-010-A12-L01-D01` remains **To Do and blocked** pending independent validation. Purple, Silver, Gold and Platinum retain no executable card claims. Counts remain **37 To Do / 0 In Progress / 53 Done**.
 
 Generation 488 override: **ACCEPT PLATINUM INVENTORY; MATERIALIZE EXTERNAL DISPOSITION REQUEST**. Accept Platinum's read-only reconciliation of the exact rank-23.4 residual inventory: **9 failed tests / 1 failed container / 140 container errors / 150 unique records**, zero duplicates and zero omissions, with inventory digest `C18B37455F3E26BC5AD2BAF065A3855EB54F1D53BD01438C6B590470F1F97301`. Authoritative sources are residual ledger `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch9-g259-L01-R01-residual-source-cluster-reconciliation-sole-canonical-writer\coworker-3\residual-resolution.json`, SHA-256 `19ACCE48BD408081A9897C09CDE098609220E1A09773BF99EA8EC8347CF949E0`, and raw result `C:\Users\chhage\AppData\Local\Temp\cohort-Purple-batch8-g254-A12-L01-zero-edit-full-regression-sole-canonical-writer\coworker-1\result.json`, SHA-256 `F5011F34AE83E8E5A46E19988566247E131ABC9A2EB4383682EB1DD17E5B5850`. All 150 records remain `unknown`; repository evidence supports inventory identity only and does not authorize Known, Owned, Unrelated or Waived dispositions.
 
@@ -2026,7 +3048,7 @@ Rank 23.3 - Conditional L01-owned correction and validation.
 
 Rank 23.4 - Remaining-failure disposition.
 
-- Dependencies: EXR-010-A12-L01-R01 and R02; EXR-010-A12-L01-F01 if activated. Owner: future Purple assignment; no current grant. Workstream: Email verification. Updated: 2026-09-27. Status: To Do; waiting on supported dispositions or dated waiver authority for **9/1/140** unknown records.
+- Dependencies: EXR-010-A12-L01-R01 and R02; EXR-010-A12-L01-F01 if activated. Owner: Cohort Platinum / platinum-20260929T225428Z. Workstream: Email verification. Updated: 2026-09-29. Status: Done.
 - Bounded outcome: classify every remaining non-pass as known/owned/unrelated or attach a formal waiver; do not remediate or review closure.
 - Writable surface: governance evidence only; a waiver, if any, requires an externally supplied authority/reference and is not assumed.
 - Acceptance: every R01 record has exactly one supported disposition; unknown ownership or absent waiver keeps the leaf incomplete.
@@ -2038,18 +3060,31 @@ Rank 23.4 - Remaining-failure disposition.
 
 Rank 23.5 - Independent closure review.
 
-- Dependencies: EXR-010-A12-L01-D01. Owner: future independent Purple assignment; no current review grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Dependencies: EXR-010-A12-L01-D01. Owner: Cohort Purple / purple-20260929T373000Z. Workstream: Email verification. Updated: 2026-09-29. Status: Done (REJECT).
 - Bounded outcome: independently decide whether focused **6/6**, affected **747/747**, regression reconciliation and all original L01 behavior support closure.
 - Writable surface: external review artifacts only; exact output root is missing until assignment. Repository is read-only.
 - Acceptance: reviewer is independent of any activated F01 correction and returns ACCEPT or REJECT with exact blockers, scope compliance and evidence identities.
 - Discriminator: static review of frozen evidence; no test execution.
 - Evidence required: matching review records, reviewer identity/independence, evidence hashes, findings and closure eligibility.
 
+### EXR-010-A12-L01-F02
+
+Rank 23.55 - Restore current-runtime compatibility required by frozen L01 contracts.
+
+- Dependencies: EXR-010-A12-L01-V01. Owner: Cohort Purple / generation 502. Workstream: Email verification. Updated: 2026-09-29. Status: In Progress.
+- Bounded outcome: restore behavior-compatible `Invoke-BaselineExchangeRegistry` and `New-BaselineEvidenceCertificateChain` over the current Common implementation without weakening security or revising frozen tests.
+- Writable surface: `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`, and `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1`.
+- Negative cases: public registry command absent from the module definition; absent from either export list; duplicate/invalid registry input; incomplete or mismatched retained Exchange registry; private certificate-chain seam absent; chain permits downloads or non-offline revocation; and any compatibility path that bypasses existing signer/refusal decisions. Every test uses Arrange-Act-Assert and must fail for its intended reason before implementation.
+- Positive case: exactly one fresh-process import resolves the complete bounded command surface, invokes the registry over the approved offline fixture, constructs the hardened private chain through module scope, and preserves current result/refusal shapes.
+- Focused verification: unchanged `PublicCommandSurface.Tests.ps1` after accepted red, followed by the exact six V01 names in `ExchangeEmailIntegratedWorkflow.Tests.ps1`; required final result 6/6.
+- Affected verification: exact ordered V01 suite vector 337/281/6/30/10/68/6/9; required aggregate 747/747, zero other outcomes, complete NUnit and stable pre/post scoped identity.
+- Evidence required: historical/current mapping, red command/counts/hashes, implementation diff, public/private visibility proof, focused and affected commands/counts/exits/hashes, and stable repository identity. No live tenant, credentials, deployment, `-Apply`, waiver, retry without a new generation, commit, push or publish.
+
 ### EXR-010-A12-L01-C01
 
 Rank 23.6 - Final canonical acceptance/Done transition.
 
-- Dependencies: EXR-010-A12-L01-V01. Owner: future canonical steward assignment; no current transition grant. Workstream: Email verification. Updated: 2026-09-26. Status: To Do.
+- Dependencies: EXR-010-A12-L01-F02. Owner: unassigned pending F02 closure and fresh validation. Workstream: Email verification. Updated: 2026-09-29. Status: To Do (blocked by F02).
 - Bounded outcome: perform the single canonical acceptance decision and, only on supported ACCEPT evidence, transition this leaf Done and satisfy the L01 summary.
 - Writable surface: `.github/kanban.md`, `.github/backlog.md`, `.github/cohorts.md`; no product/test path.
 - Acceptance: exact review verdict, tested working-tree identity, all prior leaf statuses/evidence and counts reconcile; REJECT leaves the card To Do with blockers.

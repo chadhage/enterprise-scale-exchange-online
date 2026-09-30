@@ -36,7 +36,7 @@ function Assert-ApprovedAdapterScope {
     $supported = @(
         'SharingPolicyBinding','ConnectorTrust','ApplicationAssignmentScope','OrganizationAllowList','MailboxSafeSender','OrganizationRelationship',
         'FullAccess','SendAs','SendOnBehalf','TransportBypass','GovernanceMailboxPolicy','GovernanceMrm',
-        'GovernanceEncryption','Organization','ExternalSender','OutboundSpam','RemoteDomains',
+        'GovernanceEncryption','Organization','Transport','ExternalSender','OutboundSpam','RemoteDomains',
         'MailboxProtocols','MailboxPlans','AcceptedDomains','ReportSubmission','SecOpsOverride',
         'Impersonation','EopPresets','AtpPresets','BuiltInProtection','Quarantine','Dkim',
         'Forwarding','AddInAcquisition','TenantAllowBlockList'
@@ -970,6 +970,15 @@ function Get-ApprovedAdapterDefinitions {
                     if ($admission.Status -ne 'Pass') { throw $admission.Reason }
                 }
                 & $fixed Organization OrganizationConfig @{} $desired $types
+            }
+            Transport {
+                & $fixed Transport TransportConfig @{} @{
+                    SmtpClientAuthenticationDisabled = [bool]$controls['EXO-002'].smtpClientAuthenticationDisabled
+                    ExternalPostmasterAddress = [string]$controls['EXO-005'].address
+                } @{
+                    SmtpClientAuthenticationDisabled = 'Boolean'
+                    ExternalPostmasterAddress = 'String'
+                }
             }
             ExternalSender { & $fixed ExternalSender ExternalInOutlook @{} @{ Enabled = $true; AllowList = @($controls['EXO-007'].allowList) } @{ Enabled = 'Boolean'; AllowList = 'Strings' } }
             OutboundSpam {

@@ -33,6 +33,28 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../helpers/ExchangeProtectionFixture.ps1')
     $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $script:licensingModule = Import-Module (Join-Path $root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -PassThru
+    function Copy-OrderedFixtureRecord {
+        param([Parameter(Mandatory)]$InputObject)
+        $copy = [ordered]@{}
+        if ($InputObject -is [System.Collections.IDictionary]) {
+            foreach ($name in $InputObject.Keys) { $copy[[string]$name] = $InputObject[$name] }
+        }
+        else {
+            foreach ($property in $InputObject.PSObject.Properties) { $copy[$property.Name] = $property.Value }
+        }
+        $copy
+    }
+    function Set-NarrowedStandardPresetExclusion {
+        param([Parameter(Mandatory)]$Fixture)
+        $excluded = @(
+            $Fixture.Context.Configuration.controls['MDO-001'].recipientMatrix |
+                Where-Object expectedPolicy -NotIn @('Standard Preset Security Policy', 'Strict Preset Security Policy') |
+                ForEach-Object address
+        )
+        foreach ($kind in @('EOP', 'ATP')) {
+            $Fixture.Raw["Get-${kind}ProtectionPolicyRule"].ByIdentity['Standard Preset Security Policy'][0].ExceptIfSentTo = $excluded
+        }
+    }
     function New-EopProtectionFixture {
         $fixture = New-ProtectionFixture
         $fixture.Context.Entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE')
@@ -47,6 +69,7 @@ BeforeAll {
         $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix = @($fixture.Context.Configuration.controls['MDO-001'].recipientMatrix | Where-Object address -eq $address)
         $fixture.Raw['Get-Recipient'].Items = @($fixture.Raw['Get-Recipient'].Items | Where-Object PrimarySmtpAddress -eq $address)
         $fixture.Context.Entitlement.recipients = @($fixture.Context.Entitlement.recipients | Where-Object address -eq $address)
+        Set-NarrowedStandardPresetExclusion $fixture
         $fixture.Context.Parameters.domainInventory.source.suppliedAtUtc = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
         $fixture.Context.Parameters.domainInventory.domains[0].senderSource.suppliedAtUtc = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
         $fixture.Context.Configuration = & $script:licensingModule {
@@ -113,7 +136,7 @@ BeforeAll {
             MissingReference { $handoff.reference = '' }
             MissingRecipients { $handoff.Remove('recipients') }
             MissingRecipient { $handoff.recipients = @() }
-            DuplicateRecipient { $handoff.recipients += $handoff.recipients[0].Clone() }
+            DuplicateRecipient { $handoff.recipients += Copy-OrderedFixtureRecord $handoff.recipients[0] }
             WrongRecipient { $handoff.recipients[0].address = 'someone-else@contoso.example' }
             MissingTenantDefender { $handoff.servicePlans = @('EXCHANGE_S_ENTERPRISE') }
             MissingRecipientDefender { $handoff.recipients[0].servicePlans = @('EXCHANGE_S_ENTERPRISE') }
@@ -448,7 +471,7 @@ Describe 'EXR-010 capability-specific Exchange entitlement' {
             StringRecord { $fixture.Context.Entitlement.capabilityAttestations = @('invalid') }
             MissingCapability { $record.Remove('capability') }
             UnknownCapability { $record.capability = 'UnknownCapability' }
-            DuplicateCapability { $fixture.Context.Entitlement.capabilityAttestations += $record.Clone() }
+            DuplicateCapability { $fixture.Context.Entitlement.capabilityAttestations += Copy-OrderedFixtureRecord $record }
             MissingEntitled { $record.Remove('entitled') }
             StringEntitled { $record.entitled = 'true' }
             NumericEntitled { $record.entitled = 1 }

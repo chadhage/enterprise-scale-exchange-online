@@ -58,6 +58,15 @@ BeforeAll {
         $fixture.Raw['Get-AntiPhishRule'].Items[0].AntiPhishPolicy = 'Custom email'
         $fixture.Raw['Get-AntiPhishRule'].Items[0]['SentTo'] = @()
         $fixture.Raw['Get-SafeLinksPolicy'].Items[2].DisableURLRewrite = $true
+        foreach ($mailbox in $fixture.Raw['Get-CASMailbox'].Items) {
+            $mailbox.EwsEnabled = $false
+            $mailbox.EwsAllowList = [string[]]::new(0)
+        }
+        $fixture.Raw['Get-AccessReview'].Items = @(@{
+            displayName = 'Offline MyBaseOptions access review'
+            scopeRoleDefinitionId = 'MyBaseOptions'
+            lastCompletedDateTime = [datetimeoffset]::UtcNow.AddDays(-1).ToString('o')
+        })
         $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'custom@contoso.example'
             family = 'SafeLinks'
@@ -145,14 +154,18 @@ BeforeAll {
             $document = @{ ControlId = $controlId; TenantId = $fixture.Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = $fixture.Context.Hash; ManifestHash = $fixture.Context.Manifest.Hash; GeneratedAtUtc = $generated; Payload = $payloads[$controlId] }
             $content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $document))
             $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($content), $true)
-            $cms.ComputeSignature([Security.Cryptography.Pkcs.CmsSigner]::new($script:evidenceCertificate))
+            $cmsSigner = [Security.Cryptography.Pkcs.CmsSigner]::new($script:evidenceCertificate)
+            $cmsSigner.SignedAttributes.Add(
+                [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow.AddMinutes(-1))
+            )
+            $cms.ComputeSignature($cmsSigner)
             $document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
             $artifactPath = Join-Path $directory "$controlId.json"
             $document | ConvertTo-Json -Depth 50 | Set-Content -LiteralPath $artifactPath
             $fixture.Context.Parameters.operationalEvidence[$controlId] = @{
                 path = $artifactPath
                 signerIdentity = 'offline-email-reviewer'
-                authorizedSigner = @(@{ Identity = 'offline-email-reviewer'; Subject = $script:evidenceCertificate.Subject; Authority = 'ExchangeOnlineChangeApproval' })
+                authorizedSigner = @(@{ Identity = 'offline-email-reviewer'; Subject = $script:evidenceCertificate.Subject; Thumbprint = $script:evidenceCertificate.Thumbprint; Authority = 'ExchangeOnlineChangeApproval' })
                 trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash -LiteralPath $rootPath -Algorithm SHA256).Hash }
             }
         }

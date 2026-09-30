@@ -34,7 +34,991 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 488
+Allocation generation: 601
+
+### Generation 601 F02 EXO-010 Review Classification
+
+Registry updated: 2026-10-01. Allocation generation: 600 -> 601. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-600 focused 6/6 accepted; exclusively owns missing-review Error-to-Fail classification and one fresh 104-case frozen gate.
+- **Purple/C1/C2/C3:** quiescent.
+- No unrelated edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 600 F02 Final Frozen Gate
+
+Registry updated: 2026-10-01. Allocation generation: 599 -> 600. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** final focused implementation accepted at Common SHA-256 `E1DAFD6F05191560AD7B74ED9C8333E334486DD25D1D251B3FD245AC1478475A`; quiescent.
+- **Purple/C3:** ACK `purple-20261001T180000Z/Kanban/g600/run-final-focused-bounded-gate-EXR-010-A12-L01-F02` exclusively releases one fresh focused 6 plus bounded 98 run.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, affected/live suite, live access, commit, push or publish.
+
+### Generation 599 F02 Final Focused Corrections
+
+Registry updated: 2026-10-01. Allocation generation: 598 -> 599. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** final focused trace accepted; quiescent.
+- **Purple/C2:** ACK `purple-20261001T170000Z/Kanban/g599/implement-pinned-root-and-review-binding-EXR-010-A12-L01-F02` exclusively owns dedicated explicit-root verification and normalized access-review binding.
+- **Purple/C1/C3:** quiescent.
+- No tests, fixture/other edit, live access, commit, push or publish.
+
+### Generation 598 F02 Focused Operational Trace
+
+Registry updated: 2026-10-01. Allocation generation: 597 -> 598. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** generation-597 bounded gate accepted at 98/98; focused remains 4/6; quiescent.
+- **Purple/C1:** ACK `purple-20261001T160000Z/Kanban/g598/trace-focused-operational-errors-EXR-010-A12-L01-F02` exclusively releases read-only focused EXO/operational error tracing.
+- **Purple/C2/C3:** quiescent.
+- No edit, Pester run, retry, live access, commit, push or publish.
+
+### Generation 597 F02 Normalized Frozen Gate
+
+Registry updated: 2026-10-01. Allocation generation: 596 -> 597. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** normalized-seam correction accepted at Common SHA-256 `92C9B584E25FE4638A0D5BE33571C59DEED60369E069891577EEB83FA9B2C1BD`; quiescent.
+- **Purple/C3:** ACK `purple-20261001T150000Z/Kanban/g597/run-normalized-focused-bounded-gate-EXR-010-A12-L01-F02` exclusively releases one fresh focused 6 plus bounded 98 run.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, affected/live suite, live access, commit, push or publish.
+
+### Generation 596 F02 Normalized Seam Dispatch
+
+Registry updated: 2026-10-01. Allocation generation: 595 -> 596. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** ACK `purple-20261001T140000Z/Kanban/g596/correct-normalized-seam-dispatch-EXR-010-A12-L01-F02` exclusively owns normalized GOV seam invocation compatibility and historical OME functional-evidence selection.
+- **Purple/C1/C3:** quiescent.
+- No tests, fixture/other edit, live access, commit, push or publish.
+
+### Generation 595 F02 Fallback Frozen Gate
+
+Registry updated: 2026-10-01. Allocation generation: 594 -> 595. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** secure fallback implementation accepted at Common SHA-256 `AFDD5AB5F45071A7808CC13E7824F36FDCC13C8E2BEA33CF0AD992FBA598F4BA`; quiescent.
+- **Purple/C3:** ACK `purple-20261001T130000Z/Kanban/g595/run-fallback-focused-bounded-gate-EXR-010-A12-L01-F02` exclusively releases one fresh focused 6 plus bounded 98 run.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, affected/live suite, live access, commit, push or publish.
+
+### Generation 594 F02 Secure Seam Fallbacks
+
+Registry updated: 2026-10-01. Allocation generation: 593 -> 594. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** generation-593 seam compatibility design accepted; quiescent.
+- **Purple/C2:** ACK `purple-20261001T120000Z/Kanban/g594/implement-secure-seam-fallbacks-EXR-010-A12-L01-F02` exclusively owns Common historical fallback behavior for AUTH-001 and GOV-003/004/005.
+- **Purple/C1/C3:** quiescent.
+- No tests, fixture/other edit, live access, commit, push or publish.
+
+### Generation 593 F02 Mandatory Seam Regression Classification
+
+Registry updated: 2026-10-01. Allocation generation: 592 -> 593. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** generation-592 frozen gate measured at focused 4/6 and bounded 93/98; quiescent.
+- **Purple/C1:** ACK `purple-20261001T110000Z/Kanban/g593/classify-mandatory-seam-regressions-EXR-010-A12-L01-F02` exclusively releases read-only four-seam and focused-cascade reconciliation.
+- **Purple/C2/C3:** quiescent.
+- No edit, test run, retry, live access, commit, push or publish.
+
+### Generation 592 F02 Corrected Frozen Regression Gate
+
+Registry updated: 2026-10-01. Allocation generation: 591 -> 592. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** root-precedence correction accepted at Common SHA-256 `9BE84B5B25E33C752440507F5D9160691E4148798730B5E2B08B3D1863CBD2A0`; quiescent.
+- **Purple/C3:** ACK `purple-20261001T100000Z/Kanban/g592/run-corrected-focused-bounded-gate-EXR-010-A12-L01-F02` exclusively releases one fresh focused 6 plus bounded 98 run.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, affected/live suite, live access, commit, push or publish.
+
+### Generation 591 F02 Operational Root Precedence
+
+Registry updated: 2026-10-01. Allocation generation: 590 -> 591. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** generation-590 trust-precedence reconciliation accepted; quiescent.
+- **Purple/C2:** ACK `purple-20261001T093000Z/Kanban/g591/correct-operational-root-precedence-EXR-010-A12-L01-F02` exclusively owns absent-versus-present operational root handling in Common.
+- **Purple/C1/C3:** quiescent.
+- No tests, fixture/other edit, live access, commit, push or publish.
+
+### Generation 590 F02 Trust Regression Classification
+
+Registry updated: 2026-10-01. Allocation generation: 589 -> 590. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** generation-589 frozen regression measured once at focused 4/6 and bounded 83/98; quiescent.
+- **Purple/C1:** ACK `purple-20261001T083000Z/Kanban/g590/classify-trust-regressions-EXR-010-A12-L01-F02` exclusively releases read-only trust-path and refusal-precedence reconciliation.
+- **Purple/C2/C3:** quiescent.
+- No edit, test run, retry, live access, commit, push or publish.
+
+### Generation 589 F02 Frozen Regression Validation
+
+Registry updated: 2026-10-01. Allocation generation: 588 -> 589. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-588 live gate accepted at **83/83**; quiescent.
+- **Purple/C3:** ACK `purple-20261001T073000Z/Kanban/g589/run-focused-and-bounded-regression-EXR-010-A12-L01-F02` exclusively releases one focused 6-case and one bounded 98-case frozen regression run.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, affected-suite run, live access, commit, push or publish.
+
+### Generation 588 F02 GOV-005 Collector Wiring
+
+Registry updated: 2026-10-01. Allocation generation: 587 -> 588. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-587 wiring red accepted; exclusively owns moving `TransportRuleCollection` to sibling collector-argument scope and one fresh ordered 83-case gate.
+- **Purple/C1/C2/C3:** quiescent.
+- No unrelated edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 587 F02 Complete Live Gate
+
+Registry updated: 2026-10-01. Allocation generation: 586 -> 587. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** complete retained service-command implementation accepted at Common SHA-256 `740B776B27A148B830585517BDF72FBC335C693EF25C05EB3978CED2F8B08216`; quiescent.
+- **Purple/C3:** fixture cleanup accepted; ACK `purple-20261001T060000Z/Kanban/g587/run-complete-83-live-gate-EXR-010-A12-L01-F02` exclusively releases one fresh ordered 83-case live gate.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 586 F02 Complete Retained Raw Collection
+
+Registry updated: 2026-10-01. Allocation generation: 585 -> 586. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** ACK `purple-20261001T050000Z/Kanban/g586/restore-complete-raw-collection-EXR-010-A12-L01-F02` exclusively owns Common collection/binding for the nine missing retained service commands and optional EXO-004 outbound-rule compatibility.
+- **Purple/C3:** ACK `purple-20261001T050000Z/Kanban/g586/remove-superseded-ome-raw-seam-EXR-010-A12-L01-F02` exclusively removes the superseded normalized OME raw fixture key/dispatch.
+- **Purple/C1:** quiescent.
+- Parse/hash only; no tests, unrelated edit, live access, commit, push or publish.
+
+### Generation 585 F02 Final EXO-004 Observation
+
+Registry updated: 2026-10-01. Allocation generation: 584 -> 585. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-584 accepted at **82/83**; exclusively owns the missing EXO-004 outbound-spam-rule observation and one final ordered 83-case measurement.
+- **Purple/C1/C2/C3:** quiescent.
+- No unrelated edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 584 F02 Final Live Direct Corrections
+
+Registry updated: 2026-10-01. Allocation generation: 583 -> 584. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-583 accepted at **72/83** with 11 residuals; exclusively owns raw one-of member identity validation, DKIM Name+Domain binding, two explicit fixture fields and one fresh 83-case measurement.
+- **Purple/C1/C2/C3:** quiescent.
+- No unrelated edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 583 F02 Live Trust and Dispatch Measurement
+
+Registry updated: 2026-10-01. Allocation generation: 582 -> 583. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-582 Common implementation accepted at SHA-256 `6557F1CE66571F7B0AEA8E0D0391447ED14506F19D91E0EFEB50E90D1EB235AB`; quiescent.
+- **Purple/C3:** generation-582 harness/fixture/signing implementation accepted; ACK `purple-20261001T030000Z/Kanban/g583/run-83-live-after-trust-and-dispatch-EXR-010-A12-L01-F02` exclusively releases one fresh ordered 83-case live measurement.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 582 F02 Live Product and Explicit Test Corrections
+
+Registry updated: 2026-10-01. Allocation generation: 581 -> 582. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** generation-581 17-failure reconciliation accepted; quiescent.
+- **Purple/C2:** ACK `purple-20261001T020000Z/Kanban/g582/correct-live-common-and-root-trust-EXR-010-A12-L01-F02` exclusively owns EXO-010 member/group semantics, AUTH-001 response binding and hash-pinned custom-root plumbing in Common.
+- **Purple/C3:** ACK `purple-20261001T020000Z/Kanban/g582/correct-live-harness-fixtures-signing-EXR-010-A12-L01-F02` exclusively owns harness dispatch, explicit raw fields and signed-test signing-time/thumbprint setup.
+- Both workers parse only and quiesce; no tests in generation 582.
+- No unrelated edit, live access, commit, push or publish.
+
+### Generation 581 F02 Seventeen Live Residual Classification
+
+Registry updated: 2026-10-01. Allocation generation: 580 -> 581. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-580 fixture smoke passed and first unobstructed 83-case live gate completed at **66/83** with valid NUnit and no setup exception.
+- **Purple/C1:** ACK `purple-20261001T013000Z/Kanban/g581/classify-17-live-residuals-EXR-010-A12-L01-F02` exclusively releases read-only count reconciliation and secure correction design.
+- **Purple/C2/C3:** quiescent.
+- No edit, test run, retry, live access, commit, push or publish.
+
+### Generation 580 F02 Enriched Fixture Return Wiring
+
+Registry updated: 2026-10-01. Allocation generation: 579 -> 580. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Canonical writer:** generation-579 root cause traced to ignoring the new enriched fixture returned by `Add-ProtectionGovernanceFixture`. Exclusively owns return-value wiring, strict constructor smoke validation, and—only after smoke success—one ordered 83-case measurement.
+- **Purple/C1/C2/C3:** quiescent.
+- No unrelated edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 579 F02 Dictionary-Key Setup Correction
+
+Registry updated: 2026-10-01. Allocation generation: 578 -> 579. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** generation-578 closed the private dependency-scope defect and exposed one absent-key dictionary property-assignment setup defect. ACK `purple-20261001T000000Z/Kanban/g579/fix-dictionary-key-and-run-live-EXR-010-A12-L01-F02` exclusively releases the surgical fixture correction and one new 83-case run.
+- **Purple/C1/C2:** quiescent.
+- No product/harness/base/protection-fixture/test/manifest/PSD1/entrypoint/deploy/adapters edit, retry within generation, other suite, live access, commit, push or publish.
+
+### Generation 578 F02 Augmenter Scope Correction
+
+Registry updated: 2026-09-30. Allocation generation: 577 -> 578. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** generation-577 measured 83 exactly; adapters passed 6/6, while LiveContract and SignedRoundTrip hit one shared failed-container setup regression. ACK `purple-20260930T230000Z/Kanban/g578/fix-augmenter-scope-and-run-live-EXR-010-A12-L01-F02` exclusively releases the protection-augmenter dependency-scope correction and one new 83-case run.
+- **Purple/C1/C2:** quiescent.
+- No product/Common/harness/base-fixture/test/manifest/PSD1/entrypoint/deploy/adapters edit, retry within generation, other suite, live access, commit, push or publish.
+
+### Generation 577 F02 Eighty-Three Live Measurement
+
+Registry updated: 2026-09-30. Allocation generation: 576 -> 577. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-576 Common implementation accepted at SHA-256 `DB65C03C447114CEA829139DFF4A7605408DA1C8A58DD88F6B484DF217797B55`; quiescent.
+- **Purple/C3:** generation-576 fixture/harness implementation accepted; ACK `purple-20260930T220000Z/Kanban/g577/run-83-live-after-seams-EXR-010-A12-L01-F02` exclusively releases one ordered 68+6+9 live measurement in a fresh host.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, focused/bounded/other affected suite, live access, commit, push or publish.
+
+### Generation 576 F02 Deferred Seam Implementation
+
+Registry updated: 2026-09-30. Allocation generation: 575 -> 576. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** generation-575 historical/current seam and fixture design accepted; quiescent.
+- **Purple/C2:** ACK `purple-20260930T210000Z/Kanban/g576/restore-deferred-common-seams-EXR-010-A12-L01-F02` exclusively owns Common private dependency binding, GOV-005 inner observation and MDO-006 member-name correction.
+- **Purple/C3:** ACK `purple-20260930T210000Z/Kanban/g576/stabilize-live-offline-fixture-EXR-010-A12-L01-F02` exclusively owns live harness/governance/base-fixture constructor stabilization and explicit offline observations.
+- Both workers parse only and quiesce; no tests in generation 576. A later generation will authorize one 83-case run after both sides reconcile.
+- No manifest/PSD1/entrypoint/deploy/adapters edit, export, retry, live access, commit, push or publish.
+
+### Generation 575 F02 Deferred Live Seam Design
+
+Registry updated: 2026-09-30. Allocation generation: 574 -> 575. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-574 Common-only corrections accepted at the exact expected **70/74**, including LiveAdapters 6/6 and zero failed containers. Common SHA-256 is `8FC83ACEBCE000DA1850542002C79D616CC3A8576CC302CC6B7F2F04F9B8E58A`.
+- **Purple/C1:** ACK `purple-20260930T201500Z/Kanban/g575/design-deferred-live-seams-EXR-010-A12-L01-F02` exclusively releases read-only historical/current design recovery for EXO-010, AUTH-001, GOV-003/004/005 and explicit offline fixture shapes.
+- **Purple/C2/C3:** quiescent.
+- No edit, test run, retry, live access, commit, push or publish.
+
+### Generation 574 F02 Seven Common-Only Corrections
+
+Registry updated: 2026-09-30. Allocation generation: 573 -> 574. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** 11 residuals reconciled: seven direct Common-only failures and four deferred dependency/aggregate failures.
+- **Purple/C2:** ACK `purple-20260930T184500Z/Kanban/g574/correct-seven-live-common-EXR-010-A12-L01-F02` exclusively releases TABL private resolution, independent MDO-006 route semantics, EXO-006 Boolean completeness and EXO-001 expected-domain corrections, followed by one 74-case measurement.
+- **Purple/C1/C3:** quiescent.
+- No deferred helper, fixture/harness/test/entrypoint/deploy/adapters edit, retry, signed/focused/bounded/other affected suite, live access, commit, push or publish.
+
+### Generation 573 F02 Eleven-Residual Classification
+
+Registry updated: 2026-09-30. Allocation generation: 572 -> 573. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-572 Common-only observation restoration accepted; one-run measurement improved from 13/74 to **63/74**, leaving 11 failures and zero failed containers. Common SHA-256 is `4C6FE8443FC7362682CA9A4DB21FA87C498215EEA614B9F36F7B84E10741F67C`.
+- **Purple/C1:** ACK `purple-20260930T181500Z/Kanban/g573/classify-11-live-residuals-EXR-010-A12-L01-F02` exclusively releases read-only one-to-one failure classification and minimum secure correction design.
+- **Purple/C2/C3:** quiescent.
+- No edit, test run, live access, retry, commit, push or publish.
+
+### Generation 572 F02 Live Observation Restoration
+
+Registry updated: 2026-09-30. Allocation generation: 571 -> 572. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** all 69 live residuals classified and reconciled.
+- **Purple/C2:** ACK `purple-20260930T164500Z/Kanban/g572/restore-live-observations-EXR-010-A12-L01-F02` exclusively releases observation-aware raw collection, mandatory projections and TABL arguments in Common, followed by one 74-case live contract/adapter measurement.
+- **Purple/C1/C3:** quiescent.
+- No test/fixture/entrypoint/deploy/adapters edit, retry, signed/focused/bounded/other affected suite, live access, commit, push or publish.
+
+### Generation 571 F02 Live Residual Classification
+
+Registry updated: 2026-09-30. Allocation generation: 570 -> 571. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** early ExchangeOnly branch removed the Graph cascade; live measurement improved to 14/83.
+- **Purple/C1:** ACK `purple-20260930T163000Z/Kanban/g571/classify-live-residuals-EXR-010-A12-L01-F02` authorizes read-only count-reconciled classification of the 69 residual failures and invalid NUnit output.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, other suite, live access, commit, push or publish.
+
+### Generation 570 F02 Live Entrypoint Implementation
+
+Registry updated: 2026-09-30. Allocation generation: 569 -> 570. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** bounded early ExchangeOnly entrypoint and chain-collection design accepted.
+- **Purple/C2:** ACK `purple-20260930T161500Z/Kanban/g570/implement-live-entrypoint-EXR-010-A12-L01-F02` exclusively releases Common/Test-script implementation and one ordered 83-case live measurement.
+- **Purple/C1/C3:** quiescent.
+- No test/fixture/PSD1/deploy/adapters edit, retry, other suite, live tenant access, commit, push or publish.
+
+### Generation 569 F02 Live Entrypoint Design
+
+Registry updated: 2026-09-30. Allocation generation: 568 -> 569. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** unsupported Clone and lexical chain assertions removed; 633-case measurement recorded at 42/633.
+- **Purple/C1:** ACK `purple-20260930T160000Z/Kanban/g569/design-live-entrypoint-EXR-010-A12-L01-F02` authorizes read-only exact design of the early ExchangeOnly live branch and chain-test arrangement correction.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, other suite, live access, commit, push or publish.
+
+### Generation 568 F02 Affected Test Setup Correction
+
+Registry updated: 2026-09-30. Allocation generation: 567 -> 568. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** all 708 affected failures classified and reconciled.
+- **Purple/C2:** ACK `purple-20260930T154500Z/Kanban/g568/correct-affected-test-setup-EXR-010-A12-L01-F02` exclusively releases four test-only setup corrections and one ordered 633-case measurement.
+- **Purple/C1/C3:** quiescent.
+- No product/helper/shared-fixture/expectation edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 567 F02 Affected Failure Classification
+
+Registry updated: 2026-09-30. Allocation generation: 566 -> 567. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C3:** ordered affected gate rejected at 39/747; all frozen hashes matched.
+- **Purple/C1:** ACK `purple-20260930T153000Z/Kanban/g567/classify-affected-failures-EXR-010-A12-L01-F02` authorizes read-only clustering of all 708 failures from the packet/NUnit evidence.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, focused/bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 566 F02 Ordered Affected Validation
+
+Registry updated: 2026-09-30. Allocation generation: 565 -> 566. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** final independent acceptance/security review returned ACCEPT with all frozen hashes matching.
+- **Purple/C3:** ACK `purple-20260930T151500Z/Kanban/g566/run-affected-747-EXR-010-A12-L01-F02` exclusively releases the ordered 337/281/6/30/10/68/6/9 affected vector with frozen-hash verification.
+- **Purple/C1/C2:** quiescent.
+- No edit, retry, focused/bounded/other suite, live access, commit, push or publish.
+
+### Generation 565 F02 Final Independent Review
+
+Registry updated: 2026-09-30. Allocation generation: 564 -> 565. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** final focused 6/6 and expanded bounded 98/98 accepted with all frozen hashes unchanged.
+- **Purple/C1:** ACK `purple-20260930T150000Z/Kanban/g565/final-review-EXR-010-A12-L01-F02` authorizes independent read-only final acceptance/security review.
+- **Purple/C2/C3:** quiescent; affected validation remains blocked pending ACCEPT.
+- No Pester, edit, implementation, retry, affected suite, live access, commit, push or publish.
+
+### Generation 564 F02 Expanded Contract Revalidation
+
+Registry updated: 2026-09-30. Allocation generation: 563 -> 564. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused frozen validation accepted at 6/6 with final Common hash frozen.
+- **Purple/C2:** ACK `purple-20260930T144500Z/Kanban/g564/rerun-expanded-98-EXR-010-A12-L01-F02` exclusively releases one read-only expanded 98-case regression.
+- **Purple/C1/C3:** quiescent.
+- No edit, retry, focused/affected/other suite, live access, commit, push or publish.
+
+### Generation 563 F02 Accessor Switch Relocation
+
+Registry updated: 2026-09-30. Allocation generation: 562 -> 563. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** generation-562 failed mechanically because the switch parameter was inserted into the wrong function.
+- **Purple/C2:** replacement ACK `purple-20260930T143000Z/Kanban/g563/relocate-noenumerate-switch-EXR-010-A12-L01-F02` exclusively releases relocation of that switch and one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 562 F02 Non-Enumerating Go-Live Value Read
+
+Registry updated: 2026-09-30. Allocation generation: 561 -> 562. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** records remain `Value: []`; only accessor enumeration causes the false null observation.
+- **Purple/C2:** ACK `purple-20260930T141500Z/Kanban/g562/nonenumerating-golive-value-read-EXR-010-A12-L01-F02` exclusively releases opt-in non-enumerating member access for the go-live value check, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No record/evaluator/test/fixture/manifest/deploy/adapters edit, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 561 F02 Post-Evidence Collapse Trace
+
+Registry updated: 2026-09-30. Allocation generation: 560 -> 561. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** direct module probe proves collection-valued evidence now contains and serializes `Value: []`; focused envelope still sees null later.
+- **Purple/C1:** ACK `purple-20260930T140000Z/Kanban/g561/trace-post-evidence-collapse-EXR-010-A12-L01-F02` authorizes read-only trace from registry projection through focused envelope admission.
+- **Purple/C2/C3:** quiescent.
+- No Pester suite, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 560 F02 Immutable Empty Collection Preservation
+
+Registry updated: 2026-09-30. Allocation generation: 559 -> 560. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** recursive immutable-node conversion identified as the true empty-child collapse boundary.
+- **Purple/C2:** ACK `purple-20260930T134500Z/Kanban/g560/fix-immutable-empty-collections-EXR-010-A12-L01-F02` exclusively releases type-safe recursive child capture in the immutable converter, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No null/missing weakening, test/fixture/manifest/deploy/adapters edit, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 559 F02 Value Binding Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 558 -> 559. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** typed empty arrays are created but collapse again at `New-BaselineEvidence -Value` binding.
+- **Purple/C1:** ACK `purple-20260930T133000Z/Kanban/g559/diagnose-value-binding-EXR-010-A12-L01-F02` authorizes read-only exact parameter-binding diagnosis.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 558 F02 Empty Collection Evidence Preservation
+
+Registry updated: 2026-09-30. Allocation generation: 557 -> 558. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** empty-value collapse diagnosed at collection invocation before immutable conversion.
+- **Purple/C2:** ACK `purple-20260930T131500Z/Kanban/g558/preserve-empty-collection-evidence-EXR-010-A12-L01-F02` exclusively releases opt-in collection cardinality for MDO-007 and PP-005, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No global null translation, test/fixture/manifest/deploy/adapters edit, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 557 F02 Empty Evidence Value Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 556 -> 557. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused revalidation rejected at 4/6 because valid empty MDO-007/PP-005 observations reach go-live as null values.
+- **Purple/C1:** ACK `purple-20260930T130000Z/Kanban/g557/diagnose-empty-evidence-values-EXR-010-A12-L01-F02` authorizes read-only trace of the shared empty-collection preservation boundary.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 556 F02 Focused Revalidation
+
+Registry updated: 2026-09-30. Allocation generation: 555 -> 556. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** expanded bounded contract accepted at 98/98.
+- **Purple/C2:** ACK `purple-20260930T124500Z/Kanban/g556/rerun-focused-six-EXR-010-A12-L01-F02` exclusively releases one read-only exact focused-six revalidation with frozen hashes.
+- **Purple/C1/C3:** quiescent.
+- No edit, retry, bounded/affected/other suite, live access, commit, push or publish.
+
+### Generation 555 F02 Go-Live Binding Implementation
+
+Registry updated: 2026-09-30. Allocation generation: 554 -> 555. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** expanded 98-case contract accepted at intended red 86/98; all prior cases remain green.
+- **Purple/C2:** ACK `purple-20260930T123000Z/Kanban/g555/implement-golive-bindings-EXR-010-A12-L01-F02` exclusively releases ExchangeOnly manifest/disposition, entitlement and evidence-record bindings in Common, followed by one 98-case run.
+- **Purple/C1/C3:** quiescent; affected validation remains blocked.
+- No test/fixture/manifest/PSD1/deploy/adapters edit, retry, focused/affected/other suite, live access, commit, push or publish.
+
+### Generation 554 F02 Go-Live Binding Contract Red
+
+Registry updated: 2026-09-30. Allocation generation: 553 -> 554. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** final delta review rejected closure on manifest/disposition, entitlement and evidence-record binding gaps.
+- **Purple/C2:** ACK `purple-20260930T121500Z/Kanban/g554/red-golive-bindings-EXR-010-A12-L01-F02` exclusively releases negative-first expansion of the bounded compatibility contract, followed by one intended-red run.
+- **Purple/C1/C3:** quiescent; affected validation remains blocked.
+- No product/helper/fixture/focused/manifest/deploy/adapters edit, implementation, retry, other suite, live access, commit, push or publish.
+
+### Generation 553 F02 Final Delta Security Review
+
+Registry updated: 2026-09-30. Allocation generation: 552 -> 553. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused 6/6 and bounded regression 86/86 accepted with frozen hashes unchanged.
+- **Purple/C1:** ACK `purple-20260930T120000Z/Kanban/g553/review-final-delta-EXR-010-A12-L01-F02` authorizes independent read-only review of all post-generation-539 workflow/deployment changes and preserved security invariants.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected suite, live access, commit, push or publish.
+
+### Generation 552 F02 Bounded Regression
+
+Registry updated: 2026-09-30. Allocation generation: 551 -> 552. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused frozen validation accepted at 6/6.
+- **Purple/C2:** ACK `purple-20260930T114500Z/Kanban/g552/run-bounded-86-regression-EXR-010-A12-L01-F02` exclusively releases one read-only 86-case compatibility regression with hash verification.
+- **Purple/C1/C3:** quiescent.
+- No edit, retry, focused/affected/other suite, live access, commit, push or publish.
+
+### Generation 551 F02 External Readiness Restoration
+
+Registry updated: 2026-09-30. Allocation generation: 550 -> 551. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** historical manifest-bound readiness ownership confirmed.
+- **Purple/C2:** ACK `purple-20260930T113000Z/Kanban/g551/restore-external-readiness-EXR-010-A12-L01-F02` exclusively releases the ExchangeOnly `ExternalReadiness` projection in Common, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No security/generic-profile/test/fixture/deploy edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 550 F02 Final Readiness Projection Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 549 -> 550. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** module identity is preserved; positive reaches its final readiness assertion.
+- **Purple/C1:** ACK `purple-20260930T111500Z/Kanban/g550/diagnose-readiness-projection-EXR-010-A12-L01-F02` authorizes read-only historical/current go-live result-shape comparison.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 549 F02 Common Module Identity Preservation
+
+Registry updated: 2026-09-30. Allocation generation: 548 -> 549. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** ExchangeOnly apply adapter accepted; sole residual is Deploy force-replacing the loaded Common module instance.
+- **Purple/C2:** ACK `purple-20260930T110000Z/Kanban/g549/preserve-common-module-identity-EXR-010-A12-L01-F02` exclusively releases exact-path import-once behavior in Deploy, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No Common/test/fixture/PSD1/ApprovedAdapters/security edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 548 F02 Canonical Exchange Apply Adapter
+
+Registry updated: 2026-09-30. Allocation generation: 547 -> 548. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** final deployment diagnosis accepted; ExchangeOnly must bypass the unrelated legacy mutation engine.
+- **Purple/C2:** ACK `purple-20260930T104500Z/Kanban/g548/implement-exchange-apply-adapter-EXR-010-A12-L01-F02` exclusively releases canonical Exchange context use in approved change plus early signed-plan apply delegation in Deploy, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No test/fixture/PSD1/ApprovedAdapters/security edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 547 F02 Final Deploy Shape Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 546 -> 547. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused validation reached 5/6; all negative cases pass and only the positive legacy deploy-shape assumption remains.
+- **Purple/C1:** ACK `purple-20260930T103000Z/Kanban/g547/diagnose-final-deploy-shape-EXR-010-A12-L01-F02` authorizes read-only end-to-end deploy-path diagnosis.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 546 F02 Focused Arrangement Correction
+
+Registry updated: 2026-09-30. Allocation generation: 545 -> 546. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** final-two diagnosis accepted; product security checks remain mandatory.
+- **Purple/C2:** ACK `purple-20260930T101500Z/Kanban/g546/correct-focused-arrangement-EXR-010-A12-L01-F02` exclusively releases security-compatible focused fixture arrangement and strict structured offline-parameter validation, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No assertion/expected-outcome change, security weakening, unrelated edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 545 F02 Final Two Focused Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 544 -> 545. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused compatibility improved to 4/6; four intended refusal cases pass.
+- **Purple/C1:** ACK `purple-20260930T100000Z/Kanban/g545/diagnose-focused-two-EXR-010-A12-L01-F02` authorizes read-only diagnosis of tampered-evidence setup admission and structured deployment parameters.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 544 F02 Focused Integration Corrections
+
+Registry updated: 2026-09-30. Allocation generation: 543 -> 544. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** exact ownership, closure-scope, proof-validation and deployment-signature corrections accepted.
+- **Purple/C2:** ACK `purple-20260930T094500Z/Kanban/g544/correct-focused-integration-EXR-010-A12-L01-F02` exclusively releases Common and deploy-entry corrections, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent; ApprovedAdapters is frozen.
+- No frozen test/fixture/manifest/security edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 543 F02 Focused Integration Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 542 -> 543. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** generation-542 focused run rejected at 0/6 with one failed container after reaching three integration defects.
+- **Purple/C1:** ACK `purple-20260930T093000Z/Kanban/g543/diagnose-focused-integration-EXR-010-A12-L01-F02` authorizes read-only exact diagnosis and bounded-diff review.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 542 F02 Focused Workflow Compatibility
+
+Registry updated: 2026-09-30. Allocation generation: 541 -> 542. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** focused six-case diagnosis and historical private compatibility map accepted.
+- **Purple/C2:** ACK `purple-20260930T091500Z/Kanban/g542/implement-focused-compatibility-EXR-010-A12-L01-F02` exclusively releases strict JSON catalog support, mixed-recipient/reporting compatibility and the bounded TransportConfig adapter, followed by one focused six-case run.
+- **Purple/C1/C3:** quiescent.
+- No frozen test/fixture/manifest edit, retry, affected/bounded suite, live access, commit, push or publish.
+
+### Generation 541 F02 Focused Six Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 540 -> 541. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** focused frozen validation rejected at 0/6 with all hashes unchanged; affected execution remains blocked.
+- **Purple/C1:** ACK `purple-20260930T090000Z/Kanban/g541/diagnose-focused-six-EXR-010-A12-L01-F02` authorizes read-only case-by-case compatibility diagnosis.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, affected execution, live access, commit, push or publish.
+
+### Generation 540 F02 Focused Six Validation
+
+Registry updated: 2026-09-30. Allocation generation: 539 -> 540. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** independent all-control/security review returned ACCEPT with frozen hashes matching.
+- **Purple/C2:** ACK `purple-20260930T084500Z/Kanban/g540/run-focused-six-EXR-010-A12-L01-F02` exclusively releases the exact six frozen focused cases with before/after hash verification.
+- **Purple/C1/C3:** quiescent.
+- No edit, retry, other suite, live access, commit, push or publish.
+
+### Generation 539 F02 Independent All-Control Security Review
+
+Registry updated: 2026-09-30. Allocation generation: 538 -> 539. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** bounded compatibility contract accepted at 86/86 with implementation, fixture and test hashes frozen.
+- **Purple/C1:** ACK `purple-20260930T083000Z/Kanban/g539/review-all-controls-security-EXR-010-A12-L01-F02` authorizes independent read-only all-control and security review.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, focused/affected execution, live access, commit, push or publish.
+
+### Generation 538 F02 Fixture Context Identity Correction
+
+Registry updated: 2026-09-30. Allocation generation: 537 -> 538. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** the three positive-only errors share a stale pre-resolution fixture configuration hash.
+- **Purple/C2:** ACK `purple-20260930T081500Z/Kanban/g538/correct-fixture-context-EXR-010-A12-L01-F02` exclusively releases production-shaped context creation before operational artifact signing, followed by one frozen 86-case run.
+- **Purple/C1/C3:** quiescent.
+- No product/test/manifest edit, binding weakening, unrelated edit, retry, focused/affected execution, live access, commit, push or publish.
+
+### Generation 537 F02 Positive-Only Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 536 -> 537. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** corrected contract reached 85/86; every negative passes and only the aggregate positive remains with three Error controls.
+- **Purple/C1:** ACK `purple-20260930T080000Z/Kanban/g537/diagnose-positive-three-EXR-010-A12-L01-F02` authorizes read-only extraction of exact controls, nested reasons and smallest corrections.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 536 F02 Final Contract And Runtime Correction
+
+Registry updated: 2026-09-30. Allocation generation: 535 -> 536. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** residual diagnosis accepted with mandatory subject pinning and early empty-authorization refusal preserved.
+- **Purple/C2:** ACK `purple-20260930T074500Z/Kanban/g536/correct-final-contract-and-runtime-EXR-010-A12-L01-F02` exclusively releases signer-subject test setup correction, unauthorized precondition expectation, local EXO-009 preservation and private chain-evidence fixture injection, followed by one corrected 86-case run.
+- **Purple/C1/C3:** quiescent.
+- No authorization weakening, signature-verifier mock, bypass, unrelated edit, retry, focused/affected execution, live access, commit, push or publish.
+
+### Generation 535 F02 Chain Authorization Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 534 -> 535. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** bounded implementation reached 76/86; MDO-009 is green.
+- **Purple/C1:** ACK `purple-20260930T073000Z/Kanban/g535/diagnose-chain-authorization-EXR-010-A12-L01-F02` authorizes read-only diagnosis of authorization ordering/routing and the remaining EXO-009 shape loss.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 534 F02 Bounded Chain-Evidence Implementation
+
+Registry updated: 2026-09-30. Allocation generation: 533 -> 534. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** strengthened 86-case contract accepted at intended red 67/86.
+- **Purple/C2:** ACK `purple-20260930T071500Z/Kanban/g534/implement-chain-evidence-EXR-010-A12-L01-F02` exclusively releases the private signer-bound chain-evidence dependency and local EXO-009/MDO-009 collection preservation in Common, followed by one frozen 86-case run.
+- **Purple/C1/C3:** quiescent.
+- No fixture/test/manifest/public-export/unrelated edit, retry, focused/affected execution, live access, commit, push or publish.
+
+### Generation 533 F02 Chain-Evidence Contract Red
+
+Registry updated: 2026-09-30. Allocation generation: 532 -> 533. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** secure module-private chain-evidence design accepted.
+- **Purple/C2:** ACK `purple-20260930T070000Z/Kanban/g533/red-chain-evidence-EXR-010-A12-L01-F02` exclusively releases strengthening the existing 86-case contract for signer-bound explicit chain evidence and local collection-shape preservation, followed by one intended-red run.
+- **Purple/C1/C3:** quiescent.
+- No product/helper/manifest/frozen edit, implementation, retry, focused/affected execution, live access, commit, push or publish.
+
+### Generation 532 F02 Offline Chain Evidence Design
+
+Registry updated: 2026-09-30. Allocation generation: 531 -> 532. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** ACK `purple-20260930T064500Z/Kanban/g532/design-offline-chain-evidence-EXR-010-A12-L01-F02` authorizes read-only design of a production-shaped private chain dependency with explicit trust and revocation evidence, plus exact local collection-preservation changes.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 531 F02 Five-Control Diagnosis
+
+Registry updated: 2026-09-30. Allocation generation: 530 -> 531. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** generation-530 correction reached 80/86; MDO-008 is non-Error, five controls remain Error, and the aggregate positive observes those five.
+- **Purple/C1:** ACK `purple-20260930T063000Z/Kanban/g531/diagnose-five-EXR-010-A12-L01-F02` authorizes read-only exact post-change diagnosis.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 530 F02 Final Six Correction
+
+Registry updated: 2026-09-29. Allocation generation: 529 -> 530. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** six-control diagnosis accepted; four shared causes identified.
+- **Purple/C2:** ACK `purple-20260930T061500Z/Kanban/g530/correct-final-six-EXR-010-A12-L01-F02` exclusively releases typed empty EXO-009 handling, observed MDO-008 tag, explicit MDO-009 Enabled projection, and operational signer subject/OPS-001 phase binding, followed by one 86-test run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 529 F02 Six-Control Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 528 -> 529. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** exact corrections reached 79/86; six controls remain Error and crypto/bypass stays green.
+- **Purple/C1:** ACK `purple-20260930T060500Z/Kanban/g529/diagnose-six-EXR-010-A12-L01-F02` authorizes read-only exact post-change diagnosis.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, retry, live access, commit, push or publish.
+
+### Generation 528 F02 Twelve Exact Corrections
+
+Registry updated: 2026-09-29. Allocation generation: 527 -> 528. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** clean product red accepted at 73/86; crypto and bypass contracts are green.
+- **Purple/C2:** ACK `purple-20260930T055000Z/Kanban/g528/implement-twelve-EXR-010-A12-L01-F02` exclusively releases exact diagnosed Common/fixture corrections for the twelve controls against frozen test SHA-256 `F3C9A6F39FD39002746346C14767739961D0E0C2BC2080A35A117CCE8ABB0441`.
+- **Purple/C1/C3:** quiescent.
+- No contract/manifest/frozen edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 527 F02 Crypto Test Correction
+
+Registry updated: 2026-09-29. Allocation generation: 526 -> 527. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** residual classification accepted; nine crypto failures are unsupported test setup/expectations.
+- **Purple/C2:** ACK `purple-20260930T053500Z/Kanban/g527/correct-crypto-tests-EXR-010-A12-L01-F02` permits only static private-key-copy correction and cryptographically reachable arrangements for three legacy trust/refusal tests, followed by one suite run.
+- **Purple/C1/C3:** quiescent.
+- No product/helper/manifest/frozen edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 526 F02 Residual Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 525 -> 526. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** secure fixture now constructs; contract is 64/86.
+- **Purple/C1:** ACK `purple-20260930T052000Z/Kanban/g526/diagnose-residuals-EXR-010-A12-L01-F02` authorizes read-only exact residual classification across signature path and twelve controls.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, retry, live access, commit, push or publish.
+
+### Generation 525 F02 Static Private-Key Copy
+
+Registry updated: 2026-09-29. Allocation generation: 524 -> 525. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-524 stopped at a secure-fixture construction cascade. ACK `purple-20260930T051000Z/Kanban/g525/static-copy-private-key-EXR-010-A12-L01-F02` permits only replacing the instance extension call with static `RSACertificateExtensions.CopyWithPrivateKey`, then parse and one 86-test run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 524 F02 Secure Twelve-Control Correction
+
+Registry updated: 2026-09-29. Allocation generation: 523 -> 524. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** verification-bypass red accepted at 67/86. ACK `purple-20260930T050000Z/Kanban/g524/secure-twelve-EXR-010-A12-L01-F02` exclusively releases Common/fixture removal of inline trust, real detached-CMS fixture evidence, and exact twelve-control current shapes against frozen test SHA-256 `7DF6D7B763A28F61A09B363988A5967399B714DBFFC1DB71B8B3ABF2275AD0A8`.
+- **Purple/C1/C3:** quiescent.
+- No contract/manifest/frozen edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 523 F02 Verification-Bypass Red
+
+Registry updated: 2026-09-29. Allocation generation: 522 -> 523. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** twelve-control diagnosis accepted; inline verified-document bypass rejected.
+- **Purple/C2:** ACK `purple-20260930T044500Z/Kanban/g523/red-verification-bypass-EXR-010-A12-L01-F02` permits only assertion expansion proving product always performs cryptographic artifact verification and refuses caller-controlled trust state, followed by one intended-red run.
+- **Purple/C1/C3:** quiescent.
+- No product/helper/manifest/frozen edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 522 F02 Twelve-Control Re-Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 521 -> 522. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** 67/80; EXO-007 cleared, twelve controls remain Error.
+- **Purple/C1:** ACK `purple-20260930T043000Z/Kanban/g522/diagnose-twelve-EXR-010-A12-L01-F02` authorizes read-only post-correction per-control diagnosis and bypass review.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, retry, live access, commit, push or publish.
+
+### Generation 521 F02 DKIM Fixture Key Initialization
+
+Registry updated: 2026-09-29. Allocation generation: 520 -> 521. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-520 stopped at a fixture construction cascade. ACK `purple-20260930T042000Z/Kanban/g521/initialize-domain-EXR-010-A12-L01-F02` permits exactly one early `$domain` initialization from parameters, then parse and one 80-test run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 520 F02 Thirteen-Control Correction
+
+Registry updated: 2026-09-29. Allocation generation: 519 -> 520. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** thirteen-control diagnosis accepted.
+- **Purple/C2:** ACK `purple-20260930T041000Z/Kanban/g520/correct-thirteen-EXR-010-A12-L01-F02` exclusively releases Common adapters plus shared offline-fixture shape/artifact updates against unchanged 80 tests.
+- **Purple/C1/C3:** quiescent.
+- No contract/manifest/frozen edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 519 F02 Thirteen-Control Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 518 -> 519. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** explicit wiring reached 66/80; thirteen controls remain Error.
+- **Purple/C1:** ACK `purple-20260930T035500Z/Kanban/g519/diagnose-thirteen-EXR-010-A12-L01-F02` authorizes read-only existing-evidence/current-code diagnosis per control.
+- **Purple/C2/C3:** quiescent.
+- No Pester, edit, retry, live access, commit, push or publish.
+
+### Generation 518 F02 MDO-006 Case Closure
+
+Registry updated: 2026-09-29. Allocation generation: 517 -> 518. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-517 stopped at 11 parser errors with zero tests. ACK `purple-20260930T034500Z/Kanban/g518/close-mdo006-case-EXR-010-A12-L01-F02` permits moving exactly one closing brace to close MDO-006 before the sibling cases, then parse and one 80-test run if clean.
+- **Purple/C1/C3:** quiescent.
+- No behavior/test/manifest edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 517 F02 Switch Syntax Repair
+
+Registry updated: 2026-09-29. Allocation generation: 516 -> 517. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-516 stopped at parse with zero tests. ACK `purple-20260930T034000Z/Kanban/g517/repair-switch-syntax-EXR-010-A12-L01-F02` permits only relocating mistakenly nested switch cases to sibling positions, preserving bodies, then parse and one 80-test run if clean.
+- **Purple/C1/C3:** quiescent.
+- No behavior/test/manifest edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 516 F02 Explicit All-Control Wiring
+
+Registry updated: 2026-09-29. Allocation generation: 515 -> 516. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** clean seam red accepted at 57/80. ACK `purple-20260930T033500Z/Kanban/g516/wire-all-controls-EXR-010-A12-L01-F02` exclusively releases explicit offline collector/evaluator wiring for the 22 named controls against frozen test SHA-256 `1E876D12A3E2413BDF6940DA55438F655946CA77B3A4E1C6003B5C2DF7C3D2EC`.
+- **Purple/C1/C3:** quiescent.
+- No test/manifest edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 515 F02 Retained-Mismatch Test Correction
+
+Registry updated: 2026-09-29. Allocation generation: 514 -> 515. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-514 reached 56/80; schema/projection/artifact security passed. ACK `purple-20260930T032500Z/Kanban/g515/correct-retained-mismatch-EXR-010-A12-L01-F02` permits only correcting the legacy mismatch fixture to mutate a retained entry, followed by one 80-test red run.
+- **Purple/C1/C3:** quiescent.
+- No product/manifest/frozen edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 514 F02 Complete All-Control Implementation
+
+Registry updated: 2026-09-29. Allocation generation: 513 -> 514. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** all-control intended red accepted at 42/80. ACK `purple-20260930T031500Z/Kanban/g514/implement-all-controls-EXR-010-A12-L01-F02` exclusively releases Common PSM1 changes for schema/projection admission, 22 command-specific seams, and fail-closed operational artifacts against frozen test SHA-256 `746E5F1E7180582B6F8BE7C05B5205BC73EF88D3336D8AF50D6F65DADD92B050`.
+- **Purple/C1/C3:** quiescent.
+- No test/manifest edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 513 F02 All-Control Assertion Expansion
+
+Registry updated: 2026-09-29. Allocation generation: 512 -> 513. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** all-control review rejected closure: 3/25 complete seams, 22/25 binding-blocked, broad admission, incomplete scope schema checks, and unsigned/unbound operational artifacts.
+- **Purple/C2:** ACK `purple-20260930T030000Z/Kanban/g513/expand-all-controls-red-EXR-010-A12-L01-F02` permits only assertion expansion for all-25 seam execution, authoritative projection/schema refusal, and signed/bound artifact refusal, followed by one intended-red run.
+- **Purple/C1/C3:** quiescent.
+- No product/manifest/frozen edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 512 F02 All-Control Review
+
+Registry updated: 2026-09-29. Allocation generation: 511 -> 512. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** corrected coherent contract accepted at 38/38 and frozen to test/PSM1/PSD1 hashes.
+- **Purple/C1:** ACK `purple-20260930T025000Z/Kanban/g512/review-all-controls-EXR-010-A12-L01-F02` authorizes read-only review of mandatory seams for all exact 25 controls and security/visibility boundaries.
+- **Purple/C2/C3:** quiescent; no frozen or affected execution yet.
+- No edit, Pester, live access, commit, push or publish.
+
+### Generation 511 F02 Positive Expectation Correction
+
+Registry updated: 2026-09-29. Allocation generation: 510 -> 511. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** coherent runtime reached 37/38. Replacement ACK `purple-20260930T024500Z/Kanban/g511/correct-positive-EXR-010-A12-L01-F02` permits only changing the unsupported compliant MDO-001 expectation from ApprovedException to Pass, followed by one corrected 38-test run.
+- **Purple/C1/C3:** quiescent.
+- No product/manifest/frozen edit, focused/affected execution, retry, live access, commit, push or publish.
+
+### Generation 510 F02 Five-Defect Correction
+
+Registry updated: 2026-09-29. Allocation generation: 509 -> 510. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** coherent runtime reached 33/38. Replacement ACK `purple-20260930T024000Z/Kanban/g510/correct-five-EXR-010-A12-L01-F02` permits only scope-error ordering, mock-interceptable collector/evaluator invocation by command name, and removal of obsolete `ExpectedEntitlement`, followed by one unchanged 38-test run.
+- **Purple/C1/C3:** quiescent.
+- No test/manifest edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 509 F02 Coherent Implementation
+
+Registry updated: 2026-09-29. Allocation generation: 508 -> 509. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** expanded intended red accepted at 11/38. ACK `purple-20260930T022500Z/Kanban/g509/implement-coherent-runtime-EXR-010-A12-L01-F02` exclusively releases Common PSM1/PSD1 coherent restoration against frozen test SHA-256 `848E45A68497D0088CE41B49A6B7F056C3C43C3BD01BB9B55FB17C8845147692`, followed by one 38-test run.
+- **Purple/C1/C3:** quiescent.
+- No test edit, frozen/affected execution, retry, live access, commit, push or publish.
+
+### Generation 508 F02 Assertion Expansion
+
+Registry updated: 2026-09-29. Allocation generation: 507 -> 508. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C1:** coherent four-command public runtime and private dependency map accepted.
+- **Purple/C2:** ACK `purple-20260930T021000Z/Kanban/g508/expand-red-EXR-010-A12-L01-F02` permits only expansion of `PublicCommandSurface.Tests.ps1` to reject Error-only execution, incomplete scope/status/exports, and signature-chain bypasses, followed by one intended-red run.
+- **Purple/C1/C3:** quiescent.
+- No product/manifest/frozen edit, implementation, retry, live access, commit, push or publish.
+
+### Generation 507 F02 Coherent-Runtime Diagnosis
+
+Registry updated: 2026-09-29. Allocation generation: 506 -> 507. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** F02 closure rejected. Static review found incomplete collector adaptation, wrong global-vs-25-control admission scope, and incomplete evaluator status validation. Focused is 0/6 due missing `Get-BaselineExchangeContext`; affected is 1/337.
+- **Purple/C1:** ACK `purple-20260930T020000Z/Kanban/g507/diagnose-runtime-EXR-010-A12-L01-F02` authorizes read-only coherent dependency mapping and assertion-gap analysis only.
+- **Purple/C2/C3:** quiescent.
+- No edit, Pester, retry, live access, commit, push or publish.
+
+### Generation 506 F02 Frozen Closure Gates
+
+Registry updated: 2026-09-29. Allocation generation: 505 -> 506. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple:** accepted compatibility contract **11/11**. ACK `purple-20260930T014500Z/Kanban/g506/validate-runtime-EXR-010-A12-L01-F02` releases C1 independent static review, C2 exact focused 6/6, and C3 ordered affected 747/747 against frozen implementation hashes.
+- C2/C3 execute once without repository edits or retry. C1 remains read-only.
+- No broader/full suite, live access, commit, push or publish.
+
+### Generation 505 F02 Comparison Normalization
+
+Registry updated: 2026-09-29. Allocation generation: 504 -> 505. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-504 explicit collection materialization accepted; result 9/11. Replacement ACK `purple-20260930T014000Z/Kanban/g505/normalize-comparison-EXR-010-A12-L01-F02` permits only array-normalization of the authoritative `Compare-Object` result before `.Count`, followed by one unchanged 11-test run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, frozen/affected test, retry, live access, commit, push or publish.
+
+### Generation 504 F02 Collection Normalization
+
+Registry updated: 2026-09-29. Allocation generation: 503 -> 504. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2:** generation-503 implementation reached 10/11. Replacement ACK `purple-20260930T013500Z/Kanban/g504/normalize-registry-EXR-010-A12-L01-F02` permits only explicit entry materialization for the current read-only registry and expected collections, followed by one unchanged 11-test run.
+- **Purple/C1/C3:** quiescent.
+- No other edit, frozen/affected test, retry, live access, commit, push or publish.
+
+### Generation 503 F02 Implementation Release
+
+Registry updated: 2026-09-29. Allocation generation: 502 -> 503. Counts remain **36 To Do / 1 In Progress / 54 Done = 91 executable cards**.
+
+- **Purple/C2 `27070e69-067b-418d-b451-8afbd32b30ce`:** accepted intended red 0/11 and exclusively released under ACK `purple-20260930T012500Z/Kanban/g503/implement-runtime-EXR-010-A12-L01-F02` for the smallest Common module/manifest restoration and one unchanged focused 11-test run.
+- **Purple/C1 `306413d3-e9c8-49b7-830f-c28a2b62bc35` and C3 `9e375393-b4aa-4299-9c61-34fe94d1197c`:** accepted read-only source/safety findings; quiescent pending review release.
+- No frozen-test execution, affected regression, retry, unrelated edit, live access, commit, push or publish.
+
+### Generation 502 Runtime Compatibility Restoration
+
+Registry updated: 2026-09-29. Allocation generation: 501 -> 502. Canonical counts are **36 To Do / 1 In Progress / 54 Done = 91 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** owns new `EXR-010-A12-L01-F02` under ACK `purple-20260930T011000Z/Kanban/g502/restore-runtime-EXR-010-A12-L01-F02`. Exactly three Coworkers swarm this card: C1 read-only historical/current contract analysis; C2 exclusive negative-first assertion and implementation surfaces in Common module/manifest plus `PublicCommandSurface.Tests.ps1`; C3 read-only review and later validation. C2 stops after intended red pending a new release; C3 remains quiescent until implementation.
+- **Silver, Gold:** no executable claim; quiescent.
+- No frozen-test edit, live access, deployment, waiver, commit, push or publish.
+
+### Generation 501 C01 Final Rejection
+
+Registry updated: 2026-09-29. Allocation generation: 500 -> 501. Canonical counts are **36 To Do / 0 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Canonical steward:** C01 final decision is **REJECT** and the card returns To Do. Exact blockers are focused 0/6, affected 1/337 before the remaining suites, and absent current Common commands required by the frozen contracts.
+- **Purple, Silver, Gold:** released and quiescent. Ranks 48-50 remain dependency-blocked by C01; no allocation is valid.
+- A separately authorized implementation card must resolve runtime/test compatibility before fresh current-tree validation. No correction, test retry, waiver, live access, commit, push or publish is authorized.
+
+### Generation 500 V01 Rejection and C01 Activation
+
+Registry updated: 2026-09-29. Allocation generation: 499 -> 500. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** V01 closed **Done (REJECT)**. Exact-once current-tree evidence observed focused **0/6** and affected first-suite **1/337**, with missing current Common commands; stable C3 post manifest `8C8FBB47622985E8DBA71941EA171A27D1704A6FD3F1E0B79793595BDE011D22`. Purple and all three workers are released and quiescent.
+- **Canonical steward:** C01 activated for static final reconciliation only. Product/test execution and edits remain prohibited.
+- **Silver, Gold:** no executable claim; quiescent.
+- No retry, repository product/test edit, full regression, live access, credentials, commit, push or publish.
+
+### Generation 499 Purple Current-Tree Test Release
+
+Registry updated: 2026-09-29. Allocation generation: 498 -> 499. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** g498 identity barrier passed at HEAD `3fb4055`, with only backlog/cohorts modified and scoped 334-file manifest SHA-256 `8C8FBB47622985E8DBA71941EA171A27D1704A6FD3F1E0B79793595BDE011D22`. ACK `purple-20260930T003500Z/Kanban/g499/test-current-EXR-010-A12-L01-V01` releases C2 agent `0333fff9-fcbf-4466-ae3a-aa76852dce58` for focused 6/6 and C3 agent `2152a462-424d-418d-9972-98cfdb74b090` for affected 747/747 with matching post identity.
+- **Silver, Gold:** no executable claim; quiescent.
+- No retry, repository/governance edit, full regression, live access, credentials, commit, push or publish.
+
+### Generation 498 Purple Zero-Byte Manifest Correction
+
+Registry updated: 2026-09-29. Allocation generation: 497 -> 498. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** C1 g497 reached manifest hashing but rejected a legitimate zero-byte tracked file. Replacement ACK `purple-20260930T003000Z/Kanban/g498/capture-current-EXR-010-A12-L01-V01` binds C1 agent `d66b36de-23fd-49b4-b700-45ac175c5124` to add only `[AllowEmptyCollection()]` to the byte-array hash parameter and execute once in a fresh root.
+- **C2/C3:** remain quiescent.
+- No further harness correction, tests, repository/governance edit, live access, credentials, commit, push or publish.
+
+### Generation 497 Purple C1 Harness Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 496 -> 497. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** C1's sole g496 invocation produced no artifact because of scalar string indexing; static inspection also found the wrong historical governance path. Replacement ACK `purple-20260930T002500Z/Kanban/g497/capture-current-EXR-010-A12-L01-V01` binds C1 agent `d66b36de-23fd-49b4-b700-45ac175c5124` to exactly two harness corrections and one invocation in a fresh root.
+- **C2/C3:** agents `0333fff9-fcbf-4466-ae3a-aa76852dce58` and `2152a462-424d-418d-9972-98cfdb74b090` remain quiescent.
+- No second replacement, tests, repository/governance edit, live access, credentials, commit, push or publish.
+
+### Generation 496 Purple Fresh-Coworker Binding
+
+Registry updated: 2026-09-29. Allocation generation: 495 -> 496. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** ACK `purple-20260930T002000Z/Kanban/g496/run-current-EXR-010-A12-L01-V01` binds three fresh verified agents: C1 `d66b36de-23fd-49b4-b700-45ac175c5124`, C2 `0333fff9-fcbf-4466-ae3a-aa76852dce58`, C3 `2152a462-424d-418d-9972-98cfdb74b090`, each with an exclusive g496 root. Generation-495 selectors, suites, commands and identity protocol are incorporated unchanged. Only C1 is initially released.
+- **Silver, Gold:** no executable claim; quiescent.
+- No retry, repository/governance edit, full regression, live access, credentials, commit, push or publish is authorized.
+
+### Generation 495 Purple Literal V01 Validation
+
+Registry updated: 2026-09-29. Allocation generation: 494 -> 495. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Authority:** `.github/backlog.md` is canonical; `.github/kanban.md` is explicitly historical/non-authoritative and its revision-284 counts are not current.
+- **Purple:** valid-UTC ACK `purple-20260930T001500Z/Kanban/g495/run-current-EXR-010-A12-L01-V01` binds the agent/run, three literal roots/commands, exact six focused cases, exact eight affected suites/counts, HEAD/status/diff capture and a reproducible scoped tracked-file manifest excluding only the two canonical governance files.
+- **Silver, Gold:** no executable claim; quiescent.
+- No retry, repository/governance edit by Purple, full regression, live access, credentials, commit, push or publish is authorized.
+
+### Generation 494 Purple Bound V01 Execution
+
+Registry updated: 2026-09-29. Allocation generation: 493 -> 494. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** root canonical writer explicitly hands off the V01 continuation to agent `1402b777-2bab-4122-bc65-e28124e31dae` / run `Purple-20260929T231713.512Z-g488`. ACK `purple-20260929T390000Z/Kanban/g494/run-current-EXR-010-A12-L01-V01` assigns three disjoint worker roots and literal script-file commands for C1 identity capture, C2 focused six-case validation and C3 exact 747-case affected validation.
+- **Silver, Gold:** no executable claim; quiescent.
+- Purple may create only the named temporary roots/runners/evidence. No retry, repository or governance edit, full regression, live access, credentials, commit, push or publish is authorized.
+
+### Generation 493 Purple Current-Identity Replacement
+
+Registry updated: 2026-09-29. Allocation generation: 492 -> 493. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** g492 produced no identity artifact and ran no tests. Replacement ACK `purple-20260929T383000Z/Kanban/g493/run-current-EXR-010-A12-L01-V01` grants a script-file frozen identity capture, then only after acceptance one focused 6-case and one exact 747-case affected run with matching post identities.
+- **Silver, Gold:** no executable claim; quiescent pending V01/C01.
+- No retry, edit, full regression, live access, credentials, commit, push or publish is authorized.
+
+### Generation 492 Purple Current-Tree V01 Validation
+
+Registry updated: 2026-09-29. Allocation generation: 491 -> 492. Canonical counts remain **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Purple:** V01 historical evidence review returned REJECT only for unbound current-tree identity. ACK `purple-20260929T380000Z/Kanban/g492/validate-current-EXR-010-A12-L01-V01` grants exactly three parallel read-only/process Coworkers for normalized current identity, one focused six-case run and one exact 747-case affected run, followed by steward reconciliation.
+- **Silver, Gold:** no executable claim; quiescent pending V01/C01.
+- No edit, retry, full regression, live access, credentials, commit, push or publish is authorized.
+
+### Generation 491 D01 Closure And Purple V01 Review
+
+Registry updated: 2026-09-29. Allocation generation: 490 -> 491. Canonical counts become **35 To Do / 1 In Progress / 54 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Platinum:** corrected D01 matrix passed full validation with 0 issues. Rank 23.4 `EXR-010-A12-L01-D01` moves To Do -> Done; Platinum releases all reservations and is quiescent.
+- **Purple:** ACK `purple-20260929T373000Z/Kanban/g491/review-EXR-010-A12-L01-V01` activates rank 23.5 `EXR-010-A12-L01-V01` for exactly three parallel read-only Coworkers reviewing focused/affected evidence, regression/scope/identity, and D01/prior-leaf closure eligibility. V01 moves To Do -> In Progress.
+- **Silver, Gold:** no executable claim; quiescent pending V01/C01.
+- No test execution, repository implementation edit, live access, credentials, commit, push or publish is authorized.
+
+### Generation 490 Platinum Completion-Rule Correction
+
+Registry updated: 2026-09-29. Allocation generation: 489 -> 490. Canonical counts remain **37 To Do / 0 In Progress / 53 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Platinum:** all 150 substantive `Known` dispositions and source bindings passed review; one stale unconditional blank-decision rule makes the completed packet internally inconsistent. ACK `platinum-20260929T370000Z/Kanban/g490/correct-D01-completion-rule` grants exactly three serialized Coworkers to correct only that rule, independently compare the packets, and rerun full validation.
+- **Purple, Silver, Gold:** no executable claim; quiescent.
+- D01 remains To Do during revalidation. No repository implementation edit, disposition change, test, live access, credentials, commit, push or publish is authorized.
+
+### Generation 489 Platinum Completed-Disposition Validation
+
+Registry updated: 2026-09-29. Allocation generation: 488 -> 489. Canonical counts remain **37 To Do / 0 In Progress / 53 Done = 90 executable cards**, with 24 summary parents excluded.
+
+- **Platinum:** the user accepted recommended `Known` dispositions across all 150 D01 rows. ACK `platinum-20260929T363000Z/Kanban/g489/validate-D01-dispositions` grants exactly three parallel read-only Coworkers to validate structure/source binding, recompute immutable inventory integrity, and review scope/overclaim before any D01 transition.
+- **Purple, Silver, Gold:** no executable claim; quiescent pending Platinum validation and canonical dependency advancement.
+- D01 remains To Do and blocked during validation. No edit, test, live access, credentials, commit, push or publish is authorized.
 
 ### Generation 488 Platinum Disposition Request Packet
 

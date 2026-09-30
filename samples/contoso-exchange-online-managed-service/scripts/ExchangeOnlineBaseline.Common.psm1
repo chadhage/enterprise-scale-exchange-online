@@ -121,31 +121,72 @@ function Test-BaselineParameterValue {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)]
-        [System.Collections.IDictionary]$Parameter
+        [System.Collections.IDictionary]$Parameter,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [string[]]$PlaceholderName
     )
 
     foreach ($key in $Parameter.Keys) {
         $value = $Parameter[$key]
 
-        $candidates = if ($value -is [string]) {
-            @($value)
-        }
-        elseif ($value -is [System.Collections.IList]) {
-            @($value)
-        }
-        else {
-            throw "UnsupportedParameterValueType: parameter '$key' must be a string or an array of strings."
-        }
-
-        foreach ($candidate in $candidates) {
-            if ($candidate -isnot [string]) {
+        if ([string]$key -cin $PlaceholderName) {
+            $candidates = if ($value -is [string]) {
+                @($value)
+            }
+            elseif ($value -is [System.Collections.IList]) {
+                @($value)
+            }
+            else {
                 throw "UnsupportedParameterValueType: parameter '$key' must be a string or an array of strings."
             }
 
-            if ($candidate -match $script:PlaceholderScanPattern) {
-                throw "RecursivePlaceholderValue: parameter '$key' supplies a value that itself contains an administrator placeholder."
+            foreach ($candidate in $candidates) {
+                if ($candidate -isnot [string]) {
+                    throw "UnsupportedParameterValueType: parameter '$key' must be a string or an array of strings."
+                }
+
+                if ($candidate -match $script:PlaceholderScanPattern) {
+                    throw "RecursivePlaceholderValue: parameter '$key' supplies a value that itself contains an administrator placeholder."
+                }
             }
+            continue
         }
+
+        $validateJsonNode = {
+            param([AllowNull()][object]$Node, [string]$Path)
+
+            if ($null -eq $Node) { return }
+            if ($Node -is [string]) {
+                if ($Node -match $script:PlaceholderScanPattern) {
+                    throw "RecursivePlaceholderValue: parameter '$key' at '$Path' contains an administrator placeholder."
+                }
+                return
+            }
+            if ($Node -is [System.Collections.IDictionary]) {
+                foreach ($member in $Node.Keys) {
+                    & $validateJsonNode $Node[$member] "$Path.$member"
+                }
+                return
+            }
+            if ($Node -is [System.Collections.IList]) {
+                for ($index = 0; $index -lt $Node.Count; $index++) {
+                    & $validateJsonNode $Node[$index] "$Path[$index]"
+                }
+                return
+            }
+            if ($Node -is [bool] -or
+                $Node -is [byte] -or $Node -is [sbyte] -or
+                $Node -is [int16] -or $Node -is [uint16] -or
+                $Node -is [int32] -or $Node -is [uint32] -or
+                $Node -is [int64] -or $Node -is [uint64] -or
+                $Node -is [single] -or $Node -is [double] -or $Node -is [decimal]) {
+                return
+            }
+            throw "UnsupportedParameterValueType: parameter '$key' at '$Path' contains runtime type '$($Node.GetType().FullName)' rather than a JSON dictionary, list, scalar or null."
+        }
+        & $validateJsonNode $value ([string]$key)
     }
 }
 
@@ -273,14 +314,14 @@ function Resolve-BaselineConfiguration {
     }
 
     try {
-        $document = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        $document = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String -ErrorAction Stop
     }
     catch {
         throw "ConfigurationJsonInvalid: '$ConfigurationPath' is not valid JSON. $($_.Exception.Message)"
     }
 
     try {
-        $parameter = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -ErrorAction Stop
+        $parameter = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String -ErrorAction Stop
     }
     catch {
         throw "ParameterJsonInvalid: '$ParameterPath' is not valid JSON. $($_.Exception.Message)"
@@ -294,7 +335,8 @@ function Resolve-BaselineConfiguration {
         throw "ParameterDocumentNotObject: '$ParameterPath' must contain a JSON object of administrator inputs."
     }
 
-    Test-BaselineParameterValue -Parameter $parameter
+    $placeholderName = @(Get-BaselinePlaceholderName -Node $document | Sort-Object -Unique)
+    Test-BaselineParameterValue -Parameter $parameter -PlaceholderName $placeholderName
 
     $declaredProfile = $null
     if ($document -is [System.Collections.IDictionary] -and $document.Contains('metadata')) {
@@ -320,7 +362,7 @@ function Resolve-BaselineConfiguration {
         Configuration           = ($resolved | ConvertTo-Json -Depth 64 | ConvertFrom-Json)
         DeploymentProfile       = $declaredProfile
         SuppliedParameterName   = @($parameter.Keys | Sort-Object)
-        DeclaredPlaceholderName = @(Get-BaselinePlaceholderName -Node $document | Sort-Object -Unique)
+        DeclaredPlaceholderName = $placeholderName
     }
 }
 
@@ -1670,7 +1712,8 @@ function ConvertTo-ImmutableBaselineNode {
     if ($Node -is [System.Collections.IDictionary]) {
         $members = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
         foreach ($key in $Node.Keys) {
-            $members[[string]$key] = ConvertTo-ImmutableBaselineNode -Node $Node[$key]
+            $child = ConvertTo-ImmutableBaselineNode -Node $Node[$key]
+            $members[[string]$key] = $child
         }
 
         return , ([System.Collections.ObjectModel.ReadOnlyDictionary[string, object]]::new($members))
@@ -1679,14 +1722,20 @@ function ConvertTo-ImmutableBaselineNode {
     if ($Node -is [System.Management.Automation.PSCustomObject]) {
         $members = [System.Collections.Generic.Dictionary[string, object]]::new([System.StringComparer]::Ordinal)
         foreach ($property in $Node.PSObject.Properties) {
-            $members[$property.Name] = ConvertTo-ImmutableBaselineNode -Node $property.Value
+            $child = ConvertTo-ImmutableBaselineNode -Node $property.Value
+            $members[$property.Name] = $child
         }
 
         return , ([System.Collections.ObjectModel.ReadOnlyDictionary[string, object]]::new($members))
     }
 
     if ($Node -is [System.Collections.IList]) {
-        return , ([System.Array]::AsReadOnly([object[]]@(foreach ($item in $Node) { ConvertTo-ImmutableBaselineNode -Node $item })))
+        $children = [System.Collections.Generic.List[object]]::new()
+        foreach ($item in $Node) {
+            $child = ConvertTo-ImmutableBaselineNode -Node $item
+            $children.Add($child)
+        }
+        return , ([System.Array]::AsReadOnly([object[]]$children.ToArray()))
     }
 
     return , $Node
@@ -2541,6 +2590,355 @@ function Get-ApprovalSignatureContract {
             }
         )
     }
+}
+
+function New-BaselineEvidenceCertificateChain {
+    [CmdletBinding()]
+    param()
+
+    $chain = [System.Security.Cryptography.X509Certificates.X509Chain]::new()
+    $chain.ChainPolicy.RevocationMode = [System.Security.Cryptography.X509Certificates.X509RevocationMode]::Offline
+    $chain.ChainPolicy.DisableCertificateDownloads = $true
+    return $chain
+}
+
+function Test-BaselineEvidenceCertificateChain {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]$CertificateCollection,
+
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$TrustedRoot,
+
+        [datetimeoffset]$DecisionTimeUtc = [datetimeoffset]::UtcNow
+    )
+
+    $chain = New-BaselineEvidenceCertificateChain
+    try {
+        $chain.ChainPolicy.RevocationMode =
+            [System.Security.Cryptography.X509Certificates.X509RevocationMode]::Offline
+        $chain.ChainPolicy.DisableCertificateDownloads = $true
+        if ($null -ne $TrustedRoot) {
+            $chain.ChainPolicy.TrustMode =
+                [System.Security.Cryptography.X509Certificates.X509ChainTrustMode]::CustomRootTrust
+            $null = $chain.ChainPolicy.CustomTrustStore.Add($TrustedRoot)
+            $intermediate = [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
+            foreach ($candidate in $CertificateCollection) {
+                if ($candidate.Thumbprint -ine $TrustedRoot.Thumbprint) {
+                    $null = $intermediate.Add($candidate)
+                }
+            }
+            $chain.ChainPolicy.ExtraStore.AddRange($intermediate)
+        }
+        else {
+            $chain.ChainPolicy.ExtraStore.AddRange($CertificateCollection)
+        }
+        $trusted = $chain.Build($Certificate)
+        $status = @($chain.ChainStatus | ForEach-Object { $_.Status })
+        $failureStatus = @(
+            $chain.ChainStatus |
+                ForEach-Object { [string]$_.Status } |
+                Where-Object { $_ -cne 'NoError' }
+        )
+        $revocationStatus = if (
+            @($status | Where-Object {
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::Revoked) -ne 0
+                }).Count -gt 0
+        ) {
+            'Revoked'
+        }
+        elseif (
+            @($status | Where-Object {
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::RevocationStatusUnknown) -ne 0 -or
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::OfflineRevocation) -ne 0
+                }).Count -gt 0
+        ) {
+            'Unknown'
+        }
+        else {
+            'Good'
+        }
+        $anchor = @($chain.ChainElements | ForEach-Object { $_.Certificate })[-1]
+
+        return [pscustomobject][ordered]@{
+            Thumbprint = $Certificate.Thumbprint
+            LeafThumbprint = $Certificate.Thumbprint
+            RootThumbprint = if ($null -ne $anchor) { $anchor.Thumbprint } else { $null }
+            Anchor = $anchor
+            ChainTrusted = [bool]$trusted
+            RevocationStatus = $revocationStatus
+            EvaluationTimeUtc = $DecisionTimeUtc
+            DecisionTimeUtc = $DecisionTimeUtc
+            EvidenceSource = 'OfflineX509Chain'
+            FailureStatus = $failureStatus
+        }
+    }
+    finally {
+        $chain.Dispose()
+    }
+}
+
+function Test-BaselinePinnedRootEvidenceCertificateChain {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate,
+
+        [Parameter(Mandatory)]
+        [AllowEmptyCollection()]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]$CertificateCollection,
+
+        [Parameter(Mandatory)]
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$TrustedRoot,
+
+        [Parameter(Mandatory)]
+        [datetimeoffset]$DecisionTimeUtc
+    )
+
+    $chain = New-BaselineEvidenceCertificateChain
+    try {
+        $chain.ChainPolicy.TrustMode =
+            [System.Security.Cryptography.X509Certificates.X509ChainTrustMode]::CustomRootTrust
+        $chain.ChainPolicy.RevocationMode =
+            [System.Security.Cryptography.X509Certificates.X509RevocationMode]::Offline
+        $chain.ChainPolicy.DisableCertificateDownloads = $true
+        $chain.ChainPolicy.VerificationTime = $DecisionTimeUtc.UtcDateTime
+        $null = $chain.ChainPolicy.CustomTrustStore.Add($TrustedRoot)
+
+        $intermediate = [System.Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()
+        foreach ($candidate in $CertificateCollection) {
+            if ($candidate.Thumbprint -ine $TrustedRoot.Thumbprint) {
+                $null = $intermediate.Add($candidate)
+            }
+        }
+        $chain.ChainPolicy.ExtraStore.AddRange($intermediate)
+
+        $built = $chain.Build($Certificate)
+        $status = @($chain.ChainStatus | ForEach-Object { $_.Status })
+        $failureStatus = @(
+            $chain.ChainStatus |
+                ForEach-Object { [string]$_.Status } |
+                Where-Object { $_ -cne 'NoError' }
+        )
+        $revocationStatus = if (
+            @($status | Where-Object {
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::Revoked) -ne 0
+                }).Count -gt 0
+        ) {
+            'Revoked'
+        }
+        elseif (
+            @($status | Where-Object {
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::RevocationStatusUnknown) -ne 0 -or
+                    ($_ -band [System.Security.Cryptography.X509Certificates.X509ChainStatusFlags]::OfflineRevocation) -ne 0
+                }).Count -gt 0
+        ) {
+            'Unknown'
+        }
+        else {
+            'Good'
+        }
+        $anchor = @($chain.ChainElements | ForEach-Object { $_.Certificate })[-1]
+        $exactRoot = $null -ne $anchor -and $anchor.Thumbprint -ieq $TrustedRoot.Thumbprint
+        if (-not $exactRoot) {
+            $failureStatus = @($failureStatus) + @('PinnedRootMismatch')
+        }
+
+        return [pscustomobject][ordered]@{
+            Thumbprint = $Certificate.Thumbprint
+            LeafThumbprint = $Certificate.Thumbprint
+            RootThumbprint = if ($null -ne $anchor) { $anchor.Thumbprint } else { $null }
+            Anchor = $anchor
+            ChainTrusted = [bool]($built -and $exactRoot)
+            RevocationStatus = $revocationStatus
+            EvaluationTimeUtc = $DecisionTimeUtc
+            DecisionTimeUtc = $DecisionTimeUtc
+            EvidenceSource = 'OfflineX509Chain'
+            FailureStatus = [string[]]@($failureStatus)
+        }
+    }
+    finally {
+        $chain.Dispose()
+    }
+}
+
+function Test-BaselineExchangeEvidenceSignature {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][byte[]]$Bytes,
+        [Parameter(Mandatory)][byte[]]$SignatureBytes,
+        [Parameter(Mandatory)][string]$SignerIdentity,
+        [Parameter(Mandatory)][object[]]$AuthorizedSigner,
+        [string]$SignerSubject,
+        [System.Security.Cryptography.X509Certificates.X509Certificate2]$TrustedRoot
+    )
+
+    $signingState = @{}
+    $verification = Test-BaselineDetachedCmsSignature -CanonicalBytes $Bytes `
+        -Signature @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($SignatureBytes) } `
+        -VerificationScript {
+        param($ContentBytes, $DetachedSignatureBytes)
+
+        $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+            [Security.Cryptography.Pkcs.ContentInfo]::new($ContentBytes),
+            $true
+        )
+        $cms.Decode($DetachedSignatureBytes)
+        $cms.CheckSignature($true)
+        if ($cms.SignerInfos.Count -ne 1) { throw 'Exactly one enterprise approver is required.' }
+        $certificate = $cms.SignerInfos[0].Certificate
+        $signingState.Thumbprint = $certificate.Thumbprint
+        $attributes = @($cms.SignerInfos[0].SignedAttributes |
+                Where-Object { $_.Oid.Value -eq '1.2.840.113549.1.9.5' })
+        if ($attributes.Count -ne 1 -or $attributes[0].Values.Count -ne 1) {
+            throw 'One authenticated CMS signing time is required.'
+        }
+        $signingTime = [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new(
+            $attributes[0].Values[0].RawData
+        ).SigningTime.ToUniversalTime()
+        if ($signingTime -gt [datetime]::UtcNow) { throw 'Future CMS signing time is not accepted.' }
+
+        $decisionTimeUtc = [datetimeoffset]::UtcNow
+        $chainEvidence = if ($null -ne $TrustedRoot) {
+            Test-BaselinePinnedRootEvidenceCertificateChain -Certificate $certificate `
+                -CertificateCollection $cms.Certificates -TrustedRoot $TrustedRoot `
+                -DecisionTimeUtc $decisionTimeUtc
+        }
+        else {
+            Test-BaselineEvidenceCertificateChain -Certificate $certificate `
+                -CertificateCollection $cms.Certificates -DecisionTimeUtc $decisionTimeUtc
+        }
+        $evidenceThumbprint = [string](Get-BaselineRecordMember -Node $chainEvidence -Name 'Thumbprint')
+        if ([string]::IsNullOrWhiteSpace($evidenceThumbprint) -or
+            $evidenceThumbprint -ine $certificate.Thumbprint) {
+            throw 'ExternalEvidenceSignerChainEvidenceMismatch: chain evidence is not bound to the CMS signer certificate.'
+        }
+        if ($null -ne $TrustedRoot -and
+            [string](Get-BaselineRecordMember -Node $chainEvidence -Name 'RootThumbprint') -ine $TrustedRoot.Thumbprint) {
+            throw 'ExternalEvidenceSignerRootPinMismatch: the built chain did not terminate at the pinned root.'
+        }
+        @{
+            ContentMatched = $true
+            SignatureValid = $true
+            SignerSubject = $certificate.Subject
+            SigningTimeUtc = $signingTime.ToString('o')
+            CertificateNotBeforeUtc = $certificate.NotBefore.ToUniversalTime().ToString('o')
+            CertificateNotAfterUtc = $certificate.NotAfter.ToUniversalTime().ToString('o')
+            ChainTrusted = [bool](Get-BaselineRecordMember -Node $chainEvidence -Name 'ChainTrusted')
+            RevocationStatus = [string](Get-BaselineRecordMember -Node $chainEvidence -Name 'RevocationStatus')
+        }
+    }
+    if (-not $verification.Verified) {
+        throw "ExchangeSignatureUnverified: $($verification.Reason)."
+    }
+
+    $pinnedSigner = @($AuthorizedSigner | Where-Object {
+            [string](Get-BaselineRecordMember -Node $_ -Name 'Thumbprint') -ieq [string]$signingState.Thumbprint
+        })
+    $signerDecision = Test-BaselineExternalEvidenceSigner -SignatureVerification $verification `
+        -DeclaredSignerIdentity $SignerIdentity -DeclaredAuthority 'ExchangeOnlineChangeApproval' `
+        -AuthorizedSigner $pinnedSigner -DecisionTimeUtc ([datetimeoffset]::UtcNow)
+    if (-not $signerDecision.Authorized) {
+        throw "$($signerDecision.Reason): approved identity, role, certificate pin and offline trust/revocation are required."
+    }
+    if ($SignerSubject -and $SignerSubject -cne $verification.SignerSubject) {
+        throw 'ExternalEvidenceSignerUnauthorized: the optional subject constraint does not match the signing certificate.'
+    }
+    $signingState
+}
+
+function Invoke-BaselineExchangeGoLive {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Context,
+        [Parameter(Mandatory)][string]$EvidencePath,
+        [Parameter(Mandatory)][string]$SignaturePath,
+        [string]$SignerSubject,
+        [Parameter(Mandatory)][timespan]$MaximumEvidenceAge,
+        [Parameter(Mandatory)][string]$SignerIdentity,
+        [Parameter(Mandatory)][string]$AuthorizedSignerPath,
+        [Parameter(Mandatory)][string]$ExpectedEvidenceHash,
+        [Parameter(Mandatory)][string]$ExpectedConfigurationHash,
+        [switch]$SignEvidence,
+        [Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate
+    )
+
+    if ($ExpectedEvidenceHash -notmatch '^[a-fA-F0-9]{64}$' -or
+        $ExpectedConfigurationHash -notmatch '^[a-fA-F0-9]{64}$') {
+        throw 'ExchangeGoLiveInputsRequired: expected hashes must be SHA256 hexadecimal values.'
+    }
+    if ($MaximumEvidenceAge -le [timespan]::Zero) {
+        throw 'GoLiveMaximumEvidenceAgeNotPositive: supply a positive MaximumEvidenceAge.'
+    }
+    if ($ExpectedConfigurationHash -ine $Context.Hash) {
+        throw 'ExpectedConfigurationHashMismatch: the approved configuration digest differs from the current configuration.'
+    }
+
+    $bytes = [IO.File]::ReadAllBytes($EvidencePath)
+    $envelope = [Text.Encoding]::UTF8.GetString($bytes).TrimStart([char]0xfeff) |
+        ConvertFrom-Json -Depth 100 -DateKind String -NoEnumerate
+    $evidenceHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    if ($evidenceHash -ine $ExpectedEvidenceHash) { throw 'EvidenceHashMismatch: frozen evidence changed.' }
+    $authorizedSigner = Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
+        ConvertFrom-Json -Depth 20 -NoEnumerate
+    if ($authorizedSigner -isnot [array] -or $authorizedSigner.Count -eq 0) {
+        throw 'ExternalEvidenceSignerUnauthorized: authority metadata must be a nonempty array.'
+    }
+
+    if ($SignEvidence) {
+        if ($null -eq $SigningCertificate -or -not $SigningCertificate.HasPrivateKey) {
+            throw 'SigningCertificateRequired: an externally managed private key is required.'
+        }
+        if (Test-Path -LiteralPath $SignaturePath) {
+            throw 'SignatureAlreadyExists: frozen signatures are never overwritten.'
+        }
+        $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+            [Security.Cryptography.Pkcs.ContentInfo]::new($bytes),
+            $true
+        )
+        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
+        $null = $signer.SignedAttributes.Add(
+            [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow)
+        )
+        $cms.ComputeSignature($signer)
+        $signatureBytes = $cms.Encode()
+    }
+    else {
+        $signatureBytes = [IO.File]::ReadAllBytes($SignaturePath)
+    }
+
+    $signingState = Test-BaselineExchangeEvidenceSignature -Bytes $bytes -SignatureBytes $signatureBytes `
+        -SignerIdentity $SignerIdentity -AuthorizedSigner $authorizedSigner -SignerSubject $SignerSubject
+    $signature = @{
+        Model = 'DetachedCms'
+        Value = [Convert]::ToBase64String($signatureBytes)
+        ContentHash = (Get-BaselineEvidenceContentHash -Envelope $envelope).Hash
+        EvidenceBytes = $bytes
+        SignerIdentity = $SignerIdentity
+        AuthorizedSigner = $authorizedSigner
+        SignerSubject = $SignerSubject
+    }
+    $decision = Test-BaselineGoLive -Envelope $envelope `
+        -CatalogPath (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') `
+        -ExpectedTenantId $Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID `
+        -ExpectedDeploymentProfile 'ExchangeOnly' -ExpectedConfigurationHash $Context.Hash `
+        -MaximumEvidenceAge $MaximumEvidenceAge -Signature $signature `
+        -ExpectedEntitlement $Context.Entitlement
+    $outcome = Get-BaselineRunOutcome -Check @($envelope.Check) -GoLive $decision
+    if ($SignEvidence -and $decision.Admitted) {
+        [IO.File]::WriteAllBytes($SignaturePath, $signatureBytes)
+    }
+    $report = [ordered]@{}
+    foreach ($key in $decision.Keys) { $report[$key] = $decision[$key] }
+    $report.EvidenceHash = $evidenceHash
+    $report.SignerIdentity = $SignerIdentity
+    $report.SignerThumbprint = $signingState.Thumbprint
+    $report.Stage = if ($SignEvidence) { 'Sign' } else { 'Verify' }
+    [pscustomobject]@{ Decision = $report; Outcome = $outcome }
 }
 
 function Test-BaselineDetachedCmsSignature {
@@ -5737,7 +6135,9 @@ function Get-BaselineEvidence {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$Collection
+        [scriptblock]$Collection,
+
+        [switch]$CollectionValue
     )
 
     if ([string]::IsNullOrWhiteSpace($ControlId)) {
@@ -5759,7 +6159,12 @@ function Get-BaselineEvidence {
     # Assigning rather than wrapping keeps the shape the service returned: a scalar stays scalar
     # and a collection stays a collection, including a collection of one.
     try {
-        $payload = & $Collection
+        if ($CollectionValue) {
+            [object[]]$payload = @(& $Collection)
+        }
+        else {
+            $payload = & $Collection
+        }
     }
     catch {
         return New-BaselineEvidence -ControlId $ControlId -Source $Source -Command $Command -Value $null `
@@ -5808,7 +6213,10 @@ function Get-BaselineRecordMember {
         [object]$Node,
 
         [Parameter(Mandatory)]
-        [string]$Name
+        [string]$Name,
+
+        [Alias('PreserveCollection')]
+        [switch]$NoEnumerate
     )
 
     if ($null -eq $Node) {
@@ -5819,6 +6227,10 @@ function Get-BaselineRecordMember {
         $key = @(foreach ($declared in $Node.Keys) { [string]$declared })
         if ($key -ccontains $Name) {
             $value = $Node[$Name]
+            if ($NoEnumerate) {
+                Write-Output -NoEnumerate -InputObject $value
+                return
+            }
             return $value
         }
 
@@ -5827,6 +6239,10 @@ function Get-BaselineRecordMember {
 
     if ($Node.PSObject.Properties.Match($Name).Count -gt 0) {
         $value = $Node.PSObject.Properties[$Name].Value
+        if ($NoEnumerate) {
+            Write-Output -NoEnumerate -InputObject $value
+            return
+        }
         return $value
     }
 
@@ -6115,11 +6531,2036 @@ Add-Member -InputObject $script:BaselineControlDefinition -MemberType NoteProper
         ControlScope                  = 'ApplicableKnownControls'
     })
 
+function Assert-BaselineEmailCatalogJsonKeys {
+    param([System.Text.Json.JsonElement]$Element)
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($property in $Element.EnumerateObject()) {
+            if (-not $names.Add($property.Name)) { throw "EmailCatalogDuplicate: '$($property.Name)' occurs more than once." }
+            Assert-BaselineEmailCatalogJsonKeys $property.Value
+        }
+    } elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        foreach ($item in $Element.EnumerateArray()) { Assert-BaselineEmailCatalogJsonKeys $item }
+    }
+}
+
+function Get-BaselineEmailCatalogContract {
+    $families = @{
+        MalwareFilter = @{
+            Section = 'Anti-malware policy settings'; Plan = 'Exchange'
+            Local = @{ EnableInternalSenderAdminNotifications = [bool]; InternalSenderAdminAddress = [string]; EnableExternalSenderAdminNotifications = [bool]; ExternalSenderAdminAddress = [string]; CustomNotifications = [bool]; CustomFromName = [string]; CustomFromAddress = [string]; CustomInternalSubject = [string]; CustomInternalBody = [string]; CustomExternalSubject = [string]; CustomExternalBody = [string] }
+            Standard = @{
+                EnableFileFilter = $true; FileTypeAction = 'Reject'; ZapEnabled = $true; QuarantineTag = 'AdminOnlyAccessPolicy'
+                FileTypes = @('ace','ani','apk','app','appx','arj','bat','cab','cmd','com','deb','dex','dll','docm','elf','exe','hta','img','iso','jar','jnlp','kext','lha','lib','library','lnk','lzh','macho','msc','msi','msix','msp','mst','pif','ppa','ppam','reg','rev','scf','scr','sct','sys','uif','vb','vbe','vbs','vxd','wsc','wsf','wsh','xll','xz','z')
+            }
+            Strict = @{}
+        }
+        HostedContentFilter = @{
+            Section = 'Anti-spam policy settings / ASF settings in anti-spam policies'; Plan = 'Exchange'
+            Local = @{ EnableLanguageBlockList = [bool]; LanguageBlockList = [array]; EnableRegionBlockList = [bool]; RegionBlockList = [array] }
+            Standard = @{
+                BulkThreshold = 6; MarkAsSpamBulkMail = 'On'; SpamAction = 'MoveToJmf'; SpamQuarantineTag = 'DefaultFullAccessPolicy'
+                HighConfidenceSpamAction = 'Quarantine'; HighConfidenceSpamQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                PhishSpamAction = 'Quarantine'; PhishQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                HighConfidencePhishAction = 'Quarantine'; HighConfidencePhishQuarantineTag = 'AdminOnlyAccessPolicy'
+                BulkSpamAction = 'MoveToJmf'; BulkQuarantineTag = 'DefaultFullAccessPolicy'; BulkMovesEnabled = 'NotSet'; IntraOrgFilterState = 'Default'
+                QuarantineRetentionPeriod = 30; InlineSafetyTipsEnabled = $true; PhishZapEnabled = $true; SpamZapEnabled = $true
+                AllowedSenders = @(); AllowedSenderDomains = @(); BlockedSenders = @(); BlockedSenderDomains = @(); TestModeAction = 'None'
+                IncreaseScoreWithImageLinks = 'Off'; IncreaseScoreWithNumericIps = 'Off'; IncreaseScoreWithRedirectToOtherPort = 'Off'; IncreaseScoreWithBizOrInfoUrls = 'Off'
+                MarkAsSpamEmptyMessages = 'Off'; MarkAsSpamEmbedTagsInHtml = 'Off'; MarkAsSpamJavaScriptInHtml = 'Off'; MarkAsSpamFormTagsInHtml = 'Off'; MarkAsSpamFramesInHtml = 'Off'
+                MarkAsSpamWebBugsInHtml = 'Off'; MarkAsSpamObjectTagsInHtml = 'Off'; MarkAsSpamSensitiveWordList = 'Off'; MarkAsSpamSpfRecordHardFail = 'Off'; MarkAsSpamFromAddressAuthFail = 'Off'; MarkAsSpamNdrBackscatter = 'Off'
+            }
+            Strict = @{ BulkThreshold = 5; SpamAction = 'Quarantine'; SpamQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; BulkSpamAction = 'Quarantine'; BulkQuarantineTag = 'DefaultFullAccessWithNotificationPolicy' }
+        }
+        HostedOutboundSpamFilter = @{
+            Section = 'Outbound spam policy settings'; Plan = 'Exchange'; Local = @{}
+            Standard = @{ RecipientLimitExternalPerHour = 500; RecipientLimitInternalPerHour = 1000; RecipientLimitPerDay = 1000; ActionWhenThresholdReached = 'BlockUser'; AutoForwardingMode = 'Off'; BccSuspiciousOutboundMail = $false; BccSuspiciousOutboundAdditionalRecipients = @(); NotifyOutboundSpam = $false; NotifyOutboundSpamRecipients = @() }
+            Strict = @{ RecipientLimitExternalPerHour = 400; RecipientLimitInternalPerHour = 800; RecipientLimitPerDay = 800 }
+        }
+        AntiPhish = @{
+            Section = 'Anti-phishing policy settings for all cloud mailboxes / Impersonation settings / Phishing email thresholds'; Plan = 'ExchangeAndDefender'
+            Local = @{ TargetedUsersToProtect = [array]; TargetedDomainsToProtect = [array]; ExcludedSenders = [array]; ExcludedDomains = [array] }
+            DefenderFields = @('PhishThresholdLevel','EnableTargetedUserProtection','EnableOrganizationDomainsProtection','EnableTargetedDomainsProtection','TargetedUsersToProtect','TargetedDomainsToProtect','ExcludedSenders','ExcludedDomains','EnableMailboxIntelligence','EnableMailboxIntelligenceProtection','TargetedUserProtectionAction','TargetedDomainProtectionAction','TargetedUserQuarantineTag','TargetedDomainQuarantineTag','MailboxIntelligenceProtectionAction','MailboxIntelligenceQuarantineTag','EnableSimilarUsersSafetyTips','EnableSimilarDomainsSafetyTips','EnableUnusualCharactersSafetyTips')
+            Standard = @{
+                EnableSpoofIntelligence = $true; HonorDmarcPolicy = $true; DmarcQuarantineAction = 'Quarantine'; DmarcRejectAction = 'Reject'
+                AuthenticationFailAction = 'MoveToJmf'; SpoofQuarantineTag = 'DefaultFullAccessPolicy'; EnableFirstContactSafetyTips = $true; EnableUnauthenticatedSender = $true; EnableViaTag = $true
+                PhishThresholdLevel = 3; EnableTargetedUserProtection = $true; EnableOrganizationDomainsProtection = $true; EnableTargetedDomainsProtection = $true
+                EnableMailboxIntelligence = $true; EnableMailboxIntelligenceProtection = $true; TargetedUserProtectionAction = 'Quarantine'; TargetedDomainProtectionAction = 'Quarantine'
+                TargetedUserQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; TargetedDomainQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'
+                MailboxIntelligenceProtectionAction = 'MoveToJmf'; MailboxIntelligenceQuarantineTag = 'DefaultFullAccessPolicy'
+                EnableSimilarUsersSafetyTips = $true; EnableSimilarDomainsSafetyTips = $true; EnableUnusualCharactersSafetyTips = $true
+            }
+            Strict = @{ PhishThresholdLevel = 4; AuthenticationFailAction = 'Quarantine'; SpoofQuarantineTag = 'DefaultFullAccessWithNotificationPolicy'; MailboxIntelligenceProtectionAction = 'Quarantine'; MailboxIntelligenceQuarantineTag = 'DefaultFullAccessWithNotificationPolicy' }
+        }
+        SafeAttachment = @{
+            Section = 'Safe Attachments policy settings'; Plan = 'Defender'; Local = @{}
+            Standard = @{ Enable = $true; Action = 'Block'; QuarantineTag = 'AdminOnlyAccessPolicy'; Redirect = $false; RedirectAddress = ''; EnableBlockingEncryptedAttachments = $false; ExcludedTypesFromBlockingEncryptedAttachments = @(); QuarantineTagForBlockingEncryptedAttachments = 'DefaultFullAccessWithNotificationPolicy' }
+            Strict = @{}; BuiltIn = @{}
+        }
+        SafeLinks = @{
+            Section = 'Safe Links policy settings (Email and Click protection only)'; Plan = 'Defender'
+            Local = @{ DoNotRewriteUrls = [array]; EnableOrganizationBranding = [bool]; CustomNotificationText = [string]; UseTranslatedNotificationText = [bool] }
+            Standard = @{ EnableSafeLinksForEmail = $true; EnableForInternalSenders = $true; ScanUrls = $true; DeliverMessageAfterScan = $true; DisableURLRewrite = $false; TrackClicks = $true; AllowClickThrough = $false }
+            Strict = @{}; BuiltIn = @{ EnableForInternalSenders = $false; DisableURLRewrite = $true; AllowClickThrough = $true }
+        }
+    }
+    @{
+        Metadata = @{
+            Version = '1.0.0'
+            Source = 'https://learn.microsoft.com/defender-office-365/recommended-settings-for-eop-and-office365'
+            SourceCommit = '379db33154f4d944dbb33fce80576aff5296dfbf'
+            FileTypesSource = 'https://learn.microsoft.com/defender-office-365/anti-malware-protection-about#common-attachments-filter-in-anti-malware-policies'
+            FileTypesSourceCommit = 'a303cf1b405a37ff173ff70117802d92b98ccc05'
+            FileTypesSourceSha256 = '95D86CFB11658B9058F3ADDD54300F33D0764F1FCE4B938A8FA67085792FFCC8'
+        }
+        Excluded = @('EnableATPForSPOTeamsODB','EnableSafeDocs','AllowSafeDocsOpen','EnableSafeLinksForTeams','EnableSafeLinksForOffice','TeamsProtectionPolicy')
+        Families = $families
+    }
+}
+
+function Assert-BaselineEmailCatalogMembers {
+    param($Value, [string[]]$Required, [string[]]$Allowed, [string]$Path)
+    if ($Value -isnot [Collections.IDictionary]) { throw "EmailCatalogShape: '$Path' requires an object." }
+    foreach ($name in $Required) {
+        if ($name -cnotin @($Value.Keys)) { throw "EmailCatalogMissing: '$Path/$name' is required." }
+    }
+    foreach ($name in $Value.Keys) {
+        if ($name -cnotin $Allowed) { throw "EmailCatalogUnsupported: '$Path/$name' is unsupported." }
+    }
+}
+
+function Assert-BaselineEmailCatalogSet {
+    param($Value, [string[]]$Expected, [string]$Path)
+    if ($Value -isnot [array]) { throw "EmailCatalogType: '$Path' requires a string array." }
+    $seen = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($item in $Value) {
+        if ($item -isnot [string] -or -not $seen.Add($item) -or $item -cnotin $Expected) { throw "EmailCatalogSet: '$Path/$item' is duplicated or unsupported." }
+    }
+    foreach ($item in $Expected) {
+        if ($item -cnotin $Value) { throw "EmailCatalogMissing: '$Path/$item' is required." }
+    }
+}
+
+function Assert-BaselineEmailCatalog {
+    param($Catalog)
+    $contract = Get-BaselineEmailCatalogContract
+    $rootKeys = @($contract.Metadata.Keys) + @('ReviewedOn','Excluded','Families')
+    Assert-BaselineEmailCatalogMembers $Catalog $rootKeys $rootKeys 'Catalogue'
+    foreach ($name in $contract.Metadata.Keys) {
+        if ($Catalog[$name] -isnot [string] -or $Catalog[$name] -cne $contract.Metadata[$name]) { throw "EmailCatalogSource: '$name' is not bound to the reviewed snapshot." }
+    }
+    $reviewed = [datetime]::MinValue
+    if ($Catalog.ReviewedOn -isnot [string] -or
+        -not [datetime]::TryParseExact($Catalog.ReviewedOn, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$reviewed) -or
+        $reviewed -lt [datetime]'2026-08-10' -or $reviewed -gt [datetime]::UtcNow.Date) { throw 'EmailCatalogSource: ReviewedOn must date the pinned snapshot review, not predate it or be in the future.' }
+    Assert-BaselineEmailCatalogSet $Catalog.Excluded $contract.Excluded 'Excluded'
+    Assert-BaselineEmailCatalogMembers $Catalog.Families @($contract.Families.Keys) @($contract.Families.Keys) 'Families'
+    foreach ($family in $contract.Families.Keys) {
+        $reference = $contract.Families[$family]
+        $definition = $Catalog.Families[$family]
+        Assert-BaselineEmailCatalogMembers $definition @($reference.Keys) @($reference.Keys) $family
+        foreach ($name in @('Section','Plan')) {
+            if ($definition[$name] -isnot [string] -or $definition[$name] -cne $reference[$name]) { throw "EmailCatalogApplicability: '$family/$name' is not source-bound." }
+        }
+        Assert-BaselineEmailCatalogSet $definition.Local @($reference.Local.Keys) "$family/Local"
+        if ($reference.ContainsKey('DefenderFields')) { Assert-BaselineEmailCatalogSet $definition.DefenderFields $reference.DefenderFields "$family/DefenderFields" }
+        $fields = @($reference.Standard.Keys) + @($reference.Local.Keys)
+        $profiles = @('Standard','Strict')
+        if ($reference.ContainsKey('BuiltIn')) { $profiles += 'BuiltIn' }
+        foreach ($profile in $profiles) {
+            $required = if ($profile -eq 'Standard') { $fields } else { @($reference[$profile].Keys) }
+            $values = $definition[$profile]
+            Assert-BaselineEmailCatalogMembers $values @($required) $fields "$family/$profile"
+            foreach ($field in $values.Keys) {
+                $local = $reference.Local.ContainsKey($field)
+                $expected = $reference.Standard[$field]
+                if ($profile -ne 'Standard' -and $reference[$profile].ContainsKey($field)) { $expected = $reference[$profile][$field] }
+                $type = if ($local) { $reference.Local[$field] } elseif ($expected -is [array]) { [array] } else { $expected.GetType() }
+                $actual = $values[$field]
+                $valid = if ($type -eq [int]) { $actual -is [int] -or $actual -is [long] } else { $type.IsInstanceOfType($actual) }
+                if ($valid -and $type -eq [array]) {
+                    foreach ($item in $actual) { if ($item -isnot [string]) { $valid = $false; break } }
+                }
+                if (-not $valid) { throw "EmailCatalogType: '$family/$profile/$field' requires $($type.Name) (string members for arrays)." }
+                if (-not $local) {
+                    if ($type -eq [array]) { Assert-BaselineEmailCatalogSet $actual $expected "$family/$profile/$field" }
+                    elseif ($actual -cne $expected) { throw "EmailCatalogRecommendation: '$family/$profile/$field' does not match the pinned recommendation." }
+                }
+            }
+        }
+    }
+}
+
+function Get-BaselineEmailSettingCatalog {
+    $json = Get-Content -LiteralPath (Join-Path $PSScriptRoot '../config/exchange-email-settings.v1.json') -Raw
+    $document = [System.Text.Json.JsonDocument]::Parse([string]$json)
+    try { Assert-BaselineEmailCatalogJsonKeys $document.RootElement }
+    finally { $document.Dispose() }
+    $catalog = $json | ConvertFrom-Json -AsHashtable
+    Assert-BaselineEmailCatalog $catalog
+    $catalog
+}
+
+function Get-BaselineEmailProtectionState {
+    param($Context, [AllowEmptyCollection()][System.Collections.Generic.List[object]]$Observation)
+    $catalog = Get-BaselineEmailSettingCatalog
+    $scopeFields = @('SentTo','SentToMemberOf','RecipientDomainIs','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs')
+    $senderFields = @('From','FromMemberOf','SenderDomainIs','ExceptIfFrom','ExceptIfFromMemberOf','ExceptIfSenderDomainIs')
+    $state = @{ Families = @{}; Presets = @{}; Groups = @{}; Matrix = @() }
+    $recipients = @(Invoke-BaselineExchangeRawCollection -Command Get-Recipient -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty Identity,PrimarySmtpAddress,RecipientTypeDetails -IdentityProperty Identity -MinimumCount 1 -Observation $Observation)
+    $mailboxTypes = @('UserMailbox','SharedMailbox','RoomMailbox','EquipmentMailbox','MailUser')
+    $nonMailboxTypes = @('GuestMailUser','MailContact','MailUniversalDistributionGroup','MailUniversalSecurityGroup','DynamicDistributionGroup','RoomList','PublicFolder')
+    foreach ($recipient in $recipients) {
+        if ($recipient.RecipientTypeDetails -notin ($mailboxTypes + $nonMailboxTypes)) { throw 'EmailProtectionRecipientInventory: recipient class is unresolved or unsupported.' }
+    }
+    $state.Recipients = @($recipients | Where-Object { $_.RecipientTypeDetails -in $mailboxTypes })
+    $defender = 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)
+    foreach ($kind in @('EOP','ATP')) {
+        $state.Presets[$kind] = @()
+        if ($kind -eq 'ATP' -and -not $defender) { continue }
+        foreach ($level in @('Strict','Standard')) {
+            $state.Presets[$kind] += @(Invoke-BaselineExchangeRawCollection -Command "Get-${kind}ProtectionPolicyRule" -Arguments @{ Identity = "$level Preset Security Policy" } -RequiredProperty (@('Name','State') + $scopeFields) -IdentityProperty Name -MinimumCount 1 -MaximumCount 1 -Observation $Observation)
+        }
+    }
+    if ($defender) { $state.BuiltIn = Invoke-BaselineExchangeRawCollection -Command Get-ATPBuiltInProtectionRule -RequiredProperty Name,State,ExceptIfSentTo,ExceptIfSentToMemberOf,ExceptIfRecipientDomainIs -IdentityProperty Name -MinimumCount 1 -MaximumCount 1 -Observation $Observation }
+    foreach ($family in $catalog.Families.Keys) {
+        $definition = $catalog.Families[$family]
+        if ($definition.Plan -eq 'Defender' -and -not $defender) { continue }
+        $fields = @($definition.Standard.Keys)
+        if ($family -eq 'AntiPhish') { $fields = @($fields | Where-Object { $_ -notin $definition.DefenderFields }) }
+        if ($family -eq 'HostedOutboundSpamFilter') { $fields = @($fields | Where-Object { $_ -notin @('BccSuspiciousOutboundMail','BccSuspiciousOutboundAdditionalRecipients') }) }
+        $required = @('Name') + $fields
+        if ($definition.Plan -ne 'Defender') { $required += 'IsDefault' }
+        $policies = @(Invoke-BaselineExchangeRawCollection -Command "Get-${family}Policy" -RequiredProperty $required -IdentityProperty Name -MinimumCount 1 -Observation $Observation)
+        if ($family -eq 'HostedOutboundSpamFilter') {
+            foreach ($policy in @($policies | Where-Object { $_.IsDefault -eq $true })) {
+                foreach ($field in @('BccSuspiciousOutboundMail','BccSuspiciousOutboundAdditionalRecipients')) {
+                    if (-not (Test-BaselineNodeMember $policy $field)) { throw "ExchangeRawPropertyMissing: 'Get-${family}Policy' omitted '$field'." }
+                }
+            }
+        }
+        $conditions = if ($family -eq 'HostedOutboundSpamFilter') { $senderFields } else { $scopeFields }
+        $rules = @(Invoke-BaselineExchangeRawCollection -Command "Get-${family}Rule" -RequiredProperty (@('Name','State','Priority',"${family}Policy") + $conditions) -IdentityProperty Name -Observation $Observation)
+        $state.Families[$family] = @{ Policies = $policies; Rules = $rules }
+    }
+    $pending = [Collections.Generic.Queue[string]]::new()
+    $rules = @($state.Presets.EOP) + @($state.Presets.ATP) + @($state.Families.Values | ForEach-Object { $_.Rules })
+    if ($defender) { $rules += $state.BuiltIn }
+    foreach ($rule in $rules) {
+        foreach ($field in @('SentToMemberOf','ExceptIfSentToMemberOf','FromMemberOf','ExceptIfFromMemberOf')) {
+            foreach ($group in @(Get-BaselineRecordMember $rule $field)) { if ($group) { $pending.Enqueue([string]$group) } }
+        }
+    }
+    while ($pending.Count) {
+        $identity = $pending.Dequeue()
+        if ($state.Groups.ContainsKey($identity)) { continue }
+        $group = Invoke-BaselineExchangeRawCollection -Command Get-DistributionGroup -Arguments @{ Identity = $identity } -RequiredProperty PrimarySmtpAddress -IdentityProperty PrimarySmtpAddress -MinimumCount 1 -MaximumCount 1 -Observation $Observation
+        $members = @(Invoke-BaselineExchangeRawCollection -Command Get-DistributionGroupMember -Arguments @{ Identity = $identity; ResultSize = 'Unlimited' } -RequiredProperty PrimarySmtpAddress,RecipientType -Observation $Observation)
+        $state.Groups[$identity] = $members
+        $state.Groups[[string]$group.PrimarySmtpAddress] = $members
+        foreach ($member in $members) {
+            if ([string]::IsNullOrWhiteSpace([string]$member.PrimarySmtpAddress)) { throw 'EmailProtectionGroupUnresolved: every group member requires an SMTP identity.' }
+            if ($member.RecipientType -match 'Group') { $pending.Enqueue([string]$member.PrimarySmtpAddress) }
+        }
+    }
+    foreach ($recipient in @($Context.Configuration.controls['MDO-001'].recipientMatrix | Where-Object { $_.defender -eq $true })) {
+        $policy = Resolve-BaselineEmailPolicy $state 'AntiPhish' $recipient.address $true
+        foreach ($field in $catalog.Families.AntiPhish.DefenderFields) {
+            if (-not (Test-BaselineNodeMember $policy $field)) { throw "ExchangeRawPropertyMissing: 'Get-AntiPhishPolicy' omitted '$field'." }
+            if ($field -in @('EnableTargetedUserProtection','EnableTargetedDomainsProtection') -and (Get-BaselineRecordMember $policy $field) -isnot [bool]) { throw "ExchangeRawBooleanInvalid: 'Get-AntiPhishPolicy.$field' is not Boolean." }
+        }
+    }
+    $state
+}
+
+function Test-BaselineEmailGroupMembership {
+    param([string]$Address, [string]$Group, $Groups, [string[]]$Visited = @())
+    if ($Group -in $Visited -or -not (Test-BaselineNodeMember $Groups $Group)) { throw 'EmailProtectionGroupUnresolved: cyclic or unresolved membership.' }
+    foreach ($member in $Groups[$Group]) {
+        if ($member.RecipientType -match 'Group') {
+            if (Test-BaselineEmailGroupMembership $Address ([string]$member.PrimarySmtpAddress) $Groups ($Visited + $Group)) { return $true }
+        } elseif ([string]$member.PrimarySmtpAddress -ieq $Address) { return $true }
+    }
+    $false
+}
+
+function Test-BaselineEmailRuleScope {
+    param($Rule, [string]$Address, $Groups, [switch]$Outbound, [switch]$BuiltIn)
+    if ($Rule.State -notin @('Enabled','Disabled')) { throw 'EmailProtectionRuleState: rule state is unresolved.' }
+    if ($Rule.State -eq 'Disabled') { return $false }
+    $fields = if ($Outbound) { @('From','FromMemberOf','SenderDomainIs') } else { @('SentTo','SentToMemberOf','RecipientDomainIs') }
+    $knownScope = @('SentTo','SentToMemberOf','RecipientDomainIs','ExceptIfSentTo','ExceptIfSentToMemberOf','ExceptIfRecipientDomainIs','From','FromMemberOf','SenderDomainIs','ExceptIfFrom','ExceptIfFromMemberOf','ExceptIfSenderDomainIs')
+    foreach ($name in @(Get-BaselineRecordMemberName $Rule)) {
+        if ($name -notin $knownScope -and $name -match '^(ExceptIf)?(Recipient|Sender|SentTo|From)|^(Conditions|Exceptions)$') {
+            $unsupported = Get-BaselineRecordMember $Rule $name
+            if ($null -ne $unsupported -and @($unsupported).Count -gt 0) { throw "EmailProtectionRuleScope: '$name' is unsupported." }
+        }
+    }
+    foreach ($exception in @($false,$true)) {
+        if ($BuiltIn -and -not $exception) { continue }
+        $matches = @()
+        for ($index = 0; $index -lt $fields.Count; $index++) {
+            $field = $(if ($exception) { 'ExceptIf' }) + $fields[$index]
+            $values = Get-BaselineRecordMember $Rule $field -PreserveCollection
+            if ($null -eq $values) { throw "EmailProtectionRuleScope: '$field' is unresolved." }
+            $values = @($values)
+            if ($values.Count -eq 0) { continue }
+            $matched = $false
+            foreach ($value in $values) {
+                if ($index -eq 1) { if (Test-BaselineEmailGroupMembership $Address ([string]$value) $Groups) { $matched = $true } }
+                elseif ($index -eq 2) { if (($Address -split '@')[-1] -ieq [string]$value) { $matched = $true } }
+                elseif ($Address -ieq [string]$value) { $matched = $true }
+            }
+            $matches += $matched
+        }
+        if ($exception -and $true -in $matches) { return $false }
+        if (-not $exception -and $false -in $matches) { return $false }
+    }
+    $true
+}
+
+function Resolve-BaselineEmailPolicy {
+    param($State, [string]$Family, [string]$Address, [bool]$Defender)
+    $policies = @($State.Families[$Family].Policies)
+    $outbound = $Family -eq 'HostedOutboundSpamFilter'
+    if (-not $outbound) {
+        if ($Family -eq 'AntiPhish' -and $Defender) {
+            $matchedPreset = @{}
+            foreach ($presetKind in @('EOP','ATP')) {
+                foreach ($presetLevel in @('Strict','Standard')) {
+                    $presetRule = @($State.Presets[$presetKind] | Where-Object Name -eq "$presetLevel Preset Security Policy")
+                    if ($presetRule.Count -eq 1 -and (Test-BaselineEmailRuleScope $presetRule[0] $Address $State.Groups)) {
+                        $matchedPreset[$presetKind] = $presetLevel
+                        break
+                    }
+                }
+            }
+            if ($matchedPreset.ContainsKey('EOP') -and $matchedPreset.ContainsKey('ATP') -and $matchedPreset.EOP -cne $matchedPreset.ATP) {
+                throw 'EmailProtectionPrecedenceAmbiguous: matching EOP and ATP anti-phishing preset levels differ.'
+            }
+        }
+        $kind = if ($Family -in @('SafeLinks','SafeAttachment') -or ($Family -eq 'AntiPhish' -and $Defender)) { 'ATP' } else { 'EOP' }
+        foreach ($level in @('Strict','Standard')) {
+            $rule = @($State.Presets[$kind] | Where-Object Name -eq "$level Preset Security Policy")
+            if ($rule.Count -eq 1 -and (Test-BaselineEmailRuleScope $rule[0] $Address $State.Groups)) {
+                $selected = @($policies | Where-Object Name -eq $rule[0].Name)
+                if ($selected.Count -ne 1) { throw 'EmailProtectionPolicyMissing: effective preset policy is absent.' }
+                return $selected[0]
+            }
+        }
+    }
+    foreach ($rule in @($State.Families[$Family].Rules)) {
+        if ($rule.State -notin @('Enabled','Disabled')) { throw 'EmailProtectionRuleState: rule state is unresolved.' }
+    }
+    $rules = @($State.Families[$Family].Rules | Where-Object State -eq Enabled)
+    if (@($rules | Group-Object { $_.Priority } | Where-Object Count -gt 1).Count) { throw 'EmailProtectionPriorityAmbiguous: custom rule priorities must be unique.' }
+    foreach ($rule in $rules) {
+        if ($rule.Priority -isnot [int] -and $rule.Priority -isnot [long] -or $rule.Priority -lt 0) { throw 'EmailProtectionPriorityAmbiguous: numeric nonnegative priorities are required.' }
+    }
+    foreach ($rule in @($rules | Sort-Object { $_.Priority })) {
+        $selected = @($policies | Where-Object Name -eq $rule."${Family}Policy")
+        if ($selected.Count -ne 1) { throw 'EmailProtectionPolicyMissing: rule refers to an absent policy.' }
+        if (Test-BaselineEmailRuleScope $rule $Address $State.Groups -Outbound:$outbound) { return $selected[0] }
+    }
+    if ($Family -in @('SafeLinks','SafeAttachment')) {
+        if (-not (Test-BaselineEmailRuleScope $State.BuiltIn $Address $State.Groups -BuiltIn)) { throw 'EmailProtectionPrecedence: recipient has no effective built-in protection.' }
+        $selected = @($policies | Where-Object Name -eq 'Built-In Protection Policy')
+    } else { $selected = @($policies | Where-Object { $_.IsDefault -is [bool] -and $_.IsDefault }) }
+    if ($selected.Count -ne 1) { throw 'EmailProtectionPolicyMissing: exactly one effective default is required.' }
+    $selected[0]
+}
+
+function Test-BaselineEmailProtectionState {
+    param($State, $Context)
+    $matrix = [Collections.Generic.List[object]]::new()
+    $decision = Get-BaselineExchangeCapabilityDecision -Context $Context -Capability EmailProtection
+    if (-not $decision.Entitled) { return @{ Status = 'NotEntitled'; Reason = $decision.Reason; Matrix = @() } }
+    try {
+        $State = ConvertTo-BaselineHashableNode $State
+        $desired = $Context.Configuration.controls['MDO-001']
+        Assert-ExchangeGovernanceApproval $desired.approval ([datetimeoffset]::UtcNow)
+        try { Assert-ExchangeGovernanceSet @($State.Recipients | ForEach-Object { $_.PrimarySmtpAddress }) @($desired.recipientMatrix | ForEach-Object { $_.address }) 'Recipient matrix' }
+        catch { throw "EmailProtectionRecipientInventory: $($_.Exception.Message)" }
+        if (@($desired.recipientMatrix).Count -eq 0 -or @($desired.recipientMatrix | Group-Object { $_.address } | Where-Object Count -gt 1).Count) { throw 'EmailProtectionRecipientInventory: unique nonempty recipients are required.' }
+        $catalog = Get-BaselineEmailSettingCatalog
+        $exceptions = @($desired.settingExceptions)
+        $used = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($exception in $exceptions) {
+            if ($exception.recipient -notin @($desired.recipientMatrix | ForEach-Object { $_.address }) -or -not $catalog.Families.ContainsKey($exception.family) -or -not $catalog.Families[$exception.family].Standard.ContainsKey($exception.setting)) { throw 'EmailProtectionException: exception target must be one declared recipient and known email setting.' }
+            $reference = $catalog.Families[$exception.family].Standard[$exception.setting]
+            $value = $exception.value
+            $validType = if ($reference -is [array]) {
+                $value -is [System.Collections.IList] -and @($value | Where-Object { $_ -isnot [string] }).Count -eq 0
+            } elseif ($reference -is [int] -or $reference -is [long]) { $value -is [int] -or $value -is [long] }
+            else { $null -ne $value -and $reference.GetType().IsInstanceOfType($value) }
+            if (-not $validType) { throw 'EmailProtectionException: exception value must retain the catalogue setting type.' }
+            try { Assert-ExchangeGovernanceApproval $exception.approval ([datetimeoffset]::UtcNow) } catch { throw "EmailProtectionException: $($_.Exception.Message)" }
+            if (@($exception.value | Where-Object { [string]$_ -match '\*|/0$' }).Count) { throw 'EmailProtectionException: broad exception values are prohibited.' }
+            if (-not $used.Add("$($exception.recipient)/$($exception.family)/$($exception.setting)")) { throw 'EmailProtectionException: duplicate setting authorization.' }
+        }
+        $applied = 0
+        foreach ($recipient in $desired.recipientMatrix) {
+            $licenses = @(Get-BaselineRecordMember $Context.Entitlement recipients | Where-Object address -eq $recipient.address)
+            if ($licenses.Count -ne 1 -or 'EXCHANGE_S_ENTERPRISE' -notin @($licenses[0].servicePlans) -or ($recipient.defender -and ('ATP_ENTERPRISE' -notin @($licenses[0].servicePlans) -or 'ATP_ENTERPRISE' -notin @($Context.Entitlement.servicePlans)))) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            if (-not $recipient.defender -and 'ATP_ENTERPRISE' -notin @($licenses[0].servicePlans) -and 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)) {
+                if (@($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $catalog.Families[$_.family].Plan -eq 'Defender' }).Count) { throw 'EmailProtectionException: Defender-only setting authorization is unused for an EOP-only recipient.' }
+                $antiPhishPolicy = Resolve-BaselineEmailPolicy $State 'AntiPhish' $recipient.address $false
+                $materialDefenderFields = @($catalog.Families.AntiPhish.DefenderFields | Where-Object {
+                    if (-not (Test-BaselineNodeMember $antiPhishPolicy $_)) { return $false }
+                    $value = Get-BaselineRecordMember $antiPhishPolicy $_ -PreserveCollection
+                    if ($null -eq $value) { return $false }
+                    if ($value -is [bool]) { return $value }
+                    if ($value -is [string]) { return -not [string]::IsNullOrWhiteSpace($value) }
+                    if ($value -is [System.Collections.IList]) { return $value.Count -gt 0 }
+                    return $true
+                })
+                $usesCustomDefenderFields = $antiPhishPolicy.IsDefault -eq $false -and $antiPhishPolicy.Name -notlike '*Preset Security Policy' -and $materialDefenderFields.Count -gt 0
+                $usesBuiltInProtection = $antiPhishPolicy.IsDefault -eq $true -and (Test-BaselineEmailRuleScope $State.BuiltIn $recipient.address $State.Groups -BuiltIn)
+                if ($usesCustomDefenderFields -or $usesBuiltInProtection) { throw "EmailProtectionNotEntitled: '$($recipient.address)' requires explicitly supplied feature service plans." }
+            }
+            if (-not $recipient.defender -and 'ATP_ENTERPRISE' -in @($Context.Entitlement.servicePlans)) {
+                foreach ($rule in @($State.Presets.ATP)) {
+                    if (Test-BaselineEmailRuleScope $rule $recipient.address $State.Groups) { throw "EmailProtectionNotEntitled: '$($recipient.address)' is inside Defender preset scope without approved recipient capability." }
+                }
+            }
+            foreach ($family in $catalog.Families.Keys) {
+                $definition = $catalog.Families[$family]
+                if ($definition.Plan -eq 'Defender' -and -not $recipient.defender) { continue }
+                $policy = Resolve-BaselineEmailPolicy $State $family $recipient.address $recipient.defender
+                if (($policy.Name -like '*Preset Security Policy' -or $policy.Name -eq 'Built-In Protection Policy') -and @($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $_.family -eq $family }).Count) { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
+                $expectedName = if ($family -in @('SafeLinks','SafeAttachment') -and $recipient.expectedPolicy -eq 'Default') { 'Built-In Protection Policy' } else { $recipient.expectedPolicy }
+                if ($family -ne 'HostedOutboundSpamFilter' -and $policy.Name -ine $expectedName) { throw "EmailProtectionPrecedence: '$($recipient.address)/$family' resolves to '$($policy.Name)', not '$expectedName'." }
+                $settings = $definition.Standard.Clone()
+                if ($recipient.level -eq 'Strict') { foreach ($field in $definition.Strict.Keys) { $settings[$field] = $definition.Strict[$field] } }
+                if ($family -eq 'HostedOutboundSpamFilter' -and $policy.IsDefault -ne $true) {
+                    $settings.Remove('BccSuspiciousOutboundMail')
+                    $settings.Remove('BccSuspiciousOutboundAdditionalRecipients')
+                }
+                if ($family -eq 'AntiPhish') {
+                    if (-not $recipient.defender) { foreach ($field in $definition.DefenderFields) { $settings.Remove($field) } }
+                    else {
+                        $impersonation = $Context.Configuration.controls['MDO-009']
+                        $settings.TargetedUsersToProtect = @($impersonation.protectedUsers | ForEach-Object { ([string]$_ -split ';')[-1] })
+                        $settings.TargetedDomainsToProtect = @($impersonation.protectedDomains)
+                        foreach ($type in @('TrustedSender','TrustedDomain')) {
+                            $field = if ($type -eq 'TrustedSender') { 'ExcludedSenders' } else { 'ExcludedDomains' }
+                            $settings[$field] = @($impersonation.approvedExceptions | Where-Object exceptionType -eq $type | ForEach-Object { $_.value })
+                        }
+                    }
+                }
+                $observedSettings = @()
+                foreach ($field in $settings.Keys) {
+                    $expected = $settings[$field]
+                    $bound = @($exceptions | Where-Object { $_.recipient -eq $recipient.address -and $_.family -eq $family -and $_.setting -eq $field })
+                    if ($bound.Count) {
+                        if ($policy.Name -like '*Preset Security Policy' -or $policy.Name -eq 'Built-In Protection Policy') { throw 'EmailProtectionException: individual preset settings cannot be overridden.' }
+                        $expected = $bound[0].value; $applied++
+                    }
+                    $actual = Get-BaselineRecordMember $policy $field -PreserveCollection
+                    if ($field -eq 'TargetedUsersToProtect' -and $actual -is [System.Collections.IList]) { $actual = @($actual | ForEach-Object { ([string]$_ -split ';')[-1] }) }
+                    if (-not (Test-BaselineEmailSettingEqual $actual $expected)) { throw "EmailProtectionSettingDrift: '$($recipient.address)/$family/$field' differs from '$($recipient.level)' or its approved local value." }
+                    $observedSettings += @{ Setting = $field; Actual = $actual; Expected = $expected; Basis = $(if ($bound.Count) { 'ApprovedException' } elseif ($field -in $definition.Local) { 'LocalPolicy' } else { 'MicrosoftRecommendation' }); Source = $catalog.Source; Section = $definition.Section; ReviewedOn = $catalog.ReviewedOn }
+                }
+                $matrix.Add(@{ Recipient = $recipient.address; Family = $family; Policy = $policy.Name; Level = $recipient.level; Settings = $observedSettings })
+            }
+        }
+        if ($applied -ne $exceptions.Count) { throw 'EmailProtectionException: unused exception does not authorize this effective matrix.' }
+        @{ Status = $(if ($exceptions.Count) { 'ApprovedException' } else { 'Pass' }); Reason = 'EmailProtectionVerified: effective Exchange recipient settings and supplied entitlement reconciled; external readiness remains unverified.'; Matrix = $matrix.ToArray() }
+    } catch { @{ Status = $(if ($_.Exception.Message -like 'EmailProtectionNotEntitled:*') { 'NotEntitled' } else { 'Fail' }); Reason = $_.Exception.Message; Matrix = $matrix.ToArray() } }
+}
+
+function Test-BaselineEmailSettingEqual {
+    param($Actual, $Expected)
+
+    if ($Expected -is [bool]) {
+        return $Actual -is [bool] -and $Actual -eq $Expected
+    }
+    if ($Expected -is [int] -or $Expected -is [long]) {
+        return ($Actual -is [int] -or $Actual -is [long]) -and $Actual -eq $Expected
+    }
+    if ($Expected -is [array]) {
+        if ($Actual -isnot [System.Collections.IList]) { return $false }
+        foreach ($item in $Actual) {
+            if ($item -isnot [string]) { return $false }
+        }
+        if ($Actual.Count -ne $Expected.Count) { return $false }
+        $actualValues = [string[]]@($Actual)
+        $expectedValues = [string[]]@($Expected)
+        [Array]::Sort($actualValues, [StringComparer]::OrdinalIgnoreCase)
+        [Array]::Sort($expectedValues, [StringComparer]::OrdinalIgnoreCase)
+        for ($index = 0; $index -lt $actualValues.Count; $index++) {
+            if (-not [StringComparer]::OrdinalIgnoreCase.Equals($actualValues[$index], $expectedValues[$index])) {
+                return $false
+            }
+        }
+        return $true
+    }
+    [string]$Actual -ieq [string]$Expected
+}
+
+function Assert-ExchangeGovernanceApproval {
+    param($Approval, [datetimeoffset]$AsOf)
+
+    foreach ($field in @('reference', 'owner', 'expiresOn')) {
+        if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $Approval $field))) {
+            throw "ApprovalMissing: '$field' is required."
+        }
+    }
+    $expires = [datetimeoffset]::MinValue
+    if (-not [datetimeoffset]::TryParse([string]$Approval.expiresOn, [ref]$expires) -or $expires -le $AsOf) {
+        throw 'ApprovalExpired: an unexpired external approval reference is required.'
+    }
+}
+
+function Assert-ExchangeGovernanceSet {
+    param(
+        [AllowEmptyCollection()]$Actual,
+        [AllowEmptyCollection()]$Expected,
+        [string]$Name
+    )
+
+    $actualValues = @($Actual | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object)
+    $expectedValues = @($Expected | ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } | Sort-Object)
+    if (($actualValues -join "`n") -cne ($expectedValues -join "`n") -or
+        @($actualValues | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count) {
+        throw "SetMismatch: '$Name' does not match its approved inventory."
+    }
+}
+
+function Test-BaselineReportingState {
+    param($State, $Context)
+
+    try {
+        $desired = $Context.Configuration.controls['MDO-006']
+        $now = [datetimeoffset]::UtcNow
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $desired approval) $now
+        $address = [string]$desired.reportingMailbox
+        $mailbox = Get-BaselineRecordMember $State Mailbox
+        foreach ($field in @('PrimarySmtpAddress', 'RecipientTypeDetails', 'ForwardingAddress', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward')) {
+            if (-not (Test-BaselineNodeMember $mailbox $field)) {
+                throw "ReportingMailboxIncomplete: missing '$field'."
+            }
+        }
+        if ($address -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or
+            $mailbox.PrimarySmtpAddress -ine $address -or
+            $mailbox.RecipientTypeDetails -notin @('UserMailbox', 'SharedMailbox') -or
+            $mailbox.ForwardingAddress -or
+            $mailbox.ForwardingSmtpAddress -or
+            $mailbox.DeliverToMailboxAndForward -isnot [bool] -or
+            $mailbox.DeliverToMailboxAndForward) {
+            throw 'ReportingMailboxInvalid: one local Exchange mailbox without forwarding is required.'
+        }
+        try {
+            Assert-ExchangeGovernanceSet @($State.SecOps.SentTo) @($address) 'SecOps mailbox'
+        }
+        catch {
+            throw "ReportingSecOpsScope: $($_.Exception.Message)"
+        }
+        foreach ($field in @('PreSubmitMessageEnabled', 'PostSubmitMessageEnabled')) {
+            $configuredField = $field.Substring(0, 1).ToLowerInvariant() + $field.Substring(1)
+            $expected = Get-BaselineRecordMember $desired $configuredField
+            $actual = Get-BaselineRecordMember $State.Policy $field
+            if ($expected -isnot [bool] -or $actual -isnot [bool] -or $actual -ne $expected) {
+                throw "ReportingFeedbackDrift: '$field' does not match the approved email feedback setting."
+            }
+        }
+        $proof = Get-BaselineRecordMember $Context.Parameters reportingEvidence
+        if (-not $proof -or [string](Get-BaselineRecordMember $proof mailbox) -ine $address) {
+            throw 'ReportingEvidenceMissing: independently supplied mailbox-bound delivery evidence is required.'
+        }
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $proof approval) $now
+        $dlp = Get-BaselineRecordMember $proof dlp
+        if (-not $dlp -or
+            [string](Get-BaselineRecordMember $dlp mailbox) -ine $address -or
+            (Get-BaselineRecordMember $dlp status) -notin @('Excluded', 'NotApplicable')) {
+            throw 'ReportingDlpUnverified: an exact mailbox-bound DLP-owner handoff is required; no Purview changes are made.'
+        }
+        Assert-ExchangeGovernanceApproval (Get-BaselineRecordMember $dlp approval) $now
+        $deliveries = @(Get-BaselineRecordMember $proof deliveries)
+        if ($deliveries.Count -ne 3) {
+            throw 'ReportingDeliveryIncomplete: exactly three independently evidenced report categories are required.'
+        }
+        $identities = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($category in @('Junk', 'NotJunk', 'Phish')) {
+            $rows = @($deliveries | Where-Object { (Get-BaselineRecordMember $_ category) -ceq $category })
+            if ($rows.Count -ne 1) {
+                throw "ReportingDeliveryIncomplete: '$category' requires one report."
+            }
+            $delivery = $rows[0]
+            foreach ($field in @('messageId', 'microsoftSubmissionId', 'feedbackMessageId', 'reporter')) {
+                $value = [string](Get-BaselineRecordMember $delivery $field)
+                if ([string]::IsNullOrWhiteSpace($value) -or
+                    ($field -ne 'reporter' -and -not $identities.Add("$field/$value"))) {
+                    throw "ReportingDeliveryIncomplete: '$category/$field' must identify an independent receipt."
+                }
+            }
+            $preserved = Get-BaselineRecordMember $delivery originalMessagePreserved
+            $received = [datetimeoffset]::MinValue
+            if ([string](Get-BaselineRecordMember $delivery recipient) -ine $address -or
+                [string](Get-BaselineRecordMember $delivery reporter) -notmatch '^[^@\s*]+@[^@\s*]+\.[^@\s*]+$' -or
+                $preserved -isnot [bool] -or
+                -not $preserved -or
+                -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $delivery receivedAt), [ref]$received) -or
+                $received -gt $now -or
+                $received -lt $now.AddDays(-30)) {
+                throw "ReportingDeliveryInvalid: '$category' needs a recent, correctly routed receipt preserving the original message."
+            }
+        }
+        @{
+            Status = 'Pass'
+            Reason = 'ReportingVerified: approved Exchange mailbox, feedback and independent delivery records reconciled; not a live delivery test.'
+            ExternalReadiness = 'Unverified'
+        }
+    }
+    catch {
+        @{
+            Status = 'Fail'
+            Reason = $_.Exception.Message
+            ExternalReadiness = 'Unverified'
+        }
+    }
+}
+
 function Get-BaselineControlRegistry {
     [CmdletBinding()]
     param()
 
     return , (New-BaselineControlRegistry -Definition $script:BaselineControlDefinition)
+}
+
+function Get-BaselineExchangeManifest {
+    [CmdletBinding()]
+    param()
+
+    $manifest = Get-Content (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') -Raw | ConvertFrom-Json
+    $canonical = ConvertTo-CanonicalJson -InputObject $manifest
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))).ToLowerInvariant()
+    $manifest | Add-Member -NotePropertyName Hash -NotePropertyValue $hash
+    $manifest
+}
+
+function Assert-BaselineExchangeScope {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][System.Collections.IDictionary]$Configuration)
+
+    $manifest = Get-BaselineExchangeManifest
+    if ($Configuration.metadata.deploymentProfile -cne $manifest.Profile -or
+        $Configuration.metadata.version -cne $manifest.Version) {
+        throw 'ExchangeScopeViolation: only the versioned ExchangeOnly profile is accepted.'
+    }
+    foreach ($key in $Configuration.Keys) {
+        if ($key -cnotin @('$schema', 'metadata', 'controls')) {
+            throw "ExchangeScopeViolation: '$key' is not an Exchange profile field."
+        }
+    }
+    $controls = $Configuration.controls
+    if ($null -eq $controls) { throw 'ExchangeControlMissing: controls are required.' }
+    foreach ($controlId in $controls.Keys) {
+        if ($controlId -cnotin $manifest.ControlId) { throw "ExchangeScopeViolation: '$controlId' is excluded." }
+    }
+    foreach ($controlId in $manifest.ControlId) {
+        if (-not $controls.Contains($controlId)) { throw "ExchangeControlMissing: '$controlId' is required." }
+    }
+    $template = Get-Content (Join-Path $PSScriptRoot '../config/exchange-only.v1.json') -Raw |
+        ConvertFrom-Json -AsHashtable
+    foreach ($controlId in $controls.Keys) {
+        foreach ($member in $controls[$controlId].Keys) {
+            if (-not $template.controls[$controlId].Contains($member)) {
+                throw "ExchangeScopeViolation: '$controlId.$member' is not a retained setting."
+            }
+        }
+        foreach ($member in $template.controls[$controlId].Keys) {
+            if (-not $controls[$controlId].Contains($member)) {
+                throw "ExchangeControlMissing: '$controlId.$member' is required."
+            }
+        }
+    }
+    $schemaPath = Join-Path $PSScriptRoot '../config/exchange-only.schema.v1.json'
+    if (-not (Test-Json -Json ($Configuration | ConvertTo-Json -Depth 100) -SchemaFile $schemaPath -ErrorAction SilentlyContinue)) {
+        throw 'ExchangeSchemaInvalid: configuration settings do not satisfy the versioned Exchange schema.'
+    }
+    $manifest
+}
+
+function ConvertTo-BaselineDomainInventory {
+    [CmdletBinding()]
+    param(
+        [AllowNull()][object]$Inventory,
+        [Parameter(Mandatory)][string]$TenantId
+    )
+
+    if ($null -eq $Inventory) { return $null }
+    if ($Inventory -isnot [System.Collections.IDictionary] -and $Inventory -isnot [pscustomobject]) {
+        throw 'DomainInventoryRequired: supply an explicit domain inventory object.'
+    }
+    $boundTenant = [string](Get-BaselineRecordMember -Node $Inventory -Name 'tenantId')
+    if (-not [string]::IsNullOrWhiteSpace($boundTenant) -and $boundTenant -ine $TenantId) {
+        throw 'DomainInventoryTenantInvalid: tenantId must match the active tenant GUID.'
+    }
+    ConvertTo-ImmutableBaselineNode -Node $Inventory
+}
+
+function Get-BaselineExchangeCapabilityDecision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Context,
+        [Parameter(Mandatory)]
+        [ValidateSet('ExchangeOnline', 'EmailProtection', 'AtpPresets', 'PriorityAccountProtection', 'AutomatedInvestigation')]
+        [string]$Capability
+    )
+
+    $plans = @((Get-BaselineRecordMember -Node (Get-BaselineRecordMember -Node $Context -Name 'Entitlement') -Name 'servicePlans'))
+    $required = if ($Capability -in @('AtpPresets', 'PriorityAccountProtection', 'AutomatedInvestigation')) {
+        'ATP_ENTERPRISE'
+    }
+    else {
+        'EXCHANGE_S_ENTERPRISE'
+    }
+    $entitled = $required -cin $plans
+    [pscustomobject][ordered]@{
+        Name = $Capability
+        Entitled = $entitled
+        Status = if ($entitled) { 'Pass' } else { 'NotEntitled' }
+        Reason = if ($entitled) {
+            "ExchangeCapabilityConfirmed: '$required' is present."
+        }
+        else {
+            "ExchangeNotEntitled: '$required' is not confirmed."
+        }
+    }
+}
+
+function Get-BaselineExchangeContext {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ConfigurationPath,
+        [Parameter(Mandatory)][string]$ParameterPath,
+        [switch]$ForActionPlanning
+    )
+
+    $configuration = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $parameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $resolved = Convert-BaselinePlaceholderNode -Node $configuration -Parameter $parameters
+    $manifest = Assert-BaselineExchangeScope -Configuration $resolved
+    $canonical = ConvertTo-CanonicalJson -InputObject $resolved
+    if ($canonical -match $script:PlaceholderScanPattern) {
+        throw 'ExchangeInputUnresolved: an administrator input remains unresolved.'
+    }
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($canonical))).ToLowerInvariant()
+    $entitlement = Get-BaselineRecordMember -Node $parameters -Name 'entitlement'
+    $context = [pscustomobject][ordered]@{
+        Configuration = $resolved
+        Manifest = $manifest
+        Parameters = $parameters
+        DeploymentProfile = 'ExchangeOnly'
+        Hash = $hash
+        Entitlement = $entitlement
+        Algorithm = 'SHA256'
+        GatewayDeclared = $false
+    }
+    if ($ForActionPlanning) {
+        $decision = Get-BaselineExchangeCapabilityDecision -Context $context -Capability 'EmailProtection'
+        if (-not $decision.Entitled) { throw $decision.Reason }
+    }
+    $context
+}
+
+function Invoke-BaselineExchangeRawCollection {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Command,
+        [hashtable]$Arguments = @{},
+        [string[]]$RequiredProperty = @(),
+        [string[]]$IdentityProperty = @(),
+        [int]$MinimumCount = 0,
+        [int]$MaximumCount = [int]::MaxValue,
+        [Parameter(Mandatory)][AllowEmptyCollection()][System.Collections.Generic.List[object]]$Observation
+    )
+
+    $raw = [System.Collections.Generic.List[object]]::new()
+    $warningRecord = @()
+    $startedAtUtc = [datetimeoffset]::UtcNow
+    $failure = $null
+    try {
+        & $Command @Arguments -ErrorAction Stop -WarningAction Continue -WarningVariable warningRecord |
+            ForEach-Object { $raw.Add($_) }
+        if ($raw.Count -lt $MinimumCount -or $raw.Count -gt $MaximumCount) {
+            throw "ExchangeRawCardinality: '$Command' returned $($raw.Count) objects."
+        }
+        $identity = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($item in $raw) {
+            $names = @(Get-BaselineRecordMemberName -Node $item)
+            foreach ($property in $RequiredProperty) {
+                if ($property -notin $names) { throw "ExchangeRawPropertyMissing: '$Command' omitted '$property'." }
+            }
+            if ($IdentityProperty.Count -gt 0) {
+                $value = $null
+                foreach ($property in $IdentityProperty) {
+                    if ($property -notin $names) { continue }
+                    $candidate = Get-BaselineRecordMember -Node $item -Name $property
+                    if ($candidate -is [string] -and -not [string]::IsNullOrWhiteSpace($candidate)) {
+                        $value = $candidate
+                        break
+                    }
+                }
+                if ($null -eq $value -or -not $identity.Add($value)) {
+                    throw "ExchangeRawIdentityInvalid: '$Command' returned an absent or duplicate '$($IdentityProperty -join '|')'."
+                }
+            }
+            $names = @(Get-BaselineRecordMemberName -Node $item)
+            if ('value' -cin $names -or '@odata.nextLink' -cin $names) {
+                throw "ExchangeRawPageEnvelopeUnexpected: '$Command' returned a page envelope instead of raw objects."
+            }
+        }
+        $truncation = @($warningRecord | ForEach-Object { [string]$_ } | Where-Object {
+                $_ -match '(?i)more results|truncat'
+            })
+        if ($truncation.Count -gt 0) {
+            throw "ExchangeRawTruncated: '$Command' reported incomplete output. $($truncation -join ' ')"
+        }
+    }
+    catch {
+        $failure = $_
+    }
+    finally {
+        $finishedAtUtc = [datetimeoffset]::UtcNow
+        $argumentCopy = [ordered]@{}
+        foreach ($name in $Arguments.Keys) { $argumentCopy[[string]$name] = $Arguments[$name] }
+        $paging = if ($argumentCopy.Contains('ResultSize') -and
+            [string]$argumentCopy.ResultSize -ceq 'Unlimited') {
+            'ResultSizeUnlimited'
+        }
+        else {
+            'CommandDefault'
+        }
+        $observationRecord = ConvertTo-ImmutableBaselineNode -Node ([ordered]@{
+                Command = $Command
+                Arguments = $argumentCopy
+                StartedAtUtc = $startedAtUtc.ToString('o')
+                FinishedAtUtc = $finishedAtUtc.ToString('o')
+                Complete = ($null -eq $failure)
+                Raw = [object[]]$raw.ToArray()
+                Warnings = [string[]]@($warningRecord | ForEach-Object { [string]$_ })
+                Paging = $paging
+                ResultSize = if ($argumentCopy.Contains('ResultSize')) { $argumentCopy.ResultSize } else { $null }
+                Error = if ($null -eq $failure) { $null } else { $failure.Exception.Message }
+            })
+        $Observation.Add($observationRecord)
+    }
+    if ($null -ne $failure) { throw $failure }
+    $raw.ToArray()
+}
+
+function Read-BaselineExchangeOperationalArtifact {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ControlId,
+        [Parameter(Mandatory)][object]$Context
+    )
+
+    $operational = Get-BaselineRecordMember -Node $Context.Parameters -Name 'operationalEvidence'
+    $reference = Get-BaselineRecordMember -Node $operational -Name $ControlId
+    $path = [string](Get-BaselineRecordMember -Node $reference -Name 'path')
+    if ([string]::IsNullOrWhiteSpace($path) -or -not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        throw "ExchangeOperationalArtifactMissing: '$ControlId' requires supplied offline evidence."
+    }
+    try {
+        $document = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    }
+    catch {
+        throw "ExchangeOperationalArtifactInvalid: '$ControlId': $($_.Exception.Message)"
+    }
+    if ([string](Get-BaselineRecordMember $document 'ControlId') -cne $ControlId) {
+        throw "ExchangeOperationalArtifactControlMismatch: '$ControlId' was not supplied."
+    }
+    if ([string](Get-BaselineRecordMember $document 'TenantId') -cne [string]$Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID) {
+        throw 'ExchangeOperationalArtifactTenantMismatch: artifact tenant binding is wrong.'
+    }
+    if ([string](Get-BaselineRecordMember $document 'ConfigurationHash') -ine [string]$Context.Hash) {
+        throw 'ExchangeOperationalArtifactConfigurationMismatch: artifact configuration binding is wrong.'
+    }
+    if ([string](Get-BaselineRecordMember $document 'ManifestHash') -ine [string]$Context.Manifest.Hash) {
+        throw 'ExchangeOperationalArtifactManifestMismatch: artifact manifest binding is wrong.'
+    }
+    $generated = [datetimeoffset]::MinValue
+    if (-not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $document 'GeneratedAtUtc'), [ref]$generated)) {
+        throw 'ExchangeOperationalArtifactTimeInvalid: GeneratedAtUtc is required.'
+    }
+    if ($generated -gt [datetimeoffset]::UtcNow.AddMinutes(1)) {
+        throw 'ExchangeOperationalArtifactFuture: future evidence is refused.'
+    }
+    if ($generated -lt [datetimeoffset]::UtcNow.AddHours(-48)) {
+        throw 'ExchangeOperationalArtifactStale: evidence exceeded its maximum age.'
+    }
+    $signature = Get-BaselineRecordMember $document 'Signature'
+    if ($null -eq $signature -or [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $signature 'Value'))) {
+        throw 'ExchangeOperationalArtifactUnsigned: detached CMS evidence is required.'
+    }
+    $authorized = @(Get-BaselineRecordMember $reference 'authorizedSigner')
+    if ($authorized.Count -eq 0) {
+        throw 'ExchangeOperationalArtifactUnauthorized: a pinned signer is required.'
+    }
+    $trustedRootCertificate = $null
+    $readerCreatedTrustedRoot = $false
+    $referenceMember = @(Get-BaselineRecordMemberName -Node $reference)
+    if ('trustedRoot' -cin $referenceMember) {
+        $trustedRootReference = Get-BaselineRecordMember -Node $reference -Name 'trustedRoot'
+        if ($null -eq $trustedRootReference) {
+            throw 'ExchangeOperationalArtifactTrustedRootUnreadable: explicitly supplied trustedRoot cannot be null.'
+        }
+        $trustedRootPath = [string](Get-BaselineRecordMember -Node $trustedRootReference -Name 'path')
+        $trustedRootHash = [string](Get-BaselineRecordMember -Node $trustedRootReference -Name 'sha256')
+        if ([string]::IsNullOrWhiteSpace($trustedRootPath) -or
+            -not (Test-Path -LiteralPath $trustedRootPath -PathType Leaf)) {
+            throw 'ExchangeOperationalArtifactTrustedRootUnreadable: trustedRoot.path must name a readable certificate file.'
+        }
+        if ($trustedRootHash -cnotmatch '^[0-9A-Fa-f]{64}$') {
+            throw 'ExchangeOperationalArtifactTrustedRootHashInvalid: trustedRoot.sha256 must be an exact SHA-256 hexadecimal digest.'
+        }
+        try {
+            $trustedRootBytes = [IO.File]::ReadAllBytes($trustedRootPath)
+        }
+        catch {
+            throw "ExchangeOperationalArtifactTrustedRootUnreadable: $($_.Exception.Message)"
+        }
+        $actualTrustedRootHash = [Security.Cryptography.SHA256]::HashData($trustedRootBytes)
+        $expectedTrustedRootHash = [Convert]::FromHexString($trustedRootHash)
+        if (-not [Security.Cryptography.CryptographicOperations]::FixedTimeEquals(
+                $actualTrustedRootHash,
+                $expectedTrustedRootHash
+            )) {
+            throw 'ExchangeOperationalArtifactTrustedRootHashMismatch: the trusted root certificate bytes do not match the pinned digest.'
+        }
+        try {
+            $trustedRootCertificate =
+                [Security.Cryptography.X509Certificates.X509Certificate2]::new($trustedRootBytes)
+            $readerCreatedTrustedRoot = $true
+        }
+        catch {
+            throw "ExchangeOperationalArtifactTrustedRootInvalid: the pinned bytes are not a readable X.509 certificate. $($_.Exception.Message)"
+        }
+    }
+    try {
+        $signatureBytes = [Convert]::FromBase64String([string](Get-BaselineRecordMember $signature 'Value'))
+    }
+    catch {
+        if ($readerCreatedTrustedRoot) { $trustedRootCertificate.Dispose() }
+        throw 'ExchangeOperationalArtifactSignatureMalformed: detached CMS is not valid base64.'
+    }
+    $signedDocument = [ordered]@{}
+    foreach ($member in $document.Keys) {
+        if ([string]$member -cne 'Signature') { $signedDocument[$member] = $document[$member] }
+    }
+    $signedBytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $signedDocument))
+    $signatureArguments = @{
+        Bytes = $signedBytes
+        SignatureBytes = $signatureBytes
+        SignerIdentity = [string](Get-BaselineRecordMember $reference 'signerIdentity')
+        AuthorizedSigner = $authorized
+    }
+    if ($trustedRootCertificate -is [Security.Cryptography.X509Certificates.X509Certificate2]) {
+        $signatureArguments.TrustedRoot = $trustedRootCertificate
+    }
+    try {
+        $signingState = Test-BaselineExchangeEvidenceSignature @signatureArguments
+    }
+    finally {
+        if ($readerCreatedTrustedRoot) { $trustedRootCertificate.Dispose() }
+    }
+    $document.SignatureVerified = $true
+    $document.SignerThumbprint = $signingState.Thumbprint
+    $document
+}
+
+function Invoke-BaselineExchangeRegistry {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [object]$Context
+    )
+
+    $retainedControlId = @((Get-BaselineExchangeManifest).ControlId)
+    $registry = @(foreach ($collection in @(Get-BaselineControlRegistry)) { foreach ($entry in $collection) { $entry } })
+    $expected = @(foreach ($collection in @(New-BaselineControlRegistry -Definition $script:BaselineControlDefinition)) { foreach ($entry in $collection) { $entry } })
+
+    try {
+        $null = New-BaselineControlRegistry -Definition $registry
+    }
+    catch {
+        throw "ExchangeRegistryInvalid: $($_.Exception.Message)"
+    }
+
+    if ($registry.Count -ne $expected.Count) {
+        throw "ExchangeRegistryInvalid: the complete registry is required; expected $($expected.Count) entries and received $($registry.Count)."
+    }
+
+    for ($index = 0; $index -lt $expected.Count; $index++) {
+        $entry = $registry[$index]
+        $definition = $expected[$index]
+        $controlId = [string](Get-BaselineRecordMember -Node $entry -Name 'ControlId')
+        if ($controlId -cne [string](Get-BaselineRecordMember -Node $definition -Name 'ControlId')) {
+            throw "ExchangeRegistryInvalid: registry position $index does not retain the authoritative control order."
+        }
+
+        if ($controlId -cin $retainedControlId) {
+        foreach ($member in $script:ControlRegistryMember) {
+            $actualValue = @(Get-BaselineRecordMember -Node $entry -Name $member)
+            $expectedValue = @(Get-BaselineRecordMember -Node $definition -Name $member)
+            if ($actualValue.Count -ne $expectedValue.Count -or
+                @(Compare-Object -ReferenceObject $expectedValue -DifferenceObject $actualValue -SyncWindow 0).Count -ne 0) {
+                throw "ExchangeRegistryInvalid: '$controlId' does not match the authoritative '$member' contract."
+            }
+        }
+
+        foreach ($commandMember in @('Collector', 'Evaluator')) {
+            $commandName = [string](Get-BaselineRecordMember -Node $entry -Name $commandMember)
+            $resolved = @(Get-Command -Name $commandName -CommandType Function -ErrorAction SilentlyContinue)
+            if ($resolved.Count -ne 1) {
+                throw "ExchangeRegistryInvalid: '$controlId' names a non-callable $($commandMember.ToLowerInvariant()) '$commandName'."
+            }
+        }
+        }
+    }
+
+    $configuration = Get-BaselineRecordMember -Node $Context -Name 'Configuration'
+    $manifest = Assert-BaselineExchangeScope -Configuration $configuration
+    $configuredControls = Get-BaselineRecordMember -Node $configuration -Name 'controls'
+    if ($null -eq $configuredControls -or
+        -not ($configuredControls -is [System.Collections.IDictionary] -or $configuredControls -is [System.Management.Automation.PSCustomObject])) {
+        throw 'ExchangeRegistryInvalid: Context.Configuration.controls must name the retained Exchange controls.'
+    }
+
+    $configuredControlId = @($manifest.ControlId)
+    $unknownControlId = @($configuredControlId | Where-Object { $_ -cnotin @($expected.ControlId) })
+    if ($unknownControlId.Count -gt 0) {
+        throw "ExchangeRegistryInvalid: configuration names unknown controls '$($unknownControlId -join ', ')'."
+    }
+
+    $selected = @($registry | Where-Object { [string]$_.ControlId -cin $configuredControlId })
+    if ($selected.Count -ne $configuredControlId.Count) {
+        throw 'ExchangeRegistryInvalid: every configured control must resolve to exactly one retained registry entry.'
+    }
+
+    $parameters = Get-BaselineRecordMember -Node $Context -Name 'Parameters'
+    $entitlement = Get-BaselineRecordMember -Node $Context -Name 'Entitlement'
+    $servicePlan = @(Get-BaselineRecordMember -Node $entitlement -Name 'servicePlans')
+    $domain = [string](Get-BaselineRecordMember -Node $parameters -Name 'PRIMARY_SMTP_DOMAIN')
+
+    foreach ($entry in $selected) {
+        $controlId = [string]$entry.ControlId
+        $settings = Get-BaselineRecordMember -Node $configuredControls -Name $controlId
+        $evidence = $null
+        $result = $null
+        $observations = [System.Collections.Generic.List[object]]::new()
+
+        try {
+            $requiredPlan = if (@($entry.Prerequisite | Where-Object { $_ -like 'MDO *' }).Count -gt 0) {
+                'ATP_ENTERPRISE'
+            }
+            else {
+                'EXCHANGE_S_ENTERPRISE'
+            }
+
+            if ($requiredPlan -cnotin $servicePlan) {
+                $reason = "ExchangeNotEntitled: '$requiredPlan' is not confirmed for '$controlId'."
+                $evidence = New-BaselineEvidence -ControlId $controlId -Source 'SuppliedExternalEntitlement' `
+                    -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason $reason
+                $result = New-ControlResult -ControlId $controlId -Status 'NotEntitled' -Reason $reason -Evidence $evidence
+            }
+            else {
+                $collectorName = [string]$entry.Collector
+                $collector = Get-Command -Name $collectorName -CommandType Function -ErrorAction Stop
+                $collectorArguments = @{}
+                foreach ($candidate in ([ordered]@{
+                        ControlId = $controlId
+                        Context = $Context
+                        ExchangeContext = $Context
+                        DesiredState = $settings
+                        ExpectedDomain = $domain
+                    }).GetEnumerator()) {
+                    if ($collector.Parameters.ContainsKey($candidate.Key)) {
+                        $collectorArguments[$candidate.Key] = $candidate.Value
+                    }
+                }
+                switch ($controlId) {
+                    'EXO-001' {
+                        $collectorArguments = @{
+                            Collection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-AcceptedDomain' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } `
+                                    -RequiredProperty @('Name', 'DomainName', 'DomainType') `
+                                    -IdentityProperty 'DomainName' -Observation $observations
+                            }
+                        }
+                    }
+                    'EXO-002' {
+                        $collectorArguments = @{
+                            TransportConfigCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-TransportConfig' `
+                                    -RequiredProperty @('SmtpClientAuthenticationDisabled', 'ExternalPostmasterAddress') `
+                                    -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            CasMailboxCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-CASMailbox' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'SmtpClientAuthenticationDisabled') `
+                                    -IdentityProperty 'Identity' -Observation $observations
+                            }
+                        }
+                    }
+                    'EXO-004' {
+                        $collectorArguments = @{
+                            OutboundSpamPolicyCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-HostedOutboundSpamFilterPolicy' `
+                                    -RequiredProperty @('Identity', 'Name', 'AutoForwardingMode') -IdentityProperty 'Identity' `
+                                    -MinimumCount 1 -Observation $observations
+                            }
+                            OutboundSpamRuleCollection = {
+                                if ($null -eq (Get-Command -Name 'Get-HostedOutboundSpamFilterRule' -ErrorAction SilentlyContinue)) {
+                                    return [object[]]::new(0)
+                                }
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-HostedOutboundSpamFilterRule' `
+                                    -RequiredProperty @('Name', 'State', 'HostedOutboundSpamFilterPolicy') `
+                                    -IdentityProperty 'Name' -Observation $observations
+                            }
+                            MailboxCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-Mailbox' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } `
+                                    -RequiredProperty @('Identity', 'PrimarySmtpAddress', 'ForwardingAddress', 'ForwardingSmtpAddress') `
+                                    -IdentityProperty 'Identity' -MinimumCount 1 -Observation $observations
+                            }
+                            InboxRuleCollection = {
+                                param($mailbox)
+                                foreach ($item in $mailbox) {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-InboxRule' `
+                                        -Arguments @{ Mailbox = [string]$item.Identity; IncludeHidden = $true; ResultSize = 'Unlimited' } `
+                                        -RequiredProperty @('Identity', 'Name', 'Enabled', 'ForwardTo', 'RedirectTo', 'ForwardAsAttachmentTo') `
+                                        -IdentityProperty 'Identity' -Observation $observations
+                                }
+                            }
+                        }
+                    }
+                    'EXO-005' {
+                        $collectorArguments = @{ Collection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-TransportConfig' `
+                                    -RequiredProperty @('ExternalPostmasterAddress') -MinimumCount 1 -MaximumCount 1 `
+                                    -Observation $observations
+                            } }
+                    }
+                    'EXO-006' {
+                        $collectorArguments = @{
+                            OrganizationConfigCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-OrganizationConfig' `
+                                    -RequiredProperty @('AuditDisabled') -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            AuditBypassAssociationCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-MailboxAuditBypassAssociation' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'AuditBypassEnabled') `
+                                    -IdentityProperty 'Identity' -Observation $observations
+                            }
+                        }
+                    }
+                    'EXO-007' { $collectorArguments = @{ Collection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ExternalInOutlook' `
+                                    -RequiredProperty @('Enabled', 'AllowList') -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            } } }
+                    'EXO-008' { $collectorArguments = @{ Collection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-RemoteDomain' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'DomainName') `
+                                    -IdentityProperty 'Identity' -MinimumCount 1 -Observation $observations
+                            } } }
+                    'EXO-009' {
+                        $collectorArguments = @{
+                            OrganizationConfigCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-OrganizationConfig' `
+                                    -Arguments @{ RetrieveEwsOperationAccessPolicy = $true } -MinimumCount 1 -MaximumCount 1 `
+                                    -Observation $observations
+                            }
+                            CasMailboxPlanCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-CASMailboxPlan' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'PopEnabled', 'ImapEnabled') `
+                                    -IdentityProperty 'Identity' -Observation $observations
+                            }
+                            CasMailboxCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-CASMailbox' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity') `
+                                    -IdentityProperty 'Identity' -Observation $observations
+                            }
+                        }
+                    }
+                    'EXO-010' {
+                        $collectorArguments = @{
+                            RoleGroupCollection = {
+                                $roleGroups = @(
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-RoleGroup' `
+                                        -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'Name') `
+                                        -IdentityProperty 'Identity' -Observation $observations
+                                )
+                                foreach ($group in $roleGroups) {
+                                    $joined = [ordered]@{}
+                                    foreach ($name in @(Get-BaselineRecordMemberName -Node $group)) {
+                                        $joined[$name] = Get-BaselineRecordMember -Node $group -Name $name
+                                    }
+                                    $identity = [string](Get-BaselineRecordMember -Node $group -Name 'Identity')
+                                    $memberRecords = [System.Collections.Generic.List[object]]::new()
+                                    $joined.Members = @(
+                                        foreach ($member in @(Invoke-BaselineExchangeRawCollection `
+                                                -Command 'Get-RoleGroupMember' `
+                                                -Arguments @{ Identity = $identity; ResultSize = 'Unlimited' } `
+                                                -IdentityProperty @('PrimarySmtpAddress', 'Identity') `
+                                                -Observation $observations)) {
+                                            $memberNames = @(Get-BaselineRecordMemberName -Node $member)
+                                            $addressValue = if ('PrimarySmtpAddress' -cin $memberNames) {
+                                                Get-BaselineRecordMember -Node $member -Name 'PrimarySmtpAddress'
+                                            }
+                                            else { $null }
+                                            $identityValue = if ('Identity' -cin $memberNames) {
+                                                Get-BaselineRecordMember -Node $member -Name 'Identity'
+                                            }
+                                            else { $null }
+                                            $source = if ($addressValue -is [string] -and
+                                                -not [string]::IsNullOrWhiteSpace($addressValue)) {
+                                                'PrimarySmtpAddress'
+                                            }
+                                            elseif ($identityValue -is [string] -and
+                                                -not [string]::IsNullOrWhiteSpace($identityValue)) {
+                                                'Identity'
+                                            }
+                                            else {
+                                                throw "ExchangeRawIdentityInvalid: 'Get-RoleGroupMember' returned a member with no string PrimarySmtpAddress or Identity."
+                                            }
+                                            $canonicalMember = if ($source -ceq 'PrimarySmtpAddress') {
+                                                ([string]$addressValue).Trim().ToLowerInvariant()
+                                            }
+                                            else {
+                                                ([string]$identityValue).Trim()
+                                            }
+                                            $memberRecords.Add([ordered]@{
+                                                    Group = [string]$joined.Name
+                                                    Member = $canonicalMember
+                                                    IdentitySource = $source
+                                                    Raw = $member
+                                                })
+                                            $canonicalMember
+                                        }
+                                    )
+                                    $joined.MemberRecords = [object[]]$memberRecords.ToArray()
+                                    [pscustomobject]$joined
+                                }
+                            }
+                            ManagementRoleAssignmentCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ManagementRoleAssignment' `
+                                    -RequiredProperty @('Identity', 'Role', 'RoleAssignee') -IdentityProperty 'Identity' `
+                                    -Observation $observations
+                            }
+                            ActivePimAssignmentCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ActivePimAssignment' `
+                                    -Arguments @{ Identity = [string]$Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID } `
+                                    -Observation $observations
+                            }
+                            EligiblePimAssignmentCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-EligiblePimAssignment' `
+                                    -Arguments @{ Identity = [string]$Context.Parameters.MICROSOFT_ENTRA_TENANT_GUID } `
+                                    -Observation $observations
+                            }
+                            AccessReviewCollection = {
+                                $governedRole = [string[]]@(
+                                    foreach ($assignment in @(Get-BaselineRecordMember -Node $settings -Name 'assignments')) {
+                                        [string](Get-BaselineRecordMember -Node $assignment -Name 'Role')
+                                    }
+                                )
+                                $canonicalGovernedRole = [string[]]@(
+                                    $governedRole |
+                                        ForEach-Object { ([string]$_).Trim().ToLowerInvariant() } |
+                                        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                                        Sort-Object -Unique
+                                )
+                                $review = @(Invoke-BaselineExchangeRawCollection -Command 'Get-AccessReview' `
+                                    -RequiredProperty @('displayName', 'scopeRoleDefinitionId', 'lastCompletedDateTime') `
+                                    -Observation $observations)
+                                $returnedRole = [string[]]@(
+                                    foreach ($record in $review) {
+                                        $role = [string](Get-BaselineRecordMember -Node $record -Name 'scopeRoleDefinitionId')
+                                        if ([string]::IsNullOrWhiteSpace($role)) {
+                                            throw 'AccessReviewRoleMissing: a normalized access review carries no governed role.'
+                                        }
+                                        $role.Trim().ToLowerInvariant()
+                                    }
+                                )
+                                if (@($returnedRole | Sort-Object -Unique).Count -ne $returnedRole.Count) {
+                                    throw 'AccessReviewRoleAmbiguous: more than one normalized access review was returned for a governed role.'
+                                }
+                                $missingRole = @($canonicalGovernedRole | Where-Object { $_ -cnotin $returnedRole })
+                                $surplusRole = @($returnedRole | Where-Object { $_ -cnotin $canonicalGovernedRole })
+                                if ($surplusRole.Count -gt 0) {
+                                    throw "AccessReviewRoleSetMismatch: normalized access-review roles include unrelated roles '$($surplusRole -join ', ')'."
+                                }
+                                $review
+                            }
+                            ManagementScopeCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ManagementScope' `
+                                    -RequiredProperty @('Identity', 'Name') -IdentityProperty 'Identity' `
+                                    -Observation $observations
+                            }
+                        }
+                    }
+                    'EXO-012' {
+                        $collectorArguments = @{
+                            RoleAssignmentPolicyCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-RoleAssignmentPolicy' `
+                                    -RequiredProperty @('Identity', 'IsDefault') -IdentityProperty 'Identity' `
+                                    -MinimumCount 1 -Observation $observations
+                            }
+                            ManagementRoleAssignmentCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ManagementRoleAssignment' `
+                                    -RequiredProperty @('Identity', 'Role', 'RoleAssignee') -IdentityProperty 'Identity' `
+                                    -Observation $observations
+                            }
+                        }
+                    }
+                    'MDO-001' {
+                        $groupResolver = {
+                            param($Identity, $Recipient)
+                            $group = Invoke-BaselineExchangeRawCollection -Command 'Get-DistributionGroup' `
+                                -Arguments @{ Identity = $Identity } -RequiredProperty @('PrimarySmtpAddress') `
+                                -IdentityProperty 'PrimarySmtpAddress' -MinimumCount 1 -MaximumCount 1 `
+                                -Observation $observations
+                            if ([string]::IsNullOrWhiteSpace([string]$Recipient)) {
+                                return [string]$group.PrimarySmtpAddress
+                            }
+                            $members = @(
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-DistributionGroupMember' `
+                                    -Arguments @{ Identity = $Identity; ResultSize = 'Unlimited' } `
+                                    -RequiredProperty @('PrimarySmtpAddress') -IdentityProperty 'PrimarySmtpAddress' `
+                                    -MinimumCount 0 -Observation $observations
+                            )
+                            return @($members | Where-Object {
+                                    [string]$_.PrimarySmtpAddress -ieq [string]$Recipient
+                                }).Count -eq 1
+                        }
+                        $collectorArguments = @{
+                            EopRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-EOPProtectionPolicyRule' `
+                                    -Arguments @{ Identity = 'Standard Preset Security Policy' } `
+                                    -RequiredProperty @('Name', 'State', 'SentTo', 'SentToMemberOf', 'RecipientDomainIs', 'ExceptIfSentToMemberOf', 'ExceptIfSentTo', 'ExceptIfRecipientDomainIs') `
+                                    -IdentityProperty 'Name' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            AtpRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ATPProtectionPolicyRule' `
+                                    -Arguments @{ Identity = 'Standard Preset Security Policy' } `
+                                    -RequiredProperty @('Name', 'State', 'SentTo', 'SentToMemberOf', 'RecipientDomainIs', 'ExceptIfSentToMemberOf', 'ExceptIfSentTo', 'ExceptIfRecipientDomainIs') `
+                                    -IdentityProperty 'Name' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            StrictAtpRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ATPProtectionPolicyRule' `
+                                    -Arguments @{ Identity = 'Strict Preset Security Policy' } `
+                                    -RequiredProperty @('Name', 'State', 'SentTo', 'SentToMemberOf', 'RecipientDomainIs', 'ExceptIfSentToMemberOf', 'ExceptIfSentTo', 'ExceptIfRecipientDomainIs') `
+                                    -IdentityProperty 'Name' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            RecipientCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-Recipient' `
+                                    -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'PrimarySmtpAddress') `
+                                    -IdentityProperty 'Identity' -Observation $observations
+                            }
+                            SafeLinksPolicyCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-SafeLinksPolicy' `
+                                    -RequiredProperty @('Name') -IdentityProperty 'Name' -Observation $observations
+                            }
+                            SafeLinksRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-SafeLinksRule' `
+                                    -RequiredProperty @('Name', 'SafeLinksPolicy') -IdentityProperty 'Name' -Observation $observations
+                            }
+                            HostedContentFilterRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-HostedContentFilterRule' `
+                                    -RequiredProperty @('Name', 'HostedContentFilterPolicy', 'State') `
+                                    -IdentityProperty 'Name' -Observation $observations
+                            }
+                            MalwareFilterRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-MalwareFilterRule' `
+                                    -RequiredProperty @('Name', 'MalwareFilterPolicy', 'State') `
+                                    -IdentityProperty 'Name' -Observation $observations
+                            }
+                            SafeAttachmentPolicyCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-SafeAttachmentPolicy' `
+                                    -RequiredProperty @('Name') -IdentityProperty 'Name' `
+                                    -MinimumCount 1 -Observation $observations
+                            }
+                            SafeAttachmentRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-SafeAttachmentRule' `
+                                    -RequiredProperty @('Name', 'SafeAttachmentPolicy', 'State') `
+                                    -IdentityProperty 'Name' -Observation $observations
+                            }
+                            GroupResolver = $groupResolver
+                            ExchangeContext = $Context
+                            Observation = $observations
+                        }
+                    }
+                    'MDO-002' {
+                        $collectorArguments = @{
+                            EopRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-EOPProtectionPolicyRule' `
+                                    -Arguments @{ Identity = 'Strict Preset Security Policy' } -RequiredProperty @('Name', 'State') `
+                                    -IdentityProperty 'Name' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            AtpRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ATPProtectionPolicyRule' `
+                                    -Arguments @{ Identity = 'Strict Preset Security Policy' } -RequiredProperty @('Name', 'State') `
+                                    -IdentityProperty 'Name' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                        }
+                    }
+                    'MDO-003' {
+                        $collectorArguments = @{ RuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ATPBuiltInProtectionRule' `
+                                    -RequiredProperty @('Name', 'State') -IdentityProperty 'Name' `
+                                    -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            } }
+                    }
+                    'MDO-006' {
+                        $secOpsMailbox = [string](Get-BaselineRecordMember -Node $parameters -Name 'SECURITY_OPERATIONS_MAILBOX')
+                        $collectorArguments = @{
+                            ReportSubmissionPolicyCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ReportSubmissionPolicy' `
+                                    -RequiredProperty @('Identity', 'EnableThirdPartyAddress', 'EnableReportToMicrosoft', 'ReportJunkToCustomizedAddress', 'ReportJunkAddresses', 'ReportNotJunkToCustomizedAddress', 'ReportNotJunkAddresses', 'ReportPhishToCustomizedAddress', 'ReportPhishAddresses', 'PreSubmitMessageEnabled', 'PostSubmitMessageEnabled') `
+                                    -IdentityProperty 'Identity' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            ReportSubmissionRuleCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-ReportSubmissionRule' `
+                                    -RequiredProperty @('Identity', 'State', 'ReportSubmissionPolicy', 'SentTo') `
+                                    -IdentityProperty 'Identity' -MaximumCount 1 -Observation $observations
+                            }
+                            ReportingMailboxCollection = {
+                                Invoke-BaselineExchangeRawCollection -Command 'Get-Mailbox' `
+                                    -Arguments @{ Identity = $secOpsMailbox } `
+                                    -RequiredProperty @('PrimarySmtpAddress', 'RecipientTypeDetails', 'ForwardingAddress', 'ForwardingSmtpAddress', 'DeliverToMailboxAndForward') `
+                                    -IdentityProperty 'PrimarySmtpAddress' -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                            }
+                            SecOpsOverridePolicyCollection = {
+                                $policies = @(Invoke-BaselineExchangeRawCollection -Command 'Get-SecOpsOverridePolicy' `
+                                    -RequiredProperty @('Identity', 'SentTo') -IdentityProperty 'Identity' `
+                                    -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                )
+                                $rules = @(Invoke-BaselineExchangeRawCollection -Command 'Get-ExoSecOpsOverrideRule' `
+                                    -Arguments @{ Policy = [string]$policies[0].Identity } `
+                                    -RequiredProperty @('Identity', 'Mode') -IdentityProperty 'Identity' `
+                                    -MinimumCount 1 -MaximumCount 1 -Observation $observations)
+                                if ([string]$rules[0].Mode -cne 'Enforce') {
+                                    throw 'ExchangeSecOpsOverrideRuleInvalid: the observed SecOps override rule is not enforced.'
+                                }
+                                $policies
+                            }
+                            ExchangeContext = $Context
+                        }
+                    }
+                        'MDO-007' {
+                            $governance = Get-BaselineRecordMember -Node $parameters -Name 'tenantAllowBlockListGovernance'
+                            $governedEntries = @(Get-BaselineRecordMember -Node $governance -Name 'entries')
+                            $collectorArguments = @{ Collection = {
+                                    $joined = [System.Collections.Generic.List[object]]::new()
+                                    foreach ($partition in @(
+                                            @{ ListType = 'Sender'; Action = 'Allow' }, @{ ListType = 'Sender'; Action = 'Block' },
+                                            @{ ListType = 'Url'; Action = 'Allow' }, @{ ListType = 'Url'; Action = 'Block' },
+                                            @{ ListType = 'FileHash'; Action = 'Allow' }, @{ ListType = 'FileHash'; Action = 'Block' },
+                                            @{ ListType = 'IP'; Action = 'Allow' }, @{ ListType = 'IP'; Action = 'Block' }
+                                        )) {
+                                        $arguments = @{ ListType = $partition.ListType }
+                                        $arguments[$partition.Action] = $true
+                                        $rawEntries = @(Invoke-BaselineExchangeRawCollection `
+                                            -Command 'Get-TenantAllowBlockListItems' -Arguments $arguments `
+                                            -RequiredProperty @('Identity', 'Value') -IdentityProperty 'Identity' `
+                                            -Observation $observations)
+                                        foreach ($rawEntry in $rawEntries) {
+                                            $matches = @($governedEntries | Where-Object {
+                                                    [string](Get-BaselineRecordMember -Node $_ -Name 'identity') -ceq [string]$rawEntry.Identity
+                                                })
+                                            if ($matches.Count -ne 1) {
+                                                throw "ExchangeTenantAllowBlockIdentityInvalid: '$($rawEntry.Identity)' must join one governance entry."
+                                            }
+                                            $record = [ordered]@{}
+                                            foreach ($name in @(Get-BaselineRecordMemberName -Node $matches[0])) {
+                                                $record[$name] = Get-BaselineRecordMember -Node $matches[0] -Name $name
+                                            }
+                                            $record.entryType = switch ($partition.ListType) {
+                                                'FileHash' { 'File' }
+                                                default { $partition.ListType }
+                                            }
+                                            $record.entryValue = [string]$rawEntry.Value
+                                            $record.action = $partition.Action
+                                            if (-not $record.Contains('expirationDateTime') -and
+                                                'ExpirationDate' -cin @(Get-BaselineRecordMemberName -Node $rawEntry)) {
+                                                $record.expirationDateTime = Get-BaselineRecordMember -Node $rawEntry -Name 'ExpirationDate'
+                                            }
+                                            $joined.Add($record)
+                                        }
+                                    }
+                                    $joined.ToArray()
+                                } }
+                        }
+                        'MDO-008' {
+                            $collectorArguments = @{
+                                QuarantinePolicyCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-QuarantinePolicy' `
+                                        -Arguments @{ QuarantinePolicyType = 'GlobalQuarantinePolicy' } `
+                                        -RequiredProperty @('Name', 'QuarantinePolicyType') -IdentityProperty 'Name' `
+                                        -MinimumCount 1 -Observation $observations
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-QuarantinePolicy' `
+                                        -Arguments @{ QuarantinePolicyType = 'QuarantinePolicy' } `
+                                        -RequiredProperty @('Name', 'QuarantinePolicyType') -IdentityProperty 'Name' `
+                                        -MinimumCount 1 -Observation $observations
+                                }
+                                ContentFilterPolicyCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-HostedContentFilterPolicy' `
+                                        -RequiredProperty @('Name') -IdentityProperty 'Name' -MinimumCount 1 -Observation $observations
+                                }
+                                MalwareFilterPolicyCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-MalwareFilterPolicy' `
+                                        -RequiredProperty @('Name') -IdentityProperty 'Name' -MinimumCount 1 -Observation $observations
+                                }
+                            }
+                        }
+                        'MDO-009' {
+                            $collectorArguments = @{
+                                AntiPhishPolicyCollection = {
+                                    $rules = @(Invoke-BaselineExchangeRawCollection -Command 'Get-AntiPhishRule' `
+                                        -RequiredProperty @('Name', 'State', 'AntiPhishPolicy', 'RecipientDomainIs', 'SentTo', 'SentToMemberOf', 'ExceptIfSentTo', 'ExceptIfSentToMemberOf', 'ExceptIfRecipientDomainIs') `
+                                        -IdentityProperty 'Name' -MinimumCount 1 -Observation $observations)
+                                    $policies = @(Invoke-BaselineExchangeRawCollection -Command 'Get-AntiPhishPolicy' `
+                                        -RequiredProperty @('Name', 'EnableTargetedUserProtection', 'EnableTargetedDomainsProtection', 'TargetedUsersToProtect', 'TargetedDomainsToProtect', 'ExcludedSenders', 'ExcludedDomains') `
+                                        -IdentityProperty 'Name' -MinimumCount 1 -Observation $observations)
+                                    foreach ($policy in $policies) {
+                                        $policyName = [string](Get-BaselineRecordMember -Node $policy -Name 'Name')
+                                        $joined = [ordered]@{
+                                            Enabled = [bool](@($rules | Where-Object {
+                                                        [string](Get-BaselineRecordMember -Node $_ -Name 'AntiPhishPolicy') -ceq $policyName -and
+                                                        [string](Get-BaselineRecordMember -Node $_ -Name 'State') -ceq 'Enabled' -and
+                                                        @((Get-BaselineRecordMember -Node $_ -Name 'RecipientDomainIs') | Where-Object {
+                                                                [string]$_ -ieq $domain
+                                                            }).Count -eq 1
+                                                    }).Count -gt 0)
+                                        }
+                                        foreach ($name in @(Get-BaselineRecordMemberName -Node $policy)) {
+                                            if ($name -ceq 'Enabled') { continue }
+                                            if ($name -cin @(
+                                                    'TargetedUsersToProtect',
+                                                    'TargetedDomainsToProtect',
+                                                    'ExcludedSenders',
+                                                    'ExcludedDomains'
+                                                )) {
+                                                $value = if ($policy -is [System.Collections.IDictionary]) {
+                                                    $policy[$name]
+                                                }
+                                                else {
+                                                    $policy.PSObject.Properties[$name].Value
+                                                }
+                                                $joined[$name] = [object[]]@($value)
+                                            }
+                                            else {
+                                                $joined[$name] = Get-BaselineRecordMember -Node $policy -Name $name
+                                            }
+                                        }
+                                        $joined
+                                    }
+                                }
+                            }
+                        }
+                        'PP-005' { $collectorArguments = @{ InboundConnectorCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-InboundConnector' `
+                                        -RequiredProperty @('Identity', 'Enabled', 'ConnectorType') `
+                                        -IdentityProperty 'Identity' -Observation $observations
+                                } } }
+                        'AUTH-001' {
+                            $collectorArguments = @{
+                                SendingDomain = @($domain)
+                                DkimSigningConfigCollection = {
+                                    param($sendingDomain)
+                                    $configuration = @(Invoke-BaselineExchangeRawCollection -Command 'Get-DkimSigningConfig' `
+                                        -Arguments @{ Identity = $sendingDomain } `
+                                        -RequiredProperty @('Identity', 'Domain', 'Enabled', 'Status', 'Selector1KeySize', 'Selector2KeySize', 'Selector1CNAME', 'Selector2CNAME') `
+                                        -IdentityProperty 'Identity' -MinimumCount 1 -MaximumCount 1 -Observation $observations)
+                                    $requested = $sendingDomain.Trim().TrimEnd('.').ToLowerInvariant()
+                                    $identity = Get-BaselineRecordMember -Node $configuration[0] -Name 'Identity'
+                                    $returnedDomain = Get-BaselineRecordMember -Node $configuration[0] -Name 'Domain'
+                                    if ($identity -isnot [string] -or [string]::IsNullOrWhiteSpace($identity) -or
+                                        $returnedDomain -isnot [string] -or [string]::IsNullOrWhiteSpace($returnedDomain) -or
+                                        $identity.Trim().TrimEnd('.').ToLowerInvariant() -cne $requested -or
+                                        $returnedDomain.Trim().TrimEnd('.').ToLowerInvariant() -cne $requested) {
+                                        throw "DkimSigningConfigurationDomainMismatch: requested '$requested' but the returned Identity and Domain were not exact canonical matches."
+                                    }
+                                    $normalized = [ordered]@{}
+                                    foreach ($memberName in @(Get-BaselineRecordMemberName -Node $configuration[0])) {
+                                        $normalized[$memberName] = Get-BaselineRecordMember -Node $configuration[0] -Name $memberName
+                                    }
+                                    if (-not $normalized.Contains('Name') -or
+                                        [string]::IsNullOrWhiteSpace([string]$normalized.Name)) {
+                                        $normalized.Name = $identity
+                                    }
+                                    [pscustomobject]$normalized
+                                }
+                                SelectorDnsCollection = {
+                                    param($name)
+                                    Invoke-BaselineExchangeRawCollection -Command 'Resolve-DkimSelectorDns' `
+                                        -Arguments @{ Identity = $name } `
+                                        -RequiredProperty @('Authoritative', 'CanonicalName') `
+                                        -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                }
+                            }
+                        }
+                        'MON-003' {
+                            $verified = Read-BaselineExchangeOperationalArtifact -ControlId MON-003 -Context $Context
+                            $payload = [ordered]@{}
+                            foreach ($name in @(Get-BaselineRecordMemberName -Node $verified.Payload)) {
+                                $payload[$name] = Get-BaselineRecordMember -Node $verified.Payload -Name $name
+                            }
+                            $payload.Refused = @()
+                            $payload.GeneratedAtUtc = $verified.GeneratedAtUtc
+                            $payload.SignatureVerified = $verified.SignatureVerified
+                            $payload.SignerThumbprint = $verified.SignerThumbprint
+                            $collectorArguments = @{ DriftEvidenceCollection = { $payload }.GetNewClosure() }
+                        }
+                        'OPS-001' {
+                            $verified = Read-BaselineExchangeOperationalArtifact -ControlId OPS-001 -Context $Context
+                            $payload = [ordered]@{}
+                            foreach ($name in @(Get-BaselineRecordMemberName -Node $verified.Payload)) {
+                                $payload[$name] = Get-BaselineRecordMember -Node $verified.Payload -Name $name
+                            }
+                            $payload.Refused = @()
+                            $payload.GeneratedAtUtc = $verified.GeneratedAtUtc
+                            $payload.SignatureVerified = $verified.SignatureVerified
+                            $payload.SignerThumbprint = $verified.SignerThumbprint
+                            $collectorArguments = @{ ChangeArtifactCollection = { $payload }.GetNewClosure() }
+                        }
+                        'OPS-002' {
+                            $verified = Read-BaselineExchangeOperationalArtifact -ControlId OPS-002 -Context $Context
+                            $collectorArguments = @{
+                                IncidentExerciseImportDecision = @{
+                                    Satisfied = $true
+                                    Refused = @()
+                                    Admitted = @(@{ ControlId = 'OPS-002'; Evidence = $verified })
+                                }
+                            }
+                        }
+                        'GOV-003' {
+                            $collectorArguments = @{
+                                MailboxCollection = {
+                                    [ordered]@{ Complete = $true; Mailboxes = @(
+                                            Invoke-BaselineExchangeRawCollection -Command 'Get-Mailbox' `
+                                                -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'RetentionPolicy') `
+                                                -IdentityProperty 'Identity' -Observation $observations
+                                        ) }
+                                }
+                                RetentionPolicyCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-RetentionPolicy' `
+                                        -RequiredProperty @('Identity', 'Name', 'RetentionPolicyTagLinks') `
+                                        -IdentityProperty 'Identity' -Observation $observations
+                                }
+                                DistributionCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-MailboxRetentionDistribution' `
+                                        -RequiredProperty @('Status', 'CoveredMailboxes') `
+                                        -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                }
+                            }
+                            if ($null -ne (Get-Command -Name 'Get-RetentionPolicyTag' -ErrorAction SilentlyContinue)) {
+                                $collectorArguments.RetentionPolicyTagCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-RetentionPolicyTag' `
+                                        -RequiredProperty @('Identity', 'Name', 'Type', 'RetentionAction', 'AgeLimitForRetention', 'RetentionEnabled') `
+                                        -IdentityProperty 'Identity' -MinimumCount 1 -Observation $observations
+                                }
+                            }
+                            if ($null -ne (Get-Command -Name 'Export-MailboxDiagnosticLogs' -ErrorAction SilentlyContinue)) {
+                                $collectorArguments.DiagnosticLogCollection = {
+                                    $mailboxIdentity = [string[]]@(
+                                        foreach ($entry in @(Get-BaselineRecordMember -Node $settings -Name 'mailboxEntitlement')) {
+                                            [string](Get-BaselineRecordMember -Node $entry -Name 'identity')
+                                        }
+                                    )
+                                    foreach ($identity in $mailboxIdentity) {
+                                        Invoke-BaselineExchangeRawCollection -Command 'Export-MailboxDiagnosticLogs' `
+                                            -Arguments @{ Identity = $identity; ExtendedProperties = $true } `
+                                            -RequiredProperty @('MailboxLog') -MinimumCount 1 -MaximumCount 1 `
+                                            -Observation $observations
+                                    }
+                                }
+                            }
+                        }
+                        'GOV-004' {
+                            $priorityIdentity = [string[]]@(
+                                foreach ($hold in @(Get-BaselineRecordMember -Node $settings -Name 'holds')) {
+                                    [string](Get-BaselineRecordMember -Node $hold -Name 'mailbox')
+                                }
+                            )
+                            $configuredCustodian = [string[]]@(
+                                Get-BaselineRecordMember -Node $settings -Name 'custodians'
+                            )
+                            $collectorArguments = @{
+                                MailboxCollection = {
+                                    [ordered]@{ Complete = $true; Mailboxes = @(
+                                            Invoke-BaselineExchangeRawCollection -Command 'Get-Mailbox' `
+                                                -Arguments @{ ResultSize = 'Unlimited' } -RequiredProperty @('Identity', 'LitigationHoldEnabled') `
+                                                -IdentityProperty 'Identity' -Observation $observations
+                                        ) }
+                                }
+                                PriorityIdentityCollection = {
+                                    $resolution = @(Invoke-BaselineExchangeRawCollection -Command 'Resolve-PriorityIdentity' `
+                                        -RequiredProperty @('Resolved', 'Identities', 'Unresolved') `
+                                        -MinimumCount 1 -MaximumCount 1 -Observation $observations)
+                                    $comparison = Compare-NormalizedCollection -Desired $priorityIdentity `
+                                        -Actual @($resolution[0].Identities) -Kind 'SmtpAddress'
+                                    if (@($comparison.Missing).Count -gt 0 -or @($comparison.Surplus).Count -gt 0) {
+                                        throw 'LitigationHoldPriorityResolutionMismatch: configured priority identities were not resolved exactly.'
+                                    }
+                                    $resolution[0]
+                                }
+                                CustodianCollection = {
+                                    $resolution = @(Invoke-BaselineExchangeRawCollection -Command 'Resolve-Custodian' `
+                                        -RequiredProperty @('Resolved', 'Identities', 'Unresolved') `
+                                        -MinimumCount 1 -MaximumCount 1 -Observation $observations)
+                                    $comparison = Compare-NormalizedCollection -Desired $configuredCustodian `
+                                        -Actual @($resolution[0].Identities) -Kind 'SmtpAddress'
+                                    if (@($comparison.Missing).Count -gt 0 -or @($comparison.Surplus).Count -gt 0) {
+                                        throw 'LitigationHoldCustodianResolutionMismatch: configured custodians were not resolved exactly.'
+                                    }
+                                    $resolution[0]
+                                }
+                            }
+                            if ($null -ne (Get-Command -Name 'Get-MailboxStatistics' -ErrorAction SilentlyContinue)) {
+                                $collectorArguments.MailboxStatisticsCollection = {
+                                    $mailboxIdentity = [string[]]@(
+                                        @($priorityIdentity) + @($configuredCustodian) |
+                                            Select-Object -Unique
+                                    )
+                                    foreach ($identity in $mailboxIdentity) {
+                                        Invoke-BaselineExchangeRawCollection -Command 'Get-MailboxStatistics' `
+                                            -Arguments @{ Identity = $identity } `
+                                            -RequiredProperty @('DisplayName', 'TotalDeletedItemSize') `
+                                            -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                    }
+                                }
+                            }
+                        }
+                        'GOV-005' {
+                            $messageClass = @(Get-BaselineRecordMember -Node $settings -Name 'messageClasses')
+                            if ($messageClass.Count -ne 1) {
+                                throw 'InformationRightsManagementFlowAmbiguous: GOV-005 requires exactly one resolved message class for the functional test.'
+                            }
+                            $resolvedSender = [string](Get-BaselineRecordMember -Node $messageClass[0] -Name 'sender')
+                            $resolvedRecipientSet = @(
+                                Get-BaselineRecordMember -Node $messageClass[0] -Name 'recipients'
+                            )
+                            if ([string]::IsNullOrWhiteSpace($resolvedSender) -or
+                                $resolvedRecipientSet.Count -ne 1 -or
+                                [string]::IsNullOrWhiteSpace([string]$resolvedRecipientSet[0])) {
+                                throw 'InformationRightsManagementFlowUnresolved: GOV-005 requires one resolved sender and recipient.'
+                            }
+                            $resolvedRecipient = [string]$resolvedRecipientSet[0]
+                            $resolvedClass = [string](Get-BaselineRecordMember -Node $messageClass[0] -Name 'name')
+                            $recipientFlow = @(
+                                Get-BaselineRecordMember -Node (
+                                    Get-BaselineRecordMember -Node $parameters -Name 'governanceEvidence'
+                                ) -Name 'recipientFlows' |
+                                    Where-Object {
+                                        [string](Get-BaselineRecordMember -Node $_ -Name 'Class') -ceq $resolvedClass -and
+                                        [string](Get-BaselineRecordMember -Node $_ -Name 'Recipient') -ieq $resolvedRecipient
+                                    }
+                            )
+                            $collectorArguments = @{
+                                IrmConfigurationCollection = {
+                                    Invoke-BaselineExchangeRawCollection -Command 'Get-IRMConfiguration' `
+                                        -RequiredProperty @('InternalLicensingEnabled', 'AzureRMSLicensingEnabled', 'TransportDecryptionSetting', 'JournalReportDecryptionEnabled') `
+                                        -MinimumCount 1 -MaximumCount 1 -Observation $observations
+                                }
+                            }
+                            if ($null -ne (Get-Command -Name 'Get-OMEFunctionalEvidence' -ErrorAction SilentlyContinue)) {
+                                $collectorArguments.OmeFunctionalEvidenceCollection = {
+                                    $normalized = @(Invoke-BaselineExchangeRawCollection -Command 'Get-OMEFunctionalEvidence' `
+                                        -RequiredProperty @(
+                                            'TestName', 'Succeeded', 'Protected',
+                                            'DecryptedByAuthorizedRecipient', 'RejectedUnauthorizedRecipient'
+                                        ) -MinimumCount 1 -MaximumCount 1 -Observation $observations)
+                                    if ([string]::IsNullOrWhiteSpace(
+                                            [string](Get-BaselineRecordMember -Node $normalized[0] -Name 'TestName')
+                                        )) {
+                                        throw 'OmeFunctionalEvidenceMalformed: normalized functional evidence carries no test name.'
+                                    }
+                                    foreach ($booleanMember in @(
+                                            'Succeeded', 'Protected',
+                                            'DecryptedByAuthorizedRecipient', 'RejectedUnauthorizedRecipient'
+                                        )) {
+                                        if ((Get-BaselineRecordMember -Node $normalized[0] -Name $booleanMember) -isnot [bool]) {
+                                            throw "OmeFunctionalEvidenceMalformed: '$booleanMember' must be a non-null Boolean."
+                                        }
+                                    }
+                                    $normalized[0]
+                                }
+                            }
+                            else {
+                                $collectorArguments.OmeFunctionalEvidenceCollection = {
+                                    if ($recipientFlow.Count -ne 1) {
+                                        throw 'OmeFunctionalFlowUnavailable: exactly one tenant-bound recipient-flow observation is required.'
+                                    }
+                                    $flowMember = @(Get-BaselineRecordMemberName -Node $recipientFlow[0])
+                                    foreach ($requiredFlowMember in @(
+                                            'Protected', 'AuthorizedDecryption', 'UnauthorizedRejected',
+                                            'EvidenceReference', 'ObservedAtUtc'
+                                        )) {
+                                        if ($requiredFlowMember -cnotin $flowMember) {
+                                            throw "OmeFunctionalFlowIncomplete: recipient flow carries no '$requiredFlowMember'."
+                                        }
+                                    }
+                                    foreach ($booleanMember in @('Protected', 'AuthorizedDecryption', 'UnauthorizedRejected')) {
+                                        if ((Get-BaselineRecordMember -Node $recipientFlow[0] -Name $booleanMember) -isnot [bool]) {
+                                            throw "OmeFunctionalFlowMalformed: '$booleanMember' must be a non-null Boolean."
+                                        }
+                                    }
+                                    if ([string]::IsNullOrWhiteSpace(
+                                            [string](Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'EvidenceReference')
+                                        )) {
+                                        throw 'OmeFunctionalFlowUnauthorized: the recipient flow has no independent evidence reference.'
+                                    }
+                                    $observedAt = [datetimeoffset]::MinValue
+                                    if (-not [datetimeoffset]::TryParse(
+                                            [string](Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'ObservedAtUtc'),
+                                            [ref]$observedAt
+                                        ) -or $observedAt -gt [datetimeoffset]::UtcNow) {
+                                        throw 'OmeFunctionalFlowMalformed: recipient-flow observation time is absent, unreadable, or from the future.'
+                                    }
+                                    $irmTest = @(Invoke-BaselineExchangeRawCollection -Command 'Test-IRMConfiguration' `
+                                        -Arguments @{ Sender = $resolvedSender; Recipient = $resolvedRecipient } `
+                                        -RequiredProperty @('Results') -MinimumCount 1 -MaximumCount 1 `
+                                        -Observation $observations)
+                                    $results = [string](Get-BaselineRecordMember -Node $irmTest[0] -Name 'Results')
+                                    $overall = @([regex]::Matches($results, '(?im)^\s*OVERALL RESULT:\s*(PASS|FAIL)\s*$'))
+                                    if ([string]::IsNullOrWhiteSpace($results) -or $overall.Count -ne 1) {
+                                        throw 'OmeFunctionalTestMalformed: Test-IRMConfiguration must return one unambiguous OVERALL RESULT.'
+                                    }
+                                    [ordered]@{
+                                        TestName = 'OME encrypted-message round trip'
+                                        Succeeded = $overall[0].Groups[1].Value -ceq 'PASS'
+                                        Protected = Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'Protected'
+                                        DecryptedByAuthorizedRecipient = Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'AuthorizedDecryption'
+                                        RejectedUnauthorizedRecipient = Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'UnauthorizedRejected'
+                                        Sender = $resolvedSender
+                                        Recipient = $resolvedRecipient
+                                        EvidenceReference = Get-BaselineRecordMember -Node $recipientFlow[0] -Name 'EvidenceReference'
+                                        ObservedAtUtc = $observedAt.ToString('o')
+                                    }
+                                }
+                            }
+                            if ($null -ne (Get-Command -Name 'Get-TransportRule' -ErrorAction SilentlyContinue)) {
+                                $collectorArguments.TransportRuleCollection = {
+                                    foreach ($class in $messageClass) {
+                                        $ruleIdentity = [string](Get-BaselineRecordMember -Node $class -Name 'rule')
+                                        if ([string]::IsNullOrWhiteSpace($ruleIdentity)) {
+                                            throw 'InformationRightsManagementRuleUnresolved: GOV-005 message class carries no resolved transport rule.'
+                                        }
+                                        Invoke-BaselineExchangeRawCollection -Command 'Get-TransportRule' `
+                                            -Arguments @{ Identity = $ruleIdentity } `
+                                            -RequiredProperty @('Identity', 'Name', 'State', 'Mode', 'HeaderContainsMessageHeader', 'HeaderContainsWords', 'SentTo', 'ApplyRightsProtectionTemplate') `
+                                            -IdentityProperty 'Identity' -MinimumCount 1 -MaximumCount 1 `
+                                            -Observation $observations
+                                    }
+                                }
+                            }
+                        }
+                }
+
+                $collected = @(& $collectorName @collectorArguments)
+                if ($collected.Count -ne 1) {
+                    throw "ExchangeCollectorContractInvalid: '$controlId' returned $($collected.Count) evidence records; exactly one is required."
+                }
+                $evidence = $collected[0]
+
+                $evaluatorName = [string]$entry.Evaluator
+                $evaluator = Get-Command -Name $evaluatorName -CommandType Function -ErrorAction Stop
+                $effectiveSettings = $settings
+                switch ($controlId) {
+                    'MDO-007' {
+                        $effectiveSettings = [ordered]@{}
+                        foreach ($name in @(Get-BaselineRecordMemberName -Node $settings)) {
+                            $effectiveSettings[$name] = Get-BaselineRecordMember -Node $settings -Name $name
+                        }
+                        $effectiveSettings.registerLocation = 'Tenant Allow Block List governance register'
+                    }
+                    'GOV-003' {
+                        $effectiveSettings = [ordered]@{
+                            requiredServicePlan = 'EXCHANGE_S_ENTERPRISE'
+                            policyName = Get-BaselineRecordMember -Node $settings -Name 'policyName'
+                            requireCompleteMailboxCoverage = $true
+                            requireSuccessfulDistribution = $true
+                        }
+                    }
+                    'GOV-004' {
+                        $effectiveSettings = [ordered]@{
+                            requiredServicePlan = 'EXCHANGE_S_ENTERPRISE'
+                            enabled = Get-BaselineRecordMember -Node $settings -Name 'enabled'
+                            priorityIdentities = @(
+                                foreach ($hold in @(Get-BaselineRecordMember -Node $settings -Name 'holds')) {
+                                    Get-BaselineRecordMember -Node $hold -Name 'mailbox'
+                                }
+                            )
+                            custodians = @(Get-BaselineRecordMember -Node $settings -Name 'custodians')
+                        }
+                    }
+                    'GOV-005' {
+                        $effectiveSettings = [ordered]@{
+                            requiredServicePlan = 'EXCHANGE_S_ENTERPRISE'
+                            internalLicensingEnabled = Get-BaselineRecordMember -Node $settings -Name 'internalLicensingEnabled'
+                            azureRmsLicensingEnabled = Get-BaselineRecordMember -Node $settings -Name 'azureRmsLicensingEnabled'
+                            transportDecryptionSetting = Get-BaselineRecordMember -Node $settings -Name 'transportDecryptionSetting'
+                            journalReportDecryptionEnabled = Get-BaselineRecordMember -Node $settings -Name 'journalReportDecryptionEnabled'
+                            licensingLocation = 'Online'
+                            omeFunctionalTest = 'OME encrypted-message round trip'
+                        }
+                    }
+                }
+                $evaluatorArguments = @{ Evidence = $evidence }
+                foreach ($candidate in ([ordered]@{
+                        ControlId = $controlId
+                        Context = $Context
+                        ExchangeContext = $Context
+                        DesiredState = $effectiveSettings
+                        ExpectedDomain = $domain
+                    }).GetEnumerator()) {
+                    if ($evaluator.Parameters.ContainsKey($candidate.Key)) {
+                        $evaluatorArguments[$candidate.Key] = $candidate.Value
+                    }
+                }
+                switch ($controlId) {
+                    'EXO-001' {
+                        $domainRule = @(@((Get-CanonicalComparisonContract).Kind | Where-Object {
+                                        $_.Kind -ceq 'Domain'
+                                    })[0].NormalizationRule)
+                        $expectedDomainSet = [System.Collections.Generic.HashSet[string]]::new(
+                            [System.StringComparer]::Ordinal
+                        )
+                        foreach ($expectedName in @(
+                                $domain,
+                                [string](Get-BaselineRecordMember -Node $parameters -Name 'INITIAL_ONMICROSOFT_DOMAIN')
+                            )) {
+                            if (-not [string]::IsNullOrWhiteSpace($expectedName)) {
+                                $null = $expectedDomainSet.Add(
+                                    (ConvertTo-NormalizedCanonicalValue -Value $expectedName -Rule $domainRule)
+                                )
+                            }
+                        }
+                        $inventory = Get-BaselineRecordMember -Node $parameters -Name 'domainInventory'
+                        $tenantId = [string](Get-BaselineRecordMember -Node $parameters -Name 'MICROSOFT_ENTRA_TENANT_GUID')
+                        if ($null -ne $inventory -and
+                            [string](Get-BaselineRecordMember -Node $inventory -Name 'tenantId') -ieq $tenantId) {
+                            foreach ($inventoryDomain in @(Get-BaselineRecordMember -Node $inventory -Name 'domains')) {
+                                if ((Get-BaselineRecordMember -Node $inventoryDomain -Name 'accepted') -eq $true) {
+                                    $inventoryName = [string](Get-BaselineRecordMember -Node $inventoryDomain -Name 'domainName')
+                                    if (-not [string]::IsNullOrWhiteSpace($inventoryName)) {
+                                        $null = $expectedDomainSet.Add(
+                                            (ConvertTo-NormalizedCanonicalValue -Value $inventoryName -Rule $domainRule)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        $evaluatorArguments.ExpectedDomain = [string[]]@($expectedDomainSet)
+                        foreach ($candidate in (@{
+                                DomainInventory = (Get-BaselineRecordMember -Node $parameters -Name 'domainInventory')
+                                TenantId = $tenantId
+                                InitialDomain = (Get-BaselineRecordMember -Node $parameters -Name 'INITIAL_ONMICROSOFT_DOMAIN')
+                                PrimaryDomain = $domain
+                            }).GetEnumerator()) {
+                            if ($evaluator.Parameters.ContainsKey($candidate.Key)) {
+                                $evaluatorArguments[$candidate.Key] = $candidate.Value
+                            }
+                        }
+                    }
+                    'MDO-001' {
+                        $evaluatorArguments.GroupResolver = $groupResolver
+                    }
+                    'MDO-006' {
+                        $evaluatorArguments.SecOpsMailbox = @(
+                            Get-BaselineRecordMember -Node $parameters -Name 'SECURITY_OPERATIONS_MAILBOX'
+                        )
+                    }
+                    'EXO-007' {
+                        $evaluatorArguments.ExpectedAllowList = [string[]]@(
+                            Get-BaselineRecordMember -Node $settings -Name 'allowList'
+                        )
+                    }
+                    'EXO-010' {
+                        $evaluatorArguments.PrivilegedRoleGroup = @(
+                            Get-BaselineRecordMember -Node $settings -Name 'approvedRoleGroups'
+                        )
+                        $evaluatorArguments.ApprovedMember = @(
+                            Get-BaselineRecordMember -Node $settings -Name 'approvedMembers'
+                        )
+                        $evaluatorArguments.GovernedRole = @(
+                            foreach ($assignment in @(Get-BaselineRecordMember -Node $settings -Name 'assignments')) {
+                                Get-BaselineRecordMember -Node $assignment -Name 'Role'
+                            }
+                        )
+                        $evaluatorArguments.MaximumReviewAgeDay = 30
+                    }
+                    { $_ -in @('OPS-002', 'GOV-003', 'GOV-004', 'GOV-005') } {
+                        $requiredServicePlan = [string](Get-BaselineRecordMember -Node $effectiveSettings -Name 'requiredServicePlan')
+                        $evaluatorArguments.EntitlementVerdict = @{
+                            Status = 'Pass'
+                            Reason = 'Offline supplied entitlement confirms the required plan.'
+                            RequiredServicePlanName = $requiredServicePlan
+                        }
+                    }
+                }
+                foreach ($parameter in $evaluator.Parameters.Values) {
+                    $mandatory = @($parameter.Attributes | Where-Object {
+                            $_ -is [Management.Automation.ParameterAttribute] -and $_.Mandatory
+                        }).Count -gt 0
+                    if (-not $mandatory -or $evaluatorArguments.ContainsKey($parameter.Name)) { continue }
+                    $evaluatorArguments[$parameter.Name] = switch ($parameter.Name) {
+                        'AcceptedDomain' { @($domain) }
+                        'ExpectedAddress' { [string]$settings.address }
+                        'ExpectedAllowList' { @($settings.allowList) }
+                        'GroupResolver' { { param($identity) $identity } }
+                        'PrivilegedRoleGroup' { @($settings.approvedRoleGroups) }
+                        'ApprovedMember' { @($settings.approvedMembers) }
+                        'GovernedRole' { @($settings.assignments) }
+                        'MaximumReviewAgeDay' { 30 }
+                        'EntitlementVerdict' { @{ Status = 'Pass'; Reason = 'Offline entitlement fixture.' } }
+                        default { $null }
+                    }
+                }
+
+                $evaluated = @(& $evaluatorName @evaluatorArguments)
+                $status = if ($evaluated.Count -eq 1) { [string]$evaluated[0].Status } else { '' }
+                if ($evaluated.Count -ne 1 -or [string]$evaluated[0].ControlId -cne $controlId -or
+                    $status -cnotin @('Pass', 'Fail', 'Error', 'NotEntitled', 'Unverified', 'ApprovedException')) {
+                    throw "ExchangeEvaluatorContractInvalid: '$controlId' must return exactly one matching result."
+                }
+                $result = $evaluated[0]
+            }
+        }
+        catch {
+            $reason = "ExchangeCollectionOrEvaluationFailed: $($_.Exception.Message)"
+            $evidence = New-BaselineEvidence -ControlId $controlId -Source 'ExchangeOnline' `
+                -Command ([string]$entry.Collector) -Value $null -Failed -FailureReason $reason
+            $result = New-ControlResult -ControlId $controlId -Status 'Error' -Reason $reason -Evidence $evidence
+        }
+
+        $observationProjection = [object[]]$observations.ToArray()
+        $evidenceProjection = [ordered]@{}
+        foreach ($name in @(Get-BaselineRecordMemberName -Node $evidence)) {
+            $evidenceProjection[$name] = Get-BaselineRecordMember -Node $evidence -Name $name -NoEnumerate
+        }
+        $evidenceProjection.Observation = $observationProjection
+        $evidence = ConvertTo-ImmutableBaselineNode -Node $evidenceProjection
+
+        $resultProjection = [ordered]@{}
+        foreach ($name in @(Get-BaselineRecordMemberName -Node $result)) {
+            $resultProjection[$name] = Get-BaselineRecordMember -Node $result -Name $name -NoEnumerate
+        }
+        $resultProjection.Evidence = $evidence
+        $resultProjection.Observation = $observationProjection
+        $result = ConvertTo-ImmutableBaselineNode -Node $resultProjection
+
+        [pscustomobject][ordered]@{
+            ControlId = $controlId
+            Evidence = $evidence
+            Result = $result
+        }
+    }
 }
 
 # EVD-006: EVD-002 refuses an entry that names no collector or evaluator; this refuses an entry
@@ -6250,14 +8691,46 @@ function Get-BaselineControlCatalog {
 
     $declared = [System.Collections.Generic.List[string]]::new()
     $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::Ordinal)
-
-    foreach ($line in (Get-Content -LiteralPath $Path)) {
-        $row = [regex]::Match($line, $script:CatalogControlRowPattern)
-        if (-not $row.Success) {
-            continue
+    $content = Get-Content -LiteralPath $Path -Raw
+    $candidate = [System.Collections.Generic.List[string]]::new()
+    if ($content.TrimStart().StartsWith('{')) {
+        try {
+            $json = [System.Text.Json.JsonDocument]::Parse($content)
+            try {
+                if ($json.RootElement.ValueKind -ne [System.Text.Json.JsonValueKind]::Object) {
+                    throw 'the JSON root is not an object'
+                }
+                $controlIdNode = [System.Text.Json.JsonElement]::new()
+                if (-not $json.RootElement.TryGetProperty('ControlId', [ref]$controlIdNode) -or
+                    $controlIdNode.ValueKind -ne [System.Text.Json.JsonValueKind]::Array) {
+                    throw "the JSON document carries no 'ControlId' array"
+                }
+                foreach ($item in $controlIdNode.EnumerateArray()) {
+                    if ($item.ValueKind -ne [System.Text.Json.JsonValueKind]::String) {
+                        throw "the 'ControlId' array contains a non-string value"
+                    }
+                    $candidate.Add($item.GetString())
+                }
+            }
+            finally {
+                $json.Dispose()
+            }
         }
+        catch {
+            throw "CatalogInvalid: the control catalog at '$Path' is not strict JSON: $($_.Exception.Message)."
+        }
+    }
+    else {
+        foreach ($line in ($content -split '\r?\n')) {
+            $row = [regex]::Match($line, $script:CatalogControlRowPattern)
+            if ($row.Success) { $candidate.Add($row.Groups['id'].Value) }
+        }
+    }
 
-        $controlId = $row.Groups['id'].Value
+    foreach ($controlId in $candidate) {
+        if ([string]::IsNullOrWhiteSpace($controlId) -or $controlId -cnotmatch '^[A-Z]+-\d{3}$') {
+            throw "CatalogControlInvalid: the control catalog at '$Path' declares malformed control identifier '$controlId'."
+        }
         if (-not $seen.Add($controlId)) {
             throw "CatalogControlDuplicated: the control catalog at '$Path' declares '$controlId' more than once; a control is declared once."
         }
@@ -6774,6 +9247,9 @@ function Test-BaselineGoLive {
         [AllowNull()]
         [object]$TargetEntitlement,
 
+        [AllowNull()]
+        [object]$ExpectedEntitlement,
+
         [datetime]$AsOf = [datetime]::UtcNow
     )
 
@@ -6893,6 +9369,75 @@ function Test-BaselineGoLive {
         }
     }
 
+    $exchangeManifest = $null
+    $exchangeBindingSatisfied = $true
+    if ($ExpectedDeploymentProfile -ceq 'ExchangeOnly') {
+        $exchangeManifest = Get-BaselineExchangeManifest
+        $observedManifestHash = [string](Get-BaselineRecordMember -Node $Envelope -Name 'ManifestHash')
+        if ([string]::IsNullOrWhiteSpace($observedManifestHash) -or
+            $observedManifestHash -ine [string]$exchangeManifest.Hash) {
+            $finding.Add('ExchangeManifestMismatch: the signed envelope is not bound to the current Exchange manifest hash.')
+            $exchangeBindingSatisfied = $false
+        }
+
+        foreach ($memberName in @('Exclusion', 'ExternalCheck', 'ExternalReadiness')) {
+            $observedDisposition = Get-BaselineRecordMember -Node $Envelope -Name $memberName
+            $currentDisposition = Get-BaselineRecordMember -Node $exchangeManifest -Name $memberName
+            if ($null -eq $observedDisposition -or $null -eq $currentDisposition -or
+                (ConvertTo-CanonicalJson -InputObject $observedDisposition) -cne
+                (ConvertTo-CanonicalJson -InputObject $currentDisposition)) {
+                $finding.Add("ExchangeDispositionMismatch: the signed '$memberName' disposition differs from the current Exchange manifest.")
+                $exchangeBindingSatisfied = $false
+            }
+        }
+
+        $observedEntitlement = Get-BaselineRecordMember -Node $Envelope -Name 'Entitlement'
+        if ($null -eq $ExpectedEntitlement -or
+            (ConvertTo-CanonicalJson -InputObject $observedEntitlement) -cne
+            (ConvertTo-CanonicalJson -InputObject $ExpectedEntitlement)) {
+            $finding.Add('ExchangeEntitlementChanged: the signed entitlement differs from the current Exchange context.')
+            $exchangeBindingSatisfied = $false
+        }
+
+        $decisionTime = [datetimeoffset]$AsOf
+        foreach ($record in @($evidence | Where-Object {
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'ControlId') -cin $catalogControl
+                })) {
+            $controlId = [string](Get-BaselineRecordMember -Node $record -Name 'ControlId')
+            if ((Get-BaselineRecordMember -Node $record -Name 'Collected') -ne $true) {
+                $finding.Add("ExchangeEvidenceUncollected: retained evidence '$controlId' was not successfully collected.")
+                $exchangeBindingSatisfied = $false
+            }
+            $recordValue = Get-BaselineRecordMember -Node $record -Name 'Value' -NoEnumerate
+            if (-not (Test-BaselineNodeMember -Node $record -Name 'Value') -or
+                $null -eq $recordValue) {
+                $finding.Add("ExchangeEvidenceValueMissing: retained evidence '$controlId' carries no observed value.")
+                $exchangeBindingSatisfied = $false
+            }
+
+            $recordTimeText = [string](Get-BaselineRecordMember -Node $record -Name 'CollectedAtUtc')
+            $recordTime = [datetimeoffset]::MinValue
+            if (-not [datetimeoffset]::TryParse(
+                    $recordTimeText,
+                    [System.Globalization.CultureInfo]::InvariantCulture,
+                    [System.Globalization.DateTimeStyles]::AssumeUniversal,
+                    [ref]$recordTime
+                )) {
+                $finding.Add("ExchangeEvidenceRecordTimeUnreadable: retained evidence '$controlId' records '$recordTimeText'.")
+                $exchangeBindingSatisfied = $false
+                continue
+            }
+            if ($recordTime -gt $decisionTime) {
+                $finding.Add("ExchangeEvidenceRecordFromFuture: retained evidence '$controlId' was collected after the decision time.")
+                $exchangeBindingSatisfied = $false
+            }
+            elseif (($decisionTime - $recordTime) -gt $MaximumEvidenceAge) {
+                $finding.Add("ExchangeEvidenceRecordStale: retained evidence '$controlId' exceeds the maximum evidence age.")
+                $exchangeBindingSatisfied = $false
+            }
+        }
+    }
+
     $observedTenant = [string](Get-BaselineRecordMember -Node $Envelope -Name 'TenantId')
     if ($observedTenant -ne $ExpectedTenantId) {
         $finding.Add("GoLiveTenantMismatch: the evidence names tenant '$observedTenant', but this go-live is for '$ExpectedTenantId'.")
@@ -6985,6 +9530,14 @@ function Test-BaselineGoLive {
         Finding     = @($finding)
         Exception   = @($excused)
         Result      = $result
+    }
+    if ($ExpectedDeploymentProfile -ceq 'ExchangeOnly' -and $exchangeBindingSatisfied) {
+        $externalReadiness = $exchangeManifest.ExternalReadiness
+        $member.ExternalReadiness = [ordered]@{
+            Status = Get-BaselineRecordMember -Node $externalReadiness -Name 'Status'
+            Reference = Get-BaselineRecordMember -Node $externalReadiness -Name 'Reference'
+            Meaning = Get-BaselineRecordMember -Node $externalReadiness -Name 'Meaning'
+        }
     }
 
     return , (ConvertTo-ImmutableBaselineNode -Node $member)
@@ -7695,6 +10248,10 @@ function Get-OutboundForwardingEvidence {
 
         [Parameter(Mandatory)]
         [AllowNull()]
+        [scriptblock]$OutboundSpamRuleCollection,
+
+        [Parameter(Mandatory)]
+        [AllowNull()]
         [scriptblock]$MailboxCollection,
 
         [Parameter(Mandatory)]
@@ -7704,6 +10261,9 @@ function Get-OutboundForwardingEvidence {
 
     if ($null -eq $OutboundSpamPolicyCollection) {
         throw 'OutboundSpamPolicyCollectionRequired: EXO-004 cannot be observed without a collection that reaches the outbound spam filter policies.'
+    }
+    if ($null -eq $OutboundSpamRuleCollection) {
+        throw 'OutboundSpamRuleCollectionRequired: EXO-004 cannot be observed without a collection that reaches the outbound spam filter rules.'
     }
 
     if ($null -eq $MailboxCollection) {
@@ -7721,20 +10281,21 @@ function Get-OutboundForwardingEvidence {
         $mailbox = @(& $MailboxCollection)
         [ordered]@{
             OutboundSpamFilterPolicy = @(& $OutboundSpamPolicyCollection)
+            OutboundSpamFilterRule   = @(& $OutboundSpamRuleCollection)
             Mailbox                  = $mailbox
             InboxRule                = @(& $InboxRuleCollection $mailbox)
         }
     }
 
     return Get-BaselineEvidence -ControlId 'EXO-004' -Source 'ExchangeOnline' `
-        -Command 'Get-HostedOutboundSpamFilterPolicy; Get-Mailbox; Get-InboxRule' -Collection $collection
+        -Command 'Get-HostedOutboundSpamFilterPolicy; Get-HostedOutboundSpamFilterRule; Get-Mailbox; Get-InboxRule' -Collection $collection
 }
 
 # EXO-004: the three routes are decided together because closing any two of them leaves the tenant
 # exactly as exposed as closing none. A policy set that observed nothing is a failure rather than a
 # vacuous pass, an observation that is absent rather than empty is an `Error`, and a rule is judged
 # only when it is enabled and only against the domains the organization actually holds.
-$script:OutboundForwardingObservation = @('OutboundSpamFilterPolicy', 'Mailbox', 'InboxRule')
+$script:OutboundForwardingObservation = @('OutboundSpamFilterPolicy', 'OutboundSpamFilterRule', 'Mailbox', 'InboxRule')
 
 # The rule actions that put a copy of a message outside the organization, and the wording each is
 # reported with. Exchange Online exposes them as three separate members, and a rule may use any of
@@ -8022,6 +10583,26 @@ function Test-MailboxAuditingControl {
         }
 
         $association = @(Get-BaselineRecordMember -Node $payload -Name 'MailboxAuditBypassAssociation')
+        $bypassed = [System.Collections.Generic.List[string]]::new()
+        foreach ($entry in $association) {
+            $entryMember = @(Get-BaselineRecordMemberName -Node $entry)
+            if ('AuditBypassEnabled' -cnotin $entryMember) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "MailboxAuditingEvidenceIncomplete: an audit bypass association carries no 'AuditBypassEnabled' member."
+                }
+            }
+            $bypassState = Get-BaselineRecordMember -Node $entry -Name 'AuditBypassEnabled'
+            if ($bypassState -isnot [bool]) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "MailboxAuditingEvidenceMalformed: 'AuditBypassEnabled' must be a non-null Boolean."
+                }
+            }
+            if ($bypassState) {
+                $bypassed.Add([string](Get-BaselineRecordMember -Node $entry -Name 'Identity'))
+            }
+        }
 
         $finding = @(
             if (Get-BaselineRecordMember -Node $organizationConfig -Name 'AuditDisabled') {
@@ -8030,12 +10611,6 @@ function Test-MailboxAuditingControl {
 
             # Only an enabled bypass exempts a mailbox; an association that exists but is switched
             # off audits exactly like a mailbox that has none.
-            $bypassed = @(foreach ($entry in $association) {
-                    if (Get-BaselineRecordMember -Node $entry -Name 'AuditBypassEnabled') {
-                        Get-BaselineRecordMember -Node $entry -Name 'Identity'
-                    }
-                })
-
             if ($bypassed.Count -gt 0) {
                 "audit bypass is enabled for '{0}'" -f ($bypassed -join "', '")
             }
@@ -8376,7 +10951,26 @@ function Test-ClientProtocolControl {
     $resolve = {
         param($Name)
 
-        $value = if ($Name -cin $declared) { Get-BaselineRecordMember -Node $DesiredState -Name $Name } else { $null }
+        if ($Name -cnotin $declared) {
+            throw "DesiredProtocolMemberRequired: EXO-009 cannot be decided without a resolved '$Name' value; three protocols compared against the baseline and a fourth compared against nothing reads as a fully compared tenant."
+        }
+        if ($Name -ceq 'ewsAllowList') {
+            $value = @(
+                if ($DesiredState -is [System.Collections.IDictionary]) {
+                    $DesiredState[$Name]
+                }
+                else {
+                    $DesiredState.PSObject.Properties[$Name].Value
+                }
+            )
+            return , $value
+        }
+        $value = if ($DesiredState -is [System.Collections.IDictionary]) {
+            $DesiredState[$Name]
+        }
+        else {
+            $DesiredState.PSObject.Properties[$Name].Value
+        }
         if ($null -eq $value) {
             throw "DesiredProtocolMemberRequired: EXO-009 cannot be decided without a resolved '$Name' value; three protocols compared against the baseline and a fourth compared against nothing reads as a fully compared tenant."
         }
@@ -8512,7 +11106,7 @@ function Test-ClientProtocolControl {
 # decided from whichever quarter of it happened to be wired up. Each service is reached only
 # through the supplied seam, inside the one try Get-BaselineEvidence runs, so a refusal from any of
 # the five is recorded as an uncollected observation rather than thrown.
-$script:RoleAssignmentObservation = @('RoleGroup', 'ManagementRoleAssignment', 'ActivePimAssignment', 'EligiblePimAssignment', 'AccessReview')
+$script:RoleAssignmentObservation = @('RoleGroup', 'ManagementRoleAssignment', 'ActivePimAssignment', 'EligiblePimAssignment', 'AccessReview', 'ManagementScope')
 
 function Get-ExchangeRoleAssignmentEvidence {
     [CmdletBinding()]
@@ -8537,6 +11131,10 @@ function Get-ExchangeRoleAssignmentEvidence {
         [AllowNull()]
         [scriptblock]$AccessReviewCollection,
 
+        [Parameter(Mandatory)]
+        [AllowNull()]
+        [scriptblock]$ManagementScopeCollection,
+
         [AllowNull()]
         [object]$FallbackEvidence
     )
@@ -8560,14 +11158,26 @@ function Get-ExchangeRoleAssignmentEvidence {
     if ($null -eq $AccessReviewCollection) {
         throw 'AccessReviewCollectionRequired: EXO-010 cannot be observed without a collection that reaches the access reviews.'
     }
+    if ($null -eq $ManagementScopeCollection) {
+        throw 'ManagementScopeCollectionRequired: EXO-010 cannot be observed without a collection that reaches the management scopes.'
+    }
 
     $collection = {
+        $roleGroups = @(& $RoleGroupCollection)
         [ordered]@{
-            RoleGroup                = @(& $RoleGroupCollection)
+            RoleGroup                = $roleGroups
+            Members                  = [object[]]@(
+                foreach ($group in $roleGroups) {
+                    foreach ($member in @($group.MemberRecords)) {
+                        $member
+                    }
+                }
+            )
             ManagementRoleAssignment = @(& $ManagementRoleAssignmentCollection)
             ActivePimAssignment      = @(& $ActivePimAssignmentCollection)
             EligiblePimAssignment    = @(& $EligiblePimAssignmentCollection)
             AccessReview             = @(& $AccessReviewCollection)
+            ManagementScope          = @(& $ManagementScopeCollection)
         }
     }.GetNewClosure()
 
@@ -8733,6 +11343,46 @@ function Test-ExchangeRoleAssignmentControl {
         $activeAssignment = @(Get-BaselineRecordMember -Node $payload -Name 'ActivePimAssignment')
         $eligibleAssignment = @(Get-BaselineRecordMember -Node $payload -Name 'EligiblePimAssignment')
         $accessReview = @(Get-BaselineRecordMember -Node $payload -Name 'AccessReview')
+        $managementScope = @(Get-BaselineRecordMember -Node $payload -Name 'ManagementScope')
+        foreach ($scope in $managementScope) {
+            foreach ($name in @('Identity', 'Name')) {
+                $value = Get-BaselineRecordMember -Node $scope -Name $name
+                if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "RoleAssignmentEvidenceMalformed: an observed management scope carries no usable '$name'."
+                    }
+                }
+            }
+        }
+        if ('Members' -cnotin $present) {
+            return [pscustomobject]@{
+                Status = 'Error'
+                Reason = "RoleAssignmentEvidenceIncomplete: the record carries no top-level 'Members' projection."
+            }
+        }
+        $memberProjection = @(Get-BaselineRecordMember -Node $payload -Name 'Members')
+        foreach ($memberRecord in $memberProjection) {
+            $memberNames = @(Get-BaselineRecordMemberName -Node $memberRecord)
+            foreach ($memberName in @('Group', 'Member', 'IdentitySource', 'Raw')) {
+                if ($memberName -cnotin $memberNames) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "RoleAssignmentEvidenceIncomplete: a top-level member projection carries no '$memberName'."
+                    }
+                }
+            }
+            $memberIdentity = Get-BaselineRecordMember -Node $memberRecord -Name 'Member'
+            $identitySource = [string](Get-BaselineRecordMember -Node $memberRecord -Name 'IdentitySource')
+            if ($memberIdentity -isnot [string] -or [string]::IsNullOrWhiteSpace($memberIdentity) -or
+                $identitySource -cnotin @('PrimarySmtpAddress', 'Identity') -or
+                $null -eq (Get-BaselineRecordMember -Node $memberRecord -Name 'Raw')) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = 'RoleAssignmentEvidenceMalformed: member identity, source, and complete raw record are required.'
+                }
+            }
+        }
 
         foreach ($group in $roleGroup) {
             foreach ($member in $decidedMember) {
@@ -8741,6 +11391,12 @@ function Test-ExchangeRoleAssignmentControl {
                         Status = 'Error'
                         Reason = "RoleAssignmentEvidenceIncomplete: an observed role group carries no '$member' member."
                     }
+                }
+            }
+            if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $group -Name 'Name'))) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = 'RoleAssignmentEvidenceMalformed: an observed role group has no usable Name.'
                 }
             }
         }
@@ -8767,7 +11423,10 @@ function Test-ExchangeRoleAssignmentControl {
         $finding = @(
             foreach ($group in $roleGroup) {
                 $name = [string](Get-BaselineRecordMember -Node $group -Name 'Name')
-                if ((& $normalize $name) -cnotin $privilegedRoleGroup) { continue }
+                if ((& $normalize $name) -cnotin $privilegedRoleGroup) {
+                    "observed role group '$name' is not approved by the baseline"
+                    continue
+                }
 
                 foreach ($member in @(Get-BaselineRecordMember -Node $group -Name 'Members')) {
                     $identifier = [string]$member
@@ -9067,7 +11726,7 @@ function Test-DkimControl {
     $enabledRequired = [bool](Get-BaselineRecordMember -Node $DesiredState -Name 'enabled')
 
     $normalizeHost = { param($Value) ([string]$Value).Trim().TrimEnd('.').ToLowerInvariant() }
-    $configMember = @('Enabled', 'Status', 'Selector1CNAME', 'Selector2CNAME', 'Selector1KeySize', 'Selector2KeySize')
+    $configMember = @('Domain', 'Enabled', 'Status', 'Selector1CNAME', 'Selector2CNAME', 'Selector1KeySize', 'Selector2KeySize')
     $dnsMember = @('Authoritative', 'CanonicalName')
 
     $evaluator = {
@@ -9110,6 +11769,34 @@ function Test-DkimControl {
             foreach ($name in $configMember) {
                 if ($name -cnotin $presentConfigMember) {
                     return [pscustomobject]@{ Status = 'Error'; Reason = "DkimEvidenceMalformed: '$domain' signing configuration carries no '$name' member." }
+                }
+            }
+            $returnedDomainValue = Get-BaselineRecordMember -Node $configuration -Name 'Domain'
+            if ($returnedDomainValue -isnot [string] -or [string]::IsNullOrWhiteSpace($returnedDomainValue)) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "DkimEvidenceMalformed: '$domain' signing configuration carries no nonempty string Domain."
+                }
+            }
+            $returnedDomain = & $normalizeHost $returnedDomainValue
+            if ($returnedDomain -cne $domain) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "DkimSigningConfigurationDomainMismatch: requested '$domain' but Exchange returned '$returnedDomain'."
+                }
+            }
+            $returnedNameValue = Get-BaselineRecordMember -Node $configuration -Name 'Name'
+            if ($returnedNameValue -isnot [string] -or [string]::IsNullOrWhiteSpace($returnedNameValue)) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "DkimEvidenceMalformed: '$domain' signing configuration carries no nonempty string Name."
+                }
+            }
+            $returnedName = & $normalizeHost $returnedNameValue
+            if ($returnedName -cne $domain) {
+                return [pscustomobject]@{
+                    Status = 'Error'
+                    Reason = "DkimSigningConfigurationNameMismatch: requested '$domain' but Exchange returned '$returnedName'."
                 }
             }
 
@@ -10287,8 +12974,44 @@ function Get-StandardPresetEvidence {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$AtpRuleCollection
+        [scriptblock]$AtpRuleCollection,
+
+        [scriptblock]$RecipientCollection,
+        [scriptblock]$SafeLinksPolicyCollection,
+        [scriptblock]$SafeLinksRuleCollection,
+        [scriptblock]$HostedContentFilterRuleCollection,
+        [scriptblock]$MalwareFilterRuleCollection,
+        [scriptblock]$SafeAttachmentPolicyCollection,
+        [scriptblock]$SafeAttachmentRuleCollection,
+        [scriptblock]$StrictAtpRuleCollection,
+        [scriptblock]$GroupResolver,
+        [object]$ExchangeContext,
+        [AllowEmptyCollection()][System.Collections.Generic.List[object]]$Observation
     )
+
+    if ($null -ne $ExchangeContext) {
+        $decision = Get-BaselineExchangeCapabilityDecision -Context $ExchangeContext -Capability EmailProtection
+        if (-not $decision.Entitled) {
+            return New-BaselineEvidence -ControlId MDO-001 -Source SuppliedExternalEntitlement `
+                -Command 'Licensing owner handoff' -Value $null -Failed -FailureReason $decision.Reason
+        }
+        return Get-BaselineEvidence -ControlId MDO-001 -Source ExchangeOnline `
+            -Command 'ExchangeEmailProtectionMatrix' -Collection {
+                $state = Get-BaselineEmailProtectionState $ExchangeContext $Observation
+                $warning = @(
+                    $Observation |
+                        ForEach-Object { @(Get-BaselineRecordMember -Node $_ -Name 'Warnings') } |
+                        Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) }
+                )
+                if ($warning.Count -gt 0) {
+                    throw "A02 incomplete raw response: $($warning -join ' ')"
+                }
+                $assessment = Test-BaselineEmailProtectionState $state $ExchangeContext
+                $state.Matrix = $assessment.Matrix
+                $state.Assessment = $assessment
+                $state
+            }
+    }
 
     if ($null -eq $EopRuleCollection) {
         throw 'EopProtectionPolicyRuleCollectionRequired: MDO-001 cannot be observed without a collection that reaches the EOP protection policy rules.'
@@ -10298,10 +13021,92 @@ function Get-StandardPresetEvidence {
         throw 'AtpProtectionPolicyRuleCollectionRequired: MDO-001 cannot be observed without a collection that reaches the ATP protection policy rules.'
     }
 
+    $eopRule = @(& $EopRuleCollection)
+    $atpRule = @(& $AtpRuleCollection)
+    $strictAtpRule = if ($null -ne $StrictAtpRuleCollection) { @(& $StrictAtpRuleCollection) } else { @() }
+    $recipient = if ($null -ne $RecipientCollection) { @(& $RecipientCollection) } else { @() }
+    $safeLinksPolicy = if ($null -ne $SafeLinksPolicyCollection) { @(& $SafeLinksPolicyCollection) } else { @() }
+    $safeLinksRule = if ($null -ne $SafeLinksRuleCollection) { @(& $SafeLinksRuleCollection) } else { @() }
+    if ($null -eq $HostedContentFilterRuleCollection -or
+        $null -eq $MalwareFilterRuleCollection -or
+        $null -eq $SafeAttachmentPolicyCollection -or
+        $null -eq $SafeAttachmentRuleCollection) {
+        throw 'EmailProtectionCollectionRequired: MDO-001 requires hosted-content, malware, and Safe Attachments policy/rule collections.'
+    }
+    $hostedContentFilterRule = @(& $HostedContentFilterRuleCollection)
+    $malwareFilterRule = @(& $MalwareFilterRuleCollection)
+    $safeAttachmentPolicy = @(& $SafeAttachmentPolicyCollection)
+    $safeAttachmentRule = @(& $SafeAttachmentRuleCollection)
+    $matrix = @(
+        foreach ($observedRecipient in $recipient) {
+            $address = ([string](Get-BaselineRecordMember -Node $observedRecipient -Name 'PrimarySmtpAddress')).Trim()
+            if ([string]::IsNullOrWhiteSpace($address)) { continue }
+            $domain = ($address -split '@')[-1]
+            $candidate = @(
+                foreach ($rule in @($safeLinksRule | Sort-Object {
+                            [int](Get-BaselineRecordMember -Node $_ -Name 'Priority')
+                        })) {
+                    [pscustomobject]@{
+                        Rule = $rule
+                        Policy = [string](Get-BaselineRecordMember -Node $rule -Name 'SafeLinksPolicy')
+                    }
+                }
+                foreach ($rule in $strictAtpRule) {
+                    [pscustomobject]@{ Rule = $rule; Policy = 'Strict Preset Security Policy' }
+                }
+                foreach ($rule in $atpRule) {
+                    [pscustomobject]@{ Rule = $rule; Policy = 'Standard Preset Security Policy' }
+                }
+            )
+            $effective = $null
+            foreach ($entry in $candidate) {
+                $rule = $entry.Rule
+                if ([string](Get-BaselineRecordMember -Node $rule -Name 'State') -cne 'Enabled') { continue }
+                $sentTo = @(Get-BaselineRecordMember -Node $rule -Name 'SentTo')
+                $sentToGroup = @(Get-BaselineRecordMember -Node $rule -Name 'SentToMemberOf')
+                $recipientDomain = @(Get-BaselineRecordMember -Node $rule -Name 'RecipientDomainIs')
+                $exceptSentTo = @(Get-BaselineRecordMember -Node $rule -Name 'ExceptIfSentTo')
+                $exceptGroup = @(Get-BaselineRecordMember -Node $rule -Name 'ExceptIfSentToMemberOf')
+                $exceptDomain = @(Get-BaselineRecordMember -Node $rule -Name 'ExceptIfRecipientDomainIs')
+                if (($sentToGroup.Count -gt 0 -or $exceptGroup.Count -gt 0) -and $null -eq $GroupResolver) {
+                    throw 'EmailProtectionGroupResolverRequired: SentToMemberOf scope cannot be admitted without independent group membership resolution.'
+                }
+                $includedByGroup = $false
+                foreach ($group in $sentToGroup) {
+                    if (& $GroupResolver $group $address) { $includedByGroup = $true; break }
+                }
+                $excludedByGroup = $false
+                foreach ($group in $exceptGroup) {
+                    if (& $GroupResolver $group $address) { $excludedByGroup = $true; break }
+                }
+                $positive = ($sentTo.Count -eq 0 -and $sentToGroup.Count -eq 0 -and $recipientDomain.Count -eq 0) -or
+                    $address -iin $sentTo -or $domain -iin $recipientDomain -or $includedByGroup
+                $excluded = $address -iin $exceptSentTo -or $domain -iin $exceptDomain -or $excludedByGroup
+                if ($positive -and -not $excluded) {
+                    $effective = $entry
+                    break
+                }
+            }
+            [pscustomobject][ordered]@{
+                Recipient = $address
+                Family = 'SafeLinks'
+                Policy = if ($null -ne $effective) { [string]$effective.Policy } else { 'Built-In Protection Policy' }
+            }
+        }
+    )
+
     $collection = {
         [ordered]@{
-            EOPProtectionPolicyRule = @(& $EopRuleCollection)
-            ATPProtectionPolicyRule = @(& $AtpRuleCollection)
+            EOPProtectionPolicyRule = $eopRule
+            ATPProtectionPolicyRule = $atpRule
+            Recipient = $recipient
+            SafeLinksPolicy = $safeLinksPolicy
+            SafeLinksRule = $safeLinksRule
+            HostedContentFilterRule = $hostedContentFilterRule
+            MalwareFilterRule = $malwareFilterRule
+            SafeAttachmentPolicy = $safeAttachmentPolicy
+            SafeAttachmentRule = $safeAttachmentRule
+            Matrix = $matrix
         }
     }.GetNewClosure()
 
@@ -10326,6 +13131,124 @@ $script:StandardPresetScopeComparison = @(
     [pscustomobject]@{ Observed = 'ExceptIfSentTo'; Desired = 'excludedSecOpsMailbox'; Kind = 'SmtpAddress' }
 )
 
+function Test-BaselineIntegratedEmailProtection {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$Payload,
+        [Parameter(Mandatory)][object]$Context
+    )
+
+    $matrix = @()
+    try {
+        $desired = Get-BaselineRecordMember -Node $Context.Configuration.controls -Name 'MDO-001'
+        $recipientMatrix = @(Get-BaselineRecordMember -Node $desired -Name 'recipientMatrix')
+        if ($recipientMatrix.Count -eq 0 -or
+            @($recipientMatrix | Group-Object { ([string]$_.address).ToLowerInvariant() } |
+                    Where-Object Count -gt 1).Count -gt 0) {
+            throw 'EmailProtectionRecipientInventory: unique nonempty recipients are required.'
+        }
+
+        $mailboxType = @('UserMailbox', 'SharedMailbox', 'RoomMailbox', 'EquipmentMailbox', 'MailUser')
+        $observedRecipient = @(
+            Get-BaselineRecordMember -Node $Payload -Name 'Recipient' |
+                Where-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'RecipientTypeDetails') -in $mailboxType }
+        )
+        $actualAddress = @($observedRecipient | ForEach-Object {
+                ([string](Get-BaselineRecordMember -Node $_ -Name 'PrimarySmtpAddress')).Trim().ToLowerInvariant()
+            } | Sort-Object -Unique)
+        $expectedAddress = @($recipientMatrix | ForEach-Object {
+                ([string](Get-BaselineRecordMember -Node $_ -Name 'address')).Trim().ToLowerInvariant()
+            } | Sort-Object -Unique)
+        if ($actualAddress.Count -ne $expectedAddress.Count -or
+            @(Compare-Object $expectedAddress $actualAddress -SyncWindow 0).Count -ne 0) {
+            throw 'EmailProtectionRecipientInventory: the observed Exchange recipient population does not exactly match the resolved recipient matrix.'
+        }
+        $matrix = @(Get-BaselineRecordMember -Node $Payload -Name 'Matrix')
+        if ($matrix.Count -ne $recipientMatrix.Count) {
+            throw 'EmailProtectionRecipientInventory: the independently observed policy matrix is incomplete.'
+        }
+
+        $tenantPlan = @(Get-BaselineRecordMember -Node $Context.Entitlement -Name 'servicePlans')
+        $recipientEntitlement = @(Get-BaselineRecordMember -Node $Context.Entitlement -Name 'recipients')
+        foreach ($recipient in $recipientMatrix) {
+            $address = [string](Get-BaselineRecordMember -Node $recipient -Name 'address')
+            $license = @($recipientEntitlement | Where-Object {
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'address') -ieq $address
+                })
+            if ($license.Count -ne 1 -or
+                'EXCHANGE_S_ENTERPRISE' -cnotin @(Get-BaselineRecordMember -Node $license[0] -Name 'servicePlans')) {
+                throw "EmailProtectionNotEntitled: '$address' requires explicitly supplied Exchange recipient capability."
+            }
+            if ([bool](Get-BaselineRecordMember -Node $recipient -Name 'defender') -and
+                ('ATP_ENTERPRISE' -cnotin $tenantPlan -or
+                    'ATP_ENTERPRISE' -cnotin @(Get-BaselineRecordMember -Node $license[0] -Name 'servicePlans'))) {
+                throw "EmailProtectionNotEntitled: '$address' requires explicitly supplied tenant and recipient Defender capability."
+            }
+        }
+
+        $policies = @(Get-BaselineRecordMember -Node $Payload -Name 'SafeLinksPolicy')
+        foreach ($recipient in $recipientMatrix) {
+            $address = [string](Get-BaselineRecordMember -Node $recipient -Name 'address')
+            $expectedPolicy = [string](Get-BaselineRecordMember -Node $recipient -Name 'expectedPolicy')
+            $observed = @($matrix | Where-Object {
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'Recipient') -ieq $address -and
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'Family') -ceq 'SafeLinks'
+                })
+            if ($observed.Count -ne 1) {
+                throw "EmailProtectionRecipientInventory: '$address/SafeLinks' has no unique independently observed projection."
+            }
+            $effectivePolicy = [string](Get-BaselineRecordMember -Node $observed[0] -Name 'Policy')
+            if ($expectedPolicy -ceq 'Default') { $expectedPolicy = 'Built-In Protection Policy' }
+            if ($effectivePolicy -ine $expectedPolicy) {
+                throw "EmailProtectionPrecedence: '$address/SafeLinks' resolves to '$effectivePolicy', not '$expectedPolicy'."
+            }
+        }
+
+        $exceptions = @(Get-BaselineRecordMember -Node $desired -Name 'settingExceptions')
+        foreach ($exception in $exceptions) {
+            $approval = Get-BaselineRecordMember -Node $exception -Name 'approval'
+            $expires = [datetimeoffset]::MinValue
+            if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $approval -Name 'reference')) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $approval -Name 'owner')) -or
+                -not [datetimeoffset]::TryParse(
+                    [string](Get-BaselineRecordMember -Node $approval -Name 'expiresOn'),
+                    [ref]$expires
+                ) -or $expires -le [datetimeoffset]::UtcNow) {
+                throw 'EmailProtectionException: current owner, reference and expiry approval are required.'
+            }
+            $family = [string](Get-BaselineRecordMember -Node $exception -Name 'family')
+            if ($family -cne 'SafeLinks') {
+                throw "EmailProtectionException: unsupported integrated family '$family'."
+            }
+            $policyName = @($matrix | Where-Object {
+                    $_.Recipient -ieq [string](Get-BaselineRecordMember -Node $exception -Name 'recipient')
+                })[0].Policy
+            $policy = @($policies | Where-Object {
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'Name') -ieq $policyName
+                })
+            $setting = [string](Get-BaselineRecordMember -Node $exception -Name 'setting')
+            if ($policy.Count -ne 1 -or
+                (Get-BaselineRecordMember -Node $policy[0] -Name $setting) -ne
+                (Get-BaselineRecordMember -Node $exception -Name 'value')) {
+                throw "EmailProtectionSettingDrift: the independently observed '$policyName/$setting' value is not the approved exception."
+            }
+        }
+
+        return [pscustomobject]@{
+            Status = if ($exceptions.Count -gt 0) { 'ApprovedException' } else { 'Pass' }
+            Reason = 'EmailProtectionVerified: exact recipient inventory, precedence, approved exceptions and recipient entitlement reconciled.'
+            Matrix = $matrix
+        }
+    }
+    catch {
+        return [pscustomobject]@{
+            Status = if ($_.Exception.Message -like 'EmailProtectionNotEntitled:*') { 'NotEntitled' } else { 'Fail' }
+            Reason = $_.Exception.Message
+            Matrix = $matrix
+        }
+    }
+}
+
 # MDO-001: both halves of the Standard preset are decided together, because the EOP rule scopes
 # anti-spam, anti-malware and anti-phishing while the ATP rule alone scopes Safe Links and Safe
 # Attachments, and the two are enabled and scoped independently. The deployment script reports this
@@ -10347,8 +13270,21 @@ function Test-StandardPresetControl {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$GroupResolver
+        [scriptblock]$GroupResolver,
+
+        [object]$ExchangeContext
     )
+
+    if ($null -ne $ExchangeContext) {
+        $decision = Get-BaselineExchangeCapabilityDecision -Context $ExchangeContext -Capability EmailProtection
+        if (-not $decision.Entitled) {
+            return New-ControlResult -ControlId MDO-001 -Status NotEntitled -Reason $decision.Reason
+        }
+        return Test-BaselineControl -ControlId MDO-001 -Evidence $Evidence -Evaluator {
+            param($Record)
+            Test-BaselineEmailProtectionState (Get-BaselineRecordMember $Record Value) $ExchangeContext
+        }
+    }
 
     if ($null -eq $DesiredState) {
         throw 'DesiredStandardPresetStateRequired: MDO-001 cannot be decided without the Standard preset scope the baseline resolved; an evaluator with no desired state decides against whatever it defaults to rather than against what was approved.'
@@ -10368,6 +13304,21 @@ function Test-StandardPresetControl {
     $desired = [ordered]@{}
     foreach ($pair in $comparison) {
         $desired[$pair.Observed] = if ($pair.Desired -cin $declared) { @(Get-BaselineRecordMember -Node $DesiredState -Name $pair.Desired) } else { @() }
+    }
+    if ($null -ne $ExchangeContext) {
+        $recipientMatrix = @(
+            Get-BaselineRecordMember -Node $DesiredState -Name 'recipientMatrix'
+        )
+        if ($recipientMatrix.Count -gt 0) {
+            $desired['ExceptIfSentTo'] = @(
+                $recipientMatrix |
+                    Where-Object {
+                        [string](Get-BaselineRecordMember -Node $_ -Name 'expectedPolicy') -notin
+                            @('Standard Preset Security Policy', 'Strict Preset Security Policy')
+                    } |
+                    ForEach-Object { [string](Get-BaselineRecordMember -Node $_ -Name 'address') }
+            )
+        }
     }
 
     if (@($desired['RecipientDomainIs']).Count -eq 0) {
@@ -10443,6 +13394,11 @@ function Test-StandardPresetControl {
         )
 
         if ($finding.Count -eq 0) {
+            if ($null -ne $ExchangeContext -and
+                'Recipient' -cin @(Get-BaselineRecordMemberName -Node $payload)) {
+                $integrated = Test-BaselineIntegratedEmailProtection -Payload $payload -Context $ExchangeContext
+                return $integrated
+            }
             return [pscustomobject]@{ Status = 'Pass' }
         }
 
@@ -11318,7 +14274,13 @@ function Get-ReportSubmissionEvidence {
 
         [Parameter(Mandatory)]
         [AllowNull()]
-        [scriptblock]$SecOpsOverridePolicyCollection
+        [scriptblock]$SecOpsOverridePolicyCollection,
+
+        [scriptblock]$ReportSubmissionRuleCollection,
+
+        [scriptblock]$ReportingMailboxCollection,
+
+        [object]$ExchangeContext
     )
 
     if ($null -eq $ReportSubmissionPolicyCollection) {
@@ -11329,10 +14291,37 @@ function Get-ReportSubmissionEvidence {
         throw 'SecOpsOverridePolicyCollectionRequired: MDO-006 cannot be observed without a collection that reaches the Advanced Delivery SecOps override policies.'
     }
 
+    $reportingEvidence = if ($null -ne $ExchangeContext) {
+        Get-BaselineRecordMember -Node $ExchangeContext.Parameters -Name 'reportingEvidence'
+    }
+    else {
+        $null
+    }
     $collection = {
+        $reportSubmissionPolicy = @(& $ReportSubmissionPolicyCollection)
+        $secOpsOverridePolicy = @(& $SecOpsOverridePolicyCollection)
+        $reportSubmissionRule = if ($null -ne $ReportSubmissionRuleCollection) {
+            @(& $ReportSubmissionRuleCollection)
+        }
+        else {
+            @()
+        }
+        $reportingMailbox = if ($null -ne $ReportingMailboxCollection) {
+            @(& $ReportingMailboxCollection)
+        }
+        else {
+            @()
+        }
         [ordered]@{
-            ReportSubmissionPolicy = @(& $ReportSubmissionPolicyCollection)
-            SecOpsOverridePolicy   = @(& $SecOpsOverridePolicyCollection)
+            ReportSubmissionPolicy = $reportSubmissionPolicy
+            ReportSubmissionRule   = $reportSubmissionRule
+            SecOpsOverridePolicy   = $secOpsOverridePolicy
+            ReportingEvidence      = $reportingEvidence
+            ReportingState         = [ordered]@{
+                Mailbox = @($reportingMailbox)[0]
+                Policy  = @($reportSubmissionPolicy)[0]
+                SecOps  = @($secOpsOverridePolicy)[0]
+            }
         }
     }.GetNewClosure()
 
@@ -11432,7 +14421,21 @@ function Test-ReportSubmissionControl {
     }
 
     $observationName = @($script:ReportSubmissionObservation.Keys)
-    $policyMember = @(@($decision.Observed) + @($mailboxMember))
+    $customRoute = @(
+        [pscustomobject]@{ Category = 'Junk'; BooleanMember = 'ReportJunkToCustomizedAddress'; AddressMember = 'ReportJunkAddresses' }
+        [pscustomobject]@{ Category = 'NotJunk'; BooleanMember = 'ReportNotJunkToCustomizedAddress'; AddressMember = 'ReportNotJunkAddresses' }
+        [pscustomobject]@{ Category = 'Phish'; BooleanMember = 'ReportPhishToCustomizedAddress'; AddressMember = 'ReportPhishAddresses' }
+    )
+    $policyMember = @(
+        @($decision.Observed) +
+        @($mailboxMember) +
+        @(
+            'ReportJunkToCustomizedAddress', 'ReportJunkAddresses',
+            'ReportNotJunkToCustomizedAddress', 'ReportNotJunkAddresses',
+            'ReportPhishToCustomizedAddress', 'ReportPhishAddresses'
+        ) |
+            Select-Object -Unique
+    )
 
     $evaluator = {
         param($Record)
@@ -11440,6 +14443,139 @@ function Test-ReportSubmissionControl {
         $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
         $present = @()
         if ($null -ne $payload) { $present = @(Get-BaselineRecordMemberName -Node $payload) }
+
+        $reportingState = Get-BaselineRecordMember -Node $payload -Name 'ReportingState'
+        $reportSubmissionRule = @(
+            Get-BaselineRecordMember -Node $payload -Name 'ReportSubmissionRule' |
+                Where-Object { $null -ne $_ }
+        )
+        if ($reportSubmissionRule.Count -eq 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingRuleMissing: one report submission rule is required.'
+            }
+        }
+        if ([string](Get-BaselineRecordMember -Node $reportSubmissionRule[0] -Name 'State') -cne 'Enabled') {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingRuleDisabled: the report submission rule must be enabled.'
+            }
+        }
+        $observedPolicy = @(Get-BaselineRecordMember -Node $payload -Name 'ReportSubmissionPolicy')
+        if ($observedPolicy.Count -ne 1 -or
+            [string](Get-BaselineRecordMember -Node $reportSubmissionRule[0] -Name 'ReportSubmissionPolicy') -cne
+            [string](Get-BaselineRecordMember -Node $observedPolicy[0] -Name 'Identity')) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingRulePolicyMismatch: the report submission rule must bind the observed policy.'
+            }
+        }
+        $reportingContractContext = @{
+            Configuration = @{ controls = @{ 'MDO-006' = $DesiredState } }
+            Parameters = @{
+                reportingEvidence = Get-BaselineRecordMember -Node $payload -Name 'ReportingEvidence'
+            }
+        }
+        $reportingContractResult = Test-BaselineReportingState $reportingState $reportingContractContext
+        if ([string]$reportingContractResult.Status -cne 'Pass') {
+            return [pscustomobject]$reportingContractResult
+        }
+
+        $reportingEvidence = Get-BaselineRecordMember -Node $payload -Name 'ReportingEvidence'
+        if ('ReportingEvidence' -cnotin $present -or $null -eq $reportingEvidence) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingEvidenceMissing: independent reporting proof is required.'
+            }
+        }
+        $approvalCurrent = {
+            param($Approval)
+            $expiry = [datetimeoffset]::MinValue
+            -not [string]::IsNullOrWhiteSpace(
+                [string](Get-BaselineRecordMember -Node $Approval -Name 'reference')
+            ) -and
+            -not [string]::IsNullOrWhiteSpace(
+                [string](Get-BaselineRecordMember -Node $Approval -Name 'owner')
+            ) -and
+            [datetimeoffset]::TryParse(
+                [string](Get-BaselineRecordMember -Node $Approval -Name 'expiresOn'),
+                [ref]$expiry
+            ) -and $expiry -gt [datetimeoffset]::UtcNow
+        }
+        if ([string](Get-BaselineRecordMember -Node $reportingEvidence -Name 'mailbox') -ine $desiredMailbox -or
+            -not (& $approvalCurrent (Get-BaselineRecordMember -Node $reportingEvidence -Name 'approval'))) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingEvidenceMissing: reporting mailbox binding and current approval are required.'
+            }
+        }
+        $dlp = Get-BaselineRecordMember -Node $reportingEvidence -Name 'dlp'
+        if ([string](Get-BaselineRecordMember -Node $dlp -Name 'mailbox') -ine $desiredMailbox -or
+            [string](Get-BaselineRecordMember -Node $dlp -Name 'status') -cnotin @('Excluded', 'NotApplicable') -or
+            -not (& $approvalCurrent (Get-BaselineRecordMember -Node $dlp -Name 'approval'))) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingEvidenceMissing: an approved DLP disposition is required.'
+            }
+        }
+        $delivery = @(Get-BaselineRecordMember -Node $reportingEvidence -Name 'deliveries')
+        $deliveryCategory = @($delivery | ForEach-Object {
+                [string](Get-BaselineRecordMember -Node $_ -Name 'category')
+            } | Sort-Object)
+        if ($delivery.Count -ne 3 -or
+            @(Compare-Object @('Junk', 'NotJunk', 'Phish') $deliveryCategory -SyncWindow 0).Count -ne 0) {
+            return [pscustomobject]@{
+                Status = 'Fail'
+                Reason = 'ReportingEvidenceMissing: exactly one Junk, NotJunk and Phish delivery is required.'
+            }
+        }
+        $identifier = [System.Collections.Generic.HashSet[string]]::new(
+            [System.StringComparer]::OrdinalIgnoreCase
+        )
+        foreach ($category in @('Junk', 'NotJunk', 'Phish')) {
+            $proof = @($delivery | Where-Object {
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'category') -ceq $category -and
+                    [string](Get-BaselineRecordMember -Node $_ -Name 'recipient') -ieq $desiredMailbox
+                })
+            $reporter = [string](Get-BaselineRecordMember -Node $proof[0] -Name 'reporter')
+            $reporterValid = $true
+            try {
+                $parsedReporter = [System.Net.Mail.MailAddress]::new($reporter)
+                $reporterValid = $parsedReporter.Address -ceq $reporter
+            }
+            catch {
+                $reporterValid = $false
+            }
+            if ($proof.Count -ne 1 -or -not $reporterValid -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $proof[0] -Name 'messageId')) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $proof[0] -Name 'microsoftSubmissionId')) -or
+                [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $proof[0] -Name 'feedbackMessageId')) -or
+                (Get-BaselineRecordMember -Node $proof[0] -Name 'originalMessagePreserved') -ne $true) {
+                return [pscustomobject]@{
+                    Status = 'Fail'
+                    Reason = "ReportingEvidenceMissing: independent '$category' delivery proof is incomplete."
+                }
+            }
+            foreach ($member in @('messageId', 'microsoftSubmissionId', 'feedbackMessageId')) {
+                if (-not $identifier.Add([string](Get-BaselineRecordMember -Node $proof[0] -Name $member))) {
+                    return [pscustomobject]@{
+                        Status = 'Fail'
+                        Reason = 'ReportingEvidenceMissing: delivery identifiers must be unique across categories and identifier types.'
+                    }
+                }
+            }
+            $received = [datetimeoffset]::MinValue
+            if (-not [datetimeoffset]::TryParse(
+                    [string](Get-BaselineRecordMember -Node $proof[0] -Name 'receivedAt'),
+                    [ref]$received
+                ) -or $received -gt [datetimeoffset]::UtcNow -or
+                ([datetimeoffset]::UtcNow - $received) -gt [timespan]::FromDays(30)) {
+                return [pscustomobject]@{
+                    Status = 'Fail'
+                    Reason = "ReportingEvidenceMissing: independent '$category' delivery time is invalid."
+                }
+            }
+        }
 
         foreach ($name in $observationName) {
             if ($name -cnotin $present) {
@@ -11458,6 +14594,15 @@ function Test-ReportSubmissionControl {
                     return [pscustomobject]@{
                         Status = 'Error'
                         Reason = "ReportSubmissionEvidenceIncomplete: an observed ReportSubmissionPolicy carries no '$decided' member."
+                    }
+                }
+            }
+            foreach ($route in $customRoute) {
+                $booleanMember = [string](Get-BaselineRecordMember -Node $route -Name 'BooleanMember')
+                if ((Get-BaselineRecordMember -Node $policy -Name $booleanMember) -isnot [bool]) {
+                    return [pscustomobject]@{
+                        Status = 'Error'
+                        Reason = "ReportSubmissionEvidenceMalformed: '$booleanMember' must be a non-null Boolean."
                     }
                 }
             }
@@ -11488,6 +14633,24 @@ function Test-ReportSubmissionControl {
                 'the tenant holds no report submission policy'
             }
             else {
+                foreach ($route in $customRoute) {
+                    $category = [string](Get-BaselineRecordMember -Node $route -Name 'Category')
+                    $booleanMember = [string](Get-BaselineRecordMember -Node $route -Name 'BooleanMember')
+                    $addressMember = [string](Get-BaselineRecordMember -Node $route -Name 'AddressMember')
+                    if (-not [bool](Get-BaselineRecordMember -Node $reportPolicy[0] -Name $booleanMember)) {
+                        "the $category custom reporting route is disabled"
+                    }
+                    $routeMailbox = Compare-NormalizedCollection -Desired @($desiredMailbox) `
+                        -Actual @(Get-BaselineRecordMember -Node $reportPolicy[0] -Name $addressMember) `
+                        -Kind 'SmtpAddress'
+                    foreach ($missing in @($routeMailbox.Missing)) {
+                        "the $category custom reporting route does not include approved mailbox '$missing'"
+                    }
+                    foreach ($surplus in @($routeMailbox.Surplus)) {
+                        "the $category custom reporting route includes unapproved mailbox '$surplus'"
+                    }
+                }
+
                 foreach ($observed in $desiredSwitch.Keys) {
                     $actual = [bool](Get-BaselineRecordMember -Node $reportPolicy[0] -Name $observed)
                     if ($actual -ne $desiredSwitch[$observed]) {
@@ -11558,7 +14721,7 @@ function Get-TenantAllowBlockListEvidence {
     }
 
     return Get-BaselineEvidence -ControlId 'MDO-007' -Source 'ExchangeOnline' `
-        -Command 'Get-TenantAllowBlockListItems' -Collection $Collection
+        -Command 'Get-TenantAllowBlockListItems' -Collection $Collection -CollectionValue
 }
 
 function Test-TenantAllowBlockListControl {
@@ -12505,7 +15668,7 @@ function Get-PartnerInboundConnectorEvidence {
     }
 
     return Get-BaselineEvidence -ControlId 'PP-005' -Source 'ExchangeOnline' `
-        -Command 'Get-InboundConnector' -Collection $InboundConnectorCollection
+        -Command 'Get-InboundConnector' -Collection $InboundConnectorCollection -CollectionValue
 }
 
 function Test-PartnerInboundConnectorControl {
@@ -13064,6 +16227,8 @@ function Get-MailboxRetentionEvidence {
     param(
         [Parameter(Mandatory)][AllowNull()][scriptblock]$MailboxCollection,
         [Parameter(Mandatory)][AllowNull()][scriptblock]$RetentionPolicyCollection,
+        [AllowNull()][scriptblock]$RetentionPolicyTagCollection,
+        [AllowNull()][scriptblock]$DiagnosticLogCollection,
         [Parameter(Mandatory)][AllowNull()][scriptblock]$DistributionCollection,
         [datetime]$CollectedAtUtc = [datetime]::UtcNow
     )
@@ -13073,12 +16238,51 @@ function Get-MailboxRetentionEvidence {
     if ($null -eq $DistributionCollection) { throw 'MailboxRetentionDistributionCollectionRequired: GOV-003 requires distribution evidence.' }
 
     $collection = {
-        [ordered]@{
-            MailboxPopulation = (& $MailboxCollection)
-            RetentionPolicies = @(& $RetentionPolicyCollection)
-            Distribution = (& $DistributionCollection)
+        $mailboxPopulation = & $MailboxCollection
+        $retentionPolicies = @(& $RetentionPolicyCollection)
+        $distribution = & $DistributionCollection
+        $retentionPolicyTags = if ($null -ne $RetentionPolicyTagCollection) {
+            @(& $RetentionPolicyTagCollection)
         }
-    }.GetNewClosure()
+        else {
+            [object[]]@(
+                $retentionPolicies |
+                    ForEach-Object { @(Get-BaselineRecordMember -Node $_ -Name 'RetentionPolicyTagLinks') } |
+                    Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } |
+                    Select-Object -Unique
+            )
+        }
+        $diagnosticLogs = if ($null -ne $DiagnosticLogCollection) {
+            @(& $DiagnosticLogCollection)
+        }
+        else {
+            $mailboxes = @(Get-BaselineRecordMember -Node $mailboxPopulation -Name 'Mailboxes')
+            $covered = @(
+                Get-BaselineRecordMember -Node $distribution -Name 'CoveredMailboxes' |
+                    ForEach-Object { ([string]$_).Trim().ToLowerInvariant() }
+            )
+            $missing = @(
+                $mailboxes |
+                    ForEach-Object {
+                        ([string](Get-BaselineRecordMember -Node $_ -Name 'PrimarySmtpAddress')).Trim().ToLowerInvariant()
+                    } |
+                    Where-Object { [string]::IsNullOrWhiteSpace($_) -or $_ -cnotin $covered }
+            )
+            if ((Get-BaselineRecordMember -Node $mailboxPopulation -Name 'Complete') -ne $true -or
+                [string](Get-BaselineRecordMember -Node $distribution -Name 'Status') -cne 'Success' -or
+                $missing.Count -gt 0) {
+                throw 'MailboxRetentionDiagnosticFallbackRefused: absent diagnostic collection requires complete successful distribution coverage of the full mailbox population.'
+            }
+            [object[]]::new(0)
+        }
+        [ordered]@{
+            MailboxPopulation = $mailboxPopulation
+            RetentionPolicies = $retentionPolicies
+            RetentionPolicyTags = $retentionPolicyTags
+            DiagnosticLogs = $diagnosticLogs
+            Distribution = $distribution
+        }
+    }
     try {
         $value = & $collection
         return New-BaselineEvidence -ControlId 'GOV-003' -Source 'ExchangeOnline' `
@@ -13120,7 +16324,7 @@ function Test-MailboxRetentionControl {
         $collected = [datetime](Get-BaselineRecordMember -Node $Record -Name 'CollectedAtUtc')
         if ($AsOfUtc -lt $collected -or ($AsOfUtc - $collected) -gt $MaximumEvidenceAge) { return [pscustomobject]@{ Status = 'Error'; Reason = 'MailboxRetentionEvidenceStale: GOV-003 evidence is outside the maximum age.' } }
         $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
-        foreach ($name in @('MailboxPopulation', 'RetentionPolicies', 'Distribution')) {
+        foreach ($name in @('MailboxPopulation', 'RetentionPolicies', 'RetentionPolicyTags', 'DiagnosticLogs', 'Distribution')) {
             if ($name -cnotin @(Get-BaselineRecordMemberName -Node $payload)) { return [pscustomobject]@{ Status = 'Error'; Reason = "MailboxRetentionEvidenceIncomplete: the record carries no '$name'." } }
         }
         $population = Get-BaselineRecordMember -Node $payload -Name 'MailboxPopulation'
@@ -13130,6 +16334,10 @@ function Test-MailboxRetentionControl {
         $policies = @(Get-BaselineRecordMember -Node $payload -Name 'RetentionPolicies')
         if (@($policies | Where-Object { ([string](Get-BaselineRecordMember -Node $_ -Name 'Name')).Trim() -ceq $policyName }).Count -ne 1) {
             return [pscustomobject]@{ Status = 'Fail'; Reason = "MailboxRetentionPolicyMissing: required policy '$policyName' was not observed exactly once." }
+        }
+        $tags = @(Get-BaselineRecordMember -Node $payload -Name 'RetentionPolicyTags')
+        if ($tags.Count -eq 0) {
+            return [pscustomobject]@{ Status = 'Error'; Reason = 'MailboxRetentionEvidenceIncomplete: no retention policy tags were collected.' }
         }
         $distribution = Get-BaselineRecordMember -Node $payload -Name 'Distribution'
         $status = [string](Get-BaselineRecordMember -Node $distribution -Name 'Status')
@@ -13153,6 +16361,7 @@ function Get-LitigationHoldEvidence {
         [Parameter(Mandatory)][AllowNull()][scriptblock]$MailboxCollection,
         [Parameter(Mandatory)][AllowNull()][scriptblock]$PriorityIdentityCollection,
         [Parameter(Mandatory)][AllowNull()][scriptblock]$CustodianCollection,
+        [AllowNull()][scriptblock]$MailboxStatisticsCollection,
         [datetime]$CollectedAtUtc = [datetime]::UtcNow
     )
     if ($null -eq $MailboxCollection) { throw 'LitigationHoldMailboxCollectionRequired: GOV-004 requires complete mailbox collection.' }
@@ -13163,6 +16372,12 @@ function Get-LitigationHoldEvidence {
             MailboxPopulation = (& $MailboxCollection)
             PriorityIdentities = (& $PriorityIdentityCollection)
             Custodians = (& $CustodianCollection)
+            MailboxStatistics = if ($null -eq $MailboxStatisticsCollection) {
+                [object[]]::new(0)
+            }
+            else {
+                @(& $MailboxStatisticsCollection)
+            }
         }
         return New-BaselineEvidence -ControlId 'GOV-004' -Source 'ExchangeOnline' `
             -Command 'Get-EXOMailbox; Resolve-PriorityIdentity; Resolve-Custodian' -Value $value -CollectedAtUtc $CollectedAtUtc
@@ -13199,7 +16414,7 @@ function Test-LitigationHoldControl {
         $collected = [datetime](Get-BaselineRecordMember -Node $Record -Name 'CollectedAtUtc')
         if ($AsOfUtc -lt $collected -or ($AsOfUtc - $collected) -gt $MaximumEvidenceAge) { return [pscustomobject]@{ Status = 'Error'; Reason = 'LitigationHoldEvidenceStale: GOV-004 evidence is outside the maximum age.' } }
         $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
-        foreach ($name in @('MailboxPopulation', 'PriorityIdentities', 'Custodians')) {
+        foreach ($name in @('MailboxPopulation', 'PriorityIdentities', 'Custodians', 'MailboxStatistics')) {
             if ($name -cnotin @(Get-BaselineRecordMemberName -Node $payload)) { return [pscustomobject]@{ Status = 'Error'; Reason = "LitigationHoldEvidenceIncomplete: the record carries no '$name'." } }
         }
         $population = Get-BaselineRecordMember -Node $payload -Name 'MailboxPopulation'
@@ -13234,12 +16449,22 @@ function Get-InformationRightsManagementEvidence {
     param(
         [Parameter(Mandatory)][AllowNull()][scriptblock]$IrmConfigurationCollection,
         [Parameter(Mandatory)][AllowNull()][scriptblock]$OmeFunctionalEvidenceCollection,
+        [AllowNull()][scriptblock]$TransportRuleCollection,
         [datetime]$CollectedAtUtc = [datetime]::UtcNow
     )
     if ($null -eq $IrmConfigurationCollection) { throw 'IrmConfigurationCollectionRequired: GOV-005 requires IRM configuration collection.' }
     if ($null -eq $OmeFunctionalEvidenceCollection) { throw 'OmeFunctionalEvidenceCollectionRequired: GOV-005 requires OME functional evidence.' }
     try {
-        $value = [ordered]@{ IrmConfiguration = (& $IrmConfigurationCollection); OmeFunctionalEvidence = (& $OmeFunctionalEvidenceCollection) }
+        $value = [ordered]@{
+            IrmConfiguration = (& $IrmConfigurationCollection)
+            OmeFunctionalEvidence = (& $OmeFunctionalEvidenceCollection)
+            TransportRules = if ($null -eq $TransportRuleCollection) {
+                [object[]]::new(0)
+            }
+            else {
+                @(& $TransportRuleCollection)
+            }
+        }
         return New-BaselineEvidence -ControlId 'GOV-005' -Source 'ExchangeOnline+FunctionalEvidence' `
             -Command 'Get-IRMConfiguration; Test-IRMConfiguration; OME encrypted-message round trip' -Value $value -CollectedAtUtc $CollectedAtUtc
     }
@@ -13283,7 +16508,7 @@ function Test-InformationRightsManagementControl {
         $collected = [datetime](Get-BaselineRecordMember -Node $Record -Name 'CollectedAtUtc')
         if ($AsOfUtc -lt $collected -or ($AsOfUtc - $collected) -gt $MaximumEvidenceAge) { return [pscustomobject]@{ Status = 'Error'; Reason = 'InformationRightsManagementEvidenceStale: GOV-005 evidence is outside the maximum age.' } }
         $payload = Get-BaselineRecordMember -Node $Record -Name 'Value'
-        foreach ($name in @('IrmConfiguration', 'OmeFunctionalEvidence')) {
+        foreach ($name in @('IrmConfiguration', 'OmeFunctionalEvidence', 'TransportRules')) {
             if ($name -cnotin @(Get-BaselineRecordMemberName -Node $payload)) { return [pscustomobject]@{ Status = 'Error'; Reason = "InformationRightsManagementEvidenceIncomplete: the record carries no '$name'." } }
         }
         $irm = Get-BaselineRecordMember -Node $payload -Name 'IrmConfiguration'
@@ -14169,21 +17394,22 @@ function Invoke-BaselineApprovedChange {
         throw 'ChangeApplySwitchRequired: supply -Apply only for an authorized mutation.'
     }
 
-    $configuration = Get-Content -LiteralPath $ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
-    $parameters = Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
-    $parameterHash = Get-BaselineParameterHash -Path $ParameterPath
-    $configurationHash = [Convert]::ToHexString(
-        [Security.Cryptography.SHA256]::HashData(
-            [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson $configuration)))).ToLowerInvariant()
-    $context = [pscustomobject]@{
-        Configuration = $configuration
-        Parameters = $parameters
-        Entitlement = $parameters.entitlement
-        DeploymentProfile = 'ExchangeOnly'
-        Algorithm = 'SHA256'
-        Hash = $configurationHash
+    $context = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    if ([string](Get-BaselineRecordMember -Node $context -Name 'DeploymentProfile') -cne 'ExchangeOnly') {
+        throw 'ApprovedChangeProfileInvalid: approved Exchange change orchestration requires the ExchangeOnly deployment profile.'
     }
-    $tenant = [string]$parameters.MICROSOFT_ENTRA_TENANT_GUID
+    $configuration = Get-BaselineRecordMember -Node $context -Name 'Configuration'
+    $parameters = Get-BaselineRecordMember -Node $context -Name 'Parameters'
+    $entitlement = Get-BaselineRecordMember -Node $context -Name 'Entitlement'
+    if ($null -eq $configuration -or $null -eq $parameters -or $null -eq $entitlement) {
+        throw 'ApprovedChangeContextInvalid: the canonical Exchange context is incomplete.'
+    }
+    $parameterHash = Get-BaselineParameterHash -Path $ParameterPath
+    $configurationHash = [string](Get-BaselineRecordMember -Node $context -Name 'Hash')
+    if ([string]::IsNullOrWhiteSpace($configurationHash)) {
+        throw 'ApprovedChangeContextInvalid: the canonical Exchange context carries no configuration hash.'
+    }
+    $tenant = [string](Get-BaselineRecordMember -Node $parameters -Name 'MICROSOFT_ENTRA_TENANT_GUID')
     $paths = @{}
     foreach ($entry in (New-BaselineChangeArtifactSet -ChangeId $ChangeId -Root $ArtifactRoot)) {
         $paths[[string]$entry.Artifact] = [string]$entry.Path
@@ -18603,6 +21829,10 @@ Export-ModuleMember -Function @(
     'Get-BaselineEvidence'
     'New-BaselineControlRegistry'
     'Get-BaselineControlRegistry'
+    'Get-BaselineExchangeManifest'
+    'Get-BaselineExchangeContext'
+    'Invoke-BaselineExchangeRegistry'
+    'Invoke-BaselineExchangeGoLive'
     'Test-BaselineControlResolution'
     'Get-BaselineControlCatalog'
     'Test-BaselineControlCoverage'

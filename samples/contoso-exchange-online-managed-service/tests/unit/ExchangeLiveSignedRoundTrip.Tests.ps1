@@ -30,6 +30,7 @@ BeforeAll {
         $bytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $Document))
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($bytes), $true)
         $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($certificate)
+        $null = $signer.SignedAttributes.Add([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow))
         $cms.ComputeSignature($signer)
         $Document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
         $Document | ConvertTo-Json -Depth 40 | Set-Content $Path
@@ -43,10 +44,33 @@ AfterAll {
 
 Describe 'EXR-005 default public signed operational roundtrip' {
     It 'disables certificate downloads before local operational chain verification' {
-        $definition = & (Get-Module ExchangeOnlineBaseline.Common) {
-            (Get-Command Read-BaselineExchangeOperationalArtifact).Definition
-        }
-        $definition | Should -Match '(?s)RevocationMode\s*=\s*\[System.Security.Cryptography.X509Certificates.X509RevocationMode\]::Offline.*DisableCertificateDownloads\s*=\s*\$true.*\$chain\.Build\('
+        # Arrange
+        $module = Get-Module ExchangeOnlineBaseline.Common
+        $decisionTime = [datetimeoffset]::UtcNow
+
+        # Act
+        $behavior = & $module {
+            param($leaf, $at)
+            $chain = New-BaselineEvidenceCertificateChain
+            try {
+                $policy = [pscustomobject]@{
+                    RevocationMode = $chain.ChainPolicy.RevocationMode
+                    DisableCertificateDownloads = $chain.ChainPolicy.DisableCertificateDownloads
+                }
+            }
+            finally {
+                $chain.Dispose()
+            }
+            $evaluation = Test-BaselineEvidenceCertificateChain -Certificate $leaf -CertificateCollection ([Security.Cryptography.X509Certificates.X509Certificate2Collection]::new()) -DecisionTimeUtc $at
+            [pscustomobject]@{ Policy = $policy; Evaluation = $evaluation }
+        } $certificate $decisionTime
+
+        # Assert
+        $behavior.Policy.RevocationMode | Should -Be ([Security.Cryptography.X509Certificates.X509RevocationMode]::Offline)
+        $behavior.Policy.DisableCertificateDownloads | Should -BeTrue
+        $behavior.Evaluation.EvidenceSource | Should -BeExactly 'OfflineX509Chain'
+        $behavior.Evaluation.RevocationStatus | Should -BeIn @('Good', 'Revoked', 'Unknown')
+        $behavior.Evaluation.DecisionTimeUtc | Should -Be $decisionTime
     }
 
     It 'evaluates all 25 controls from raw Exchange and real signed local artifacts: <Case>' -ForEach @(
@@ -84,7 +108,7 @@ Describe 'EXR-005 default public signed operational roundtrip' {
                 $document.Payload.ChangeId = 'tampered-after-signing'
                 $document | ConvertTo-Json -Depth 40 | Set-Content $path
             }
-            $localParameters.operationalEvidence[$controlId] = @{ path = $path; signerIdentity = 'offline-owner'; trustedRoot = @{ path = $rootPath; sha256 = $rootHash }; authorizedSigner = @(@{ Identity = 'offline-owner'; Subject = $certificate.Subject; Authority = 'ExchangeOnlineChangeApproval' }) }
+            $localParameters.operationalEvidence[$controlId] = @{ path = $path; signerIdentity = 'offline-owner'; trustedRoot = @{ path = $rootPath; sha256 = $rootHash }; authorizedSigner = @(@{ Identity = 'offline-owner'; Subject = $certificate.Subject; Thumbprint = $certificate.Thumbprint; Authority = 'ExchangeOnlineChangeApproval' }) }
         }
         if ($Case -eq 'unauthorized signer') { $localParameters.operationalEvidence['OPS-001'].authorizedSigner[0].Subject = 'CN=Other' }
         if ($Case -eq 'wrong root pin') { $localParameters.operationalEvidence['OPS-001'].trustedRoot.sha256 = '0' * 64 }

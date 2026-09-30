@@ -25,6 +25,10 @@ param(
 
     [string]$ArtifactRoot,
 
+    [string]$RequestedBy,
+
+    [string]$AuthorizedSignerPath,
+
     [switch]$Apply,
 
     [switch]$EnableDkim,
@@ -35,7 +39,45 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
+$commonModulePath = (Resolve-Path -LiteralPath (
+        Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1'
+    ) -ErrorAction Stop).Path
+$loadedCommonModule = @(
+    Get-Module -All | Where-Object {
+        -not [string]::IsNullOrWhiteSpace([string]$_.Path) -and
+        [string]::Equals(
+            [IO.Path]::GetFullPath([string]$_.Path),
+            [IO.Path]::GetFullPath($commonModulePath),
+            [StringComparison]::OrdinalIgnoreCase
+        )
+    }
+)
+if ($loadedCommonModule.Count -eq 0) {
+    Import-Module $commonModulePath -DisableNameChecking
+}
+
+if ($PSBoundParameters.ContainsKey('AuthorizedSignerPath')) {
+    if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
+        -not (Test-Path -LiteralPath $AuthorizedSignerPath -PathType Leaf)) {
+        throw "AuthorizedSignerMetadataUnreadable: '$AuthorizedSignerPath' is not a readable metadata leaf."
+    }
+    try {
+        $signerMetadata = @(Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
+                ConvertFrom-Json -AsHashtable -DateKind String)
+    }
+    catch {
+        throw "AuthorizedSignerMetadataUnreadable: '$AuthorizedSignerPath' is not readable JSON leaf compatibility metadata."
+    }
+    if ($signerMetadata.Count -eq 0 -or
+        @($signerMetadata | Where-Object {
+                $_ -isnot [System.Collections.IDictionary] -or
+                [string]::IsNullOrWhiteSpace([string]$_.Identity) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Subject) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Authority)
+            }).Count -gt 0) {
+        throw "AuthorizedSignerMetadataInvalid: '$AuthorizedSignerPath' carries no compatible Identity, Subject and Authority metadata."
+    }
+}
 
 $script:Outcomes = [System.Collections.Generic.List[object]]::new()
 
@@ -1339,6 +1381,57 @@ $MutationPlan = @(
     [ordered]@{ OperationId = 'auth-dkim-enable'; Command = 'Set-DkimSigningConfig'; Identity = 'Primary domain DKIM signing configuration'; Read = { (Get-DkimSigningConfig -Identity $configuration.administratorInputs.primaryDomain -ErrorAction SilentlyContinue).Enabled } }
 )
 
+$declaredDeploymentProfile = $null
+try {
+    $configurationProbe = Get-Content -LiteralPath $ConfigurationPath -Raw |
+        ConvertFrom-Json -AsHashtable -DateKind String -ErrorAction Stop
+    if ($configurationProbe -is [System.Collections.IDictionary] -and
+        $configurationProbe.Contains('metadata') -and
+        $configurationProbe.metadata -is [System.Collections.IDictionary]) {
+        $declaredDeploymentProfile = [string]$configurationProbe.metadata.deploymentProfile
+    }
+}
+catch {
+    $declaredDeploymentProfile = $null
+}
+
+if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
+    $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    if ([string]$exchangeContext.DeploymentProfile -cne 'ExchangeOnly' -or
+        [string]::IsNullOrWhiteSpace([string]$exchangeContext.Hash) -or
+        $null -eq $exchangeContext.Configuration -or
+        $null -eq $exchangeContext.Parameters -or
+        $null -eq $exchangeContext.Entitlement) {
+        throw 'ExchangeOnlyContextInvalid: canonical Exchange context validation did not produce a complete ExchangeOnly context.'
+    }
+
+    if (-not $Apply) {
+        return $exchangeContext
+    }
+
+    foreach ($requiredInput in @('PreviewPath', 'ApprovalPath', 'ArtifactRoot', 'ChangeId', 'RequestedBy', 'AuthorizedSignerPath')) {
+        if ([string]::IsNullOrWhiteSpace([string](Get-Variable -Name $requiredInput -ValueOnly))) {
+            throw "ExchangeOnlyApplyInputRequired: -$requiredInput is required for an approved ExchangeOnly apply."
+        }
+    }
+
+    $approvedChange = @{
+        Stage = 'Apply'
+        ParameterPath = $ParameterPath
+        ConfigurationPath = $ConfigurationPath
+        ArtifactRoot = $ArtifactRoot
+        ChangeId = $ChangeId
+        RequestedBy = $RequestedBy
+        PreviewPath = $PreviewPath
+        ApprovalPath = $ApprovalPath
+        AuthorizedSignerPath = $AuthorizedSignerPath
+        Apply = $true
+        Confirm = $false
+    }
+    $exchangeApplyResult = Invoke-BaselineApprovedChange @approvedChange
+    return $exchangeApplyResult
+}
+
 # SAFE-007: an apply decides whether it is permitted before it spends a credential and before it
 # reaches any mutation, because a gate that runs later can only refuse what has already happened.
 # Everything the decision needs is read off disk - the configuration resolves offline, and the
@@ -1346,13 +1439,16 @@ $MutationPlan = @(
 # audit run never enters this block: a read-only run that demands an approval before it may look
 # at a tenant makes the audit harder to run than the change.
 if ($Apply) {
+    if ([string]::IsNullOrWhiteSpace($RequestedBy)) {
+        throw 'ApplyRequestedByRequired: apply requires the nonblank identity that requested the approved change.'
+    }
     $applyResolution = Resolve-BaselineConfiguration -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
     $applyInputs = $applyResolution.Configuration.administratorInputs
 
     $approvalDecision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath `
         -Tenant $applyInputs.initialDomain -DeploymentProfile $applyResolution.DeploymentProfile `
         -ConfigurationHash (Get-BaselineConfigurationHash -Resolution $applyResolution).Hash `
-        -RequestedBy $applyResolution.Configuration.metadata.configurationOwner
+        -RequestedBy $RequestedBy
 
     $applyDecision = Test-BaselineApplyPrerequisite -Apply $true -PreviewPath $PreviewPath `
         -ApprovalPath $ApprovalPath -ArtifactRoot $ArtifactRoot -ApprovalDecision $approvalDecision

@@ -7,18 +7,41 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../helpers/ExchangeProtectionFixture.ps1')
     $root = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $script:matrixModule = Import-Module (Join-Path $root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -PassThru
+    function Copy-OrderedFixtureRecord {
+        param([Parameter(Mandatory)]$InputObject)
+        $copy = [ordered]@{}
+        if ($InputObject -is [System.Collections.IDictionary]) {
+            foreach ($name in $InputObject.Keys) { $copy[[string]$name] = $InputObject[$name] }
+        }
+        else {
+            foreach ($property in $InputObject.PSObject.Properties) { $copy[$property.Name] = $property.Value }
+        }
+        $copy
+    }
+    function Set-NarrowedStandardPresetExclusion {
+        param([Parameter(Mandatory)]$Fixture)
+        $excluded = @(
+            $Fixture.Context.Configuration.controls['MDO-001'].recipientMatrix |
+                Where-Object expectedPolicy -NotIn @('Standard Preset Security Policy', 'Strict Preset Security Policy') |
+                ForEach-Object address
+        )
+        foreach ($kind in @('EOP', 'ATP')) {
+            $Fixture.Raw["Get-${kind}ProtectionPolicyRule"].ByIdentity['Standard Preset Security Policy'][0].ExceptIfSentTo = $excluded
+        }
+    }
     function New-A02MatrixFixture {
         param([string]$Address = 'custom@contoso.example')
         $fixture = New-ProtectionFixture
         $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix = @($fixture.Context.Configuration.controls['MDO-001'].recipientMatrix | Where-Object address -eq $Address)
         $fixture.Raw['Get-Recipient'].Items = @($fixture.Raw['Get-Recipient'].Items | Where-Object PrimarySmtpAddress -eq $Address)
+        Set-NarrowedStandardPresetExclusion $fixture
         $fixture
     }
     function Set-A02Exception {
         param($Fixture, [string]$Setting = 'DisableURLRewrite', $Value = $true)
         $Fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'custom@contoso.example'; family = 'SafeLinks'; setting = $Setting; value = $Value
-            approval = $Fixture.Context.Configuration.controls['MDO-001'].approval.Clone()
+            approval = Copy-OrderedFixtureRecord $Fixture.Context.Configuration.controls['MDO-001'].approval
         })
         $Fixture.Raw['Get-SafeLinksPolicy'].Items[2][$Setting] = $Value
     }
@@ -201,14 +224,14 @@ Describe 'EXR-010 effective email setting matrix' {
     ) {
         # Arrange
         $scope = @{ State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
-        $eop = $scope.Clone(); $eop.Name = $(if ($EopStrict) { 'Strict Preset Security Policy' } else { 'Standard Preset Security Policy' })
-        $atp = $scope.Clone(); $atp.Name = $(if ($AtpStrict) { 'Strict Preset Security Policy' } else { 'Standard Preset Security Policy' })
+        $eop = Copy-OrderedFixtureRecord $scope; $eop.Name = $(if ($EopStrict) { 'Strict Preset Security Policy' } else { 'Standard Preset Security Policy' })
+        $atp = Copy-OrderedFixtureRecord $scope; $atp.Name = $(if ($AtpStrict) { 'Strict Preset Security Policy' } else { 'Standard Preset Security Policy' })
         if ($Family -eq 'SafeLinks') { $eop.State = 'Disabled'; $atp.State = 'Disabled' }
-        $custom = $scope.Clone(); $custom.Name = 'Custom rule'; $custom.Priority = 5; $custom["${Family}Policy"] = 'Custom email'
+        $custom = Copy-OrderedFixtureRecord $scope; $custom.Name = 'Custom rule'; $custom.Priority = 5; $custom["${Family}Policy"] = 'Custom email'
         if ($EmptyCustom) { $custom.SentTo = @() }
         $rules = @($custom)
         if ($Case -eq 'lower numeric priority wins the whole policy') {
-            $first = $custom.Clone(); $first.Name = 'First rule'; $first.Priority = 0; $first["${Family}Policy"] = 'First custom'
+            $first = Copy-OrderedFixtureRecord $custom; $first.Name = 'First rule'; $first.Priority = 0; $first["${Family}Policy"] = 'First custom'
             $rules += $first
         }
         $state = @{
@@ -235,8 +258,8 @@ Describe 'EXR-010 effective email setting matrix' {
     ) {
         # Arrange
         $scope = @{ State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
-        $eop = $scope.Clone(); $eop.Name = "$EopLevel Preset Security Policy"
-        $atp = $scope.Clone(); $atp.Name = "$AtpLevel Preset Security Policy"
+        $eop = Copy-OrderedFixtureRecord $scope; $eop.Name = "$EopLevel Preset Security Policy"
+        $atp = Copy-OrderedFixtureRecord $scope; $atp.Name = "$AtpLevel Preset Security Policy"
         $state = @{
             Groups = @{}; Presets = @{ EOP = @($eop); ATP = @($atp) }
             Families = @{ AntiPhish = @{ Rules = @(); Policies = @(
@@ -254,7 +277,7 @@ Describe 'EXR-010 effective email setting matrix' {
         # Arrange
         $scope = @{ Name = 'Standard Preset Security Policy'; State = 'Enabled'; SentTo = @('custom@contoso.example'); SentToMemberOf = @(); RecipientDomainIs = @(); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); ExceptIfRecipientDomainIs = @() }
         $state = @{
-            Groups = @{}; Presets = @{ EOP = @($scope.Clone()); ATP = @($scope.Clone()) }
+            Groups = @{}; Presets = @{ EOP = @(Copy-OrderedFixtureRecord $scope); ATP = @(Copy-OrderedFixtureRecord $scope) }
             Families = @{ AntiPhish = @{ Rules = @(); Policies = @(
                 @{ Name = 'Standard Preset Security Policy'; IsDefault = $false }
                 @{ Name = 'Strict Preset Security Policy'; IsDefault = $false }
@@ -321,9 +344,9 @@ Describe 'EXR-010 effective email setting matrix' {
     }
 
     It 'A02 refuses <Case>' -ForEach @(
-        @{ Case = 'duplicate desired recipient'; Reason = 'EmailProtectionRecipientInventory'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix += $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[0].Clone() } }
+        @{ Case = 'duplicate desired recipient'; Reason = 'EmailProtectionRecipientInventory'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix += Copy-OrderedFixtureRecord $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[0] } }
         @{ Case = 'undeclared observed mailbox'; Reason = 'EmailProtectionRecipientInventory'; Mutate = { param($fixture) $fixture.Raw['Get-Recipient'].Items += @{ Identity = 'extra'; PrimarySmtpAddress = 'extra@contoso.example'; RecipientTypeDetails = 'SharedMailbox' } } }
-        @{ Case = 'duplicate observed SMTP under distinct identities'; Reason = 'EmailProtectionRecipientInventory'; Mutate = { param($fixture) $copy = $fixture.Raw['Get-Recipient'].Items[0].Clone(); $copy.Identity = 'duplicate'; $fixture.Raw['Get-Recipient'].Items += $copy } }
+        @{ Case = 'duplicate observed SMTP under distinct identities'; Reason = 'EmailProtectionRecipientInventory'; Mutate = { param($fixture) $copy = Copy-OrderedFixtureRecord $fixture.Raw['Get-Recipient'].Items[0]; $copy.Identity = 'duplicate'; $fixture.Raw['Get-Recipient'].Items += $copy } }
         @{ Case = 'unknown recipient class silently omitted'; Reason = 'EmailProtectionRecipientInventory|ExchangeRaw'; Mutate = { param($fixture) $fixture.Raw['Get-Recipient'].Items += @{ Identity = 'unknown'; PrimarySmtpAddress = 'unknown@contoso.example'; RecipientTypeDetails = 'UnknownMailbox' } } }
         @{ Case = 'unknown desired profile'; Reason = 'ExchangeSchemaInvalid'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[0].level = 'Unknown' } }
         @{ Case = 'string recipient capability'; Reason = 'ExchangeSchemaInvalid'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].recipientMatrix[0].defender = 'false' } }
@@ -340,11 +363,11 @@ Describe 'EXR-010 effective email setting matrix' {
         @{ Case = 'disabled custom rule'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $fixture.Raw['Get-SafeLinksRule'].Items[0].State = 'Disabled' } }
         @{ Case = 'lower-priority expected policy'; Reason = 'EmailProtectionPrecedence'; Mutate = {
             param($fixture)
-            $firstPolicy = $fixture.Raw['Get-SafeLinksPolicy'].Items[2].Clone()
+            $firstPolicy = Copy-OrderedFixtureRecord $fixture.Raw['Get-SafeLinksPolicy'].Items[2]
             $firstPolicy.Name = 'First custom'; $firstPolicy.Identity = 'First custom'; $firstPolicy.IsDefault = $false
             $fixture.Raw['Get-SafeLinksPolicy'].Items += $firstPolicy
             $fixture.Raw['Get-SafeLinksRule'].Items[0].Priority = 1
-            $firstRule = $fixture.Raw['Get-SafeLinksRule'].Items[0].Clone()
+            $firstRule = Copy-OrderedFixtureRecord $fixture.Raw['Get-SafeLinksRule'].Items[0]
             $firstRule.Name = 'First matching'; $firstRule.Identity = 'First matching'; $firstRule.Priority = 0; $firstRule.SafeLinksPolicy = 'First custom'
             $fixture.Raw['Get-SafeLinksRule'].Items += $firstRule
         } }
@@ -355,7 +378,7 @@ Describe 'EXR-010 effective email setting matrix' {
         @{ Case = 'string default marker'; Reason = 'EmailProtectionPolicyMissing|ExchangeRaw'; Mutate = { param($fixture) $fixture.Raw['Get-HostedOutboundSpamFilterPolicy'].Items[1].IsDefault = 'true' } }
         @{ Case = 'missing setting exception owner'; Reason = 'ExchangeSchemaInvalid'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].approval.Remove('owner') } }
         @{ Case = 'expired setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].approval.expiresOn = '2000-01-01T00:00:00Z' } }
-        @{ Case = 'duplicate setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions += $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].Clone() } }
+        @{ Case = 'duplicate setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions += Copy-OrderedFixtureRecord $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0] } }
         @{ Case = 'tenant wildcard setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].recipient = '*' } }
         @{ Case = 'wrong recipient setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].recipient = 'other@contoso.example' } }
         @{ Case = 'unknown setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) Set-A02Exception $fixture; $fixture.Context.Configuration.controls['MDO-001'].settingExceptions[0].setting = 'UnknownSetting' } }
@@ -510,7 +533,7 @@ Describe 'EXR-010 effective email setting matrix' {
         @{ Case = 'suite name is not entitlement'; Reason = 'EmailProtectionNotEntitled'; Mutate = { param($fixture) $fixture.Context.Entitlement.recipients[0].servicePlans = @('Microsoft 365 E5') } }
         @{ Case = 'unresolved group'; Reason = 'EmailProtectionGroupUnresolved'; Mutate = { param($fixture) $fixture.Raw['Get-DistributionGroupMember'].Items = @(@{ Identity = 'unresolved'; PrimarySmtpAddress = ''; RecipientType = 'UserMailbox' }) } }
         @{ Case = 'recipient exception removes strict coverage'; Reason = 'EmailProtectionPrecedence'; Mutate = { param($fixture) $fixture.Raw['Get-ATPProtectionPolicyRule'].ByIdentity['Strict Preset Security Policy'][0].ExceptIfSentTo = @('strict@contoso.example') } }
-        @{ Case = 'duplicate priority'; Reason = 'EmailProtectionPriorityAmbiguous'; Mutate = { param($fixture) $duplicate = $fixture.Raw['Get-SafeLinksRule'].Items[0].Clone(); $duplicate.Name = 'Other'; $fixture.Raw['Get-SafeLinksRule'].Items += $duplicate } }
+        @{ Case = 'duplicate priority'; Reason = 'EmailProtectionPriorityAmbiguous'; Mutate = { param($fixture) $duplicate = Copy-OrderedFixtureRecord $fixture.Raw['Get-SafeLinksRule'].Items[0]; $duplicate.Name = 'Other'; $fixture.Raw['Get-SafeLinksRule'].Items += $duplicate } }
         @{ Case = 'misbound policy'; Reason = 'EmailProtectionPolicyMissing'; Mutate = { param($fixture) $fixture.Raw['Get-SafeLinksRule'].Items[0].SafeLinksPolicy = 'Absent' } }
         @{ Case = 'unapproved setting exception'; Reason = 'EmailProtectionException'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{ recipient = '*'; family = 'SafeLinks'; setting = 'AllowClickThrough'; value = $true; approval = $null }) } }
         @{ Case = 'expired approval'; Reason = 'ApprovalExpired'; Mutate = { param($fixture) $fixture.Context.Configuration.controls['MDO-001'].approval.expiresOn = '2000-01-01T00:00:00Z' } }
@@ -575,7 +598,7 @@ Describe 'EXR-010 effective email setting matrix' {
             foreach ($family in @('MalwareFilter','HostedContentFilter','HostedOutboundSpamFilter','AntiPhish','SafeAttachment','SafeLinks')) {
                 if (-not $recipient.Defender -and $family -in @('SafeAttachment','SafeLinks')) { continue }
                 $policyName = $recipient.Policy
-                $fields = $values[$family].Clone()
+                $fields = Copy-OrderedFixtureRecord $values[$family]
                 if ($family -eq 'HostedOutboundSpamFilter') {
                     $policyName = $recipient.Outbound
                     if ($policyName -ne 'Default') { $fields.Remove('BccSuspiciousOutboundMail'); $fields.Remove('BccSuspiciousOutboundAdditionalRecipients') }

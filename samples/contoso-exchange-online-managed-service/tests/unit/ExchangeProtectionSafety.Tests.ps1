@@ -2,6 +2,17 @@ BeforeAll {
     . (Join-Path $PSScriptRoot '../helpers/ExchangeProtectionFixture.ps1')
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
     $script:safetyModule = Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -PassThru
+    function Copy-OrderedFixtureRecord {
+        param([Parameter(Mandatory)]$InputObject)
+        $copy = [ordered]@{}
+        if ($InputObject -is [System.Collections.IDictionary]) {
+            foreach ($name in $InputObject.Keys) { $copy[[string]$name] = $InputObject[$name] }
+        }
+        else {
+            foreach ($property in $InputObject.PSObject.Properties) { $copy[$property.Name] = $property.Value }
+        }
+        $copy
+    }
     function Invoke-EmailSafetyCheck {
         param($Fixture)
         Invoke-ProtectionRawRegistry $Fixture $script:safetyModule | Where-Object ControlId -eq MDO-001
@@ -12,7 +23,7 @@ Describe 'EXR-010 managed protection boundaries' {
         $fixture = New-ProtectionFixture
         $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'user@contoso.example'; family = 'SafeLinks'; setting = 'AllowClickThrough'; value = $false
-            approval = $fixture.Context.Configuration.controls['MDO-001'].approval.Clone()
+            approval = Copy-OrderedFixtureRecord $fixture.Context.Configuration.controls['MDO-001'].approval
         })
         $result = Invoke-EmailSafetyCheck $fixture
         $result.Result.Status | Should -BeExactly Fail
@@ -22,7 +33,7 @@ Describe 'EXR-010 managed protection boundaries' {
         $fixture = New-ProtectionFixture
         $fixture.Context.Configuration.controls['MDO-001'].settingExceptions = @(@{
             recipient = 'default@contoso.example'; family = 'SafeLinks'; setting = 'AllowClickThrough'; value = $false
-            approval = $fixture.Context.Configuration.controls['MDO-001'].approval.Clone()
+            approval = Copy-OrderedFixtureRecord $fixture.Context.Configuration.controls['MDO-001'].approval
         })
         $result = Invoke-EmailSafetyCheck $fixture
         $result.Result.Status | Should -BeExactly Fail
