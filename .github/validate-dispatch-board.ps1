@@ -103,7 +103,7 @@ $kanban = Get-Content -LiteralPath $KanbanPath -Raw
 $backlogGeneration = Get-Generation $backlog '(?im)^Canonical generation\s*:\s*(?<generation>\d+)\b' 'backlog'
 $cohortGeneration = Get-Generation $cohorts '(?im)^Allocation generation\s*:\s*(?<generation>\d+)\b' 'cohorts'
 $kanbanGeneration = Get-Generation $kanban '(?im)^Allocation generation mirrored\s*:\s*(?<generation>\d+)\b' 'kanban'
-Assert-Board ($backlogGeneration -gt 601) 'generation must be greater than 601.'
+Assert-Board ($backlogGeneration -ge 604) 'generation must be at least 604.'
 Assert-Board ($backlogGeneration -eq $cohortGeneration -and $backlogGeneration -eq $kanbanGeneration) 'generation disagreement.'
 
 $cards = @(Get-CanonicalCards $backlog)
@@ -116,8 +116,9 @@ $inProgress = @($executables | Where-Object Status -eq 'In Progress')
 $done = @($executables | Where-Object Status -eq 'Done')
 Assert-Board ($executables.Count -eq 91) "expected 91 executable cards, found $($executables.Count)."
 Assert-Board ($summaries.Count -eq 24) "expected 24 summary parents, found $($summaries.Count)."
-Assert-Board ($todo.Count -eq 36 -and $inProgress.Count -eq 1 -and $done.Count -eq 54) "expected 36/1/54 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board ($todo.Count -eq 35 -and $inProgress.Count -eq 1 -and $done.Count -eq 55) "expected 35/1/55 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
 Assert-Board ($inProgress[0].Id -eq 'EXR-010-A12-L01-F02') 'F02 must be the sole In Progress card.'
+Assert-Board (($done | Where-Object Id -eq 'EXR-018-A01').Count -eq 1) 'EXR-018-A01 must be Done.'
 
 $allIds = @{} 
 foreach ($card in $cards) { $allIds[$card.Id] = $true }
@@ -147,7 +148,7 @@ Assert-Board ($profiles.Count -ge 1) 'no dispatch profiles resolved.'
 $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest' 'card')
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
-Assert-Board ($manifest.Count -eq 36) "expected 36 manifest entries, found $($manifest.Count)."
+Assert-Board ($manifest.Count -eq 35) "expected 35 manifest entries, found $($manifest.Count)."
 $todoIds = @($todo.Id | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
 Assert-Board (($todoIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match To Do IDs.'
@@ -173,6 +174,9 @@ function Normalize-Reservation {
 }
 
 $eligible = @($manifest | Where-Object Dependency -match '`READY`')
+Assert-Board ($eligible.Id -notcontains 'EXR-018-A01') 'Done card EXR-018-A01 must not remain pull-ready.'
+$a02 = @($manifest | Where-Object Id -eq 'EXR-018-A02')
+Assert-Board ($a02.Count -eq 1 -and $a02[0].Dependency -match '`WAIT-EXT`') 'EXR-018-A02 must remain externally gated after A01 completion.'
 $reservations = @(
     foreach ($entry in $eligible) {
         foreach ($raw in $entry.Reservation -split '\s*;\s*') {
@@ -194,8 +198,12 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 }
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
-Assert-Board ($backlog -match '(?m)^Board readiness: \*\*BOARD READY — generation 602\*\*') 'backlog readiness declaration is missing.'
-Assert-Board ($cohorts -match '(?m)^Allocation readiness: \*\*BOARD READY — generation 602\*\*') 'cohort readiness declaration is missing.'
+$generationPattern = [regex]::Escape([string]$backlogGeneration)
+Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
+Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
+Assert-Board ($backlog -match '(?m)^\d+\. \*\*Worker-slot WIP and isolation\.\*\* Each coworker owns at most one In Progress implementation card, so a three-worker cohort may hold up to three nonconflicting cards; there is no unrelated global one-card gate\.') 'canonical worker-slot WIP contract is missing.'
+Assert-Board ($backlog -match '(?m)^\d+\. \*\*Idle pull behavior\.\*\* When a coworker becomes idle, the steward immediately reruns the dependency-ready query') 'canonical idle-coworker pull contract is missing.'
+Assert-Board ($cohorts -match '(?m)^4\. Each Coworker holds at most one In Progress implementation card; a three-Coworker cohort may therefore hold up to three nonconflicting cards\.') 'allocation worker-slot contract is missing.'
 
 [pscustomobject]@{
     Generation                   = $backlogGeneration
@@ -206,6 +214,7 @@ Assert-Board ($cohorts -match '(?m)^Allocation readiness: \*\*BOARD READY — ge
     SummaryParents              = $summaries.Count
     ManifestEntries             = $manifest.Count
     Profiles                    = $profiles.Count
+    PullReady                   = $eligible.Count
     UnknownDependencyReferences = $unknownDependencies.Count
     EligibleReservationConflicts = $conflicts.Count
     Result                       = 'BOARD READY'
