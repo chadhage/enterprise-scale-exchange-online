@@ -1,10 +1,10 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 604. Updated: 2026-09-30. Executable cards: 91; To Do 35, In Progress 1, Done 55; 24 summary parents excluded.
+Canonical generation: 605. Updated: 2026-09-30. Executable cards: 91; To Do 36, In Progress 0, Done 55; 24 summary parents excluded.
 
-Board readiness: **BOARD READY — generation 604**. This declaration is valid only with the matching generation in `.github/cohorts.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+Board readiness: **BOARD READY — generation 605**. This declaration is valid only with the matching generation in `.github/cohorts.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
 
-Generation 604 closure: `EXR-018-A01` is Done after current-tree focused **6/6**, affected dispatch validation **BOARD READY**, and clean diff validation accepted the generation-603 canonical-authority and worker-slot dispatch restructure. All four cohorts are stopped; no A01 claim or reservation remains. `EXR-018-A02` is no longer dependency-blocked by A01, but remains `WAIT-EXT` on its recorded external inventory/reviewer/evidence prerequisites. F02 and its exact reservations are unchanged.
+Generation 605 global stop reconciliation: all four cohorts and their worker roles are quiescent. Release Purple's retained F02 claim, lease, writable paths, and evidence-root reservation; preserve all partial evidence and return `EXR-010-A12-L01-F02` to To Do as the sole `READY` card. No card remains In Progress. `EXR-018-A01` remains Done and `EXR-018-A02` remains `WAIT-EXT`.
 
 ## Canonical atomic pull protocol
 
@@ -34,6 +34,7 @@ Every manifest entry below inherits all fields in its named profile. An entry ov
 
 | Card | Dependencies / eligibility | Profile | Writable reservation or prerequisite | Read-only surfaces | Focused / affected binding |
 | --- | --- | --- | --- | --- | --- |
+| `EXR-010-A12-L01-F02` | `EXR-010-A12-L01-V01` Done; `READY` | `OFFLINE-3W` | `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`; `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`; `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1` | `CARD+DEPS`; retained F02 evidence | `F=Invoke-Pester -Path 'samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1' -Output Detailed -PassThru`; `A=PROFILE` |
 | `EXR-010-A12-L01-C01` | `EXR-010-A12-L01-F02`; `WAIT-F02` | `GOV-3W` | `.github/backlog.md`; `.github/cohorts.md`; `.github/kanban.md` | `CARD+DEPS`; F02 evidence | `F=pwsh -NoProfile -File .github/validate-dispatch-board.ps1`; `A=PROFILE` |
 | `EXR-012-A01` | `EXR-006,EXR-008,EXR-009,EXR-010-A12-L01-C01,EXR-011-A01,EXR-011-A02,EXR-011-A03,EXR-011-A04,EXR-007-A01,EXR-007-A02-T01,EXR-007-A02-T02,EXR-007-A02-T03,EXR-007-A02-T04,EXR-007-A03-T01,EXR-007-A03-T02-L01,EXR-007-A04-T01,EXR-007-A04-T02,EXR-007-A05-T01,EXR-007-A05-T02,EXR-007-A05-T03-L01-C01,EXR-007-A06,EXR-007-A07,EXR-007-A08-T01,EXR-007-A08-T02,EXR-007-A08-T03`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A01` | `CARD+DEPS`; active operator docs | `F=DISCOVER-FREEZE:documentation-structure`; `A=PROFILE` |
 | `EXR-012-A02` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A02` | `CARD+DEPS`; command/help docs | `F=DISCOVER-FREEZE:command-surface-docs`; `A=PROFILE` |
@@ -3139,7 +3140,7 @@ Rank 23.5 - Independent closure review.
 
 Rank 23.55 - Restore current-runtime compatibility required by frozen L01 contracts.
 
-- Dependencies: EXR-010-A12-L01-V01. Owner: Cohort Purple / generation 502. Workstream: Email verification. Updated: 2026-09-29. Status: In Progress.
+- Dependencies: EXR-010-A12-L01-V01. Owner: unassigned after generation-605 global stop; retained evidence preserved. Workstream: Email verification. Updated: 2026-09-30. Status: To Do.
 - Bounded outcome: restore behavior-compatible `Invoke-BaselineExchangeRegistry` and `New-BaselineEvidenceCertificateChain` over the current Common implementation without weakening security or revising frozen tests.
 - Writable surface: `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psd1`, and `samples/contoso-exchange-online-managed-service/tests/unit/PublicCommandSurface.Tests.ps1`.
 - Negative cases: public registry command absent from the module definition; absent from either export list; duplicate/invalid registry input; incomplete or mismatched retained Exchange registry; private certificate-chain seam absent; chain permits downloads or non-offline revocation; and any compatibility path that bypasses existing signer/refusal decisions. Every test uses Arrange-Act-Assert and must fail for its intended reason before implementation.

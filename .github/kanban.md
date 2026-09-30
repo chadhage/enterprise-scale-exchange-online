@@ -2,10 +2,10 @@
 
 > **Compatibility view only.** `.github/backlog.md` is the canonical remediation inventory and status/evidence authority; `.github/cohorts.md` is the canonical allocation, claim, reservation, and writer-coordination authority. This file preserves the former Kanban presentation and pull-ready rules, but it cannot add executable inventory, grant a claim, or override either canonical file.
 
-Board updated: 2026-09-30 (compatibility synchronization to canonical generation 604; A01 Done and all cohorts stopped)
+Board updated: 2026-09-30 (compatibility synchronization to canonical generation 605; all cohorts stopped and F02 requeued)
 Canonical source: `.github/backlog.md`
 Allocation source: `.github/cohorts.md`
-Allocation generation mirrored: 604
+Allocation generation mirrored: 605
 WIP limit: at most 1 implementation card per Coworker and at most 3 nonconflicting cards per three-Coworker cohort; there is no unrelated global one-card gate. Cards owned by other parties may run concurrently.
 
 Conventions:
@@ -18,15 +18,15 @@ Conventions:
 
 | Bucket | Count |
 | --- | ---: |
-| To Do | 35 |
-| In Progress | 1 |
+| To Do | 36 |
+| In Progress | 0 |
 | Done | 55 |
 
-Canonical executable cards: 91; canonical summary parents excluded: 24. Compatibility generation: 604. The legacy detail retained below is not an inventory and must not be counted.
+Canonical executable cards: 91; canonical summary parents excluded: 24. Compatibility generation: 605. The legacy detail retained below is not an inventory and must not be counted.
 
 ## Dispatch and allocation contract
 
-Compatibility readiness: **mirrored only; no independent declaration**. Pull readiness is decided from the complete canonical 35-card To Do manifest in `.github/backlog.md` and acknowledged allocations in `.github/cohorts.md`, both at generation 604. No card is currently `READY`; `EXR-018-A02` is `WAIT-EXT` after A01 completion. The rules below are compatibility summaries; the legacy card detail and generation-285 manifest are historical aids and are not proof of canonical dispatch completeness. `READY` means dependency-clear and immediately positionable in an available coworker slot after conflict recheck; `WAIT-DEP`, `WAIT-EXT`, and `WAIT-F02` are explicit non-eligible states, not blocked buckets. A summary parent is `NONEXEC`.
+Compatibility readiness: **mirrored only; no independent declaration**. Pull readiness is decided from the complete canonical 36-card To Do manifest in `.github/backlog.md` and acknowledged allocations in `.github/cohorts.md`, both at generation 605. F02 is the sole `READY` card after its stopped Purple claim was released and requeued; `EXR-018-A02` remains `WAIT-EXT`. The rules below are compatibility summaries; the legacy card detail and generation-285 manifest are historical aids and are not proof of canonical dispatch completeness. `READY` means dependency-clear and immediately positionable in an available coworker slot after conflict recheck; `WAIT-DEP`, `WAIT-EXT`, and `WAIT-F02` are explicit non-eligible states, not blocked buckets. A summary parent is `NONEXEC`.
 
 1. **Atomic pull claim and canonical writer.** A cohort proposes `card ID + cohort + C1/C2/C3 identities + observed generation + writable paths + evidence root`. The one canonical writer rereads `.github/backlog.md` and `.github/cohorts.md`, checks status, dependencies, WIP, owner class, and every reservation, then records one generation-bound ACK and increments the canonical generation in the same coordinated edit. This compatibility view is synchronized afterward and cannot acknowledge a claim. Work may not start on a proposal or queue affinity; workers never edit board state.
 2. **Claim expiry and requeue.** Heartbeat is 30 minutes. A claim becomes stale after 120 minutes without an acknowledged heartbeat. Expiry suspends write authority immediately, but requeue occurs only after the writer confirms all prior workers and worktrees are quiescent, records preserved evidence/worktree disposition, releases reservations, returns the card to To Do, and increments generation. Ambiguity stops conflicting work; elapsed time alone never proves quiescence.
@@ -40,6 +40,7 @@ Dependency-safe force rank for the acceptance-recovery route: **1 SCOPE-001; 2 R
 
 ## Activity log
 
+- **2026-09-30 / compatibility synchronization to generation 605:** reconciled the global stop by releasing Purple's retained F02 claim and exact reservations, preserving its partial evidence, and requeueing it To Do as the sole `READY` card. All four cohorts are stopped and no card remains In Progress. Counts are 36 To Do / 0 In Progress / 55 Done.
 - **2026-09-30 / compatibility synchronization to generation 604:** mirrored `EXR-018-A01` Done after focused 6/6, affected BOARD READY, and clean diff validation accepted the generation-603 dispatch-contract restructure. Counts are 35 To Do / 1 In Progress / 55 Done. Purple, Silver, Gold, and White are stopped from new assignments; no A01 claim or reservation remains. F02 retains only its unrelated exact reservations. A02 is now `WAIT-EXT`, leaving no current `READY` To Do card.
 - **2026-09-30 / compatibility synchronization to generation 603:** mirrored the canonical 36/1/54 inventory, 91 executable cards and 24 summary parents after worker-slot pull restructuring. F02 remains In Progress at published commit `a2962e4` with its existing unresolved gates and exact reservations. `EXR-018-A01` is the sole dependency-ready To Do card and may be pulled by the next idle Coworker without waiting for F02. The canonical manifest/profiles, atomic claim, expiry/requeue, worker-slot WIP, isolation, exact reservation, idle pull, handoff and merge contracts live only in backlog/cohorts; this file grants no claim and declares no independent readiness.
 - **2026-09-30 / compatibility reconciliation to generation 601:** corrected this file's authority statement and counts to mirror `.github/backlog.md` and `.github/cohorts.md`: 36 To Do, 1 In Progress, 54 Done, 91 executable cards, and 24 excluded summary parents. Marked the retained generation-285 card list/manifest as legacy detail rather than executable inventory, preserving its useful atomic-claim, expiry/requeue, path-reservation, three-Coworker, validation/evidence/handoff/abort, and merge-order rules. Reconciled latest canonical F02 evidence: focused 6/6 is accepted, while bounded remains 96/98 because EXO-010 missing-review collection is still classified Error instead of Fail; F02 remains In Progress. Compatibility readiness is not declared because canonical dispatch completeness and git-diff syntax were not independently executable from this board-only reconciliation.

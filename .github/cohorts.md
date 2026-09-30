@@ -34,9 +34,18 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 604
+Allocation generation: 605
 
-Allocation readiness: **BOARD READY — generation 604**. This declaration is valid only while `.github/backlog.md` also declares generation 604 ready and `.github/validate-dispatch-board.ps1` passes.
+Allocation readiness: **BOARD READY — generation 605**. This declaration is valid only while `.github/backlog.md` also declares generation 605 ready and `.github/validate-dispatch-board.ps1` passes.
+
+### Generation 605 Global Stop Reconciliation
+
+Registry updated: 2026-09-30. Allocation generation: 604 -> 605. Counts are **36 To Do / 0 In Progress / 55 Done = 91 executable cards** with **24 summary parents excluded**.
+
+- **Global stop:** Purple, Silver, Gold, and White accept no new assignments; every launched role is quiescent. Gold never held a claim, reservation, or worker role.
+- **F02 requeue:** release token `EXR-010-A12-L01-F02/Purple/g602/retained-a2962e4`, its lease, exact product/test reservations, and evidence-root reservation. Preserve all accepted and failing evidence without treating it as completion. F02 is To Do, unassigned, and the sole `READY` card.
+- **No active ownership:** no cohort owns an In Progress card, writable reservation, branch/worktree, or active evidence root. New work requires a fresh generation-bound claim.
+- **Unchanged gates:** A01 remains Done; A02 remains `WAIT-EXT`; C01 remains `WAIT-F02`.
 
 ### Generation 604 A01 Acceptance And Global Stop
 
