@@ -1,8 +1,48 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 608. Updated: 2026-09-30. Executable cards: 91; To Do 35, In Progress 0, Done 56; 24 summary parents excluded.
+Canonical generation: 628. Updated: 2026-10-01. Executable cards: 103; To Do 46, In Progress 0, Done 57; 28 summary parents excluded.
 
-Board readiness: **BOARD READY — generation 608**. This declaration is valid only with the matching generation in `.github/cohorts.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+Board readiness: **BOARD READY — generation 628**. This dispatch declaration is valid only with the matching generation in `.github/cohorts.md` and `.github/kanban.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+
+Generation 628 Gold D03 discovery acceptance and requeue: canonical writer accepts Gold's g625 value-authority packet only as blocking, nonreserving discovery evidence, preserves its four candidate paths, twenty-negative/exactly-one-positive validation inventory, and independent review finding that the deterministic inventory denominator is unresolved. Release the retained token, lease, evidence-root reservation, and active ownership; return D03 In Progress -> To Do/unassigned with Gold affinity retained. No implementation or Done authority is granted. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY, zero active claims, and zero reservations.
+
+Generation 627 A02 discovery reconciliation and Gold identity correction: canonical writer accepts Purple D01, Silver D02, and White D04 only as preserved nonreserving discovery/freeze proposals, releases their tokens, leases, evidence-root reservations, and active ownership, and returns those cards In Progress -> To Do/unassigned with affinities retained. No card moves Done and no implementation path is writable. Gold D03 retains its generation-625 token and In Progress discovery claim, but the exact runtime role identities are corrected to `Gold/Coworker-1`, `Gold/Coworker-2`, and `Gold/Coworker-3`; its lease is renewed for `DISCOVER-FREEZE:value-authority`. Counts become 45/1/57. Fifteen cards are unclaimed READY and the exact one-card deficit is attributable to Gold's active discovery claim.
+
+Generation 626 exact discovery authority and Silver conditional freeze: the generation-625 tokens remain active while canonical writer binds each claim to its named cohort session and three read-only discovery roles, grants card-specific evidence-root output, and names the exact preflight operation: Purple `DISCOVER-FREEZE:runbooks`, Silver `DISCOVER-FREEZE:control-catalog`, Gold `DISCOVER-FREEZE:value-authority`, and White `DISCOVER-FREEZE:set-verify-output`. Claims are verified against the primary canonical checkout because each isolated worktree intentionally starts from committed base `e7a0834`; its older committed governance snapshot cannot revoke a newer primary-checkout ACK. Silver's conditional discovery packet is accepted only as a proposal: no implementation ACK exists, its discovered paths remain nonreserving, and the stale `Get-BaselineControlRegistry -Profile ExchangeOnly` call must be corrected through a later conflict-checked write grant before its validation inventory can become executable. Counts and READY deficit remain 42/4/57 and four.
+
+Generation 625 four-cohort A02 discovery claims: canonical writer ACKs distinct read-only `DISCOVER-FREEZE` claims for Purple `EXR-012-A02-D01`, Silver `EXR-012-A02-D02`, Gold `EXR-012-A02-D03`, and White `EXR-012-A02-D04`. Each card moves To Do -> In Progress in an isolated generation-625 worktree at base `e7a0834dc9212e38b7540a809390c9b0fa570c90`. Claims authorize only card-scoped read-only discovery and evidence output; no documentation, product, test, configuration, or governance path is writable until exact paths are frozen and a later conflict-checked ACK is published. Counts become 42/4/57. Twelve unclaimed documentation children remain READY; the exact four-card READY-bank deficit is attributable to these active discovery claims and is not filled by fabricating eligibility.
+
+Generation 624 White D04 release and requeue: canonical ACK `Purple-20260930T233031Z-e7a0834/Kanban/g624/release-requeue-D04-conflict` preserves White's accepted five-path discovery/freeze evidence and six-negative/one-positive validation contract, but releases token `EXR-012-A01-D04/White/g622/639d631231be61cdccf48a0f3067f11c`, its lease, g622 evidence-root reservation, and active ownership. D04 returns In Progress -> To Do/unassigned with White affinity retained. No implementation token or writable reservation exists. The exact blocker remains Purple D01's preserved README hash `331ACDF1F47EE017C4934471A556B8B94210503DC31ED31A4CD33FE877B93BAF` and diff identity `1969BC87779BD409EA9BBF1EB4D56C7F91F74E8BD531ACC1848E0030DDC6BBE1` versus White's frozen base README `5BE476D058B83594A15999B2892D7F6AE15CA5886F204432EB2D82F778641B0A`. A future conflict-resolution generation must dispose or integrate that mutation and revalidate all five paths before implementation authority. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY.
+
+Generation 623 discovery reconciliation and White conflict hold: canonical writer REJECTS Silver `EXR-012-A01-D02` and Gold `EXR-012-A01-D03`, releases their generation-622 tokens, leases, evidence-root reservations, and ownership, and returns both cards In Progress -> To Do/unassigned with their affinities retained. Silver's freeze has inconsistent counts and negative cases, incomplete containment/exactly-once/orphan/count-drift validation, missing source hashes, and a wrong evidence root. Gold lacks exhaustive exactly-once mapping, a reconciled validation unit, four frozen negative groups, consistent mutation evidence, and current governance inputs. Canonical writer ACCEPTS only White D04's bounded five-path discovery outcome and its six-negative/one-positive test freeze. No implementation ACK is issued: the frozen base README hash `5BE476D058B83594A15999B2892D7F6AE15CA5886F204432EB2D82F778641B0A` conflicts with Purple D01's preserved uncommitted README hash `331ACDF1F47EE017C4934471A556B8B94210503DC31ED31A4CD33FE877B93BAF` and diff identity `1969BC87779BD409EA9BBF1EB4D56C7F91F74E8BD531ACC1848E0030DDC6BBE1`. ACK `Purple-20260930T233031Z-e7a0834/Kanban/g623/accept-D04-discovery-hold-implementation-conflict` retains White's g622 read-only token/evidence root, no writable reservation, and quiescent In Progress status. Counts are 45/1/57 with fifteen unclaimed READY cards and an exact one-card active-claim deficit.
+
+Generation 622 Silver, Gold and White read-only discovery claims: canonical writer session `Purple-20260930T233031Z-e7a0834` issues distinct generation-bound claims for Silver `EXR-012-A01-D02`, Gold `EXR-012-A01-D03`, and White `EXR-012-A01-D04`. The claims authorize only read-only `DISCOVER-FREEZE` preflight and card-specific evidence output; they grant no documentation, product, test, implementation, or governance write reservation. Tokens are `EXR-012-A01-D02/Silver/g622/29331ed087fc73dafffe59e4edee64cf`, `EXR-012-A01-D03/Gold/g622/ca09bfa8fe4e5ddef1804a3088ddd02c`, and `EXR-012-A01-D04/White/g622/639d631231be61cdccf48a0f3067f11c`. Each card moves To Do -> In Progress in its isolated worktree at base `e7a0834dc9212e38b7540a809390c9b0fa570c90`; all three cohorts quiesce immediately without executing discovery or tests. Counts become 43/3/57. Thirteen unclaimed documentation children remain READY, and the exact target deficit is three active discovery claims because no other dependency-clear atomic card exists.
+
+Generation 621 Purple D01 canonical rejection and safe requeue: canonical decision **REJECT** `EXR-012-A01-D01` because C2 and independent C3 each reproduced affected results 6302 total / 5464 passed / 838 failed / 0 skipped / 0 not-run, exit 1; C3 additionally recorded one failed container. Focused verification passed 10/10 for both C2 and C3, hashes were stable, links resolved, authorized paths only changed, and `git diff --check` passed, but DOC-3W requires the affected suite to pass with zero other outcomes. All three Purple workers are quiescent. Release token `EXR-012-A01-D01/Purple/g618/56c2a84b94b34c03846814657ca5202d`, lease, writable/evidence reservations and active ownership; return D01 In Progress -> To Do/unassigned while retaining Purple queue affinity and preserving the isolated worktree and evidence. No test is retried, no failure is waived, and no card moves Done. The READY bank truthfully returns to sixteen at 46/0/57.
+
+Generation 620 Purple D01 C2 quiescence and C3 verification grant: C2's sole focused invocation passed 10/10, exit 0, against frozen test hash `532912196F8F26E87575B1DD49A38B242457E5641DB447529C776A01632103FB`; README output hash is `331ACDF1F47EE017C4934471A556B8B94210503DC31ED31A4CD33FE877B93BAF`. Its sole affected invocation failed 838 of 6302 with zero skips/not-runs, exit 1, and was not retried. C2 is quiescent and releases README write ownership; no candidate is accepted and D01 remains In Progress. ACK `Purple-20260930T233031Z-e7a0834/Kanban/g620/grant-D01-C3-verification` grants C3 read-only independent review and the required focused/affected invocations against the integrated g618 worktree. Token, reservations, evidence roots, counts, queues and READY deficit remain.
+
+Generation 619 Purple D01 C1-to-C2 barrier: canonical writer ACK `Purple-20260930T233031Z-e7a0834/Kanban/g619/handoff-D01-C1-to-C2` accepts C1's negative-first intended red at 9/0/9 and final authored-test red at 10/0/10 after exactly one positive, both with zero skips/not-runs/failed containers and exit 1. Frozen test hash is `532912196F8F26E87575B1DD49A38B242457E5641DB447529C776A01632103FB`; C1 is quiescent and releases the test path from write ownership. C2 now exclusively owns only the README implementation path, treats the frozen test read-only, and must make the smallest change before focused validation. The g618 token, worktree, reservations, evidence roots, card status, queue affinities, counts, and fifteen-card READY bank remain unchanged.
+
+Generation 618 four-cohort allocation and Purple D01 claim: canonical writer session `Purple-20260930T233031Z-e7a0834` revalidated generation 617 at 46/0/57, sixteen READY cards, zero active claims/reservations, stable governed-file hashes, and `BOARD READY`. Force-rank queue affinities are Purple `EXR-012-A01-D01`, Silver `EXR-012-A01-D02`, Gold `EXR-012-A01-D03`, and White `EXR-012-A01-D04`; affinities for D02-D04 grant no token, lease, path lock, worktree, or write authority before their own discovery and canonical ACK. Purple's read-only `DISCOVER-FREEZE:readme-entry` returned exact nonoverlapping writable paths, so ACK `Purple-20260930T233031Z-e7a0834/Kanban/g618/claim-EXR-012-A01-D01` moves only D01 To Do -> In Progress with token `EXR-012-A01-D01/Purple/g618/56c2a84b94b34c03846814657ca5202d`, exact README/test reservations, isolated worktree, role-specific evidence roots, and sequenced DOC-3W ownership. The unclaimed READY bank is truthfully fifteen; no dependency-clear atomic replacement exists, so the target deficit is one active claimed card rather than fabricated work.
+
+Generation 617 sixteen-card READY bank: the four EXR-012 aggregate documentation cards are converted to excluded summaries and their already-declared acceptance surfaces are decomposed into sixteen executable child cards. Every child inherits only Done prerequisites, owns one bounded document/contract outcome, uses `DOC-3W`, starts with a card-specific read-only `DISCOVER:` freeze, and requires a later exact-path conflict ACK before implementation. The READY bank is exactly sixteen with no active claim or reservation. The canonical writer recomputes the bank after every claim, completion, requeue, dependency transition, external-gate transition, or reservation change. The target is at least sixteen, but dependency, external, conflict, or atomicity gates remain fail-closed; any deficit must record the exact gate rather than manufacture READY work.
+
+Generation 616 backlog hygiene and concurrent dispatch: the canonical writer audited all 34 executable To Do cards against their card definitions and manifest bindings. Existing child decomposition is retained because each row already has one bounded outcome, explicit dependencies, a dispatch profile, an exact or discovery-gated writable surface, focused/affected validation, and evidence/handoff contracts; no new IDs or synthetic work were added. `EXR-012-A01`, `EXR-012-A02`, `EXR-012-A03`, and `EXR-012-A04` have all dependencies Done and are independently `READY` for four concurrent read-only discovery/freeze preflights. Each must return exact writable paths for a later generation-bound conflict recheck before any implementation write. `EXR-018-A02` is dependency-clear but remains `WAIT-EXT`; every other To Do card retains a real unfinished dependency. No active claim, reservation, lease, or global F02/C01 freeze remains.
+
+Generation 615 Purple C01 acceptance and release: the canonical writer accepts the generation-614 candidate after Purple/Coworker-2's sole fresh validator invocation and Purple/Coworker-3's sole independent invocation both returned `BOARD READY`, exit 0, retry 0, at **34 To Do / 0 In Progress / 57 Done**, 91 executable, 24 summaries, 34 manifest entries, 0 pull-ready, 0 unknown dependencies and 0 eligible reservation conflicts. Governed candidate hashes were stable and `git diff --check` passed. Release token `EXR-010-A12-L01-C01/Purple/g609/54b4da8f23c64c079c3de9dcce497089`, its lease, all four writable reservations, and every g609/g613 evidence-root reservation. All Purple roles are quiescent; preserve the isolated branch/worktree and evidence as accepted history. No unrelated card is promoted, reordered, restructured, reassigned or claimed.
+
+Generation 614 Purple C01 final candidate: **Canonical decision: ACCEPT `EXR-010-A12-L01-C01` as Done.** Tested identity is base `e7a0834dc9212e38b7540a809390c9b0fa570c90` plus the bounded generation-609-through-614 governance/validator candidate in branch `dispatch/EXR-010-A12-L01-C01/Purple/Coworker-1/g609`. F02 is Done with generation-608 accepted evidence; C01's exact ID, rank 23.6, sole dependency `EXR-010-A12-L01-F02`, Done status, and terminal recount are validator-enforced. Counts are **34 To Do / 0 In Progress / 57 Done = 91 executable cards**, with **24 summary parents excluded**; the canonical manifest remains the same ordered 34 remaining To Do rows and no unrelated card is promoted. Generation authority is session `Purple-20260930T224006Z-e7a0834` under the retained g609 token and g610/g611/g613 ACKs. This is a release candidate: token, reservations, and writer authority are **PENDING CANONICAL ACCEPTANCE** by Coworker-3 and the canonical writer, not already released.
+
+Generation 613 Purple C01 fresh attempt: ACK `Purple-20260930T224006Z-e7a0834/Kanban/g613/fresh-zero-retry-C01` retains the g609 token, worktree and exact four-file reservation. New Coworker-2 and Coworker-3 evidence roots beneath `.artifacts/dispatch/EXR-010-A12-L01-C01/g613/Purple/` are exclusive to a fresh generation-614 candidate. The owner and reviewer each get exactly one validator invocation; any owner failure rejects the attempt. C01 remains In Progress at 34/1/56 pending acceptance.
+
+Generation 612 Purple C01 rejection: the structurally coherent candidate is REJECTED because C2's green validator was invocation 3 after two failed implementation-debug invocations, violating the explicit no-retry contract. C3 independently passed one BOARD READY invocation at 34/0/57 with stable hashes and clean diff, but this does not waive the owner-packet retry. Preserve all g609 evidence; retain the token, reservations and C01 In Progress ownership.
+
+Generation 611 Purple C01 reservation expansion: ACK `Purple-20260930T224006Z-e7a0834/Kanban/g611/expand-C01-validator` newly reserves `.github/validate-dispatch-board.ps1` exclusively to Coworker-2 in addition to the three governance files. The required focused/affected command currently hardcodes the generation-608 terminal buckets and manifest count and does not exercise every frozen C01 discriminator; the smallest final-state contract update is therefore part of C01. The g609 token, worktree and evidence roots remain active, C01 remains In Progress at 34/1/56, Coworker-3 remains read-only, and no unrelated card or manifest row changes.
+
+Generation 610 Purple C01 handoff: ACK `Purple-20260930T224006Z-e7a0834/Kanban/g610/handoff-C01-C1-to-C2` accepts Coworker-1's single intended validator red (`expected 35 manifest entries, found 34`, exit 1, no retry) and frozen discriminator/evidence packet. Coworker-1 is quiescent and releases the three governance files; Coworker-2 exclusively owns them for the smallest final C01 implementation. The generation-609 token, isolated worktree and three evidence roots remain active. Coworker-3 stays read-only until Coworker-2 quiesces. Counts remain 34/1/56; no unrelated card or manifest row changes.
+
+Generation 609 Purple C01 claim: canonical ACK `Purple-20260930T224006Z-e7a0834/Kanban/g609/claim-EXR-010-A12-L01-C01` binds token `EXR-010-A12-L01-C01/Purple/g609/54b4da8f23c64c079c3de9dcce497089`, base `e7a0834dc9212e38b7540a809390c9b0fa570c90`, the planned isolated branch/worktree, exact three-file writable reservation, three evidence roots, and sequenced Purple roles recorded in `.github/cohorts.md`. C01 moves To Do -> In Progress as the sole active claim. Its acceptance requires an exact verdict and tested identity; prior F02 leaf status/evidence/count reconciliation; a static cross-file C01 ID/status/rank/dependency/count discriminator; and canonical decision, recount, activity, and generation authority. Historical F02 worktree/evidence remains released and preserved.
 
 Generation 608 Platinum F02 acceptance: focused verification passed **98/98** and **6/6**; the exact ordered affected vector passed **337/281/6/30/10/68/6/9 = 747/747**, with zero failures, skips, not-runs, or failed containers. `git diff --check` passed. The canonical writer accepts the bounded compatibility, entitlement, reporting-route, Matrix-fixture and licensing-gate changes, moves F02 In Progress -> Done, and releases token `EXR-010-A12-L01-F02/Platinum/g606/f6cc35d3e99c45eab4265678f3f29dd5`, its lease, all writable reservations and all evidence-root reservations. C01 is the sole `READY` To Do card after dependency and conflict revalidation.
 
@@ -15,12 +55,13 @@ Generation 605 global stop reconciliation: all four prior cohorts and their work
 ## Canonical atomic pull protocol
 
 1. **One writer and one transaction.** Only the canonical board writer named in `.github/cohorts.md` may mutate status, claims, reservations, evidence references, or generations. A claim proposal contains card ID, cohort, owning Coworker and intended peer-review identity (or the named serial executor), observed generation, exact writable reservation, evidence root, worktree/branch, and expiry. The writer rereads both canonical files, runs the validator, records the claim token and generation increment in one transaction, then synchronizes the compatibility view. A proposal, queue affinity, Markdown edit, timestamp, or worker message is never a claim.
-2. **Dependency-ready rule.** A card is pull-eligible only when it is executable To Do, every manifest dependency is Done with accepted evidence, every `WAIT-EXT` prerequisite is explicitly supplied, its profile preflight is complete, a requesting coworker slot is available, and exact-path conflict validation succeeds. Force rank breaks ties but never overrides a dependency, external gate, reservation, or the active F02 freeze.
+2. **Dependency-ready rule.** A card is pull-eligible only when it is executable To Do, every manifest dependency is Done with accepted evidence, every `WAIT-EXT` prerequisite is explicitly supplied, its profile preflight is complete, a requesting coworker slot is available, and exact-path conflict validation succeeds. Force rank breaks ties but never overrides a dependency, external gate, reservation, or active claim.
 3. **Claim lease and requeue.** Claim token format is `<card>/<cohort>/g<generation>/<uuid>`. Heartbeats are due every 30 minutes; expiry is 120 minutes after the last writer-acknowledged heartbeat. Expiry suspends writes. Requeue requires confirmed worker/process/worktree quiescence, preservation of partial evidence, release of every path and evidence-root reservation, a writer generation increment, and a fresh validator pass. Time alone never proves quiescence.
 4. **Worker-slot WIP and isolation.** Each coworker owns at most one In Progress implementation card, so a three-worker cohort may hold up to three nonconflicting cards; there is no unrelated global one-card gate. Every accepted claim uses isolated worktree `dispatch/<card>/<cohort>/<coworker>/g<generation>`, branch of the same name, and exclusive evidence root `.artifacts/dispatch/<card>/g<generation>/<cohort>/<coworker>/`. F02 retains only its exact-path and evidence-root reservations, not every coworker slot. Queue affinity grants no write/test/live authority.
 5. **Exact conflict checks.** Reservations are normalized repository-relative exact files or directory prefixes. Conflict means equality, ancestor/descendant overlap, glob expansion overlap, or overlap with an active claim's evidence root. `DISCOVER:<card>` is not write authority: its read-only preflight must emit and freeze exact paths, then the writer must ACK those paths in a new generation before execution. Newly discovered paths follow the same rule.
 6. **Idle pull behavior.** When a coworker becomes idle, the steward immediately reruns the dependency-ready query and proposes the highest-ranked eligible, nonconflicting To Do card for that worker slot even while cohort peers continue other cards. If none is eligible, the coworker performs read-only dependency, reservation, test-discovery, evidence, or peer-review preparation and reports the exact gate. Idle workers may not edit, launch side-effecting tests, access a tenant, reserve paths, or pull dependency-ineligible work without a generation-bound ACK.
 7. **Handoff and merge.** The card owner hands off frozen inputs, red evidence, bounded implementation, and focused result; a different Coworker independently verifies identity, affected results, scope, and diff after the owner quiesces. Serial profiles use preflight -> executor -> reviewer. Integration follows owner -> independent reviewer -> canonical writer. Completion handoff includes token/generation, commits, exact changed paths, commands/counts/exits, hashes, evidence schema, residuals, and reservation release. Only the writer may accept it and transition status.
+8. **READY-bank replenishment.** After every claim, completion, requeue, dependency transition, external-gate transition, or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards. Replenishment first promotes existing dependency-clear atomic cards, then may split a composite only when its existing acceptance already contains independently claimable outcomes with separate validation and evidence contracts. Dependency-gated, externally gated, conflicting, or insufficiently bounded work remains non-READY; the board records the exact deficit instead of fabricating eligibility.
 
 ## Canonical dispatch profiles
 
@@ -36,16 +77,27 @@ Every manifest entry below inherits all fields in its named profile. An entry ov
 
 ## Canonical To Do dispatch manifest
 
-`READY` means dependency-clear and immediately pullable into an available coworker slot after the writer's conflict recheck and ACK. Generation 608 has one unclaimed `READY` entry, C01. `WAIT-DEP`, `WAIT-EXT`, and `WAIT-F02` are non-eligible. `DISCOVER:<card>` requires a read-only reservation-discovery preflight and a later writer ACK; it is mechanically pullable as a preflight but not executable write authority. Read-only surface `CARD+DEPS` means the named card section, dependency evidence, shipped product/tests/docs, and active claims, all without mutation.
+`READY` means dependency-clear and immediately pullable into an available coworker slot after the writer's conflict recheck and ACK. Generation 617 exposes sixteen independent READY discovery/freeze preflights and establishes a fail-closed target bank of at least sixteen. `WAIT-DEP` and `WAIT-EXT` are non-eligible. `DISCOVER:<card>` requires a read-only reservation-discovery preflight and a later writer ACK; it is mechanically pullable as a preflight but not executable write authority. Read-only surface `CARD+DEPS` means the named card section, dependency evidence, shipped product/tests/docs, and active claims, all without mutation.
 
 | Card | Dependencies / eligibility | Profile | Writable reservation or prerequisite | Read-only surfaces | Focused / affected binding |
 | --- | --- | --- | --- | --- | --- |
-| `EXR-010-A12-L01-C01` | `EXR-010-A12-L01-F02`; `READY` | `GOV-3W` | `.github/backlog.md`; `.github/cohorts.md`; `.github/kanban.md` | `CARD+DEPS`; F02 evidence | `F=pwsh -NoProfile -File .github/validate-dispatch-board.ps1`; `A=PROFILE` |
-| `EXR-012-A01` | `EXR-006,EXR-008,EXR-009,EXR-010-A12-L01-C01,EXR-011-A01,EXR-011-A02,EXR-011-A03,EXR-011-A04,EXR-007-A01,EXR-007-A02-T01,EXR-007-A02-T02,EXR-007-A02-T03,EXR-007-A02-T04,EXR-007-A03-T01,EXR-007-A03-T02-L01,EXR-007-A04-T01,EXR-007-A04-T02,EXR-007-A05-T01,EXR-007-A05-T02,EXR-007-A05-T03-L01-C01,EXR-007-A06,EXR-007-A07,EXR-007-A08-T01,EXR-007-A08-T02,EXR-007-A08-T03`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A01` | `CARD+DEPS`; active operator docs | `F=DISCOVER-FREEZE:documentation-structure`; `A=PROFILE` |
-| `EXR-012-A02` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A02` | `CARD+DEPS`; command/help docs | `F=DISCOVER-FREEZE:command-surface-docs`; `A=PROFILE` |
-| `EXR-012-A03` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A03` | `CARD+DEPS`; evidence/signing docs | `F=DISCOVER-FREEZE:evidence-docs`; `A=PROFILE` |
-| `EXR-012-A04` | same as `EXR-012-A01`; `WAIT-DEP` | `DOC-3W` | `DISCOVER:EXR-012-A04` | `CARD+DEPS`; live/rollback docs | `F=DISCOVER-FREEZE:live-docs`; `A=PROFILE` |
-| `EXR-013-A01` | `EXR-012-A01,EXR-012-A02,EXR-012-A03,EXR-012-A04`; `WAIT-DEP` | `OFFLINE-3W` | `DISCOVER:EXR-013-A01` | `CARD+DEPS`; offline entrypoints | `F=DISCOVER-FREEZE:offline-entrypoints`; `A=PROFILE` |
+| `EXR-012-A01-D01` | EXR-012 terminal prerequisites; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A01-D01` | `CARD+DEPS`; README | `F=DISCOVER-FREEZE:readme-entry`; `A=PROFILE` |
+| `EXR-012-A01-D02` | same as `EXR-012-A01-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A01-D02` | `CARD+DEPS`; solution summary | `F=DISCOVER-FREEZE:solution-summary`; `A=PROFILE` |
+| `EXR-012-A01-D03` | same as `EXR-012-A01-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A01-D03` | `CARD+DEPS`; implementation guide | `F=DISCOVER-FREEZE:implementation-guide`; `A=PROFILE` |
+| `EXR-012-A01-D04` | same as `EXR-012-A01-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A01-D04` | `CARD+DEPS`; sample inputs/licensing | `F=DISCOVER-FREEZE:input-provenance`; `A=PROFILE` |
+| `EXR-012-A02-D01` | EXR-012 terminal prerequisites; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A02-D01` | `CARD+DEPS`; runbooks | `F=DISCOVER-FREEZE:runbooks`; `A=PROFILE` |
+| `EXR-012-A02-D02` | same as `EXR-012-A02-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A02-D02` | `CARD+DEPS`; control catalog | `F=DISCOVER-FREEZE:control-catalog`; `A=PROFILE` |
+| `EXR-012-A02-D03` | same as `EXR-012-A02-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A02-D03` | `CARD+DEPS`; value authority | `F=DISCOVER-FREEZE:value-authority`; `A=PROFILE` |
+| `EXR-012-A02-D04` | same as `EXR-012-A02-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A02-D04` | `CARD+DEPS`; set/verify outputs | `F=DISCOVER-FREEZE:set-verify-output`; `A=PROFILE` |
+| `EXR-012-A03-D01` | EXR-012 terminal prerequisites; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A03-D01` | `CARD+DEPS`; preview/approval | `F=DISCOVER-FREEZE:approval-preview`; `A=PROFILE` |
+| `EXR-012-A03-D02` | same as `EXR-012-A03-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A03-D02` | `CARD+DEPS`; apply/readback/no-op | `F=DISCOVER-FREEZE:go-live-readback`; `A=PROFILE` |
+| `EXR-012-A03-D03` | same as `EXR-012-A03-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A03-D03` | `CARD+DEPS`; rollback/recovery | `F=DISCOVER-FREEZE:rollback-recovery`; `A=PROFILE` |
+| `EXR-012-A03-D04` | same as `EXR-012-A03-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A03-D04` | `CARD+DEPS`; artifact/signature exits | `F=DISCOVER-FREEZE:artifact-signature-exits`; `A=PROFILE` |
+| `EXR-012-A04-D01` | EXR-012 terminal prerequisites; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A04-D01` | `CARD+DEPS`; evidence viewer | `F=DISCOVER-FREEZE:evidence-viewer`; `A=PROFILE` |
+| `EXR-012-A04-D02` | same as `EXR-012-A04-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A04-D02` | `CARD+DEPS`; exclusions/denominator | `F=DISCOVER-FREEZE:exclusions-denominator`; `A=PROFILE` |
+| `EXR-012-A04-D03` | same as `EXR-012-A04-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A04-D03` | `CARD+DEPS`; status semantics | `F=DISCOVER-FREEZE:status-semantics`; `A=PROFILE` |
+| `EXR-012-A04-D04` | same as `EXR-012-A04-D01`; `READY` | `DOC-3W` | `DISCOVER:EXR-012-A04-D04` | `CARD+DEPS`; RAID/source claims | `F=DISCOVER-FREEZE:raid-source-claims`; `A=PROFILE` |
+| `EXR-013-A01` | all sixteen executable EXR-012 documentation children; `WAIT-DEP` | `OFFLINE-3W` | `DISCOVER:EXR-013-A01` | `CARD+DEPS`; offline entrypoints | `F=DISCOVER-FREEZE:offline-entrypoints`; `A=PROFILE` |
 | `EXR-013-A02-E01` | `EXR-013-A01`; `WAIT-DEP` | `OFFLINE-3W` | `DISCOVER:EXR-013-A02-E01` | `CARD+DEPS`; failure evidence | `F=DISCOVER-FREEZE:offline-failure-contract`; `A=PROFILE` |
 | `EXR-013-A02-W01` | `EXR-013-A02-E01`; `WAIT-DEP` | `OFFLINE-3W` | `DISCOVER:EXR-013-A02-W01` | `CARD+DEPS`; offline workflow | `F=DISCOVER-FREEZE:offline-workflow`; `A=PROFILE` |
 | `EXR-014-A01` | `EXR-002,EXR-003,EXR-013-A02-W01`; `WAIT-DEP` | `OFFLINE-3W` | `DISCOVER:EXR-014-A01` | `CARD+DEPS`; fixtures/manifest | `F=DISCOVER-FREEZE:fixture-manifest`; `A=PROFILE` |
@@ -3159,12 +3211,13 @@ Rank 23.55 - Restore current-runtime compatibility required by frozen L01 contra
 
 Rank 23.6 - Final canonical acceptance/Done transition.
 
-- Dependencies: EXR-010-A12-L01-F02. Owner: unassigned; generation-608 dependency and conflict validation makes this the sole `READY` card. Workstream: Email verification. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-010-A12-L01-F02. Owner: Purple/Coworker-2 accepted Done candidate under generation 614; release remains PENDING CANONICAL ACCEPTANCE. Workstream: Email verification. Updated: 2026-09-30. Status: Done.
 - Bounded outcome: perform the single canonical acceptance decision and, only on supported ACCEPT evidence, transition this leaf Done and satisfy the L01 summary.
 - Writable surface: `.github/kanban.md`, `.github/backlog.md`, `.github/cohorts.md`; no product/test path.
 - Acceptance: exact review verdict, tested working-tree identity, all prior leaf statuses/evidence and counts reconcile; REJECT leaves the card To Do with blockers.
 - Discriminator: static cross-file ID/status/rank/dependency/count check.
 - Evidence required: canonical decision record, bucket/queue recount, activity entry and generation-bound authority statement.
+- Generation 614 accepted candidate evidence: canonical decision ACCEPT; base identity `e7a0834dc9212e38b7540a809390c9b0fa570c90`; accepted generation-610 red, generation-611 validator reservation, generation-612 rejection, and generation-613 fresh zero-retry grant; final focused command `pwsh -NoProfile -File .github/validate-dispatch-board.ps1`; implementation evidence root `.artifacts/dispatch/EXR-010-A12-L01-C01/g613/Purple/Coworker-2/`. Independent C3 validation and canonical release remain PENDING CANONICAL ACCEPTANCE.
 - Generation 255 full-regression adjudication: accept the generation-254 packet as exact PowerShell **7.6.6** / Pester **5.7.1** **5,817 discovered / selected / total, 5,682 passed, 135 failed, 0 skipped/not-run, 23 failed containers and 206 container-error records**, with null invocation exception, exits **1/1/1**, empty stderr, one invocation/no retry, byte-identical repository manifests, zero mutations and final process zero. The observed discovery is authoritative for this tree; **5,846 / 208 files** remains invalid-launch reference only, with its **29-test variance** unexplained but not asserted as a regression. This is valid completed red evidence but cannot close L01: no owner-by-owner reconciliation establishes that every failed test/container error is known and unrelated, and the required count reconciliation is incomplete, so independent review and Done remain unavailable. Release Coworker-1 and all generation-254 execution/output authority. Purple retains L01 and is not ready for new work; Silver remains activation-gated on Purple closure; Gold is released and ready for a future generation-bound assignment. No remediation or new card is granted.
 - Generation 254 full-regression grant: accept generation 253 as eight serial exact-once PowerShell **7.6.6** / Pester **5.7.1** children totaling **747/747**, all exits **0**, zero failures/skips/not-run/failed containers/container errors/invocation exceptions, empty stderr, stable test hashes, repository mutations **0**, retries **0**, process counts **0/0** and no anomaly. Evidence is retained beneath the assigned generation-253 root. Purple/Coworker-1 alone owns ACK `sole-canonical-writer/Purple/batch8/g254/coworker-1-A12-L01-zero-edit-full-regression` and the fresh generation-254 root, with no repository write authority. Invoke literal `samples/contoso-exchange-online-managed-service/tests` exactly once in one natural-lifetime PowerShell 7/Pester **5.7.1** child. No exact current full-suite count is verified; retain **5,846 tests / 208 files** only as the latest discovery reference from an invalid repository-wide launch, make the new observed discovery/total authoritative, and explain every delta and all failures/skips/not-run/failed containers against current owners. Require stable input identity, zero mutations, no retry and final process zero. Independent review, Done and Silver activation remain deferred.
 - Generation 253 affected-regression grant: accept generation 252 as exact PowerShell **7.6.6** / Pester **5.7.1** **6/6**, one invocation, exit **0**, stable focused-test SHA-256 `603DC8054EC38778390A2D7F358AB84B683A92BD6C273BB2004D97646B24B7FE`, and no retry, post-run edit or other mutation. Purple/Coworker-3 alone owns the fresh generation-253 root and no repository path. Run serially and exactly once each: ProtectionMatrix **337/337**, ProtectionLicensing **281/281**, ProtectionSafety **6/6**, ReportingContract **30/30**, ReportingAdapters **10/10**, LiveContract **68/68**, LiveAdapters **6/6** and LiveSignedRoundTrip **9/9**, aggregate **747/747**; stop before the next suite on any anomaly and retain complete zero-mutation evidence. Full offline regression, independent review, Done and Silver activation remain deferred.
@@ -3958,7 +4011,7 @@ Rank 47 - OWA mailbox policy bindings/settings.
 
 Parent summary - Reconcile all Exchange operator documentation.
 
-- Owner: unassigned for traceability. Workstream: Documentation. Updated: 2026-09-26. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-006/008/009, EXR-010-A12, EXR-011 and all admitted EXR-007 scopes resolve through terminal executable leaves, including EXR-010-A12-L01, EXR-007-A03-T02-L01 and EXR-007-A05-T03-L01. Parent acceptance awaits all four child evidence packets.
+- Owner: unassigned for traceability. Workstream: Documentation. Updated: 2026-09-30. Disposition: non-executable parent; no bucket or rank, not Done. Original prerequisites EXR-006/008/009, EXR-010-A12, EXR-011 and all admitted EXR-007 scopes resolve through terminal executable leaves, including EXR-010-A12-L01, EXR-007-A03-T02-L01 and EXR-007-A05-T03-L01. Parent acceptance awaits all sixteen executable child evidence packets.
 - Acceptance: reconcile README, solution summary, implementation guide, runbooks, license-prerequisite guidance, control catalog, sample inputs, and evidence-viewer wording with the Exchange profile. Publish exact set/verify/expected-output steps, complete approval and go-live examples, current status/exit meanings, and recovery instructions. Every non-Exchange dependency points to RAID. Explain which values are Microsoft recommendations, administrator input, or approved business policy; remove universal 100% and accepted-exception-equals-Pass claims.
 - Verification: sanitized examples resolve every input and link; operator outputs match actual status/exit contracts; no active procedure configures excluded services. Do not mark this Done on keyword checks alone; EXR-013 provides full executable walkthrough regression.
 - RAID: RAID-R02, RAID-I03, RAID-I04.
@@ -3967,61 +4020,189 @@ Parent summary - Reconcile all Exchange operator documentation.
 
 | Original clause | Executable owner |
 | --- | --- |
-| README, solution summary, implementation guide, sample input provenance and licensing/prerequisite entry points; resolve inputs/links | [EXR-012-A01](#exr-012-a01) |
-| Runbooks/control catalog, exact set/verify/expected outputs, Microsoft versus administrator/business values | [EXR-012-A02](#exr-012-a02) |
-| Complete approval/go-live examples, arguments/paths/artifacts, status/exits and recovery instructions | [EXR-012-A03](#exr-012-a03) |
-| Evidence viewer/operator wording, distinct exceptions and external readiness, no universal 100% or exception-as-Pass claims | [EXR-012-A04](#exr-012-a04) |
-| Every non-Exchange dependency to RAID, no excluded setup, actual scoped example execution not keywords | A01-A04 each for its documents under the shared atomic contract; exhaustive execution is [EXR-013-A02](#exr-013-a02), not deferred missing scoped checks |
+| README, solution summary, implementation guide, sample input provenance and licensing/prerequisite entry points; resolve inputs/links | EXR-012-A01-D01 through EXR-012-A01-D04 |
+| Runbooks/control catalog, exact set/verify/expected outputs, Microsoft versus administrator/business values | EXR-012-A02-D01 through EXR-012-A02-D04 |
+| Complete approval/go-live examples, arguments/paths/artifacts, status/exits and recovery instructions | EXR-012-A03-D01 through EXR-012-A03-D04 |
+| Evidence viewer/operator wording, distinct exceptions and external readiness, no universal 100% or exception-as-Pass claims | EXR-012-A04-D01 through EXR-012-A04-D04 |
+| Every non-Exchange dependency to RAID, no excluded setup, actual scoped example execution not keywords | All sixteen children under the shared atomic contract; exhaustive execution is [EXR-013-A02](#exr-013-a02), not deferred missing scoped checks |
 
 ### EXR-012-A01
 
-Rank 48 - Operator entry points and input provenance.
+Parent summary - Operator entry points and input provenance.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
-- Deliverable: reconciled Exchange operator entry and input provenance across README, solution summary, implementation guide and samples.
-- Acceptance: resolve working directories, explicit Exchange profile/config paths, complete administrator inputs and their authorities, supplied license prerequisites and external handoffs to RAID. Distinguish Microsoft recommendations, administrator input and approved business policy without excluded-service setup.
-- Verification: shared atomic contract; reject unresolved inputs/links, stale defaults, suite-label entitlement assumptions and embedded tenant provisioning; positive sanitized entry examples execute with documented inputs and actual prerequisite responses, not keyword checks.
-- Existing evidence / remaining: EXR-008 journey is bounded; upstream contracts and whole-guide entry points still need reconciliation. EXR-010-A11 alone owns the nine email-driven repairs; this child consumes their result without duplicating them.
-- RAID: RAID-R02, RAID-I03, RAID-I04, RAID-D02; no license assignment or consent.
+- Disposition: non-executable aggregate; no bucket or rank. Executable ownership is D01-D04.
+- Children: EXR-012-A01-D01, EXR-012-A01-D02, EXR-012-A01-D03, EXR-012-A01-D04.
 
 ### EXR-012-A02
 
-Rank 49 - Configuration runbook reconciliation.
+Parent summary - Configuration runbook reconciliation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
-- Deliverable: consistent configuration runbooks and control catalog for the completed Exchange contracts.
-- Acceptance: exact set/verify/expected-output steps, current source sections and dates, parameter/config names and declared Microsoft versus local/business choices. Label external handoffs explicitly; do not reintroduce excluded workload procedures or enlarge writer permissions.
-- Verification: shared atomic contract; reject missing verify steps, mismatched names/values and unbound sources; positive scoped examples execute actual documented commands through raw offline boundaries and match outputs. Every touched control maps to source/evidence/runbook.
-- Existing evidence / remaining: current runbooks/catalog exist but whole-guide consistency is unproved. The nine email documentation/legacy regressions remain EXR-010-A11 ownership, not a second repair task here.
-- RAID: RAID-R02, RAID-I03, RAID-I04; tenant controls remain handoffs.
+- Disposition: non-executable aggregate; no bucket or rank. Executable ownership is D01-D04.
+- Children: EXR-012-A02-D01, EXR-012-A02-D02, EXR-012-A02-D03, EXR-012-A02-D04.
 
 ### EXR-012-A03
 
-Rank 50 - Approval/go-live recovery procedures.
+Parent summary - Approval/go-live recovery procedures.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
-- Deliverable: exact operator approval, frozen go-live and scoped recovery procedures.
-- Acceptance: publish complete arguments, working directory, paths, artifact formats/bindings, status and exit meanings for preview/approval/apply/readback/no-op/drift refusal/typed rollback and collect/freeze/sign/verify. Consume external signing capability; never substitute WhatIf or newly regenerated evidence bytes.
-- Verification: shared atomic contract; execute touched examples against raw offline boundaries, rejecting missing/mismatched/expired inputs and stale exit/recovery directions; positive exact-byte round trip proves documented recovery without hidden prerequisites.
-- Existing evidence / remaining: EXR-004/006 infrastructure exists; EXR-004 retains its two repair failures. This child reconciles procedures after upstream completion, not expanded change rights or new PKI work.
-- RAID: RAID-R02, RAID-I03, RAID-I04, RAID-D05; enterprise signing is external.
+- Disposition: non-executable aggregate; no bucket or rank. Executable ownership is D01-D04.
+- Children: EXR-012-A03-D01, EXR-012-A03-D02, EXR-012-A03-D03, EXR-012-A03-D04.
 
 ### EXR-012-A04
 
-Rank 51 - Evidence/status presentation.
+Parent summary - Evidence/status presentation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-26. Status: To Do.
-- Deliverable: evidence viewer and operator wording faithful to actual Exchange status/exit semantics.
-- Acceptance: keep ApprovedException separate from Pass and external readiness Unverified unless independently evidenced; show explicit exclusions and scoped denominator. Remove universal 100%/tenant-certification claims; map every external prerequisite to RAID and sources/local choices to the right authority.
-- Verification: shared atomic contract; feed real public evidence/status outputs into presentation checks, rejecting unknown/missing/NotEntitled status laundering, exception-as-Pass and unsupported compliance claims; positive per status demonstrates actual output, not keyword presence alone.
-- Existing evidence / remaining: signing/inventory status semantics exist; integrated viewer/operator reconciliation is not complete. No new conformance or external readiness is asserted by presentation work.
-- RAID: RAID-R02, RAID-I03, RAID-I04; unresolved dependencies remain visible.
+- Disposition: non-executable aggregate; no bucket or rank. Executable ownership is D01-D04.
+- Children: EXR-012-A04-D01, EXR-012-A04-D02, EXR-012-A04-D03, EXR-012-A04-D04.
+
+### EXR-012-A01-D01
+
+Rank 48.1 - README operator entry.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile README working directory, Exchange profile/config paths, inputs, links, prerequisites, and external handoffs.
+- Acceptance: one sanitized README entry path resolves and executes against documented offline prerequisites; unresolved inputs, stale defaults, excluded-service setup, and suite-label entitlement assumptions fail.
+- Verification/evidence: `DOC-3W`; negative-first README checks plus one positive entry example; card-specific discovery inventory, hashes, focused/affected results, and independent handoff.
+
+### EXR-012-A01-D02
+
+Rank 48.2 - Solution-summary operator entry.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile the solution summary's Exchange scope, entry points, prerequisites, and source authority.
+- Acceptance: the summary names only shipped Exchange entry points, distinguishes supplied prerequisites from local policy, and contains no excluded workload or universal compliance claim.
+- Verification/evidence: `DOC-3W`; negative scope/source cases plus one sanitized positive summary path; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A01-D03
+
+Rank 48.3 - Implementation-guide operator entry.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile implementation-guide paths, parameters, authority boundaries, and complete operator inputs.
+- Acceptance: one guide workflow resolves exact shipped names and offline handoffs; wrong paths, hidden inputs, stale parameters, and embedded tenant provisioning fail.
+- Verification/evidence: `DOC-3W`; negative-first guide checks plus one positive documented workflow; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A01-D04
+
+Rank 48.4 - Sample-input and licensing provenance.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: bind sample inputs and licensing prerequisites to administrator, Microsoft, business-policy, and external-handoff authorities.
+- Acceptance: samples contain no tenant identity or fabricated entitlement and every prerequisite maps to RAID or a shipped configuration field.
+- Verification/evidence: `DOC-3W`; invalid/missing/ambiguous provenance negatives plus one complete sanitized input set; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A02-D01
+
+Rank 49.1 - Configuration runbooks.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile active Exchange runbooks with current commands, parameters, sources, and verify steps.
+- Acceptance: each touched runbook maps one control to exact set/verify/expected output without excluded workload procedures or enlarged permissions.
+- Verification/evidence: `DOC-3W`; missing/mismatched runbook cases plus one executable scoped example; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A02-D02
+
+Rank 49.2 - Control catalog.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile the control catalog's command, evidence, runbook, license, and source mappings.
+- Acceptance: every retained control maps exactly once to current shipped surfaces and external handoffs remain explicit.
+- Verification/evidence: `DOC-3W`; orphan/duplicate/stale mapping negatives plus one complete control mapping; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A02-D03
+
+Rank 49.3 - Configuration value authority.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: label Microsoft recommendations, administrator inputs, approved business choices, and external values consistently.
+- Acceptance: no value is silently defaulted across authority classes and every external value remains a handoff.
+- Verification/evidence: `DOC-3W`; missing/wrong authority negatives plus one complete value-source matrix; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A02-D04
+
+Rank 49.4 - Set/verify/expected-output contract.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
+- Deliverable: reconcile exact set, verify, and expected-output sequences across active configuration documentation.
+- Acceptance: examples invoke shipped commands through raw offline boundaries and expected outputs match current result shapes.
+- Verification/evidence: `DOC-3W`; missing verify/stale output negatives plus one exact positive sequence; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A03-D01
+
+Rank 50.1 - Preview and approval procedure.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: document complete preview, frozen evidence, and approval arguments and artifact bindings.
+- Acceptance: missing, mismatched, expired, regenerated, or unbound approval inputs fail; one exact frozen-byte approval example passes.
+- Verification/evidence: `DOC-3W`; approval refusal negatives plus one positive preview/approval path; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A03-D02
+
+Rank 50.2 - Go-live, readback, and no-op procedure.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: document exact apply, readback, no-op, and drift-refusal sequencing without expanding change rights.
+- Acceptance: WhatIf substitution, stale evidence, readback mismatch, and hidden mutation fail; one injected approved lifecycle passes.
+- Verification/evidence: `DOC-3W`; lifecycle negatives plus one positive offline go-live/readback path; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A03-D03
+
+Rank 50.3 - Typed rollback and recovery procedure.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: document typed rollback, recovery evidence, status, exits, and post-rollback verification.
+- Acceptance: wrong type, target, before-state, ordering, or recovery evidence fails; one exact injected rollback round trip passes.
+- Verification/evidence: `DOC-3W`; recovery negatives plus one positive typed rollback; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A03-D04
+
+Rank 50.4 - Artifact, signature, and exit semantics.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: document collect/freeze/sign/verify artifact bindings and exact status/exit meanings.
+- Acceptance: regenerated bytes, wrong signer/root/time, missing artifact, and stale exit claims fail; one exact-byte signed round trip passes.
+- Verification/evidence: `DOC-3W`; artifact/signature negatives plus one positive round trip; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A04-D01
+
+Rank 51.1 - Evidence-viewer presentation.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: reconcile evidence-viewer wording with actual public evidence and status output.
+- Acceptance: unknown, missing, Error, NotEntitled, Unverified, and ApprovedException remain distinct and are never laundered to Pass.
+- Verification/evidence: `DOC-3W`; status-laundering negatives plus one positive per displayed status class; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A04-D02
+
+Rank 51.2 - Exclusions and scoped denominator.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: present explicit workload/control exclusions and the exact Exchange-only denominator.
+- Acceptance: universal, tenant-wide, or excluded-service coverage claims fail; one exact retained-control denominator passes.
+- Verification/evidence: `DOC-3W`; denominator/exclusion negatives plus one positive scoped presentation; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A04-D03
+
+Rank 51.3 - Exception and external-readiness semantics.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: preserve ApprovedException, Pass, and external readiness as separate operator decisions.
+- Acceptance: exception-as-Pass, unknown-as-ready, and unsupported certification claims fail; one positive presentation preserves each native decision.
+- Verification/evidence: `DOC-3W`; semantic-laundering negatives plus positive native-status rendering; inventory, hashes, results, and independent handoff.
+
+### EXR-012-A04-D04
+
+Rank 51.4 - RAID, source, and authority claims.
+
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Deliverable: map every external prerequisite and recommendation/input/business choice to RAID and the correct authority.
+- Acceptance: orphan external dependencies, stale sources, and unsupported 100-percent or tenant-certification claims fail; one complete authority map passes.
+- Verification/evidence: `DOC-3W`; source/RAID negatives plus one complete positive mapping; inventory, hashes, results, and independent handoff.
 
 ### EXR-013
 
 Parent summary - Execute documented command contracts.
 
-- Owner: unassigned for traceability. Workstream: Verification. Updated: 2026-09-21. Disposition: non-executable parent; no bucket or rank, not Done. EXR-012 prerequisites expand to A01-A04; parent acceptance awaits both children.
+- Owner: unassigned for traceability. Workstream: Verification. Updated: 2026-09-30. Disposition: non-executable parent; no bucket or rank, not Done. EXR-012 prerequisites expand to all sixteen executable documentation children; parent acceptance awaits both EXR-013 children.
 - Acceptance: parse and exercise every executable command block in the active Exchange journey using documented inputs, working directory, artifacts, and cmdlet signatures. Do not silently inject missing prerequisites or substitute a hand-built desired-state result. Label non-executable illustrations explicitly.
 - Verification: missing approval arguments, wrong default profile, stale cmdlet/parameter, runbook/config name mismatch, stale exit semantics, and hidden prerequisite cases fail for their exact reasons; the sanitized documented Exchange workflow passes end to end.
 
@@ -4037,7 +4218,7 @@ Parent summary - Execute documented command contracts.
 
 Rank 52 - Executable command inventory.
 
-- Dependencies: EXR-012-A01, EXR-012-A02, EXR-012-A03, EXR-012-A04. Owner: unassigned. Workstream: Verification. Updated: 2026-09-21. Status: To Do.
+- Dependencies: EXR-012-A01-D01, EXR-012-A01-D02, EXR-012-A01-D03, EXR-012-A01-D04, EXR-012-A02-D01, EXR-012-A02-D02, EXR-012-A02-D03, EXR-012-A02-D04, EXR-012-A03-D01, EXR-012-A03-D02, EXR-012-A03-D03, EXR-012-A03-D04, EXR-012-A04-D01, EXR-012-A04-D02, EXR-012-A04-D03, EXR-012-A04-D04. Owner: unassigned. Workstream: Verification. Updated: 2026-09-30. Status: To Do.
 - Deliverable: exhaustive executable-block discovery and input contract inventory for active Exchange guidance.
 - Acceptance: discover every active block with source location, inputs/provenance, working directory, artifacts and command/parameter signatures; explicitly classify non-executable illustrations with reasons. Reconcile discovery against active documentation so unmarked or newly added commands cannot vanish.
 - Verification: shared atomic contract; reject omitted/duplicate blocks, unresolved inputs/paths/signatures and unsupported illustration exclusions; positive complete inventory accounts for every block and maps its source/control/runbook and intended raw execution boundary.

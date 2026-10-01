@@ -65,6 +65,7 @@ function Get-CanonicalCards {
         }
         $cards.Add([pscustomobject]@{
                 Id           = $heading.Groups['id'].Value
+                Rank         = if ($rank.Success) { $rank.Groups['rank'].Value.Trim() } else { $null }
                 Status       = if ($statuses.Count) { $statuses[0] } else { $null }
                 IsSummary    = $isSummary
                 Dependencies = $dependencies
@@ -114,11 +115,16 @@ $summaries = @($cards | Where-Object IsSummary)
 $todo = @($executables | Where-Object Status -eq 'To Do')
 $inProgress = @($executables | Where-Object Status -eq 'In Progress')
 $done = @($executables | Where-Object Status -eq 'Done')
-Assert-Board ($executables.Count -eq 91) "expected 91 executable cards, found $($executables.Count)."
-Assert-Board ($summaries.Count -eq 24) "expected 24 summary parents, found $($summaries.Count)."
-Assert-Board ($todo.Count -eq 35 -and $inProgress.Count -eq 0 -and $done.Count -eq 56) "expected 35/0/56 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board ($executables.Count -eq 103) "expected 103 executable cards, found $($executables.Count)."
+Assert-Board ($summaries.Count -eq 28) "expected 28 summary parents, found $($summaries.Count)."
+Assert-Board ($todo.Count -eq 46 -and $inProgress.Count -eq 0 -and $done.Count -eq 57) "expected 46/0/57 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
 Assert-Board (($done | Where-Object Id -eq 'EXR-010-A12-L01-F02').Count -eq 1) 'F02 must be Done.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-018-A01').Count -eq 1) 'EXR-018-A01 must be Done.'
+$c01 = @($cards | Where-Object Id -ceq 'EXR-010-A12-L01-C01')
+Assert-Board ($c01.Count -eq 1) 'C01 unique canonical ID is missing.'
+Assert-Board ($c01[0].Rank -ceq '23.6 - Final canonical acceptance/Done transition.') 'C01 rank must be exactly 23.6.'
+Assert-Board ($c01[0].Status -ceq 'Done') 'C01 must be Done.'
+Assert-Board ($c01[0].Dependencies.Count -eq 1 -and $c01[0].Dependencies[0] -ceq 'EXR-010-A12-L01-F02') 'C01 must depend exactly on F02.'
 
 $allIds = @{} 
 foreach ($card in $cards) { $allIds[$card.Id] = $true }
@@ -148,7 +154,7 @@ Assert-Board ($profiles.Count -ge 1) 'no dispatch profiles resolved.'
 $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest' 'card')
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
-Assert-Board ($manifest.Count -eq 35) "expected 35 manifest entries, found $($manifest.Count)."
+Assert-Board ($manifest.Count -eq 46) "expected 46 manifest entries, found $($manifest.Count)."
 $todoIds = @($todo.Id | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
 Assert-Board (($todoIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match To Do IDs.'
@@ -158,7 +164,7 @@ foreach ($entry in $manifest) {
     foreach ($field in 'Dependency', 'Reservation', 'ReadOnly', 'Validation') {
         Assert-Board (-not [string]::IsNullOrWhiteSpace($entry.$field)) "$($entry.Id) field $field is empty."
     }
-    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT|WAIT-F02)') "$($entry.Id) eligibility is missing."
+    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT)') "$($entry.Id) eligibility is missing."
     Assert-Board ($entry.Validation -match 'F=' -and $entry.Validation -match 'A=') "$($entry.Id) focused/affected binding is incomplete."
     $profile = $profiles[$entry.Profile]
     foreach ($field in 'envelope', 'validation', 'expected', 'evidence', 'integration', 'abort', 'handoff') {
@@ -175,7 +181,32 @@ function Normalize-Reservation {
 
 $eligible = @($manifest | Where-Object Dependency -match '`READY`')
 Assert-Board ($eligible.Id -notcontains 'EXR-018-A01') 'Done card EXR-018-A01 must not remain pull-ready.'
-Assert-Board ($eligible.Count -eq 1 -and $eligible[0].Id -eq 'EXR-010-A12-L01-C01') 'C01 must be the sole pull-ready card after F02 acceptance.'
+$expectedReady = @(
+    foreach ($area in 'A01', 'A02', 'A03', 'A04') {
+        foreach ($unit in 'D01', 'D02', 'D03', 'D04') {
+            "EXR-012-$area-$unit"
+        }
+    }
+)
+$claimedDiscovery = @()
+$expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
+Assert-Board ($eligible.Count -eq 16) "released Gold claim must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
+Assert-Board ($inProgress.Count -eq 0) 'No discovery claim may remain In Progress after generation-628 reconciliation.'
+foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
+    $parent = @($cards | Where-Object Id -ceq $parentId)
+    Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
+}
+foreach ($entry in $eligible) {
+    $card = @($cards | Where-Object Id -ceq $entry.Id)
+    Assert-Board ($card.Count -eq 1) "$($entry.Id) canonical card is missing."
+    $unfinished = @($card[0].Dependencies | Where-Object {
+            $dependency = $_
+            @($cards | Where-Object { $_.Id -ceq $dependency -and $_.Status -ceq 'Done' }).Count -ne 1
+        })
+    Assert-Board ($unfinished.Count -eq 0) "$($entry.Id) is READY with unfinished dependencies: $($unfinished -join ', ')."
+    Assert-Board ($entry.Reservation -match '^`DISCOVER:') "$($entry.Id) must remain discovery-gated until exact writable paths are frozen."
+}
 $a02 = @($manifest | Where-Object Id -eq 'EXR-018-A02')
 Assert-Board ($a02.Count -eq 1 -and $a02[0].Dependency -match '`WAIT-EXT`') 'EXR-018-A02 must remain externally gated after A01 completion.'
 $reservations = @(
@@ -200,11 +231,106 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
+Assert-Board ($backlogGeneration -eq 628) 'Gold discovery release generation must be 628.'
 Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
 Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
+Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 103; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
+Assert-Board ($backlog -match '(?m)^\d+\. \*\*READY-bank replenishment\.\*\* After every claim, completion, requeue, dependency transition, external-gate transition, or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'canonical READY-bank replenishment contract is missing.'
+Assert-Board ($cohorts -match '(?m)^8\. After every claim, completion, requeue, dependency transition, external-gate transition or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'allocation READY-bank replenishment contract is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 614 Purple C01 final candidate: \*\*Canonical decision: ACCEPT `EXR-010-A12-L01-C01` as Done\.\*\*') 'C01 canonical decision record is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 615 Purple C01 acceptance and release: the canonical writer accepts the generation-614 candidate ') 'C01 canonical release record is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 612 Purple C01 rejection: the structurally coherent candidate is REJECTED because C2''s green validator was invocation 3 after two failed implementation-debug invocations, violating the explicit no-retry contract\.') 'C01 generation-612 rejection record is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 613 Purple C01 fresh attempt: ACK `Purple-20260930T224006Z-e7a0834/Kanban/g613/fresh-zero-retry-C01` ') 'C01 generation-613 fresh-attempt grant is missing.'
+Assert-Board ($cohorts -match '(?m)^- \*\*Generation authority:\*\* session `Purple-20260930T224006Z-e7a0834` proposes generation 614 ') 'C01 generation authority record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 613 Purple C01 Fresh Zero-Retry Grant\r?$') 'C01 generation-613 registry grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 612 Purple C01 Candidate Rejection\r?$') 'C01 generation-612 registry rejection is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 615 Purple C01 Acceptance And Release\r?$') 'C01 generation-615 registry release is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 614:\*\* canonical decision ACCEPT marks `EXR-010-A12-L01-C01` Done ') 'C01 compatibility activity record is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 615:\*\* accepted the generation-614 C01 candidate ') 'C01 compatibility release activity is missing.'
+Assert-Board ($backlog -match '(?m)^- Generation 614 accepted candidate evidence: canonical decision ACCEPT;') 'C01 accepted candidate evidence is missing from its canonical card section.'
 Assert-Board ($backlog -match '(?m)^\d+\. \*\*Worker-slot WIP and isolation\.\*\* Each coworker owns at most one In Progress implementation card, so a three-worker cohort may hold up to three nonconflicting cards; there is no unrelated global one-card gate\.') 'canonical worker-slot WIP contract is missing.'
 Assert-Board ($backlog -match '(?m)^\d+\. \*\*Idle pull behavior\.\*\* When a coworker becomes idle, the steward immediately reruns the dependency-ready query') 'canonical idle-coworker pull contract is missing.'
 Assert-Board ($cohorts -match '(?m)^4\. Each Coworker holds at most one In Progress implementation card; a three-Coworker cohort may therefore hold up to three nonconflicting cards\.') 'allocation worker-slot contract is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 618 four-cohort allocation and Purple D01 claim: ') 'generation-618 backlog claim record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 618 Four-Cohort Allocation And Purple D01 Claim\r?$') 'generation-618 registry claim is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('EXR-012-A01-D01/Purple/g618/56c2a84b94b34c03846814657ca5202d')) 'Purple D01 token is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1') -and $cohorts -match [regex]::Escape('samples/contoso-exchange-online-managed-service/README.md')) 'Purple D01 exact reservations are missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 618:\*\*') 'generation-618 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 619 Purple D01 C1-to-C2 barrier: ') 'generation-619 backlog handoff is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 619 Purple D01 C1-To-C2 Barrier\r?$') 'generation-619 registry handoff is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('532912196F8F26E87575B1DD49A38B242457E5641DB447529C776A01632103FB')) 'frozen D01 test hash is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 619:\*\*') 'generation-619 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 620 Purple D01 C2 quiescence and C3 verification grant: ') 'generation-620 backlog verification grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 620 Purple D01 C3 Verification Grant\r?$') 'generation-620 registry verification grant is missing.'
+Assert-Board ($cohorts -match '5464 passed / 838 failed / 6302 total') 'C2 affected failure identity is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 620:\*\*') 'generation-620 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 621 Purple D01 canonical rejection and safe requeue: ') 'generation-621 backlog rejection is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 621 Purple D01 Rejection, Release And Requeue\r?$') 'generation-621 registry release is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('81C4C8351F7552A6D9FBD467830C38AAAC70691981DDFF58E1A225E888C0FE8C')) 'C3 review packet identity is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 621:\*\*') 'generation-621 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 622 Silver, Gold and White read-only discovery claims: ') 'generation-622 backlog claim record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 622 Silver, Gold And White Read-Only Discovery Claims\r?$') 'generation-622 registry claim is missing.'
+foreach ($token in @(
+        'EXR-012-A01-D02/Silver/g622/29331ed087fc73dafffe59e4edee64cf',
+        'EXR-012-A01-D03/Gold/g622/ca09bfa8fe4e5ddef1804a3088ddd02c',
+        'EXR-012-A01-D04/White/g622/639d631231be61cdccf48a0f3067f11c'
+    )) {
+    Assert-Board ($cohorts -match [regex]::Escape($token)) "generation-622 claim token is missing: $token"
+}
+Assert-Board ($cohorts -match 'No documentation, product, test, or shared-governance path is writable') 'generation-622 zero-write reservation is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('.artifacts/kanban/EXR-012-A01-D02/g622/Silver/') -and
+    $cohorts -match [regex]::Escape('.artifacts/kanban/EXR-012-A01-D03/g622/Gold/') -and
+    $cohorts -match [regex]::Escape('.artifacts/kanban/EXR-012-A01-D04/g622/White/')) 'generation-622 evidence roots are incomplete.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 622:\*\*') 'generation-622 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 623 discovery reconciliation and White conflict hold: ') 'generation-623 backlog reconciliation is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 623 Discovery Reconciliation And White Conflict Hold\r?$') 'generation-623 registry reconciliation is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('Purple-20260930T233031Z-e7a0834/Kanban/g623/accept-D04-discovery-hold-implementation-conflict')) 'generation-623 White conflict-hold ACK is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('1969BC87779BD409EA9BBF1EB4D56C7F91F74E8BD531ACC1848E0030DDC6BBE1')) 'preserved D01 README conflict identity is missing.'
+Assert-Board ($cohorts -match 'do not issue an implementation token, evidence root, or writable reservation') 'generation-623 fail-closed implementation disposition is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 623:\*\*') 'generation-623 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 624 White D04 release and requeue: ') 'generation-624 backlog release is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 624 White D04 Release And Requeue\r?$') 'generation-624 registry release is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('Purple-20260930T233031Z-e7a0834/Kanban/g624/release-requeue-D04-conflict')) 'generation-624 release ACK is missing.'
+Assert-Board ($cohorts -match 'No implementation token, evidence root, or writable path exists') 'generation-624 zero-authority disposition is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 624:\*\*') 'generation-624 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 625 four-cohort A02 discovery claims: ') 'generation-625 backlog claim transaction is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 625 Four-Cohort A02 Read-Only Discovery Claims\r?$') 'generation-625 registry claim transaction is missing.'
+foreach ($token in @(
+        'EXR-012-A02-D01/Purple/g625/b8aa995802ae4d6eb1e458c6026b0724',
+        'EXR-012-A02-D02/Silver/g625/a01ddbcadc764ae795955cf868f82051',
+        'EXR-012-A02-D03/Gold/g625/41236ec6e61542058c7462919f3acf55',
+        'EXR-012-A02-D04/White/g625/b8c875dadd4f4f8eae018980bfb30483'
+    )) {
+    Assert-Board ($cohorts -match [regex]::Escape($token)) "generation-625 token is missing: $token"
+}
+Assert-Board ($cohorts -match 'No implementation path is writable') 'generation-625 zero-write discovery boundary is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 625:\*\*') 'generation-625 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 626 exact discovery authority and Silver conditional freeze: ') 'generation-626 authority clarification is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 626 Exact Discovery Authority And Session Binding\r?$') 'generation-626 registry authority is missing.'
+foreach ($operation in @(
+        'DISCOVER-FREEZE:runbooks',
+        'DISCOVER-FREEZE:control-catalog',
+        'DISCOVER-FREEZE:value-authority',
+        'DISCOVER-FREEZE:set-verify-output'
+    )) {
+    Assert-Board ($cohorts -match [regex]::Escape($operation)) "generation-626 exact operation is missing: $operation"
+}
+Assert-Board ($cohorts -match [regex]::Escape('C:/Users/chhage/repos/sony/GISC/exchange-online-protection/.github/')) 'generation-626 primary canonical authority path is missing.'
+Assert-Board ($cohorts -match 'may write only `.artifacts/kanban/EXR-012-A02-D01/g625/Purple/`' -and
+    $cohorts -match 'may write only `.artifacts/kanban/EXR-012-A02-D02/g625/Silver/`' -and
+    $cohorts -match 'may write only `.artifacts/kanban/EXR-012-A02-D03/g625/Gold/`' -and
+    $cohorts -match 'may write only `.artifacts/kanban/EXR-012-A02-D04/g625/White/`') 'generation-626 evidence-output grants are incomplete.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 626:\*\*') 'generation-626 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 627 A02 discovery reconciliation and Gold identity correction: ') 'generation-627 backlog reconciliation is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 627 A02 Discovery Reconciliation And Gold Identity Correction\r?$') 'generation-627 registry reconciliation is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('Gold/Coworker-1') -and
+    $cohorts -match [regex]::Escape('Gold/Coworker-2') -and
+    $cohorts -match [regex]::Escape('Gold/Coworker-3')) 'generation-627 Gold runtime identities are incomplete.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 627:\*\*') 'generation-627 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 628 Gold D03 discovery acceptance and requeue: ') 'generation-628 backlog release is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 628 Gold D03 Discovery Acceptance And Requeue\r?$') 'generation-628 registry release is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('5EC8B79B1859D707903A666BDCEC61E380888C2E2DE0B9A21B3FC7DD20E46A2E')) 'generation-628 Gold independent review identity is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 628:\*\*') 'generation-628 compatibility activity is missing.'
 
 [pscustomobject]@{
     Generation                   = $backlogGeneration
