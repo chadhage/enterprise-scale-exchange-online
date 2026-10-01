@@ -190,9 +190,9 @@ $expectedReady = @(
 )
 $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
-Assert-Board ($eligible.Count -eq 16) "D03 release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board ($eligible.Count -eq 16) "Platinum D01 release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No claim may remain In Progress after the generation-643 D03 release.'
+Assert-Board ($inProgress.Count -eq 0) 'No card may remain In Progress after the Platinum D01 release.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -231,7 +231,53 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 643) 'Purple D03 affected-NACK release generation must be 643.'
+Assert-Board ($backlogGeneration -eq 661) 'Platinum D01 affected-NACK release generation must be 661.'
+Assert-Board ($backlog -match 'Generation 661 Platinum D01 affected NACK, release, and safe requeue') 'Platinum D01 generation-661 release record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 661 Platinum D01 Affected NACK, Release And Requeue\r?$') 'Platinum D01 generation-661 registry release is missing.'
+Assert-Board ($backlog -match '5,477' -and $backlog -match '833' -and $backlog -match 'one failed container') 'Platinum D01 generation-661 affected counts are missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g644/claim-EXR-012-A01-D01') 'Platinum D01 backlog ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g645/repair-EXR-012-A01-D01-C1-tests') 'Platinum D01 repair ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g646/repair-EXR-012-A01-D01-C1-proof-and-raw-evidence') 'Platinum D01 proof/evidence repair ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g647/accept-red-and-handoff-EXR-012-A01-D01-C2-readme') 'Platinum D01 accepted-red handoff ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g648/accept-EXR-012-A01-D01-C2-and-grant-C3-fresh-verification') 'Platinum D01 C3 verification ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g649/nack-EXR-012-A01-D01-C3-and-grant-C1-crlf-parser-repair') 'Platinum D01 parser-repair ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g650/accept-EXR-012-A01-D01-C1-crlf-parser-repair-and-grant-C3-fresh-verification') 'Platinum D01 fresh-verification ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g651/nack-EXR-012-A01-D01-C3-and-grant-C1-read-only-diagnosis') 'Platinum D01 read-only diagnosis ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g652/accept-diagnosis-and-grant-C1-test-helper-cardinality-repair') 'Platinum D01 test-helper repair ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g653/accept-C1-test-helper-cardinality-repair-and-grant-C3-fresh-verification') 'Platinum D01 fresh C3 verification ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g654/nack-EXR-012-A01-D01-C3-diff-identity-and-grant-C1-read-only-diagnosis') 'Platinum D01 diff-identity diagnosis ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g655/accept-C1-diff-representation-diagnosis-and-grant-C3-fresh-verification') 'Platinum D01 resolved-diff fresh verification ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g656/preserve-g655-nack-retire-whole-diff-digest-and-grant-C3-fresh-verification') 'Platinum D01 retired-diff fresh verification ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g657/nack-EXR-012-A01-D01-g656-affected-and-grant-C1-read-only-failure-cluster-diagnosis') 'Platinum D01 affected-failure diagnosis ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g658/nack-C1-g657-all-baseline-classification-and-grant-bounded-preserved-evidence-repair') 'Platinum D01 classification-repair ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g659/nack-C1-g658-contradictory-member-rationales-and-grant-bounded-causal-reconciliation') 'Platinum D01 causal-reconciliation ACK is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g660/accept-C1-g659-causal-reconciliation-preserve-affected-NACK-and-require-baseline-disposition') 'Platinum D01 baseline-disposition ACK is missing.'
+Assert-Board ($backlog -match '67DD4AA706B461866BF3108ACCFCDA1E65A3D23F78CBC592BA6A2616A74585E5') 'Platinum D01 g659 reconciliation digest is missing.'
+Assert-Board ($backlog -match 'No command, test, edit, implementation attempt') 'Platinum D01 zero-command boundary is missing.'
+Assert-Board ($backlog -match '3B7CB0EE4B77DDEE1FB212510DBDC3B6AB54086900F934693763370E123A119B') 'Platinum D01 g658 packet digest is missing.'
+Assert-Board ($cohorts -match '\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g659/causal-reconciliation\.json') 'Platinum C1 generation-659 reconciliation path is missing.'
+Assert-Board ($backlog -match '181A1D700782508DA94DDC0F46CCCCD404010D4605AF1BADAF1231810E7D4330') 'Platinum D01 g657 enumeration packet digest is missing.'
+Assert-Board ($backlog -match '835 harness/shared-state-contamination tests plus one failed container' -and $backlog -match '2 pre-existing-baseline tests') 'Platinum D01 preliminary repaired classification is missing.'
+Assert-Board ($cohorts -match '\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g658/classification-repair\.json') 'Platinum C1 generation-658 repair path is missing.'
+Assert-Board ($backlog -match 'B6410494CB24F45AA5A2FD0C903383A4D319B929F591AB6B20293E7C94DB27AD') 'Platinum D01 g656 affected NACK packet digest is missing.'
+Assert-Board ($backlog -match '5,473' -and $backlog -match '837' -and $backlog -match 'one failed container') 'Platinum D01 affected NACK counts are missing.'
+Assert-Board ($cohorts -match '\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g657/affected-root-clusters\.json') 'Platinum C1 generation-657 diagnosis packet path is missing.'
+Assert-Board ($backlog -match 'FE87A4BA0AE3FC5EDCFE7DB932CE2D931D45D83967BF38C76FA0F38B7A15F15B') 'Platinum D01 g655 NACK evidence digest is missing.'
+Assert-Board ($backlog -match 'Whole no-index output byte counts/digests are formally retired as non-authoritative acceptance gates') 'Platinum D01 whole-diff retirement decision is missing.'
+Assert-Board ($backlog -match 'samples/contoso-exchange-online-managed-service/README\.md' -and $backlog -match 'samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry\.Tests\.ps1') 'Platinum D01 authoritative changed-path inventory is missing.'
+Assert-Board ($backlog -match 'git diff --check') 'Platinum D01 authoritative diff-check gate is missing.'
+Assert-Board ($cohorts -match '\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/verification-g656/') 'Platinum C3 generation-656 evidence root is missing.'
+Assert-Board ($backlog -match '93930DAB6101FA6601DF750B4755146A506911CA3190C508704D1F83EE59E08F') 'Platinum D01 diff diagnosis packet digest is missing.'
+Assert-Board ($backlog -match 'F6B68709840A49521D881AB216D6D88D5ACB23AD2A8F60FD67AB4E0CB2215A04' -and $backlog -match '22,835 bytes') 'Platinum D01 PowerShell diff representation is missing.'
+Assert-Board ($backlog -match '63C9A2E7A0AB328B2C789BEC17D04E9986A76EECFF2EA10D1D453922B7F061D0' -and $backlog -match '22,836 bytes') 'Platinum D01 raw Git diff representation is missing.'
+Assert-Board ($cohorts -match '\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/verification-g655/') 'Platinum C3 generation-655 evidence root is missing.'
+Assert-Board ($backlog -match '18/18' -and $backlog -match '6,310/6,310') 'Platinum D01 focused and affected verification contract is missing.'
+Assert-Board ($cohorts -match 'EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3') 'Platinum D01 claim token is missing.'
+Assert-Board ($cohorts -match 'dispatch/EXR-012-A01-D01/Platinum/Coworker-1/g644') 'Platinum D01 branch reservation is missing.'
+Assert-Board ($cohorts -match 'exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g644') 'Platinum D01 worktree reservation is missing.'
+foreach ($role in 1..3) {
+    Assert-Board ($cohorts -match "\.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-$role/") "Platinum Coworker-$role evidence root is missing."
+}
 Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
 Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
 Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 103; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'

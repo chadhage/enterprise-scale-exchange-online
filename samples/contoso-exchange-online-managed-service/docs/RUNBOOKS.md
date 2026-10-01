@@ -584,6 +584,14 @@ The handoff is current, owner-bound, tenant-bound, and independently accepted fo
 
 Excluded from ExchangeOnly, not an unlicensed Exchange control. The endpoint/productivity owner handles this independently through RAID-I04. Defender Plan 2 alone does not establish Safe Documents entitlement.
 
+**Verify**
+
+Obtain the current RAID-I04 handoff from the endpoint/productivity owner. Confirm it identifies MDO-005, the covered tenant and productivity scope, the accountable owner, an approval or evidence reference, the observation date, current status, and the licensing basis for Safe Documents entitlement. This is an evidence review only; do not open a Graph session or change Safe Documents settings from the Exchange procedure.
+
+**Expected**
+
+The handoff is current, owner-bound, tenant-bound, and independently accepted for its stated productivity scope. ExchangeOnly continues to report MDO-005 as `Excluded` and external readiness as `Unverified`; absent, expired, unresolved, scope-mismatched, or unlicensed evidence is returned to the external owner and is never converted into Exchange conformance.
+
 ---
 
 ### R-MDO-006 User submissions
@@ -591,6 +599,14 @@ Excluded from ExchangeOnly, not an unlicensed Exchange control. The endpoint/pro
 Use the [reporting contract](EXCHANGE-EMAIL-PROTECTION.md#reporting) for the approved mailbox, policy/rule binding, three category routes, feedback and independent delivery observations. Initialize the single reporting policy and rule in the Defender portal user-reported settings before previewing changes. The signed `ReportSubmission` adapter changes existing objects only; `SecOpsOverride` registers only the exact approved mailbox.
 
 Policy readback alone does not prove delivery. Missing mailbox prerequisites, DLP-owner evidence, Junk/NotJunk/Phish delivery observations or feedback fail the contract. Actual authorized report-delivery acceptance belongs to EXR-016/017; synthetic evidence is offline test evidence only.
+
+**Verify**
+
+Review the reporting policy and rule binding, approved mailbox, three category routes, feedback state, and independent Junk/NotJunk/Phish delivery observations through the reporting contract.
+
+**Expected**
+
+Every configured route and observation matches the approved reporting contract. Missing prerequisites, route drift, absent feedback, or incomplete delivery evidence remains unverified and does not establish live report-delivery acceptance.
 
 ---
 
@@ -678,6 +694,14 @@ The second command lists `AdminOnlyAccessPolicy` among the policies. Confirm in 
 The retained Exchange control checks targeted user/domain impersonation protection, available with Defender for Office 365 P1 or P2. P2 priority-account capabilities and tags are separate and are not proof of impersonation coverage.
 
 Supply approved users and domains in MDO-009. Configure preset impersonation targets through the supported preset wizard, then verify the effective anti-phishing policy for every intended recipient using the [recipient matrix](EXCHANGE-EMAIL-PROTECTION.md#effective-settings). An enabled custom rule cannot override a matching Strict or Standard preset. The `Impersonation` adapter targets the named custom policy; it does not establish effective rule scope or replace preset impersonation configuration. Verify rule binding and scope separately before claiming coverage.
+
+**Verify**
+
+Resolve the effective anti-phishing policy for every approved recipient and confirm the intended user and domain impersonation targets, rule binding, and recipient scope.
+
+**Expected**
+
+Every approved recipient resolves to impersonation protection with the intended targets and binding. Priority-account labels, an enabled custom policy, or policy readback without effective recipient scope do not establish coverage.
 
 ---
 
@@ -1139,6 +1163,14 @@ Search-UnifiedAuditLog -StartDate (Get-Date).AddDays(-7) -EndDate (Get-Date) `
 Run an approved Exchange incident-response tabletop covering detection, triage, authorized containment and communication. The sample 90-day cadence is local policy, not a Microsoft licensing requirement. Tabletop frequency does not require Defender P2.
 
 Record date, scope, owners, outcomes and tracked actions with owners/due dates. Supply the current approved exercise evidence through the external evidence contract. Attack Simulation Training and AIR require separately verified P2 entitlement and separate authorization; neither is provisioned or inferred from the tabletop record. Do not execute a purge merely to satisfy an offline exercise check.
+
+**Verify**
+
+Review the approved exercise record for its date, Exchange incident scope, named owners, outcomes, and tracked actions with owners and due dates.
+
+**Expected**
+
+The record is current, approved, and complete for the stated Exchange tabletop scope. It does not claim Attack Simulation Training, AIR, live purge execution, or Defender P2 entitlement.
 
 ---
 

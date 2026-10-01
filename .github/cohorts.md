@@ -35,9 +35,135 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 643
+Allocation generation: 661
 
-Allocation readiness: **BOARD READY — generation 643**. Purple D03 is safely requeued after affected-gate NACK. All sixteen documentation children are unclaimed READY; every cohort is quiescent and no active claim, lease, or reservation exists.
+Allocation readiness: **BOARD READY — generation 661**. Platinum D01 is safely requeued after the affected-gate NACK. All workers are quiescent, no active claim or reservation exists, and sixteen documentation children are unclaimed READY.
+
+### Generation 661 Platinum D01 Affected NACK, Release And Requeue
+
+- **Evidence:** replacement focused verification passed 18/18; prerequisite focused verification passed 2/2; `git diff --check` passed. One fresh zero-retry affected invocation ran from 2026-10-01T18:14:52.2321137Z through 2026-10-01T19:00:37.1150595Z and executed 6,310 with 5,477 passed, 833 failed, zero skipped/not-run, one failed container, and result Failed.
+- **Decision:** NACK acceptance. The improvement from 837 to 833 failures does not satisfy the zero-failure affected contract and no waiver is inferred.
+- **Release:** preserve the g644 candidate and evidence; quiesce C1/C2/C3; release token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`, lease, branch/worktree authority, writable paths, evidence roots, and worker bindings. The preserved branch/worktree and evidence are read-only and grant no ownership.
+- **State:** EXR-012-A01-D01 returns In Progress -> To Do/unassigned. Counts are 46 To Do / 0 In Progress / 57 Done; READY 16.
+
+### Generation 660 Platinum D01 Causal Acceptance And Baseline-Disposition Prerequisite
+
+- **Accepted evidence:** g659 packet reported at 2,198,697 bytes and `67DD4AA706B461866BF3108ACCFCDA1E65A3D23F78CBC592BA6A2616A74585E5`; 837 tests and one container conserved; zero D01 attribution/contamination; all baseline pending isolation; 147 synthetic annotations. Ordinals 1-2 are direct content failures; ordinal 3 remains baseline pending.
+- **ACK/state:** `Platinum-root-coordinator/Kanban/g660/accept-C1-g659-causal-reconciliation-preserve-affected-NACK-and-require-baseline-disposition` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`, worktree, frozen identities, reservations and evidence. C1/C2/C3 are quiescent. Authorized commands: zero.
+- **Prerequisite:** either an explicit permitted external acceptance-authority waiver without weakening the 6,310 gate, or separately claimed remediation of the two direct failures followed by a new frozen denominator and independent focused-then-affected verification. No inferred waiver, tests, edits, implementation, evidence mutation, live action, release, or Done.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 659 Platinum D01 C1 Causal-Reconciliation NACK And Repair
+
+- **NACK:** retain g658 enumeration but reject its 835/2 causal disposition because sampled member rationales contradict assigned contamination classes. Reported packet identity is 2,920,336 bytes and `3B7CB0EE4B77DDEE1FB212510DBDC3B6AB54086900F934693763370E123A119B`.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g659/nack-C1-g658-contradictory-member-rationales-and-grant-bounded-causal-reconciliation` retains g644 token/reservations, keeps C2/C3 quiescent, and permits C1 only `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g659/causal-reconciliation.json`.
+- **Contract:** preserve identities/ordinals; align every member rationale/falsifier with its class; independently justify ordinals 1-2 baseline; prove ordinal 3 direct contamination from preserved order; classify later members inherited only where supported; conserve all counts. Unsupported contamination remains baseline. Zero D01 attribution does not satisfy the affected gate.
+- **Boundary/counts:** no tests, edits, prior-evidence mutation, live action, commit, push, publication, release, waiver, completion, or Done. Counts 45/1/57; READY 15.
+
+### Generation 658 Platinum D01 C1 Classification NACK And Repair
+
+- **NACK:** retain g657 packet as enumeration evidence only: reported 2,476,893 bytes, SHA-256 `181A1D700782508DA94DDC0F46CCCCD404010D4605AF1BADAF1231810E7D4330`, 837 ordinals, one container, 253 signatures, 147 synthetic annotations. Reject all-baseline inference.
+- **Required attribution:** ordinals 1-2 baseline unless contradicted; reconcile ordinals 3-837 and the container against execution order and frozen definitions. Preliminary totals are 0 D01 delta, 835 harness/state contamination plus one container, 0 external prerequisite, 2 baseline; synthetic 147 is orthogonal.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g658/nack-C1-g657-all-baseline-classification-and-grant-bounded-preserved-evidence-repair` retains the g644 token/reservations, keeps C2/C3 quiescent, and permits C1 only `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g658/classification-repair.json`.
+- **Boundary:** evidence-only repair with exact totals, earliest causal failure/predecessor, definition citations, direct/inherited separation and falsifiers. No tests, edits, prior-evidence mutation, live action, commit, push, publication, waiver, completion, or Done.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 657 Platinum D01 G656 Affected NACK And Bounded C1 Diagnosis
+
+- **NACK:** preserve packet `B6410494CB24F45AA5A2FD0C903383A4D319B929F591AB6B20293E7C94DB27AD`. Focused passed 18/18 once; affected executed 6,310 once with 5,473 passed, 837 failed, zero skipped/not-run, one failed container, and exit 1. Stable identities and zero unauthorized actions establish evidence integrity only.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g657/nack-EXR-012-A01-D01-g656-affected-and-grant-C1-read-only-failure-cluster-diagnosis` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and all reservations, revokes C3 run authority, keeps C2 quiescent, and grants C1 read-only diagnosis over g656 evidence and directly named test/helper/bootstrap/import definitions. C1 may write only `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g657/affected-root-clusters.json`.
+- **Diagnosis contract:** enumerate all 837 failed tests and the failed container exactly once; reconcile counts by README/test delta, harness/state contamination, missing external prerequisite, or pre-existing baseline; cite causal signatures/falsifiers and smallest safe next actions. No tests, reruns, tracked edits, other evidence mutation, live action, commit, push, publication, release, or Done transition.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 656 Platinum D01 G655 NACK Reconciliation And Fresh C3 Verification
+
+- **Reconciliation:** preserve g655 NACK and acceptance record `FE87A4BA0AE3FC5EDCFE7DB932CE2D931D45D83967BF38C76FA0F38B7A15F15B`. Its `8A99862046E7A95E7ED5320E64F233C84566CE3E281BFB78486C3E6A8BF7C9DC` no-index digest is a path/header/capture serialization already observed in g653, not content drift.
+- **Authoritative identity:** README `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`; test `A1218023883D1BF81741A75B57756141F934F67629DB3EF23B4429269E47A6B8`; blob `1078c1259d42038c73ea0d48bc80701b5ac7b980`; exact tracked path `samples/contoso-exchange-online-managed-service/README.md`; exact untracked non-evidence path `samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1`; clean `git diff --check`. Whole no-index output byte counts/digests are retired as non-authoritative gates.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g656/preserve-g655-nack-retire-whole-diff-digest-and-grant-C3-fresh-verification` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and all g644 reservations. C1/C2 are quiescent. C3 alone may write evidence under `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/verification-g656/`.
+- **Execution:** after exact preflight, C3 may run one zero-retry focused 18/18 invocation, then only on exact success one zero-retry affected 6,310/6,310 invocation. Recheck authoritative identities after each. No tracked edit, retry, live/network/tenant action, commit, push, publication, or Done transition.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 655 Platinum D01 Diff-Representation Diagnosis Acceptance And Fresh C3 Verification
+
+- **Accepted diagnosis:** C1 packet is 5,182 bytes with SHA-256 `93930DAB6101FA6601DF750B4755146A506911CA3190C508704D1F83EE59E08F`. `F6B68709840A49521D881AB216D6D88D5ACB23AD2A8F60FD67AB4E0CB2215A04` represents 511 PowerShell line objects joined by LF without BOM/final newline at 22,835 bytes; `63C9A2E7A0AB328B2C789BEC17D04E9986A76EECFF2EA10D1D453922B7F061D0` represents raw Git stdout with its terminal LF at 22,836 bytes. Both are accepted representations of the same exact diff.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g655/accept-C1-diff-representation-diagnosis-and-grant-C3-fresh-verification` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and all g644 reservations. C1/C2 are quiescent. C3 alone may write evidence under `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/verification-g655/`.
+- **Preflight and execution:** require frozen README `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`, test `A1218023883D1BF81741A75B57756141F934F67629DB3EF23B4429269E47A6B8`, blob `1078c1259d42038c73ea0d48bc80701b5ac7b980`, and either accepted byte representation. C3 may run one zero-retry focused invocation requiring 18/18, then only on exact success one zero-retry affected invocation requiring 6,310/6,310. All other outcome counts and native exits must be zero.
+- **Boundary:** stop and preserve NACK evidence on any drift. No tracked edit, alternate serialization requirement, retry, live/network/tenant action, commit, push, publication, or Done transition is authorized.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 654 Platinum D01 C3 Preflight NACK And C1 Diff-Identity Diagnosis
+
+- **NACK:** preserve C3's generation-653 preflight stop. All canonical/file identities matched except the frozen no-index diff digest. C3 raw Git output was 22,836 bytes, exit 1, SHA-256 `63C9A2E7A0AB328B2C789BEC17D04E9986A76EECFF2EA10D1D453922B7F061D0`; alternate serializations did not reproduce prior `F6B68709840A49521D881AB216D6D88D5ACB23AD2A8F60FD67AB4E0CB2215A04`. Focused/affected invocation and retry counts are zero. Preserve acceptance packet `1FC5AA3BD780C27AEB548D5E212F8013E001BA8E11218080B677626F1D407A22` and commands packet `0ACDD2DC9FDB6557ED552987879EEA5F4E3A76C8B6062EC84C5391FF133FCA2E`.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g654/nack-EXR-012-A01-D01-C3-diff-identity-and-grant-C1-read-only-diagnosis` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and all g644 reservations, revokes C3 run authority, and keeps C2 quiescent. C1 may inspect existing evidence read-only and create only `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/diagnosis-g654/no-index-diff-diagnosis.json`, containing either a fully reproducible derivation of `F6B687...` or an explicit admission that it is non-authoritative.
+- **Frozen/boundary:** README `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`, test `A1218023883D1BF81741A75B57756141F934F67629DB3EF23B4429269E47A6B8`, and blob `1078c1259d42038c73ea0d48bc80701b5ac7b980` remain frozen. No tracked edit, test invocation, other evidence mutation, live/network/tenant action, commit, push, publication, or Done transition is authorized.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 653 Platinum D01 C1 Repair Acceptance And Fresh C3 Verification
+
+- **Accepted repair/evidence:** C1 changed only the reserved test path to preserve single-fence array cardinality and add direct negative-first coverage. Its sole zero-retry focused invocation used PowerShell 7.6.6 and Pester 5.7.1, discovered and passed 18/18 with zero failed/skipped/not-run/failed containers and native exit 0. Null `ExecutedCount` is corroborated by detailed output for all 18 tests and zero not-run.
+- **Frozen identity:** README SHA-256 `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`; test SHA-256 `A1218023883D1BF81741A75B57756141F934F67629DB3EF23B4429269E47A6B8`; test blob `1078c1259d42038c73ea0d48bc80701b5ac7b980`; no-index diff SHA-256 `F6B68709840A49521D881AB216D6D88D5ACB23AD2A8F60FD67AB4E0CB2215A04`; clean `git diff --check`.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g653/accept-C1-test-helper-cardinality-repair-and-grant-C3-fresh-verification` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and all g644 reservations. C1 and C2 are quiescent; both tracked paths are frozen read-only. C3 alone may run one fresh zero-retry focused invocation, expected 18/18, and only after exact success one zero-retry affected complete sample test-tree invocation, expected 6,310/6,310.
+- **Stop gates:** stop before affected on any focused count, hash, path, version, exit, retry, or authority drift. Any affected result other than exact 6,310/6,310 with zero other outcomes and exit 0 is a preserved NACK packet. No edit, live/tenant action, commit, push, publication, or Done transition is authorized.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 652 Platinum D01 Diagnosis Acceptance And C1 Test-Helper Repair
+
+- **Accepted diagnosis:** both generation-650 failures share one test-helper cardinality defect. With exactly one PowerShell fence, `Get-PowerShellBlocks` emits a scalar `String`; `$blocks[0]` therefore becomes `S`, producing both `WorkingDirectoryPrecedenceMissing:Block1` and `Unknown documented command rejected: S`. The README correctly begins with `Set-Location` and remains frozen at SHA-256 `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`; the diagnosed test hash is `217697467E11B9CF844DBAEA50494017E8C75ADBA7379102A983C5872E65853D`.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g652/accept-diagnosis-and-grant-C1-test-helper-cardinality-repair` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` and every g644 reservation. C1 alone may edit `samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1` to preserve array cardinality centrally in `Get-PowerShellBlocks` and add or retain direct negative-first single-fence coverage, then run one zero-retry focused invocation of that file.
+- **Evidence/barrier:** require the exact command, Pester version, discovery/pass/fail/skip/not-run/container counts, native exit, changed test hash and diff identity. Stop on any failure, discovery loss, hash drift outside the test, or ambiguity. README, implementation, canonical files, live/tenant actions, commits, pushes and publication remain unauthorized. C2 waits; C3 is quiescent.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15. No card moves Done.
+
+### Generation 651 Platinum D01 Focused NACK And C1 Read-Only Diagnosis
+
+- **NACK:** preserve C3's single focused invocation at 17 executed / 15 passed / 2 failed / zero skipped or not run / exit 2. The failures are `WorkingDirectoryPrecedenceMissing:Block1` and `Unknown documented command rejected: S`; affected validation was not authorized because focused validation did not pass.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g651/nack-EXR-012-A01-D01-C3-and-grant-C1-read-only-diagnosis` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`, every g644 path/evidence reservation, README SHA-256 `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`, and test SHA-256 `217697467E11B9CF844DBAEA50494017E8C75ADBA7379102A983C5872E65853D`. Evidence root: `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g644/.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/verification-g650`.
+- **Worker state:** C1 alone may inspect the frozen README, frozen test, and preserved C3 evidence read-only and report the exact root cause and smallest proposed correction. C1 may not edit, invoke Pester, create evidence, access a tenant, commit, push, or publish. C2 remains waiting with no authority. C3 is quiescent and its verification authority is revoked. Both tracked paths remain frozen read-only.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15. No card moves Done.
+
+### Generation 650 Platinum D01 Fresh Verification
+
+- ACK `Platinum-root-coordinator/Kanban/g650/accept-EXR-012-A01-D01-C1-crlf-parser-repair-and-grant-C3-fresh-verification` accepts test `217697467E11B9CF844DBAEA50494017E8C75ADBA7379102A983C5872E65853D`, freezes README `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`, and grants C3 one focused 17/17 then conditionally one affected full-suite run. Counts remain 45/1/57; READY 15.
+
+### Generation 649 Platinum D01 Focused NACK And Parser Repair
+
+- **NACK:** C3 focused 17 total / 15 passed / 2 failed / zero other outcomes; affected not run. Preserve the packet and serialization limitation.
+- **ACK:** `Platinum-root-coordinator/Kanban/g649/nack-EXR-012-A01-D01-C3-and-grant-C1-crlf-parser-repair` retains the g644 token and grants C1 only a closing-fence optional-CR correction in the test file, with no Pester invocation. README is frozen; C2/C3 wait.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 648 Platinum D01 C2 Acceptance And C3 Verification
+
+- **Accepted implementation:** README `353600C72C7D9045F2B08692503A168B92BDD49BA8FFE081B66D75E173FF37BE`; frozen 17-test file `C672764CC182D1E641AE23DA95488875FAFE23BDE6AAF51178910B671AB368D3`; one authorized README change with static checks clean.
+- **ACK/authority:** `Platinum-root-coordinator/Kanban/g648/accept-EXR-012-A01-D01-C2-and-grant-C3-fresh-verification` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`. C1/C2 are quiescent and both tracked paths are read-only. C3 may run one focused 17/17 gate and, only after exact success, one affected full-suite gate, both zero retry with raw evidence and stable hashes.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 647 Platinum D01 Accepted Red And C2 Handoff
+
+- **Accepted evidence:** 16 total / 1 passed N10 / 15 intended failures / zero skipped/not-run/failed containers / native Pester exit 15 / retry 0. Raw NUnit `DD8421EB6CF6D4CF5A13EC670DD0EAEBF5286DDAF6849D41306FF1B6224F1D6A`; final 17-test file `C672764CC182D1E641AE23DA95488875FAFE23BDE6AAF51178910B671AB368D3`.
+- **ACK/ownership:** `Platinum-root-coordinator/Kanban/g647/accept-red-and-handoff-EXR-012-A01-D01-C2-readme` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`. C1 is quiescent and the test is frozen read-only. C2 alone may edit `samples/contoso-exchange-online-managed-service/README.md` from base hash `5BE476D058B83594A15999B2892D7F6AE15CA5886F204432EB2D82F778641B0A`; C3 remains quiescent.
+- **Boundary/counts:** no test run, affected run, test edit, network/live action, commit or push is authorized. Counts remain 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 646 Platinum D01 Proof And Raw-Evidence Repair
+
+- **Decision/ACK:** NACK the g645 repair packet; ACK `Platinum-root-coordinator/Kanban/g646/repair-EXR-012-A01-D01-C1-proof-and-raw-evidence` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`.
+- **Bounded authority:** C1 alone retains the test path/evidence root to correct N10's orphan assertion, cross-validate all mapped local targets, replace string echo with controlled parser-clean offline execution, and produce raw native Pester evidence. Exactly one fresh negative-only run is authorized with expected 16 total / 1 passing orphan-rejection proof / 15 intended failures / zero other outcomes; then restore one positive unexecuted and quiesce.
+- **Waits/counts:** C2 has no README authority; C3 has no verification authority. Counts remain 45 To Do / 1 In Progress / 57 Done; READY 15.
+
+### Generation 645 Platinum D01 Red NACK And C1 Repair
+
+- **Decision/ACK:** do not accept generation-644 red; ACK `Platinum-root-coordinator/Kanban/g645/repair-EXR-012-A01-D01-C1-tests` retains token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3`.
+- **Preserved evidence:** one zero-retry focused invocation, 10 total / 1 passed / 9 failed / 0 skipped / 0 not-run / 0 failed containers, exit 1. README `5BE476D058B83594A15999B2892D7F6AE15CA5886F204432EB2D82F778641B0A`; negative test `F7E0FBDE844201CDE27129D29AE65E997CFF605498FF2F94B9A143569A383866`; final unexecuted test `7CF3AF1227AF4A6DC6098B009FEA8AAAB1F48E10002C94A231FD1C7B7D14BC1B`.
+- **Bounded authority:** C1 alone retains the test path and C1 evidence root to correct the orphan fixture, per-service exclusions, structural RAID/input authority maps, normalized active-target existence, command ordering, and seam-controlled offline behavior. C1 may then make one fresh intended-red focused invocation and restore/add the one positive without running it. C2 has no README authority; C3 has no verification authority until later ACK.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; fifteen unclaimed READY.
+
+### Generation 644 Platinum D01 Negative-First Claim
+
+- **Coordinator/canonical ACK:** run `4ed34a64-d812-4e12-9109-89424f1449d3`, coordinator `Platinum root coordinator`, ACK `Platinum-root-coordinator/Kanban/g644/claim-EXR-012-A01-D01`, operation `DISCOVER-FREEZE:readme-entry`.
+- **Token and roles:** token `EXR-012-A01-D01/Platinum/g644/4ed34a64d8124e12910989424f1449d3` binds exactly `Platinum/Coworker-1` test author, `Platinum/Coworker-2` implementation owner after the red barrier, and `Platinum/Coworker-3` independent verifier.
+- **Isolation:** branch `dispatch/EXR-012-A01-D01/Platinum/Coworker-1/g644`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g644`.
+- **Exclusive reservations:** C1 owns `samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1`; after accepted red and explicit handoff C2 owns `samples/contoso-exchange-online-managed-service/README.md`; C3 has no tracked-file write authority. Exclusive evidence roots are `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-1/`, `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-2/`, and `.artifacts/dispatch/EXR-012-A01-D01/g644/Platinum/Coworker-3/`.
+- **Lease:** heartbeat `2026-10-01T15:35:21Z`; review `2026-10-01T16:05:21Z`; stale review `2026-10-01T17:35:21Z`. Elapsed time alone never releases authority.
+- **Boundary/barrier:** preserve generation-618 rejected work and evidence without reuse. Initial write authority is C1 negative-first AAA assertions and one zero-retry focused intended-red invocation. C2 remains read-only until the canonical writer accepts exact intended failure reasons/counts and records handoff; C3 verifies only after writers quiesce.
+- **Counts:** 45 To Do / 1 In Progress / 57 Done; fifteen unclaimed READY. The deficit of one is the active D01 claim.
 
 ### Generation 643 Purple D03 Affected NACK, Release And Requeue
 

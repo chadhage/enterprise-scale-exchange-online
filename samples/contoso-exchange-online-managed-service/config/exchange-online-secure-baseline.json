@@ -220,7 +220,7 @@
       "remoteDomainDefault": {
         "autoForwardEnabled": false,
         "autoReplyEnabled": false,
-        "allowedOOFType": "InternalLegacy",
+        "allowedOOFType": "None",
         "deliveryReportEnabled": false,
         "nonDeliveryReportEnabled": false
       },
