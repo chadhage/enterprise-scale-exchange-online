@@ -1,8 +1,16 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 628. Updated: 2026-10-01. Executable cards: 103; To Do 46, In Progress 0, Done 57; 28 summary parents excluded.
+Canonical generation: 632. Updated: 2026-10-01. Executable cards: 103; To Do 46, In Progress 0, Done 57; 28 summary parents excluded.
 
-Board readiness: **BOARD READY — generation 628**. This dispatch declaration is valid only with the matching generation in `.github/cohorts.md` and `.github/kanban.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+Board readiness: **BOARD READY — generation 632**. This dispatch declaration is valid only with the matching generation in `.github/cohorts.md` and `.github/kanban.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+
+Generation 632 White D04 blocked discovery acceptance and requeue: canonical writer accepts White's artifact/signature/exit packet only as blocked, nonreserving discovery evidence. Preserve its six-negative/exactly-one-positive inventory, 32-path frozen candidate inventory, per-role evidence packets, and independent review finding that stale exit claims lack an executable rejection contract. Release the generation-629 token, renewed lease, evidence-root partitions, and active ownership; return D04 In Progress -> To Do/unassigned with White affinity retained. No implementation or Done authority is granted. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY and every cohort quiescent.
+
+Generation 631 White D04 lease renewal and evidence partition: ACK `Purple-g628/Kanban/g631/renew-EXR-012-A03-D04` retains the generation-629 White token and all generation-630 bindings, renews its discovery lease against the worker-observed UTC clock, and grants three exclusive evidence-only subroots for `White/Coworker-1`, `White/Coworker-2`, and `White/Coworker-3`. The subroots physically exist in the isolated worktree. White remains the sole In Progress claim; counts and READY deficit remain 45/1/57 and one.
+
+Generation 630 A03 partial reconciliation and White operational correction: canonical writer accepts Purple D01, Silver D02, and Gold D03 only as nonreserving discovery/freeze evidence, releases their tokens, leases, evidence-root reservations, and ownership, and returns those cards In Progress -> To Do/unassigned. White D04 retains its generation-629 token and In Progress claim; ACK `Purple-g628/Kanban/g630/continue-EXR-012-A03-D04` binds session `White/2026-10-01T02:22:14.785Z`, coordinator `Purple-g628`, exact `White/Coworker-1..3` roles, `DISCOVER-FREEZE:artifact-signature-exits`, and its physically created evidence-only root. Counts become 45/1/57 with fifteen unclaimed READY cards and an exact one-card White deficit.
+
+Generation 629 four-cohort A03 discovery claims: canonical writer ACKs exact read-only discovery claims for Purple `EXR-012-A03-D01` / `DISCOVER-FREEZE:approval-preview`, Silver `EXR-012-A03-D02` / `DISCOVER-FREEZE:go-live-readback`, Gold `EXR-012-A03-D03` / `DISCOVER-FREEZE:rollback-recovery`, and White `EXR-012-A03-D04` / `DISCOVER-FREEZE:artifact-signature-exits`. Each card moves To Do -> In Progress in an isolated generation-629 worktree at base `355518a27f4d6a1cb25fd2a1ae6cc0f0fecc447e`. Claims bind exact `<Cohort>/Coworker-1..3` runtime roles and authorize only sanitized evidence output under the card-specific evidence root; no tracked path is writable. Counts become 42/4/57 with twelve unclaimed READY cards and an exact four-card active-claim deficit.
 
 Generation 628 Gold D03 discovery acceptance and requeue: canonical writer accepts Gold's g625 value-authority packet only as blocking, nonreserving discovery evidence, preserves its four candidate paths, twenty-negative/exactly-one-positive validation inventory, and independent review finding that the deterministic inventory denominator is unresolved. Release the retained token, lease, evidence-root reservation, and active ownership; return D03 In Progress -> To Do/unassigned with Gold affinity retained. No implementation or Done authority is granted. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY, zero active claims, and zero reservations.
 
@@ -4130,7 +4138,7 @@ Rank 49.4 - Set/verify/expected-output contract.
 
 Rank 50.1 - Preview and approval procedure.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: document complete preview, frozen evidence, and approval arguments and artifact bindings.
 - Acceptance: missing, mismatched, expired, regenerated, or unbound approval inputs fail; one exact frozen-byte approval example passes.
 - Verification/evidence: `DOC-3W`; approval refusal negatives plus one positive preview/approval path; inventory, hashes, results, and independent handoff.
@@ -4139,7 +4147,7 @@ Rank 50.1 - Preview and approval procedure.
 
 Rank 50.2 - Go-live, readback, and no-op procedure.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: document exact apply, readback, no-op, and drift-refusal sequencing without expanding change rights.
 - Acceptance: WhatIf substitution, stale evidence, readback mismatch, and hidden mutation fail; one injected approved lifecycle passes.
 - Verification/evidence: `DOC-3W`; lifecycle negatives plus one positive offline go-live/readback path; inventory, hashes, results, and independent handoff.
@@ -4148,7 +4156,7 @@ Rank 50.2 - Go-live, readback, and no-op procedure.
 
 Rank 50.3 - Typed rollback and recovery procedure.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: document typed rollback, recovery evidence, status, exits, and post-rollback verification.
 - Acceptance: wrong type, target, before-state, ordering, or recovery evidence fails; one exact injected rollback round trip passes.
 - Verification/evidence: `DOC-3W`; recovery negatives plus one positive typed rollback; inventory, hashes, results, and independent handoff.
@@ -4157,7 +4165,7 @@ Rank 50.3 - Typed rollback and recovery procedure.
 
 Rank 50.4 - Artifact, signature, and exit semantics.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: document collect/freeze/sign/verify artifact bindings and exact status/exit meanings.
 - Acceptance: regenerated bytes, wrong signer/root/time, missing artifact, and stale exit claims fail; one exact-byte signed round trip passes.
 - Verification/evidence: `DOC-3W`; artifact/signature negatives plus one positive round trip; inventory, hashes, results, and independent handoff.

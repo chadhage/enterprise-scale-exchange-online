@@ -2,10 +2,10 @@
 
 > **Compatibility view only.** `.github/backlog.md` is the canonical remediation inventory and status/evidence authority; `.github/cohorts.md` is the canonical allocation, claim, reservation, and writer-coordination authority. This file preserves the former Kanban presentation and pull-ready rules, but it cannot add executable inventory, grant a claim, or override either canonical file.
 
-Board updated: 2026-10-01 (compatibility synchronization to canonical generation 628; Gold discovery preserved and requeued)
+Board updated: 2026-10-01 (compatibility synchronization to canonical generation 632; White blocked discovery preserved and requeued)
 Canonical source: `.github/backlog.md`
 Allocation source: `.github/cohorts.md`
-Allocation generation mirrored: 628
+Allocation generation mirrored: 632
 WIP limit: at most 1 implementation card per Coworker and at most 3 nonconflicting cards per three-Coworker cohort; there is no unrelated global one-card gate. Cards owned by other parties may run concurrently.
 
 Conventions:
@@ -22,11 +22,11 @@ Conventions:
 | In Progress | 0 |
 | Done | 57 |
 
-Canonical executable cards: 103; canonical summary parents excluded: 28. Compatibility generation: 628. The legacy detail retained below is not an inventory and must not be counted.
+Canonical executable cards: 103; canonical summary parents excluded: 28. Compatibility generation: 632. The legacy detail retained below is not an inventory and must not be counted.
 
 ## Dispatch and allocation contract
 
-Compatibility readiness: **mirrored only; BOARD READY at generation 628**. All four A02 discovery packets are preserved as nonreserving evidence and safely requeued. All sixteen documentation children are unclaimed READY; no active claim or implementation path exists.
+Compatibility readiness: **mirrored only; BOARD READY at generation 632**. All four A03 discovery packets are preserved as nonreserving evidence and safely requeued. All sixteen documentation children are unclaimed READY; no active claim or tracked implementation path exists.
 
 1. **Atomic pull claim and canonical writer.** A cohort proposes `card ID + cohort + C1/C2/C3 identities + observed generation + writable paths + evidence root`. The one canonical writer rereads `.github/backlog.md` and `.github/cohorts.md`, checks status, dependencies, WIP, owner class, and every reservation, then records one generation-bound ACK and increments the canonical generation in the same coordinated edit. This compatibility view is synchronized afterward and cannot acknowledge a claim. Work may not start on a proposal or queue affinity; workers never edit board state.
 2. **Claim expiry and requeue.** Heartbeat is 30 minutes. A claim becomes stale after 120 minutes without an acknowledged heartbeat. Expiry suspends write authority immediately, but requeue occurs only after the writer confirms all prior workers and worktrees are quiescent, records preserved evidence/worktree disposition, releases reservations, returns the card to To Do, and increments generation. Ambiguity stops conflicting work; elapsed time alone never proves quiescence.
@@ -41,6 +41,10 @@ Dependency-safe force rank for the acceptance-recovery route: **1 SCOPE-001; 2 R
 
 ## Activity log
 
+- **2026-10-01 / compatibility synchronization to generation 632:** White A03-D04's blocked artifact/signature/exit discovery packet, frozen candidate inventory, and per-role evidence were preserved; its token, lease, evidence partitions, and ownership were released. D04 returned To Do/unassigned. Counts are 46/0/57 with sixteen unclaimed READY cards and all cohorts quiescent.
+- **2026-10-01 / compatibility synchronization to generation 631:** White A03-D04 retained its token and exact operation under a fresh Purple renewal ACK, worker-observed lease timestamps, and three physically created exclusive Coworker evidence subroots. Counts remain 45/1/57 with fifteen unclaimed READY cards.
+- **2026-10-01 / compatibility synchronization to generation 630:** Purple A03-D01, Silver A03-D02, and Gold A03-D03 discovery packets were preserved and their claims released/requeued. White A03-D04 retained the sole claim with exact session, coordinator, Purple ACK, renewed lease, and physically created evidence root. Counts are 45/1/57 with fifteen unclaimed READY cards.
+- **2026-10-01 / compatibility synchronization to generation 629:** Purple A03-D01, Silver A03-D02, Gold A03-D03, and White A03-D04 moved To Do -> In Progress under exact read-only discovery operations, runtime role bindings, leases, isolated worktrees, and evidence-only roots. Counts are 42/4/57 with twelve unclaimed READY cards.
 - **2026-10-01 / compatibility synchronization to generation 628:** Gold A02-D03's blocking value-authority discovery packet and N01-N20/P01 freeze were preserved, while its token, lease, evidence reservation, and ownership were released. D03 returned To Do/unassigned. Counts are 46/0/57 with sixteen unclaimed READY cards and all cohorts quiescent.
 - **2026-10-01 / compatibility synchronization to generation 627:** Purple A02-D01, Silver A02-D02, and White A02-D04 discovery packets were preserved as nonreserving proposals and their claims released/requeued. Gold A02-D03 retained the only claim with exact `Gold/Coworker-*` bindings and a renewed lease. Counts are 45/1/57 with fifteen unclaimed READY cards.
 - **2026-10-01 / compatibility synchronization to generation 626:** the four g625 A02 tokens were retained and renewed with exact card-specific discovery operations, named cohort/Coworker bindings, evidence-root-only write authority, and primary-checkout canonical verification. Silver's conditional control-catalog discovery was preserved as a nonreserving proposal; its stale validator call blocks executable red evidence and no implementation ACK exists. Counts remain 42/4/57 with twelve unclaimed READY cards.
