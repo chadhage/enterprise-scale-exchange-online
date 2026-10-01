@@ -35,9 +35,82 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 634
+Allocation generation: 643
 
-Allocation readiness: **BOARD READY — generation 634**. All four A04 claims are released and safely requeued with evidence preserved where produced. All sixteen documentation children are unclaimed READY. Every cohort is quiescent; no active claim, lease, or reservation exists.
+Allocation readiness: **BOARD READY — generation 643**. Purple D03 is safely requeued after affected-gate NACK. All sixteen documentation children are unclaimed READY; every cohort is quiescent and no active claim, lease, or reservation exists.
+
+### Generation 643 Purple D03 Affected NACK, Release And Requeue
+
+- **Accepted focused evidence:** generation-642 fresh invocation, PowerShell 7.6.6/Pester 5.7.1, 4 total / 4 passed / zero failed/skipped/not-run/failed containers, exit 0, retry 0.
+- **Affected NACK:** one invocation from 2026-10-01T14:28:34Z through 15:09:28Z discovered/executed 6296, passed 5459, failed 837, skipped/not-run 0, failed containers 56, exit 1, retry 0. Failure identities are preserved at `.artifacts/dispatch/EXR-012-A04-D03/g642/Purple/Coworker-3/affected-failure-identities.txt`, SHA-256 `A2FB9A163119606EB3836946585D2DDEF50F46D2C58461622E5B3DE268E05B23`.
+- **Preserved candidate:** document SHA-256 `447A5E1257E717C3F1089A47154ACDC7E6B01C5E182EB1F4E46A22B5F14AC6AD`; test SHA-256 `A4BE1E5DF4919782EC3E4592094908F2D38745A8A8E40C0264903C3631EA0341`; six blocks, four links, six semantic rows, exactly N01/N02/N03/P01, clean diff check. Isolated branch/worktree and evidence remain preserved, not active authority.
+- **Release:** release token `EXR-012-A04-D03/Purple/g637/7c420bff31ce49dc985b97187488f75d`, lease, two writable reservations, all evidence-root reservations, and `Purple/Coworker-1..3` bindings. Return D03 In Progress -> To Do/unassigned. No Done transition.
+- **Counts:** 46 To Do / 0 In Progress / 57 Done; sixteen unclaimed READY; all workers quiescent.
+
+### Generation 642 Purple D03 Second Fresh Verification Grant
+
+- **Repair accepted:** test SHA-256 `A4BE1E5DF4919782EC3E4592094908F2D38745A8A8E40C0264903C3631EA0341`; document SHA-256 `447A5E1257E717C3F1089A47154ACDC7E6B01C5E182EB1F4E46A22B5F14AC6AD`. The only repair is P01 uniqueness over relationship strings; all three negative regions, four-test order, AAA structure, six blocks, four links, and diff check remain stable.
+- **Fresh ACK:** `Purple-20261001T140527Z/Kanban/g642/fresh-verify-D03-2` grants Coworker-3 exactly one focused invocation, expected 4/4, then exactly one affected invocation, expected 6296/6296, only if focused passes. Require zero other outcomes, stable hashes, no retry, no edit, and no network/live access.
+
+### Generation 641 Purple D03 P01 Assertion NACK And Repair
+
+- **NACK:** fresh focused invocation discovered/executed 4, passed N01/N02/N03, failed only P01, zero skipped/not-run, one failed container, exit 1, retry 0. Affected validation was not run.
+- **Stable implementation:** document `447A5E1257E717C3F1089A47154ACDC7E6B01C5E182EB1F4E46A22B5F14AC6AD`; test `F7EC9CC9917DAD63CC782685F8FC5058C7854ABBFCA9503F3ABB521736EBD1B4`; six blocks, four links, six unique semantic rows, and broader-certification denial all passed.
+- **Root cause/repair ACK:** `Purple-20261001T140527Z/Kanban/g641/repair-D03-P01-uniqueness` grants Coworker-1 exclusive test ownership to change only P01 uniqueness comparison from PSCustomObject display identity to the three relationship strings. Coworker-2/3 remain quiescent. No negative, document, count, other path, test run, network/live access, commit, or push is authorized.
+
+### Generation 640 Purple D03 Fresh Verification Grant
+
+- **Repair accepted:** document SHA-256 `447A5E1257E717C3F1089A47154ACDC7E6B01C5E182EB1F4E46A22B5F14AC6AD`; test SHA-256 `F7EC9CC9917DAD63CC782685F8FC5058C7854ABBFCA9503F3ABB521736EBD1B4`; six relationship rows, six blocks, four links, and clean diff check. Only the two authorized tracked paths differ.
+- **Fresh ACK:** `Purple-20261001T140527Z/Kanban/g640/fresh-verify-D03` grants Coworker-3 exactly one focused invocation, expected 4/4, then exactly one affected invocation, expected 6296/6296, only if focused passes. Require zero failed/skipped/not-run/failed containers, stable hashes, no retry, no edit, and no network/live access. Coworker-1 and Coworker-2 remain quiescent.
+
+### Generation 639 Purple D03 Focused NACK And Bounded Repair
+
+- **NACK:** Coworker-3 ran focused Pester once at 2026-10-01T14:20:48Z: 4 total / 0 passed / 4 failed / 0 skipped / 0 not-run / 1 failed container, exit 1, retry 0. Affected validation was not run.
+- **Stable evidence:** document `72FEE164B61FA7AD55C5E09066CC9D9BB702C197067445E1791F9053B27E4FF1`; test `F7EC9CC9917DAD63CC782685F8FC5058C7854ABBFCA9503F3ABB521736EBD1B4`; six blocks, four links, ordered N01/N02/N03/P01, AAA structure, semantic intent, and diff check all passed.
+- **Root cause/disposition:** assertions consume unique Markdown table rows, but implementation supplied prose. The new test's untracked status is expected for an authorized new path under the no-commit rule and is not itself a scope failure. Preserve this failed verification; do not count it as closure.
+- **Repair ACK:** `Purple-20261001T140527Z/Kanban/g639/repair-D03-semantic-table` grants Coworker-2 exclusive document ownership to replace only the added prose with the smallest semantic table satisfying the frozen assertions. Coworker-1 and Coworker-3 remain quiescent. No test edit, other path, test run, block/link change, network/live access, commit, or push is authorized.
+
+### Generation 638 Purple D03 Accepted Red And Implementation Grant
+
+- **ACK:** `Purple-20261001T140527Z/Kanban/g638/accept-red-and-implement-EXR-012-A04-D03` retains token `EXR-012-A04-D03/Purple/g637/7c420bff31ce49dc985b97187488f75d`.
+- **Accepted red:** one invocation, retry 0, PowerShell 7.6.6/Pester 5.7.1, exactly 3 total / 0 passed / 3 failed / 0 skipped / 0 not-run / 0 failed containers. N01, N02 and N03 each failed for its intended absent semantic relationship. Test SHA-256 `34587C39FE65FC62301F620E899AEC4235A334D33F44229BD62CED462D979946`; document remained `A2E70D12512551968C0A3CD126BE0F60762595D986B51FD6133E8A7111A448D1`; diff check clean.
+- **Disjoint ownership:** Coworker-1 retains only `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeStatusSemanticsDocumentation.Tests.ps1` to append exactly one native-decision positive. Coworker-2 receives only `samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md` for the smallest semantic wording implementation. Coworker-3 remains read-only until both writers quiesce.
+- **Barrier:** no focused green or affected run until both writers quiesce. No new link/block, other tracked path, network/live access, commit, or push is authorized. Counts remain 45/1/57; READY remains 15.
+
+### Generation 637 Purple D03 Convergence And Negative-First Claim
+
+- **Coordinator/ACK:** sole canonical writer `Purple-20261001T140527Z`; ACK `Purple-20261001T140527Z/Kanban/g637/claim-EXR-012-A04-D03`; token `EXR-012-A04-D03/Purple/g637/7c420bff31ce49dc985b97187488f75d`; observed and bound base `baf2dac2911ef9130d4a0da8355bd3c33b21c0db`.
+- **Current-base convergence:** target document SHA-256 `A2E70D12512551968C0A3CD126BE0F60762595D986B51FD6133E8A7111A448D1`; dedicated test path absent; target surfaces clean. DOC-3W denominator is six active fenced blocks plus four Markdown links = 10. The local `EXCHANGE-ONLY.md` target exists; three HTTPS references are inventory-only and were not contacted.
+- **Affected basis:** Pester 5.7.1 / PowerShell 7.6.6 discovery-only baseline `B=6292`, zero failed containers; final closure denominator `B+4=6296`. Focused contract is exactly three ordered negative cases at intended red, then those three plus one native-decision positive for total 4.
+- **Classification:** writable only `samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md` and new `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeStatusSemanticsDocumentation.Tests.ps1`; README body and `deprecated/**` are historical; `microsite/index.html` and `SOLUTION_SUMMARY.md` are affected-only/read-only; dashboard paths are D01-only and excluded.
+- **Bindings:** roles `Purple/Coworker-1` test author/claim owner, `Purple/Coworker-2` implementation owner after accepted red and explicit file handoff, and `Purple/Coworker-3` independent verifier/reviewer. Branch `dispatch/EXR-012-A04-D03/Purple/Coworker-1/g637`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D03-Purple-Coworker-1-g637`. Exclusive evidence roots `.artifacts/dispatch/EXR-012-A04-D03/g637/Purple/Coworker-1/`, `Coworker-2/`, and `Coworker-3/`.
+- **Ordered contract:** N01 rejects ApprovedException represented as Pass; N02 rejects unknown or ExternalReadiness Unverified represented as ready; N03 rejects scoped or exit-0 results represented as broader certification; P01 preserves Pass, ApprovedException, and ExternalReadiness Unverified as distinct native decisions without broader certification.
+- **Initial authority:** create the authorized worktree/evidence roots; Coworker-1 alone may write the new test and run one focused intended-red invocation. Coworker-2 may review the document read-only but may not edit until the canonical writer accepts exact 3/3 intended-red evidence and explicitly transfers the document file. Coworker-3 is read-only until writers quiesce. No live/network/tenant operation, commit, push, or other tracked path is authorized.
+- **Counts/READY:** 45 To Do / 1 In Progress / 57 Done. Fifteen children remain unclaimed READY; the exact one-card bank deficit is Purple's active D03 claim.
+
+### Generation 636 D03 White Read-Only Concurrence
+
+- **Reviewer:** `White-20261001T130114Z-g634`; operation read-only only; no files, tests, claims, reservations, or network actions.
+- **Verdict:** REJECT the currently visible/preserved D03 proposal and concur with generation 635. Preserved review hash `1FCFF4000C06706308703A8377576192FD32640AF4EBDB8264A226FE9E1CA846` records unresolved scope, path, and count conflicts.
+- **Recommended future scope:** sole normative write owner `samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md`; exclude README content after its historical boundary and `deprecated/**`; treat `microsite/index.html` and `SOLUTION_SUMMARY.md` as affected-only; exclude dashboard paths for D01 conflict.
+- **Recommended assertion contract:** sole dedicated path `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeStatusSemanticsDocumentation.Tests.ps1`; existing runtime tests remain supporting-only.
+- **Recommended ordered inventory:** N01 ApprovedException-as-Pass; N02 unknown or Unverified external readiness-as-ready; N03 scoped or exit-0 result-as-broader-certification; then exactly P01 preserving Pass, ApprovedException, and ExternalReadiness Unverified without broader certification.
+- **Required denominators:** focused negative-only red `Total=3`; full authored/green `Total=4`; affected `Total=B+4`, with passed equal total and failed/skipped/not-run/failed-containers all zero. Freeze current-base `B` and a fresh DOC-3W active link/block denominator; the preserved 80 is not stable.
+- **Remaining blockers:** current revision content identity beyond the published base, implementation diff/hash, authorized red evidence, exact affected and link/block denominators, and conflict-free three-role whole-file ownership are absent. No implementation ACK may issue.
+- **Disposition:** zero claims, leases, reservations, or Coworker bindings. Counts remain 46 To Do / 0 In Progress / 57 Done with sixteen unclaimed READY cards.
+
+### Generation 635 D03 Canonical Adjudication NACK
+
+- **Coordinator:** `Purple-20261001T090114-0400-g634-d03`; sole canonical writer `Purple/Coordinator`; serialized read-only adjudication at published base and observed HEAD `baf2dac2911ef9130d4a0da8355bd3c33b21c0db`.
+- **Decision:** NACK an implementation grant for `EXR-012-A04-D03`. Keep the card To Do/unassigned with zero In Progress; issue no token, lease, branch, worktree, writable path, evidence-root reservation, intended-red authority, or Coworker implementation binding.
+- **Documentation scope:** the preserved Gold packets conflict among README plus `microsite/index.html`, README only, and `samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md`; exactly one active documentation scope did not converge.
+- **Assertion path:** the packets conflict among proposed `StatusSemanticsDocumentation.Tests.ps1`, existing `ExchangeEmailOperatorContract.Tests.ps1`, and proposed `ExchangeStatusSemanticsDocumentation.Tests.ps1`; exactly one assertion path did not converge.
+- **Test inventory and red barrier:** one packet proposes nine negatives plus exactly one positive, while two propose the three acceptance-aligned negatives plus exactly one positive. No Pester run was authorized, so no intended-red hash/result exists.
+- **Frozen commands/counts:** focused proposals disagree at 10, 4, and a proposed 14 static tests; the affected discovery count is unfrozen. The historical 6302-test affected run belongs to another card/base and failed 838 tests, so it cannot satisfy D03.
+- **Ownership/base:** released session `Gold-20261001T030250Z-d1f44a4` and worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D03-Gold-g633` remain at `d1f44a4cf7af823a210c61e4c6720dc9b56fc2aa`; no current three-Coworker binding or conflict-free whole-file ownership may be inferred at generation 635.
+- **Proposal coordination:** Silver's unresolved generation-633 JSON-versus-XML/Markdown evidence-schema packet supplies no accepted D03 assertion/count contract. White's accepted D04 authority-map discovery is out of D03 scope. Purple supplies canonical adjudication only; no cross-session claim is invented.
+- **Required future packet:** one documentation file, one assertion file, exactly three acceptance-aligned negatives and exactly one positive (or an explicit canonical rationale for a different inventory), authorized intended-red evidence, exact focused and affected discovery/execution counts, current-base hashes, and fresh exact session/Coworker/evidence bindings.
+- **READY bank:** counts remain 46 To Do / 0 In Progress / 57 Done. All sixteen documentation children remain unclaimed READY; no claim or reservation changed.
 
 ### Generation 634 A04 Discovery Reconciliation And Full Release
 

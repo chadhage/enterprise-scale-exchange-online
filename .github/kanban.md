@@ -2,10 +2,10 @@
 
 > **Compatibility view only.** `.github/backlog.md` is the canonical remediation inventory and status/evidence authority; `.github/cohorts.md` is the canonical allocation, claim, reservation, and writer-coordination authority. This file preserves the former Kanban presentation and pull-ready rules, but it cannot add executable inventory, grant a claim, or override either canonical file.
 
-Board updated: 2026-10-01 (compatibility synchronization to canonical generation 634; A04 reconciliation and full release)
+Board updated: 2026-10-01 (compatibility synchronization to canonical generation 643; Purple D03 requeue)
 Canonical source: `.github/backlog.md`
 Allocation source: `.github/cohorts.md`
-Allocation generation mirrored: 634
+Allocation generation mirrored: 643
 WIP limit: at most 1 implementation card per Coworker and at most 3 nonconflicting cards per three-Coworker cohort; there is no unrelated global one-card gate. Cards owned by other parties may run concurrently.
 
 Conventions:
@@ -22,11 +22,11 @@ Conventions:
 | In Progress | 0 |
 | Done | 57 |
 
-Canonical executable cards: 103; canonical summary parents excluded: 28. Compatibility generation: 634. The legacy detail retained below is not an inventory and must not be counted.
+Canonical executable cards: 103; canonical summary parents excluded: 28. Compatibility generation: 643. The legacy detail retained below is not an inventory and must not be counted.
 
 ## Dispatch and allocation contract
 
-Compatibility readiness: **mirrored only; BOARD READY at generation 634**. All four A04 claims are released and requeued with evidence preserved where produced. All sixteen documentation children are unclaimed READY; no active claim or tracked implementation path exists.
+Compatibility readiness: **mirrored only; BOARD READY at generation 643**. Purple D03 is requeued after focused 4/4 but affected 5459/6296 with 837 failures and 56 failed containers. All sixteen documentation children are unclaimed READY; no active claim exists.
 
 1. **Atomic pull claim and canonical writer.** A cohort proposes `card ID + cohort + C1/C2/C3 identities + observed generation + writable paths + evidence root`. The one canonical writer rereads `.github/backlog.md` and `.github/cohorts.md`, checks status, dependencies, WIP, owner class, and every reservation, then records one generation-bound ACK and increments the canonical generation in the same coordinated edit. This compatibility view is synchronized afterward and cannot acknowledge a claim. Work may not start on a proposal or queue affinity; workers never edit board state.
 2. **Claim expiry and requeue.** Heartbeat is 30 minutes. A claim becomes stale after 120 minutes without an acknowledged heartbeat. Expiry suspends write authority immediately, but requeue occurs only after the writer confirms all prior workers and worktrees are quiescent, records preserved evidence/worktree disposition, releases reservations, returns the card to To Do, and increments generation. Ambiguity stops conflicting work; elapsed time alone never proves quiescence.
@@ -41,6 +41,15 @@ Dependency-safe force rank for the acceptance-recovery route: **1 SCOPE-001; 2 R
 
 ## Activity log
 
+- **2026-10-01 / compatibility synchronization to generation 643:** Purple D03 passes focused 4/4 but fails affected at 5459/6296 with 837 failures and 56 failed containers. The candidate/evidence are preserved, all authority is released, and D03 returns To Do/unassigned. Counts are 46/0/57 with sixteen unclaimed READY cards.
+- **2026-10-01 / compatibility synchronization to generation 642:** accepted Purple D03's one-line P01 relationship-uniqueness repair. Coworker-3 receives one second fresh focused-then-affected zero-retry attempt. Counts remain 45/1/57.
+- **2026-10-01 / compatibility synchronization to generation 641:** Purple D03 fresh focused verification passed all three negatives but P01 failed because PSCustomObject uniqueness collapsed three relationship rows. Coworker-1 receives a positive-assertion-only repair. Counts remain 45/1/57.
+- **2026-10-01 / compatibility synchronization to generation 640:** accepted Purple D03's bounded semantic-table repair with stable four-test inventory, six blocks and four links. Coworker-3 receives one fresh focused-then-affected zero-retry verification attempt. Counts remain 45/1/57.
+- **2026-10-01 / compatibility synchronization to generation 639:** Purple D03 focused verification NACK recorded at 0/4 with one failed container and no affected run. Hashes/inventory remained stable; Coworker-2 receives a document-only semantic-table repair. Counts remain 45/1/57 and READY 15.
+- **2026-10-01 / compatibility synchronization to generation 638:** accepted Purple D03's zero-retry intended red at 3 total / 3 intended failures / zero other outcomes. Coworker-1 retains the test file for exactly one positive and Coworker-2 receives the go-live document; Coworker-3 waits for quiescence. Counts remain 45/1/57 and READY 15.
+- **2026-10-01 / compatibility synchronization to generation 637:** Purple claims `EXR-012-A04-D03` at base `baf2dac2911ef9130d4a0da8355bd3c33b21c0db` after freezing the go-live document hash, DOC-3W denominator 10, affected baseline 6292, exact two-file scope, and the generation-636 three-negative/one-positive recommendation. Counts are 45/1/57 with fifteen unclaimed READY cards. Initial authority is negative-first only; no implementation, live access, commit, or push is granted.
+- **2026-10-01 / compatibility synchronization to generation 636:** White read-only review independently REJECTED the preserved D03 proposal and concurred with the generation-635 NACK. Its recommended future one-document/one-assertion/three-negative/one-positive contract remains non-executable because current-base affected and link/block denominators, red evidence, diff identity, and ownership are unfrozen. Counts remain 46/0/57 with sixteen unclaimed READY cards.
+- **2026-10-01 / compatibility synchronization to generation 635:** Purple's canonical read-only D03 adjudication NACK records conflicting documentation scopes, assertion paths, three-versus-nine negative inventories, focused counts, and an unfrozen affected count. Released Gold g633 bindings cannot be reused at base `baf2dac`; Silver and White packets do not resolve D03. No grant was issued. Counts remain 46/0/57 with sixteen unclaimed READY cards.
 - **2026-10-01 / compatibility synchronization to generation 634:** Purple A04-D01 and White A04-D04 discovery packets were accepted as blocked nonreserving evidence, Gold A04-D03's nonconverged freeze was rejected, and Silver A04-D02's evidence-schema conflict was recorded. All claims were released/requeued. Counts are 46/0/57 with sixteen unclaimed READY cards.
 - **2026-10-01 / compatibility synchronization to generation 633:** Purple A04-D01, Silver A04-D02, Gold A04-D03, and White A04-D04 moved To Do -> In Progress under exact sessions, manifest operations, leases, isolated worktrees, and twelve physically created exclusive evidence roots. Counts are 42/4/57 with twelve unclaimed READY cards.
 - **2026-10-01 / compatibility synchronization to generation 632:** White A03-D04's blocked artifact/signature/exit discovery packet, frozen candidate inventory, and per-role evidence were preserved; its token, lease, evidence partitions, and ownership were released. D04 returned To Do/unassigned. Counts are 46/0/57 with sixteen unclaimed READY cards and all cohorts quiescent.
