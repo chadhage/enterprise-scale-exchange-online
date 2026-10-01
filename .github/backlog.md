@@ -1,8 +1,12 @@
 # Exchange Online Remediation Backlog
 
-Canonical generation: 632. Updated: 2026-10-01. Executable cards: 103; To Do 46, In Progress 0, Done 57; 28 summary parents excluded.
+Canonical generation: 634. Updated: 2026-10-01. Executable cards: 103; To Do 46, In Progress 0, Done 57; 28 summary parents excluded.
 
-Board readiness: **BOARD READY — generation 632**. This dispatch declaration is valid only with the matching generation in `.github/cohorts.md` and `.github/kanban.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+Board readiness: **BOARD READY — generation 634**. This dispatch declaration is valid only with the matching generation in `.github/cohorts.md` and `.github/kanban.md` and a passing `.github/validate-dispatch-board.ps1` result. `.github/kanban.md` is a subordinate compatibility view.
+
+Generation 634 A04 discovery reconciliation and full release: canonical writer accepts Purple D01 and White D04 only as blocked, nonreserving discovery/freeze evidence; rejects Gold D03's nonconverged freeze; and records Silver D02's fail-closed evidence-schema conflict without a discovery packet. Release all four generation-633 tokens, leases, evidence-root reservations, and active ownership; return D01-D04 In Progress -> To Do/unassigned with cohort affinities retained. No implementation or Done authority is granted. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY and every cohort quiescent.
+
+Generation 633 four-cohort A04 discovery claims: canonical coordinator `Purple-2026-10-01T030250Z-g632-a04` ACKs Purple `EXR-012-A04-D01` / `DISCOVER-FREEZE:evidence-viewer`, Silver `EXR-012-A04-D02` / `DISCOVER-FREEZE:exclusions-denominator`, Gold `EXR-012-A04-D03` / `DISCOVER-FREEZE:status-semantics`, and White `EXR-012-A04-D04` / `DISCOVER-FREEZE:raid-source-claims`. Each card moves To Do -> In Progress in an isolated generation-633 worktree at base `d1f44a4cf7af823a210c61e4c6720dc9b56fc2aa`. Claims bind exact sessions and `<Cohort>/Coworker-1..3` roles, with physically created exclusive per-role evidence roots. No tracked path is writable. Counts become 42/4/57 with twelve unclaimed READY cards and an exact four-card active-claim deficit.
 
 Generation 632 White D04 blocked discovery acceptance and requeue: canonical writer accepts White's artifact/signature/exit packet only as blocked, nonreserving discovery evidence. Preserve its six-negative/exactly-one-positive inventory, 32-path frozen candidate inventory, per-role evidence packets, and independent review finding that stale exit claims lack an executable rejection contract. Release the generation-629 token, renewed lease, evidence-root partitions, and active ownership; return D04 In Progress -> To Do/unassigned with White affinity retained. No implementation or Done authority is granted. Counts return to 46/0/57 with all sixteen documentation children unclaimed READY and every cohort quiescent.
 
@@ -4174,7 +4178,7 @@ Rank 50.4 - Artifact, signature, and exit semantics.
 
 Rank 51.1 - Evidence-viewer presentation.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: reconcile evidence-viewer wording with actual public evidence and status output.
 - Acceptance: unknown, missing, Error, NotEntitled, Unverified, and ApprovedException remain distinct and are never laundered to Pass.
 - Verification/evidence: `DOC-3W`; status-laundering negatives plus one positive per displayed status class; inventory, hashes, results, and independent handoff.
@@ -4183,7 +4187,7 @@ Rank 51.1 - Evidence-viewer presentation.
 
 Rank 51.2 - Exclusions and scoped denominator.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: present explicit workload/control exclusions and the exact Exchange-only denominator.
 - Acceptance: universal, tenant-wide, or excluded-service coverage claims fail; one exact retained-control denominator passes.
 - Verification/evidence: `DOC-3W`; denominator/exclusion negatives plus one positive scoped presentation; inventory, hashes, results, and independent handoff.
@@ -4192,7 +4196,7 @@ Rank 51.2 - Exclusions and scoped denominator.
 
 Rank 51.3 - Exception and external-readiness semantics.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: preserve ApprovedException, Pass, and external readiness as separate operator decisions.
 - Acceptance: exception-as-Pass, unknown-as-ready, and unsupported certification claims fail; one positive presentation preserves each native decision.
 - Verification/evidence: `DOC-3W`; semantic-laundering negatives plus positive native-status rendering; inventory, hashes, results, and independent handoff.
@@ -4201,7 +4205,7 @@ Rank 51.3 - Exception and external-readiness semantics.
 
 Rank 51.4 - RAID, source, and authority claims.
 
-- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-09-30. Status: To Do.
+- Dependencies: EXR-006, EXR-008, EXR-009, EXR-010-A12-L01-C01, EXR-011-A01, EXR-011-A02, EXR-011-A03, EXR-011-A04, EXR-007-A01, EXR-007-A02-T01, EXR-007-A02-T02, EXR-007-A02-T03, EXR-007-A02-T04, EXR-007-A03-T01, EXR-007-A03-T02-L01, EXR-007-A04-T01, EXR-007-A04-T02, EXR-007-A05-T01, EXR-007-A05-T02, EXR-007-A05-T03-L01-C01, EXR-007-A06, EXR-007-A07, EXR-007-A08-T01, EXR-007-A08-T02, EXR-007-A08-T03. Owner: unassigned. Workstream: Documentation. Updated: 2026-10-01. Status: To Do.
 - Deliverable: map every external prerequisite and recommendation/input/business choice to RAID and the correct authority.
 - Acceptance: orphan external dependencies, stale sources, and unsupported 100-percent or tenant-certification claims fail; one complete authority map passes.
 - Verification/evidence: `DOC-3W`; source/RAID negatives plus one complete positive mapping; inventory, hashes, results, and independent handoff.

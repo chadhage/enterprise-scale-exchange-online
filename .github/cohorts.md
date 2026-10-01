@@ -35,9 +35,31 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 632
+Allocation generation: 634
 
-Allocation readiness: **BOARD READY — generation 632**. All four A03 discovery packets are preserved and safely requeued with no active authority. All sixteen EXR-012 discovery/freeze preflights are unclaimed READY. Every cohort is quiescent; no claim, lease, evidence-root reservation, or tracked implementation reservation exists.
+Allocation readiness: **BOARD READY — generation 634**. All four A04 claims are released and safely requeued with evidence preserved where produced. All sixteen documentation children are unclaimed READY. Every cohort is quiescent; no active claim, lease, or reservation exists.
+
+### Generation 634 A04 Discovery Reconciliation And Full Release
+
+- **Purple D01 accepted discovery:** preserve the 12-negative, 10-positive-status, 12-active-block evidence-viewer freeze and independent review hash `C2B7C814FF5D15E3B0070A2E0F3BDB7D43A329754C396BAA5E8811389D74C6`. Canonical producer/viewer casing and shape mismatch currently rejects canonical evidence and launders non-Pass states.
+- **Silver D02 stopped:** no discovery packet was accepted because the canonical evidence contracts disagree between `.artifacts/dispatch` JSON and `.artifacts/kanban` XML/Markdown, and no exact per-role phase ownership was frozen.
+- **Gold D03 rejected freeze:** preserve independent review hash `1FCFF4000C06706308703A8377576192FD32640AF4EBDB8264A226FE9E1CA846`, but reject the freeze because candidate paths, active-document scope, assertion reuse, and three-versus-nine negative inventories did not converge.
+- **White D04 accepted discovery:** preserve seven-negative/exactly-one-positive authority-map inventory, four candidate implementation paths, and independent review hash `3AE376548E37EE53BC713DB79497D497F0D793CBE44D6FEC38CD52223D24F636`. Implementation remains blocked because 25/25 mappings lack Authority and RAID reference fields and the normative schema is undefined.
+- **Release:** release all generation-633 tokens, leases, twelve evidence-root reservations, and active ownership. Preserve all isolated worktrees and evidence. Return D01-D04 In Progress -> To Do/unassigned with affinities retained.
+- **Boundary:** no implementation, tracked-file write, test execution, or Done authority exists.
+- **READY bank:** counts return to 46 To Do / 0 In Progress / 57 Done. All sixteen documentation children are unclaimed READY; no deficit remains.
+
+### Generation 633 Four-Cohort A04 Read-Only Discovery Claims
+
+- **Coordinator:** `Purple-2026-10-01T030250Z-g632-a04`; canonical ACK prefix `Purple-2026-10-01T030250Z-g632-a04/Kanban/g633`.
+- **Purple:** session `Purple-2026-10-01T030250Z-g632-a04`; token `EXR-012-A04-D01/Purple/g633/94cfbff154d24c1995e9f53d7f2790e0`; operation `DISCOVER-FREEZE:evidence-viewer`; branch `dispatch/EXR-012-A04-D01/Purple/g633`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D01-Purple-g633`; roles `Purple/Coworker-1..3`; exclusive roots `.artifacts/kanban/EXR-012-A04-D01/g633/Purple/Coworker-1/` through `Coworker-3/`.
+- **Silver:** session `Silver-20261001T030250Z-4ed34a64`; token `EXR-012-A04-D02/Silver/g633/dce9d627a3d34cdcbd617bfe85d90cb6`; operation `DISCOVER-FREEZE:exclusions-denominator`; branch `dispatch/EXR-012-A04-D02/Silver/g633`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D02-Silver-g633`; roles `Silver/Coworker-1..3`; exclusive roots `.artifacts/kanban/EXR-012-A04-D02/g633/Silver/Coworker-1/` through `Coworker-3/`.
+- **Gold:** session `Gold-20261001T030250Z-d1f44a4`; token `EXR-012-A04-D03/Gold/g633/b5f97eff9afb4668996281af83989a75`; operation `DISCOVER-FREEZE:status-semantics`; branch `dispatch/EXR-012-A04-D03/Gold/g633`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D03-Gold-g633`; roles `Gold/Coworker-1..3`; exclusive roots `.artifacts/kanban/EXR-012-A04-D03/g633/Gold/Coworker-1/` through `Coworker-3/`.
+- **White:** session `White/4ed34a64-d812-4e12-9109-89424f1449d3/2026-10-01T03:02:50Z`; token `EXR-012-A04-D04/White/g633/3aea68119efc4c7c80ed744fd2df461e`; operation `DISCOVER-FREEZE:raid-source-claims`; branch `dispatch/EXR-012-A04-D04/White/g633`; worktree `C:/Users/chhage/repos/sony/GISC/exchange-online-protection-dispatch-EXR-012-A04-D04-White-g633`; roles `White/Coworker-1..3`; exclusive roots `.artifacts/kanban/EXR-012-A04-D04/g633/White/Coworker-1/` through `Coworker-3/`.
+- **Lease:** heartbeat `2026-10-01T03:05:22.7050460Z`; review `2026-10-01T03:35:22.7050460Z`; stale review `2026-10-01T05:05:22.7050460Z`. Time alone never releases a claim.
+- **Physical isolation:** all four branches/worktrees and all twelve exclusive per-role evidence directories exist. Canonical authority is verified from the primary checkout because isolated worktrees intentionally start at published base `d1f44a4`.
+- **Boundary:** each role may read card/dependency/product/test/documentation surfaces and write sanitized evidence only to its exclusive root. Tracked files, governance, commits, remotes, network, tenant state, and sibling roots remain read-only.
+- **READY bank:** counts are 42 To Do / 4 In Progress / 57 Done. Twelve cards remain unclaimed READY; the exact four-card deficit is attributable to these active claims.
 
 ### Generation 632 White D04 Blocked Discovery Acceptance And Requeue
 

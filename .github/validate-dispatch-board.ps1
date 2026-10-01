@@ -190,9 +190,9 @@ $expectedReady = @(
 )
 $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
-Assert-Board ($eligible.Count -eq 16) "released White claim must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board ($eligible.Count -eq 16) "full release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No discovery claim may remain In Progress after generation-632 reconciliation.'
+Assert-Board ($inProgress.Count -eq 0) 'No discovery claim may remain In Progress after generation-634 reconciliation.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -231,7 +231,7 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 632) 'White blocked discovery release generation must be 632.'
+Assert-Board ($backlogGeneration -eq 634) 'A04 full-release generation must be 634.'
 Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
 Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
 Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 103; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
@@ -362,6 +362,22 @@ Assert-Board ($backlog -match '(?m)^Generation 632 White D04 blocked discovery a
 Assert-Board ($cohorts -match '(?m)^### Generation 632 White D04 Blocked Discovery Acceptance And Requeue\r?$') 'generation-632 registry release is missing.'
 Assert-Board ($cohorts -match [regex]::Escape('7DF8FFD8107F36BA196947B54FA535007DA5867DB78A3886117123C41157DDB1')) 'generation-632 independent result identity is missing.'
 Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 632:\*\*') 'generation-632 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 633 four-cohort A04 discovery claims: ') 'generation-633 backlog transaction is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 633 Four-Cohort A04 Read-Only Discovery Claims\r?$') 'generation-633 registry transaction is missing.'
+foreach ($operation in @(
+        'DISCOVER-FREEZE:evidence-viewer',
+        'DISCOVER-FREEZE:exclusions-denominator',
+        'DISCOVER-FREEZE:status-semantics',
+        'DISCOVER-FREEZE:raid-source-claims'
+    )) {
+    Assert-Board ($cohorts -match [regex]::Escape($operation)) "generation-633 operation is missing: $operation"
+}
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 633:\*\*') 'generation-633 compatibility activity is missing.'
+Assert-Board ($backlog -match '(?m)^Generation 634 A04 discovery reconciliation and full release: ') 'generation-634 backlog reconciliation is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 634 A04 Discovery Reconciliation And Full Release\r?$') 'generation-634 registry reconciliation is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('C2B7C814FF5D15E3B0070A2E0F3BDB7D43A329754C396BAA5E8811389D74C6')) 'generation-634 Purple review identity is missing.'
+Assert-Board ($cohorts -match [regex]::Escape('3AE376548E37EE53BC713DB79497D497F0D793CBE44D6FEC38CD52223D24F636')) 'generation-634 White review identity is missing.'
+Assert-Board ($kanban -match '(?m)^- \*\*2026-10-01 / compatibility synchronization to generation 634:\*\*') 'generation-634 compatibility activity is missing.'
 
 [pscustomobject]@{
     Generation                   = $backlogGeneration
