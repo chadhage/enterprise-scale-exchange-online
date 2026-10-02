@@ -2,12 +2,21 @@ BeforeAll {
     $script:root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:report = Join-Path $script:root 'scripts/New-ExchangeChangeEvidenceReport.ps1'
     $script:tenant = '11111111-2222-3333-4444-555555555555'
+    Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Function New-BaselineChangeStateCapture -Force -DisableNameChecking
 
     function New-EvidenceFixture {
         param([string[]]$Omit = @(), [string]$ApplyStatus = 'Succeeded')
         $directory = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
         $null = New-Item -ItemType Directory -Path (Join-Path $directory 'evidence') -Force
         $id = 'CHG-1001'
+        $prechangeCapture = New-BaselineChangeStateCapture -ChangeId $id -Tenant $script:tenant -Operation @(
+            @{
+                OperationId = 'Transport-01'
+                Command     = 'Set-TransportConfig'
+                Identity    = 'Default'
+                Before      = @{ Exists = $true; Value = @{ SmtpClientAuthenticationDisabled = $false } }
+            }
+        )
         $files = [ordered]@{
             Preview    = @{ Name = "preview-$($id).json"; Content = @{
                     ChangeId = $id; Tenant = $script:tenant; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = 'abc123'
@@ -15,7 +24,7 @@ BeforeAll {
                     Operation = @(@{ Sequence = 1; OperationId = 'Transport-01'; Command = 'Set-TransportConfig'; Identity = 'Default'; Before = @{ SmtpClientAuthenticationDisabled = $false }; After = @{ SmtpClientAuthenticationDisabled = $true } })
                 } }
             Approval   = @{ Name = "approval-$($id).json"; Content = @{ ChangeId = $id; ApprovalIdentity = 'approver@contoso.example'; ApprovalTimeUtc = '2026-01-01T01:00:00Z' } }
-            PreChange  = @{ Name = "prechange-$($id).json"; Content = @{ ChangeId = $id } }
+            PreChange  = @{ Name = "prechange-$($id).json"; Content = $prechangeCapture }
             Apply      = @{ Name = "apply-$($id).json"; Content = @{ ChangeId = $id; Status = $ApplyStatus; Fault = ''; CompletedOn = '2026-01-01T02:00:00Z'; Operation = @(@{ OperationId = 'Transport-01'; State = 'Succeeded'; Fault = '' }) } }
             Rollback   = @{ Name = "rollback-$($id).ps1"; Content = $null }
             PostChange = @{ Name = "postchange-$($id).json"; Content = @{ ChangeId = $id; Status = $ApplyStatus } }
@@ -213,6 +222,48 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Not -Match 'Every check passed'
     }
 
+    It 'reports <Status> evidence as unresolved instead of successful' -ForEach @(
+        @{ Status = 'Fail' }
+        @{ Status = 'Error' }
+        @{ Status = 'Manual' }
+        @{ Status = 'NotEntitled' }
+        @{ Status = 'Unverified' }
+        @{ Status = 'UnexpectedStatus' }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence\exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.Check = @(@{ ControlId = 'EXO-TEST'; Status = $Status; Reason = 'Test status' })
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeTrue
+        $result.Outcome | Should -BeExactly 'APPLIED - CONTROLS NEED ATTENTION'
+        $markdown | Should -Match 'Checks that need attention'
+    }
+
+    It 'treats approved exception and not-applicable evidence as resolved outcomes' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence\exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.Check = @(
+            @{ ControlId = 'EXO-EXCEPTION'; Status = 'ApprovedException'; Reason = 'Approved deviation' }
+            @{ ControlId = 'EXO-NA'; Status = 'NotApplicable'; Reason = 'Outside scope' }
+        )
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeTrue
+        $result.Outcome | Should -BeExactly 'APPLIED - EVIDENCE COLLECTED'
+        $markdown | Should -Match 'No unresolved checks; all results are Pass, ApprovedException, or NotApplicable'
+    }
+
     It 'does not accept a <Artifact> artifact whose <Field> belongs to another change' -ForEach @(
         @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'PreviewHash'; Value = ('0' * 64) }
         @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'ChangeId'; Value = 'CHG-2002' }
@@ -285,6 +336,29 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         # Assert
         $result.Complete | Should -BeTrue
         $result.OperationMismatch | Should -BeNullOrEmpty
+    }
+
+    It 'marks a PreChange capture with <Scenario> incomplete' -ForEach @(
+        @{ Scenario = 'another change'; Edit = { param($capture) $capture.ChangeId = 'CHG-2002' } }
+        @{ Scenario = 'another tenant'; Edit = { param($capture) $capture.Tenant = '99999999-2222-3333-4444-555555555555' } }
+        @{ Scenario = 'an edited entry'; Edit = { param($capture) $capture.Entry[0].Value.SmtpClientAuthenticationDisabled = $true } }
+        @{ Scenario = 'an unrelated operation'; Edit = { param($capture) $capture.Entry[0].OperationId = 'Other-01' } }
+        @{ Scenario = 'a missing hash'; Edit = { param($capture) $capture.Remove('Hash') } }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $prechangePath = Join-Path $root 'prechange-CHG-1001.json'
+        $capture = Get-Content -LiteralPath $prechangePath -Raw | ConvertFrom-Json -AsHashtable
+        & $Edit $capture
+        $capture | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $prechangePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.PreChangeMismatch | Should -Not -BeNullOrEmpty
+        $markdown | Should -Match 'PreChange'
     }
 
     It 'writes a Markdown summary of every artifact, operation and evidence result' {

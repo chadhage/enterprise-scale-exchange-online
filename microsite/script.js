@@ -713,12 +713,18 @@ function initializeScopeBuilder(root) {
     picker.addEventListener('change', event => {
         if (event.target.type !== 'checkbox') return;
         state.scopes = Array.from(picker.querySelectorAll('input:checked')).map(box => box.value);
+        root.dispatchEvent(new Event('scopebuilderchange'));
         render();
     });
-    root.querySelectorAll('input[name="presetChoice"]').forEach(radio => radio.addEventListener('change', () => { state.preset = radio.value; render(); }));
+    root.querySelectorAll('input[name="presetChoice"]').forEach(radio => radio.addEventListener('change', () => {
+        state.preset = radio.value;
+        root.dispatchEvent(new Event('scopebuilderchange'));
+        render();
+    }));
     [['presetDomain', 'domain'], ['presetGroup', 'group'], ['presetSecOps', 'secops']].forEach(([id, key]) => {
         element(id).addEventListener('input', event => {
             state[key] = event.target.value.trim();
+            root.dispatchEvent(new Event('scopebuilderchange'));
             render();
             element(id).focus();
         });
@@ -727,6 +733,7 @@ function initializeScopeBuilder(root) {
         const key = event.target.dataset.optionKey;
         if (!key || event.target.disabled) return;
         state.optional = event.target.checked ? [...new Set([...state.optional, key])] : state.optional.filter(item => item !== key);
+        root.dispatchEvent(new Event('scopebuilderchange'));
         render();
     });
     render();
@@ -814,6 +821,17 @@ function initializeWizard() {
             panels[currentStep].querySelector('h2').focus();
         }
     }
+
+    changeWizard.addEventListener('scopebuilderchange', () => {
+        for (let step = 1; step < completed.length; step += 1) {
+            completed[step] = false;
+        }
+        wizardFinished = false;
+        if (currentStep > 1) {
+            currentStep = 1;
+        }
+        renderWizard();
+    });
 
     panels.forEach((panel, index) => {
         panel.querySelector('[data-wizard-complete]').addEventListener('change', event => {

@@ -186,6 +186,14 @@ Describe 'Microsite supported content boundary' {
         $script:index | Should -Match 'typed domains and addresses are not saved'
     }
 
+    It 'invalidates Step 2 and later wizard confirmations when builder inputs change' {
+        $script:script | Should -Match "dispatchEvent\(new Event\('scopebuilderchange'\)\)"
+        $script:script | Should -Match "changeWizard\.addEventListener\('scopebuilderchange'"
+        $script:script | Should -Match 'for \(let step = 1; step < completed\.length; step \+= 1\)'
+        $script:script | Should -Match 'if \(currentStep > 1\) \{\s*currentStep = 1;'
+        $script:script | Should -Match 'wizardFinished = false;'
+    }
+
     It 'does not expose quarantined scripts or schema names' {
         $script:content | Should -Not -Match 'Deploy-MDOBaseline\.ps1'
         $script:content | Should -Not -Match 'Validate-MDOConfiguration\.ps1'

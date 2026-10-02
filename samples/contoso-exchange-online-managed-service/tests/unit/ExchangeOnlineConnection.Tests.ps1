@@ -191,6 +191,26 @@ Describe 'ExchangeOnlineBaseline.Connection' {
             @($supported | Where-Object { -not $map.Contains($_) }) | Should -BeNullOrEmpty
         }
 
+        It 'maps every read dependency for scopes that inspect multiple object types' {
+            # Arrange
+            $requiredByScope = @{
+                Forwarding = @('Get-InboxRule', 'Get-Mailbox', 'Get-AcceptedDomain')
+                OrganizationAllowList = @('Get-HostedConnectionFilterPolicy', 'Get-HostedContentFilterPolicy')
+                ConnectorTrust = @('Get-InboundConnector', 'Get-OutboundConnector')
+                ApplicationAssignmentScope = @('Get-ServicePrincipal', 'Get-ManagementScope', 'Get-ManagementRoleAssignment')
+                ReportSubmission = @('Get-Mailbox', 'Get-ReportSubmissionPolicy', 'Get-ReportSubmissionRule')
+                SharingPolicyBinding = @('Get-SharingPolicy', 'Get-Mailbox')
+            }
+            $map = Get-ExchangeScopeReadCommand
+            # Act / Assert
+            foreach ($scope in $requiredByScope.Keys) {
+                foreach ($command in $requiredByScope[$scope]) {
+                    @($map[$scope]) | Should -Contain $command
+                    @(Get-ExchangeScopeReadCommand -Scope $scope) | Should -Contain $command
+                }
+            }
+        }
+
         It 'refuses a Security & Compliance session in another tenant that apply would refuse later' {
             # Arrange
             $eop = New-TestSession -TenantId '99999999-2222-3333-4444-555555555555'

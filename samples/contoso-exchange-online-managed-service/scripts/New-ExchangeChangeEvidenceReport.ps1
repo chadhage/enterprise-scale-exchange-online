@@ -108,6 +108,7 @@ $missing = @($artifacts | Where-Object { -not $_.Present } | ForEach-Object Arti
 
 $preview = $documents['Preview']
 $approval = $documents['Approval']
+$prechange = $documents['PreChange']
 $apply = $documents['Apply']
 $post = $documents['PostChange']
 $applyStatus = [string](Get-RecordValue $apply 'Status')
@@ -115,7 +116,7 @@ $postStatus = [string](Get-RecordValue $post 'Status')
 
 $checks = @(Get-RecordValue $evidence 'Check' | Where-Object { $null -ne $_ })
 $noEvidenceChecks = $checks.Count -eq 0
-$statusOrder = 'Pass', 'Fail', 'Error', 'Manual', 'ApprovedException', 'NotEntitled'
+$statusOrder = 'Pass', 'Fail', 'Error', 'Manual', 'ApprovedException', 'NotApplicable', 'NotEntitled', 'Unverified'
 $statusCount = [ordered]@{}
 foreach ($status in $statusOrder) { $statusCount[$status] = 0 }
 foreach ($check in $checks) {
@@ -123,7 +124,8 @@ foreach ($check in $checks) {
     if (-not $statusCount.Contains($status)) { $statusCount[$status] = 0 }
     $statusCount[$status]++
 }
-$needsAttention = @($checks | Where-Object { [string](Get-RecordValue $_ 'Status') -ne 'Pass' })
+$acceptedEvidenceStatuses = @('Pass', 'ApprovedException', 'NotApplicable')
+$needsAttention = @($checks | Where-Object { [string](Get-RecordValue $_ 'Status') -cnotin $acceptedEvidenceStatuses })
 
 # Evidence only counts for this change when it was collected for the previewed tenant, profile and configuration.
 $normalizeHash = { param($Value) ([string]$Value -replace '(?i)^sha256:', '').Trim().ToLowerInvariant() }
@@ -150,6 +152,45 @@ $previewSha256 = [string]($artifacts | Where-Object Artifact -EQ 'Preview' | For
 $previewTenant = ([string](Get-RecordValue $preview 'Tenant')).Trim()
 $previewConfiguration = & $normalizeHash (Get-RecordValue $preview 'ConfigurationHash')
 $operations = @(Get-RecordValue $preview 'Operation' | Where-Object { $null -ne $_ })
+$preChangeMismatch = @()
+if ($null -ne $prechange) {
+    if ([string](Get-RecordValue $prechange 'ChangeId') -cne $ChangeId) { $preChangeMismatch += 'PreChange ChangeId' }
+    $captureTenant = ([string](Get-RecordValue $prechange 'Tenant')).Trim()
+    if ([string]::IsNullOrEmpty($captureTenant) -or $captureTenant -cne $previewTenant) { $preChangeMismatch += 'PreChange Tenant' }
+    if ([string](Get-RecordValue $prechange 'Algorithm') -cne 'SHA256') { $preChangeMismatch += 'PreChange Algorithm' }
+    $captureEntries = @(Get-RecordValue $prechange 'Entry' | Where-Object { $null -ne $_ })
+    if ($captureEntries.Count -eq 0) {
+        $preChangeMismatch += 'PreChange Entry'
+    }
+    else {
+        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Function ConvertTo-CanonicalJson -ErrorAction Stop
+        $captureHash = [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData(
+                [System.Text.UTF8Encoding]::new($false).GetBytes((ConvertTo-CanonicalJson -InputObject $captureEntries))
+            )
+        ).ToLowerInvariant()
+        $sealedCaptureHash = [string](Get-RecordValue $prechange 'Hash')
+        if ([string]::IsNullOrWhiteSpace($sealedCaptureHash) -or $sealedCaptureHash -cne $captureHash) {
+            $preChangeMismatch += 'PreChange Hash'
+        }
+        $capturedIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($entry in $captureEntries) {
+            $operationId = [string](Get-RecordValue $entry 'OperationId')
+            if ([string]::IsNullOrWhiteSpace($operationId) -or -not $capturedIds.Add($operationId)) {
+                $preChangeMismatch += 'PreChange Operations'
+                break
+            }
+        }
+        $previewIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($operation in $operations) {
+            $operationId = [string](Get-RecordValue $operation 'OperationId')
+            if (-not [string]::IsNullOrWhiteSpace($operationId)) { $null = $previewIds.Add($operationId) }
+        }
+        if ($capturedIds.Count -ne $previewIds.Count -or @($capturedIds | Where-Object { -not $previewIds.Contains($_) }).Count -gt 0) {
+            $preChangeMismatch += 'PreChange Operations'
+        }
+    }
+}
 $applyOperations = @(Get-RecordValue $apply 'Operation' | Where-Object { $null -ne $_ })
 $previewOperationIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
 $stateById = [System.Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
@@ -212,9 +253,10 @@ $artifactMismatch = @(
 )
 
 $complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
-    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
+    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and
+    $preChangeMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
-elseif (($statusCount['Fail'] + $statusCount['Error']) -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
+elseif ($needsAttention.Count -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
 
 $md = [System.Text.StringBuilder]::new()
@@ -276,6 +318,10 @@ if ($artifactMismatch.Count -gt 0) {
     Add-Line "These artifact fields do not belong to this change: $($artifactMismatch -join ', '). Each file must name this change and tenant and carry this preview's SHA-256. Do not rename or edit change artifacts; use the files the stages wrote for this change."
     Add-Line
 }
+if ($preChangeMismatch.Count -gt 0) {
+    Add-Line "The PreChange recovery capture is invalid for this change: $($preChangeMismatch -join ', '). Use the sealed capture written by Apply; do not edit or rename recovery artifacts."
+    Add-Line
+}
 if ($operationMismatch.Count -gt 0) {
     Add-Line "Apply operation results do not match the preview: $($operationMismatch -join '; ')."
     Add-Line
@@ -307,10 +353,10 @@ if ($noEvidenceChecks) {
     Add-Line 'No evidence checks were found; evidence collection is incomplete.'
 }
 elseif ($needsAttention.Count -eq 0) {
-    Add-Line 'Every check passed.'
+    Add-Line 'No unresolved checks; all results are Pass, ApprovedException, or NotApplicable.'
 }
 else {
-    Add-Line '### Checks that did not pass'
+    Add-Line '### Checks that need attention'
     Add-Line
     Add-Line '| Control | Status | Reason |'
     Add-Line '| --- | --- | --- |'
@@ -341,11 +387,12 @@ Add-Line '## Next actions'
 Add-Line
 if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
 if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
+if ($preChangeMismatch.Count -gt 0) { Add-Line '- Restore the original sealed PreChange capture from this Apply; do not edit or substitute it.' }
 if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Apply receipt so it contains exactly one successful result for every preview operation.' }
 if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
 if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
-if ($needsAttention.Count -gt 0) { Add-Line "- Assign an owner to each of the $($needsAttention.Count) checks that did not pass." }
+if ($needsAttention.Count -gt 0) { Add-Line "- Resolve or assign an owner to each of the $($needsAttention.Count) unresolved checks." }
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
 Add-Line '- Disconnect: `Disconnect-ExchangeOnline -Confirm:$false`.'
 
@@ -371,6 +418,7 @@ if ($PassThru) {
         BindingMismatch = $bindingMismatch
         ArtifactMismatch = $artifactMismatch
         OperationMismatch = $operationMismatch
+        PreChangeMismatch = $preChangeMismatch
         EvidenceCheckCount = $checks.Count
         StatusCount     = [pscustomobject]$statusCount
     }
