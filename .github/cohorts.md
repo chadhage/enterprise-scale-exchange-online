@@ -35,9 +35,36 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 661
+Allocation generation: 664
 
-Allocation readiness: **BOARD READY — generation 661**. Platinum D01 is safely requeued after the affected-gate NACK. All workers are quiescent, no active claim or reservation exists, and sixteen documentation children are unclaimed READY.
+Allocation readiness: **BOARD READY — generation 664**. Platinum D01-D03 are safely requeued after independent-review NACKs. All workers are quiescent, no active claim or reservation exists, and sixteen documentation children are unclaimed READY.
+
+### Generation 664 Platinum Three-Card Review NACK, Release And Requeue
+
+- **D01 NACK:** focused 18/18, but the reviewer found zero genuine negative mutations across the declared 17 negative rows. Affected executed 6,310, passed 5,476, failed 834, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **D02 NACK:** focused 10/10. Affected executed 6,302, passed 5,469, failed 833, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **D03 NACK:** focused 5/5, but negative coverage was not exhaustive for extra wrong paths, undeclared hidden inputs, and arbitrary stale parameters. Affected executed 6,297, passed 5,463, failed 834, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **Release:** preserve every g662 branch/worktree and owner/reviewer evidence root read-only; all workers are quiescent. Release all g662 tokens, leases, tracked/evidence reservations, reviewer grants, and worker bindings. D01-D03 return In Progress -> To Do/unassigned. No merge, commit, push, publication, waiver, acceptance, or Done transition.
+- **State:** counts 46 To Do / 0 In Progress / 57 Done; READY 16. The failed-container identity is `ExchangeEvidenceSigning.Tests.ps1`; preserved packets remain the authority for exact output and hashes.
+
+### Generation 663 Platinum Independent-Review Handoff
+
+- **Accepted owner inputs:** D01 focused 18/18, D02 focused 10/10, D03 focused 5/5; each owner reported zero other outcomes, a clean scoped diff, no unauthorized tracked path, no live action, and a quiescent handoff. These are review inputs, not acceptance.
+- **D01 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D01-by-Coworker-3`; reviewer `Platinum/Coworker-3`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D01/g662/Platinum/Coworker-3/review-g663/`.
+- **D02 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D02-by-Coworker-1`; reviewer `Platinum/Coworker-1`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D02-Platinum-Coworker-2-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D02/g662/Platinum/Coworker-1/review-g663/`.
+- **D03 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D03-by-Coworker-2`; reviewer `Platinum/Coworker-2`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D03-Platinum-Coworker-3-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D03/g662/Platinum/Coworker-2/review-g663/`.
+- **Execution/barrier:** verify exact tracked scope, frozen identities, negative-first inventory and evidence before commands. Run focused once; only on exact focused success run the full managed-service affected suite once with zero retry, then `git diff --check`. Inspect total/passed/failed/skipped/not-run and failed containers. Any mismatch is a NACK and stops completion. Reviewers may write only their evidence root and may not edit tracked files, owner evidence, governance, claims, or reservations.
+- **State:** g662 tokens, branches, worktrees, and tracked reservations remain active; owners are quiescent during review. Counts remain 43/3/57 and READY 13.
+
+### Generation 662 Platinum Atomic Three-Card Claim
+
+- **Writer/run:** sole canonical writer `Platinum-root-coordinator/Kanban`; run `Platinum-g661-20261001T194727-0400`; observed generation 661 and atomically advanced it to 662 after rereading canonical state.
+- **Eligibility/conflict decision:** `EXR-012-A01-D01`, `EXR-012-A01-D02`, and `EXR-012-A01-D03` were To Do/unassigned, dependency-complete, offline-authoring eligible, and free of active claims. Their six tracked writable paths and three evidence roots are pairwise disjoint. Preserved g644/g622 and other rejected candidates remain read-only and confer no authority.
+- **D01 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D01`; token `EXR-012-A01-D01/Platinum/g662/4ed34a64d8124e12910989424f1449d1`; owner `Platinum/Coworker-1`; operation `DOC-3W:readme-operator-entry`; branch `dispatch/EXR-012-A01-D01/Platinum/Coworker-1/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g662`; paths `samples/contoso-exchange-online-managed-service/README.md` and `samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D01/g662/Platinum/Coworker-1/`; focused expected 18 negatives/positive cases total and final 18/18; affected profile zero-other-outcome gate.
+- **D02 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D02`; token `EXR-012-A01-D02/Platinum/g662/4ed34a64d8124e12910989424f1449d2`; owner `Platinum/Coworker-2`; operation `DOC-3W:solution-summary`; branch `dispatch/EXR-012-A01-D02/Platinum/Coworker-2/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D02-Platinum-Coworker-2-g662`; paths `SOLUTION_SUMMARY.md` and `samples/contoso-exchange-online-managed-service/tests/unit/SolutionSummary.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D02/g662/Platinum/Coworker-2/`; focused expected 9 negatives plus 1 positive and final 10/10; affected profile zero-other-outcome gate.
+- **D03 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D03`; token `EXR-012-A01-D03/Platinum/g662/4ed34a64d8124e12910989424f1449d3`; owner `Platinum/Coworker-3`; operation `DOC-3W:implementation-guide`; branch `dispatch/EXR-012-A01-D03/Platinum/Coworker-3/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D03-Platinum-Coworker-3-g662`; paths `samples/contoso-exchange-online-managed-service/docs/IMPLEMENTATION-GUIDE.md` and `samples/contoso-exchange-online-managed-service/tests/unit/ImplementationGuideDocumentation.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D03/g662/Platinum/Coworker-3/`; focused expected 4 negatives plus 1 positive and final 5/5; affected profile zero-other-outcome gate.
+- **Lease/barriers:** ACK time 2026-10-01T19:48:07Z; heartbeat due 2026-10-01T20:18:07Z; stale-review boundary 2026-10-01T21:48:07Z. Each owner is sole writer in its worktree. Author all negatives first, capture intended-red evidence, then add exactly one positive per behavioral unit before documentation implementation. A different quiescent peer must independently verify focused then affected results. Workers may not edit governance, use live/network/tenant/credential access, or commit/push/publish.
+- **Evidence schema/counts:** canonical `.artifacts/dispatch/<card>/g662/Platinum/<coworker>/` JSON schema controls and reconciles the stale subordinate compatibility wording. Counts are 43 To Do / 3 In Progress / 57 Done; READY 13. The three-card READY deficit is recorded rather than fabricating replacements.
 
 ### Generation 661 Platinum D01 Affected NACK, Release And Requeue
 

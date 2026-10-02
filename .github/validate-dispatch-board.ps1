@@ -155,16 +155,16 @@ $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest'
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
 Assert-Board ($manifest.Count -eq 46) "expected 46 manifest entries, found $($manifest.Count)."
-$todoIds = @($todo.Id | Sort-Object)
+$unfinishedIds = @(($todo.Id + $inProgress.Id) | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
-Assert-Board (($todoIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match To Do IDs.'
+Assert-Board (($unfinishedIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match unfinished executable IDs.'
 
 foreach ($entry in $manifest) {
     Assert-Board $profiles.ContainsKey($entry.Profile) "$($entry.Id) profile $($entry.Profile) does not resolve."
     foreach ($field in 'Dependency', 'Reservation', 'ReadOnly', 'Validation') {
         Assert-Board (-not [string]::IsNullOrWhiteSpace($entry.$field)) "$($entry.Id) field $field is empty."
     }
-    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT)') "$($entry.Id) eligibility is missing."
+    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT|CLAIMED:[^`]+)') "$($entry.Id) eligibility or claim binding is missing."
     Assert-Board ($entry.Validation -match 'F=' -and $entry.Validation -match 'A=') "$($entry.Id) focused/affected binding is incomplete."
     $profile = $profiles[$entry.Profile]
     foreach ($field in 'envelope', 'validation', 'expected', 'evidence', 'integration', 'abort', 'handoff') {
@@ -190,9 +190,9 @@ $expectedReady = @(
 )
 $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
-Assert-Board ($eligible.Count -eq 16) "Platinum D01 release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board ($eligible.Count -eq 16) "Platinum three-card release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No card may remain In Progress after the Platinum D01 release.'
+Assert-Board ($inProgress.Count -eq 0) 'No card may remain In Progress after the generation-664 release.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -231,7 +231,26 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 661) 'Platinum D01 affected-NACK release generation must be 661.'
+Assert-Board ($backlogGeneration -eq 664) 'Platinum three-card review-NACK release generation must be 664.'
+Assert-Board ($backlog -match 'Generation 664 Platinum three-card review NACK, release, and safe requeue') 'Platinum generation-664 backlog release record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 664 Platinum Three-Card Review NACK, Release And Requeue\r?$') 'Platinum generation-664 registry release record is missing.'
+Assert-Board ($backlog -match '5,476' -and $backlog -match '5,469' -and $backlog -match '5,463') 'Platinum generation-664 affected result counts are missing.'
+Assert-Board ($backlog -match 'Generation 663 Platinum independent-review handoff') 'Platinum generation-663 backlog review record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 663 Platinum Independent-Review Handoff\r?$') 'Platinum generation-663 registry review record is missing.'
+foreach ($reviewAck in @(
+        'review-EXR-012-A01-D01-by-Coworker-3',
+        'review-EXR-012-A01-D02-by-Coworker-1',
+        'review-EXR-012-A01-D03-by-Coworker-2'
+    )) {
+    Assert-Board ($backlog -match [regex]::Escape("Platinum-root-coordinator/Kanban/g663/$reviewAck")) "$reviewAck backlog ACK is missing."
+    Assert-Board ($cohorts -match [regex]::Escape("Platinum-root-coordinator/Kanban/g663/$reviewAck")) "$reviewAck registry ACK is missing."
+}
+Assert-Board ($backlog -match 'Generation 662 Platinum three-card atomic claim') 'Platinum generation-662 backlog claim record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 662 Platinum Atomic Three-Card Claim\r?$') 'Platinum generation-662 registry claim record is missing.'
+foreach ($claimedId in $claimedDiscovery) {
+    Assert-Board ($backlog -match [regex]::Escape("Platinum-root-coordinator/Kanban/g662/claim-$claimedId")) "$claimedId backlog ACK is missing."
+    Assert-Board ($cohorts -match [regex]::Escape("Platinum-root-coordinator/Kanban/g662/claim-$claimedId")) "$claimedId registry ACK is missing."
+}
 Assert-Board ($backlog -match 'Generation 661 Platinum D01 affected NACK, release, and safe requeue') 'Platinum D01 generation-661 release record is missing.'
 Assert-Board ($cohorts -match '(?m)^### Generation 661 Platinum D01 Affected NACK, Release And Requeue\r?$') 'Platinum D01 generation-661 registry release is missing.'
 Assert-Board ($backlog -match '5,477' -and $backlog -match '833' -and $backlog -match 'one failed container') 'Platinum D01 generation-661 affected counts are missing.'
