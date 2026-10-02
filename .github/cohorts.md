@@ -37,9 +37,66 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 672
+Allocation generation: 679
 
-Allocation readiness: **BOARD READY — generation 672**. REG-001 is safely requeued after the preserved 67/69 focused NACK; all Platinum roles are quiescent and all g665 ownership is released. Sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+Allocation readiness: **BOARD READY — generation 679**. REG-001 is safely requeued after the affected NACK; all roles are quiescent and no active claim or reservation exists. Sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+
+### Generation 679 Purple REG-001 Affected NACK, Release And Requeue
+
+- **Focused acceptance:** C3 independently passed 70/70 with zero other outcomes/containers, stable hashes, retry 0 and exit 0.
+- **Affected NACK:** one retry-0 complete invocation executed 6,293, passed 4,751, failed 1,542, skipped/not-run/inconclusive 0, produced 62 failed containers, and exited 1. `git diff --check` passed.
+- **Decision:** NACK completion; no waiver, narrowing, baseline subtraction or scoped-success substitution.
+- **Preservation/release:** preserve branch `dispatch/REG-001/Purple/Coworker-1/g673`, worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673`, the four-file candidate and every role evidence root read-only. Quiesce C1/C2/C3; release token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`, lease, tracked/evidence reservations and role bindings.
+- **State:** REG-001 returns In Progress -> To Do/unassigned as `WAIT-SUITE`; Silver D02 affinity remains queue-only; all cohorts are read-only. Counts are 47/0/57, with sixteen syntactic READY and zero acceptance-safe downstream cards.
+
+### Generation 678 Purple REG-001 Post-Run NACK And C3 Verification
+
+- **NACK:** preserve C2's retry-0 70/70 failed-container attempt, but reject it as final-state evidence because C2 corrected a misplaced EXO-001 conversion after that invocation by moving it exclusively into EXO-009.
+- **Frozen final state:** module `7E97F72EC3A6E87F3C84C700FFA268C788698EAB6B08032CB906BCAB8570E8EE`; entrypoint `2C94AF6F19E22FDA812C4643F7D9C3D26A0D5C1F1478B5918FFAE585D2F163C6`; test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`; fixture `56FECB60455AA2E1E238E2C253FDB8774E648C53D9BD4401A75F55DD310F3F90`.
+- **ACK/grant:** `root-canonical/Kanban/g678/preserve-g677-NACK-and-grant-C3-fresh-verification` quiesces C1/C2 and makes all tracked inputs read-only. C3 may write only `.artifacts/dispatch/REG-001/g678/Purple/Coworker-3/`.
+- **Execution:** one retry-0 focused invocation; only if it is 70/70 with zero other outcomes/containers and stable hashes, one retry-0 complete managed-service affected invocation. Record exact commands, counts, exits, timestamps, hashes and `git diff --check`.
+- **Boundary/state:** no tracked edit, retry, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 677 Purple REG-001 Accepted Red And C2 Repair
+
+- **Accepted red:** retry-0 focused executed 70, passed 67 and failed only three intended ApprovedException-vs-Pass behaviors, with zero skipped/not-run. Freeze helper `56FECB60455AA2E1E238E2C253FDB8774E648C53D9BD4401A75F55DD310F3F90`, test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`, module `077727F250E50C68B1CEC2284C7C559E2712A1B2930D0D06544AF59E5EDD1677`, and entrypoint `2C94AF6F19E22FDA812C4643F7D9C3D26A0D5C1F1478B5918FFAE585D2F163C6`.
+- **ACK/grant:** `root-canonical/Kanban/g677/accept-red-and-grant-C2-approved-exception-repair` quiesces C1 and grants C2 only the reserved Common module and public entrypoint for the smallest ApprovedException preservation/propagation repair covering collection, gate and the positive exception path.
+- **Execution:** C2 may run focused once at retry 0, record fresh g677 evidence, then quiesce. C3 remains blocked.
+- **Boundary/state:** no test/fixture/other path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 676 Purple REG-001 C2 Checkpoint And C1 Fixture Grant
+
+- **Checkpoint:** preserve C2's bounded Common-module/entrypoint repair. Collection now creates and parses the evidence file while signing remains fail-closed and ApprovedException handling is retained.
+- **Focused NACK:** retry-0 remained 70 failed of 70 with one failed container because CAS mailbox/plan EWS fixture values are disabled/empty and operational CMS fixtures lack authenticated signing-time attributes.
+- **ACK/grant:** `root-canonical/Kanban/g676/preserve-C2-repair-and-grant-C1-fixture-prerequisites` quiesces C2 and grants C1 only `tests/helpers/ExchangeGovernanceRawFixture.ps1` for the smallest CAS and authenticated-signing-time alignment, followed by one retry-0 focused run.
+- **Barrier/state:** C3 remains blocked. No test/script/other path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 675 Purple REG-001 Fixture Acceptance And C2 Repair
+
+- **C1 acceptance:** accept the fixture-only alignment at helper `E7C4C559C37B91274091C38CAD32F3730BB62E5F30E30C4FC14B5956E8AC1937` and test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`; the retained-setting refusal is resolved. Preserve the 70/70 failed-container packet because collection did not create `collected\exchange-online-evidence.json`.
+- **ACK/grant:** `root-canonical/Kanban/g675/accept-C1-fixture-and-grant-C2-evidence-creation-repair` retains token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`, quiesces C1, and grants C2 only `scripts/ExchangeOnlineBaseline.Common.psm1` and `scripts/Test-ExchangeOnlineBaseline.ps1` for the smallest offline collection/evidence-creation repair.
+- **Execution:** C2 may run focused once at retry 0 after the repair, record fresh g675 evidence, then quiesce. C3 remains blocked.
+- **Boundary/state:** no other tracked path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 674 Purple REG-001 Intended-Red NACK And Fixture Repair
+
+- **NACK:** preserve C1's added collection negative and retry-0 evidence, but reject the 70/70 result as intended-red acceptance because one failed container (`EXO-009.ewsAllowedAppIds` not retained) masked executable assertion evaluation.
+- **ACK/grant:** `root-canonical/Kanban/g674/nack-C1-container-and-grant-bounded-fixture-alignment` retains token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`. C1 may write only `samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeGovernanceRawFixture.ps1`, then run one fresh retry-0 focused invocation and quiesce.
+- **Barrier:** C2/C3 remain blocked. No other tracked path, script edit, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority.
+- **State:** counts remain 46/1/57; sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+
+### Generation 673 Four-Cohort Atomic Allocation And Purple REG-001 Claim
+
+- **Barrier:** read-only proposals from `Purple/Kanban`, `Silver/Kanban`, `Gold/Kanban`, and `White/Kanban` all observed generation 672 and identified REG-001 as the sole conditional executable candidate. Registration order Purple, Silver, Gold, White breaks the equal-load tie.
+- **ACK/token:** `root-canonical/Kanban/g673/atomic-four-cohort-claim-REG-001-Purple`; `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`.
+- **Isolation:** branch `dispatch/REG-001/Purple/Coworker-1/g673`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673`.
+- **C1 grant:** `Purple/Coworker-1` exclusively owns `tests/unit/ExchangeEvidenceSigning.Tests.ps1` and `tests/helpers/ExchangeGovernanceRawFixture.ps1` under the managed-service root for negative-first authoring and one intended-red focused invocation.
+- **C2 barrier:** `Purple/Coworker-2` reserves `scripts/ExchangeOnlineBaseline.Common.psm1` and `scripts/Test-ExchangeOnlineBaseline.ps1` but receives no write authority until the root accepts C1 red evidence.
+- **C3 barrier:** `Purple/Coworker-3` has no tracked write authority and independently verifies only after all writers quiesce and a later ACK grants execution.
+- **Evidence roots:** `.artifacts/dispatch/REG-001/g673/Purple/Coworker-1/`, `.artifacts/dispatch/REG-001/g673/Purple/Coworker-2/`, and `.artifacts/dispatch/REG-001/g673/Purple/Coworker-3/`. Frozen input hashes are test `84B8052338A08FB8F78ED0793DC0B7A988623BD2BD7A315A85CA7D2C04B50A69`, fixture `FFB59E638878B26286180CE618D06C1DFE2C9361A1B56534B7853D4FCC71E9A0`, module `248797118241E828F6531D0C3C9D97511C2163F575F411178EABEFF1E6358F04`, and entrypoint `3C29657E6751995901375A3B24645F4F3A6F4C6E799565EB32E59BA31324D79A`.
+- **Other cohorts:** Silver retains D02 documentation queue affinity; Silver, Gold, and White have no token, lease, tracked/evidence reservation, worktree, or worker authority and remain read-only.
+- **Supersession:** Platinum g665 branch/worktree/evidence remain immutable read-only history. Generation 672 released all g665 ownership, leases, role bindings and reservations; no g665 artifact may be overwritten or reused as g673 evidence.
+- **State/gates:** REG-001 moves To Do -> In Progress. Counts are 46/1/57. Focused and affected each require one retry-0 run with total=passed and zero other outcomes/containers; affected runs only after focused success. No waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority.
 
 ### Generation 672 REG-001 Focused NACK, Release And Safe Requeue
 

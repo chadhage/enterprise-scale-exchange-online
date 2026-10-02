@@ -2,10 +2,10 @@
 
 > **Compatibility view only.** `.github/backlog.md` is the canonical remediation inventory and status/evidence authority; `.github/cohorts.md` is the canonical allocation, claim, reservation, and writer-coordination authority. This file preserves the former Kanban presentation and pull-ready rules, but it cannot add executable inventory, grant a claim, or override either canonical file.
 
-Board updated: 2026-10-02 (generation-672 REG-001 focused NACK and safe requeue)
+Board updated: 2026-10-02 (generation-679 Purple REG-001 affected NACK and safe requeue)
 Canonical source: `.github/backlog.md`
 Allocation source: `.github/cohorts.md`
-Allocation generation mirrored: 672
+Allocation generation mirrored: 679
 WIP limit: one In Progress card per cohort, swarmed by exactly three Coworker roles. Cards owned by other parties may run concurrently only through the root writer's atomic multi-cohort allocation.
 
 Conventions:
@@ -22,11 +22,11 @@ Conventions:
 | In Progress | 0 |
 | Done | 57 |
 
-Canonical executable cards: 104; canonical summary parents excluded: 28. Compatibility generation: 672. The legacy detail retained below is not an inventory and must not be counted.
+Canonical executable cards: 104; canonical summary parents excluded: 28. Compatibility generation: 679. The legacy detail retained below is not an inventory and must not be counted.
 
 ## Dispatch and allocation contract
 
-Compatibility readiness: **mirrored only; BOARD READY at generation 672**. REG-001 is safely requeued `WAIT-SUITE` after a preserved 67/69 focused NACK with no active claim; sixteen documentation children remain syntactically READY but acceptance-unsafe while the affected suite is red.
+Compatibility readiness: **mirrored only; BOARD READY at generation 679**. REG-001 is safely requeued after focused 70/70 but affected 4,751/6,293 with 1,542 failures and 62 failed containers. No active claim exists; sixteen documentation children remain syntactically READY but acceptance-unsafe.
 
 1. **Atomic pull claim and canonical writer.** A cohort proposes `card ID + cohort + C1/C2/C3 identities + observed generation + writable paths + evidence root`. The shared root canonical writer rereads `.github/backlog.md` and `.github/cohorts.md`, computes all active cohort affinities/reservations/claims in one allocation generation, checks status, dependencies, WIP, owner class, and every reservation, then records generation-bound ACKs in the same coordinated edit. This compatibility view is synchronized afterward and cannot acknowledge a claim.
 2. **Claim expiry and requeue.** Heartbeat is 30 minutes. A claim becomes stale after 120 minutes without an acknowledged heartbeat. Expiry suspends write authority immediately, but requeue occurs only after the writer confirms all prior workers and worktrees are quiescent, records preserved evidence/worktree disposition, releases reservations, returns the card to To Do, and increments generation. Ambiguity stops conflicting work; elapsed time alone never proves quiescence.
@@ -41,6 +41,13 @@ Dependency-safe force rank for the acceptance-recovery route: **1 SCOPE-001; 2 R
 
 ## Activity log
 
+- **2026-10-02 / generation-679 Purple affected NACK and release:** accept focused 70/70, NACK affected 4,751/6,293 with 1,542 failures and 62 failed containers, preserve the candidate/evidence, release all authority, and requeue REG-001. Counts return to 47/0/57.
+- **2026-10-02 / generation-678 Purple post-run NACK:** preserve C2's failed attempt, freeze the corrected final inputs, quiesce writers, and grant C3 one focused-then-affected zero-retry verification. Counts remain 46/1/57.
+- **2026-10-02 / generation-677 Purple accepted red:** accept 67/70 with only three intended ApprovedException failures, freeze inputs, and grant C2 only the two scripts plus one focused run. Counts remain 46/1/57.
+- **2026-10-02 / generation-676 Purple C2 checkpoint:** preserve the evidence-creation repair, NACK the masked 70/70 container result, and grant C1 only CAS/authenticated-signing-time fixture alignment plus one focused run. Counts remain 46/1/57.
+- **2026-10-02 / generation-675 Purple fixture acceptance:** accept C1's retained-template alignment, preserve the next failed-container packet, and grant C2 only the two reserved scripts for evidence creation plus one focused run. Counts remain 46/1/57.
+- **2026-10-02 / generation-674 Purple intended-red NACK:** preserve the added negative but reject 0/70 with one failed container as accepted-red evidence. Grant C1 only the raw fixture alignment and one fresh focused attempt; keep C2/C3 blocked. Counts remain 46/1/57.
+- **2026-10-02 / generation-673 atomic four-cohort allocation:** accept all four read-only proposals and assign sole foundational REG-001 ownership to Purple by registration-order tie-break. Preserve Platinum g665 as immutable history, bind fresh g673 isolation/evidence, keep Silver/Gold/White read-only, and move REG-001 To Do -> In Progress. Counts 46/1/57.
 - **2026-10-02 / generation-672 REG-001 NACK and release:** preserve the g665 candidate and all role evidence. Focused remains 67/69 with two ApprovedException failures, zero failed containers and retry 0; affected was withheld. Release all ownership and return REG-001 to To Do `WAIT-SUITE`; counts 47/0/57.
 - **2026-10-02 / generation-671 REG-001 verifier NACK:** C3 focused is 67/69 with two ApprovedException failures, zero failed containers and retry 0; affected withheld. Preserve C3 evidence and grant C2 only the reserved Common module for that defect.
 - **2026-10-02 / generation-670 REG-001 verifier handoff:** preserve and NACK C2's wrong-checkout g669 invocation. C2 is quiescent; grant C3 absolute-worktree focused validation and, only after green, one zero-retry full managed-service suite.
