@@ -209,6 +209,23 @@ Context 'Signed TABL governance binding' {
         Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
     }
 
+    It 'refuses apply in a session for another tenant even when the connection pre-flight is skipped' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $arguments.SkipConnectionCheck | Should -BeTrue
+        $original = ${function:global:Get-ConnectionInformation}
+        function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = '11111111-1111-1111-1111-111111111111'; State = 'Connected' } }
+        try {
+            # Act
+            $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+            # Assert
+            $invoke | Should -Throw '*ChangeSessionTenantMismatch*'
+            $global:adapterCalls.Count | Should -Be 0
+            Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
+        }
+        finally { Set-Item -Path Function:global:Get-ConnectionInformation -Value $original }
+    }
+
     It 'keeps unchanged approved TABL governance fields bound through apply' {
         # Arrange
         $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'

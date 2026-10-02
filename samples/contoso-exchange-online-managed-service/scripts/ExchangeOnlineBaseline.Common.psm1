@@ -18006,6 +18006,16 @@ function Invoke-BaselineApprovedChange {
     }
     if ($Stage -eq 'Validate') { return $decision }
 
+    $connectedTenant = @()
+    if (Get-Command -Name Get-ConnectionInformation -ErrorAction SilentlyContinue) {
+        $connectedTenant = @(Get-ConnectionInformation -ErrorAction SilentlyContinue |
+            Where-Object { [string]$_.State -eq 'Connected' } |
+            ForEach-Object { [string]$_.TenantID })
+    }
+    if ($connectedTenant.Count -eq 0 -or @($connectedTenant | Where-Object { $_ -ne $tenant }).Count -gt 0) {
+        throw "ChangeSessionTenantMismatch: $Stage requires every connected Exchange Online session to be tenant '$tenant'; found '$($connectedTenant -join "', '")'."
+    }
+
     $approved = @($preview.Operation)
     $definitions = @(Get-ApprovedAdapterDefinitions -Context $context -Scope $Scope -Approved $approved -DesiredOnly)
     Assert-ApprovedAdapterCommands -Definitions $definitions
