@@ -97,6 +97,20 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         $result.Results.Where({ $_.Check -eq 'Authorized signer metadata' }).Detail | Should -Be 'every authorized signer is the requester'
     }
 
+    It 'refuses duplicate authorized signer entries after case-insensitive normalization' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $signers = @(Get-Content -LiteralPath $arguments.AuthorizedSignerPath -Raw | ConvertFrom-Json -AsHashtable)
+        $signers += @{ Identity = ' APPROVER@CONTOSO.EXAMPLE '; Subject = ' cn=approver '; Authority = 'ExchangeOnlineChangeApproval' }
+        $signers | ConvertTo-Json -AsArray | Set-Content -LiteralPath $arguments.AuthorizedSignerPath
+        # Act
+        $result = & $script:readiness @arguments
+        # Assert
+        Get-FailedCheck $result | Should -Contain 'Authorized signer metadata'
+        $result.Results.Where({ $_.Check -eq 'Authorized signer metadata' }).Detail |
+            Should -Be 'duplicate authorized signer entries after case-insensitive normalization'
+    }
+
     It 'refuses a parameter file stored inside the kit' {
         # Arrange
         $arguments = Get-ReadinessArgument

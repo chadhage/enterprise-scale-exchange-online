@@ -18072,6 +18072,17 @@ function Invoke-BaselineApprovedChange {
         if ($captureChangeId -cne $ChangeId -or [string]::IsNullOrEmpty($captureTenant) -or $captureTenant -ne ([string]$tenant).Trim()) {
             throw "ChangeRecoveryCaptureMismatch: '$($paths['PreChange'])' was captured for change '$captureChangeId' in tenant '$captureTenant', not '$ChangeId' in '$tenant'."
         }
+        $sealedCaptureHash = [string](Get-BaselineRecordMember -Node $prechange -Name 'Hash')
+        if (-not (Test-BaselineNodeMember -Node $prechange -Name 'Hash') -or [string]::IsNullOrWhiteSpace($sealedCaptureHash)) {
+            throw "ChangeRecoveryCaptureNotSealed: '$($paths['PreChange'])' carries no hash and cannot be trusted to identify the captured prior state."
+        }
+        $recomputedCaptureHash = [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData(
+                [System.Text.UTF8Encoding]::new($false).GetBytes(
+                    (ConvertTo-CanonicalJson -InputObject (Get-BaselineRecordMember -Node $prechange -Name 'Entry'))))).ToLowerInvariant()
+        if ($sealedCaptureHash -cne $recomputedCaptureHash) {
+            throw "ChangeRecoveryCaptureNotSealed: '$($paths['PreChange'])' is sealed as $sealedCaptureHash and now hashes to $recomputedCaptureHash; its entries were changed after capture."
+        }
         foreach ($captured in @(Get-BaselineRecordMember -Node $prechange -Name 'Entry')) {
             $operationId = [string](Get-BaselineRecordMember -Node $captured -Name 'OperationId')
             $operation = @($approved | Where-Object { [string]$_.OperationId -ceq $operationId }) | Select-Object -First 1

@@ -149,6 +149,42 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $result.BindingMismatch | Should -BeNullOrEmpty
     }
 
+    It 'marks an empty evidence check collection incomplete instead of claiming every check passed' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.Check = @()
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.EvidenceCheckCount | Should -Be 0
+        $markdown | Should -Match 'No evidence checks were found; evidence collection is incomplete'
+        $markdown | Should -Not -Match 'Every check passed'
+    }
+
+    It 'marks evidence with no check collection incomplete' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.Remove('Check')
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.EvidenceCheckCount | Should -Be 0
+        $markdown | Should -Match 'No evidence checks were found; evidence collection is incomplete'
+        $markdown | Should -Not -Match 'Every check passed'
+    }
+
     It 'does not accept a <Artifact> artifact whose <Field> belongs to another change' -ForEach @(
         @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'PreviewHash'; Value = ('0' * 64) }
         @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'ChangeId'; Value = 'CHG-2002' }

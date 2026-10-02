@@ -70,7 +70,7 @@ $change = @{
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope Transport -Confirm:$false
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Approve @change -ApprovalIdentity $approvalIdentity -SigningCertificate $certificate -Confirm:$false
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Validate @change
-./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -Confirm:$false
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -Confirm:$false
 & (Join-Path $artifactRoot "rollback-$changeId.ps1") -Apply -Confirm:$false
 ```
 

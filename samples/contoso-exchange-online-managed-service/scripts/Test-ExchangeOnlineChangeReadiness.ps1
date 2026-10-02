@@ -303,9 +303,22 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                             $_ -isnot [hashtable] -or [string]::IsNullOrWhiteSpace([string]$_.Identity) -or
                             [string]::IsNullOrWhiteSpace([string]$_.Subject) -or [string]$_.Authority -cne 'ExchangeOnlineChangeApproval'
                         }).Count -eq 0
+                $duplicateSigner = $false
+                if ($valid) {
+                    $signerKeys = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+                    foreach ($signer in $signers) {
+                        $key = ConvertTo-Json -InputObject @(
+                            ([string]$signer.Identity).Trim()
+                            ([string]$signer.Subject).Trim()
+                            ([string]$signer.Authority).Trim()
+                        ) -Compress
+                        if (-not $signerKeys.Add($key)) { $duplicateSigner = $true }
+                    }
+                }
                 $independent = @($signers | Where-Object { [string]$_.Identity -ne $RequestedBy }).Count -gt 0
-                $signerOk = $valid -and $independent -and -not (Test-PathInsideKit $AuthorizedSignerPath)
+                $signerOk = $valid -and -not $duplicateSigner -and $independent -and -not (Test-PathInsideKit $AuthorizedSignerPath)
                 $signerDetail = if (-not $valid) { 'entries need Identity, Subject, and Authority = ExchangeOnlineChangeApproval' }
+                elseif ($duplicateSigner) { 'duplicate authorized signer entries after case-insensitive normalization' }
                 elseif (-not $independent) { 'every authorized signer is the requester' }
                 else { "$($signers.Count) authorized signer(s)" }
             }

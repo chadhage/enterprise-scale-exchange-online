@@ -306,6 +306,25 @@ Context 'Signed TABL governance binding' {
         $global:adapterCalls.Count | Should -Be $writes
     }
 
+    It 'refuses rollback when an edited pre-change entry is no longer bound by its hash' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false | Out-Null
+        $capturePath = Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json'
+        $capture = Get-Content $capturePath -Raw | ConvertFrom-Json -AsHashtable
+        $preview = Get-Content $arguments.PreviewPath -Raw | ConvertFrom-Json -AsHashtable
+        $capture.Entry[0].Exists = $true
+        $capture.Entry[0].Value = $preview.Operation[0].After.Value
+        $capture | ConvertTo-Json -Depth 100 | Set-Content $capturePath
+        $writes = $global:adapterCalls.Count
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false }
+        # Assert
+        $invoke | Should -Throw '*ChangeRecoveryCaptureNotSealed*'
+        $global:adapterCalls.Count | Should -Be $writes
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 1
+    }
+
     It 'restores a target this apply moved when its pre-change capture records the prior value' {
         # Arrange
         $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'

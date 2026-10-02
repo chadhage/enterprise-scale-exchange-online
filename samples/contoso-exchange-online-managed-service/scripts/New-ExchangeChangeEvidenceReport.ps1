@@ -101,6 +101,7 @@ $applyStatus = [string](Get-RecordValue $apply 'Status')
 $postStatus = [string](Get-RecordValue $post 'Status')
 
 $checks = @(Get-RecordValue $evidence 'Check' | Where-Object { $null -ne $_ })
+$noEvidenceChecks = $checks.Count -eq 0
 $statusOrder = 'Pass', 'Fail', 'Error', 'Manual', 'ApprovedException', 'NotEntitled'
 $statusCount = [ordered]@{}
 foreach ($status in $statusOrder) { $statusCount[$status] = 0 }
@@ -151,7 +152,8 @@ $artifactMismatch = @(
     }
 )
 
-$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0
+$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
+    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
 elseif (($statusCount['Fail'] + $statusCount['Error']) -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
@@ -243,7 +245,10 @@ Add-Line '| Status | Count |'
 Add-Line '| --- | --- |'
 foreach ($status in $statusCount.Keys) { Add-Line "| $($status) | $($statusCount[$status]) |" }
 Add-Line
-if ($needsAttention.Count -eq 0) {
+if ($noEvidenceChecks) {
+    Add-Line 'No evidence checks were found; evidence collection is incomplete.'
+}
+elseif ($needsAttention.Count -eq 0) {
     Add-Line 'Every check passed.'
 }
 else {
@@ -280,6 +285,7 @@ if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifac
 if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
 if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
+if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
 if ($needsAttention.Count -gt 0) { Add-Line "- Assign an owner to each of the $($needsAttention.Count) checks that did not pass." }
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
 Add-Line '- Disconnect: `Disconnect-ExchangeOnline -Confirm:$false`.'
@@ -294,6 +300,7 @@ Write-Information "  Artifacts present: $(6 - $missing.Count) of 6$(if ($missing
 if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bindingMismatch -join ', ') do not match the change record" }
 if ($artifactMismatch.Count -gt 0) { Write-Information "  Artifact binding: $($artifactMismatch -join ', ') belong to another change or preview" }
 Write-Information "  Evidence: $(($statusCount.Keys | Where-Object { $statusCount[$_] -gt 0 } | ForEach-Object { "$($_) $($statusCount[$_])" }) -join ', ')"
+if ($noEvidenceChecks) { Write-Information '  Evidence checks: none found; collection is incomplete' }
 Write-Information "  Report: $([IO.Path]::GetFullPath($OutputPath))"
 
 if ($PassThru) {
@@ -304,6 +311,7 @@ if ($PassThru) {
         MissingArtifact = $missing
         BindingMismatch = $bindingMismatch
         ArtifactMismatch = $artifactMismatch
+        EvidenceCheckCount = $checks.Count
         StatusCount     = [pscustomobject]$statusCount
     }
 }
