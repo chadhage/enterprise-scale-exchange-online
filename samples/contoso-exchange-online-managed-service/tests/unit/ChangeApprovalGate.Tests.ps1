@@ -10,8 +10,8 @@ BeforeAll {
     $script:Tenant = 'contoso.onmicrosoft.com'
     $script:Profile = 'ThirdPartyGateway'
     $script:ConfigurationHash = 'a3f1c0de5b7288119ce2a6d4f0b9e7a15d3c48b6720fe9134a8c5d6e7f809123'
-    $script:GeneratedOn = [datetime]::UtcNow.AddHours(-1)
-    $script:AsOf = [datetime]::UtcNow
+    $script:GeneratedOn = [datetime]::Now.AddHours(-1)
+    $script:AsOf = [datetime]::Now
     $script:RequestedBy = 'operator@contoso.com'
     $script:Approver = 'approver@contoso.com'
     $script:Authority = 'ExchangeOnlineChangeApproval'
@@ -419,13 +419,32 @@ Describe 'SAFE-003-A approved immutable preview gate' {
         It 'permits the apply and names the preview it permits it from, with no refusal collected' {
             # Arrange
             $change = New-ApprovedChange
+            Mock Test-BaselineDetachedCmsSignature -ModuleName ExchangeOnlineBaseline.Common {
+                param($CanonicalBytes, $Signature)
+                $approval = [Text.Encoding]::UTF8.GetString($CanonicalBytes) | ConvertFrom-Json
+                @{
+                    Verified = $true
+                    SignerSubject = 'CN=Offline Approver'
+                    SigningTimeUtc = [datetimeoffset]::Parse($approval.ApprovalTimeUtc)
+                    CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
+                    CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
+                    ChainTrusted = $true
+                    RevocationStatus = 'Good'
+                }
+            }
 
             # Act
-            $decision = Invoke-Gate -Change $change
+            $decision = Invoke-Gate -Change $change -Override @{
+                AuthorizedSigner = @(@{
+                    Identity = $script:Approver
+                    Subject = 'CN=Offline Approver'
+                    Authority = $script:Authority
+                })
+            }
 
             # Assert
             '{0}|{1}|{2}|{3}' -f $decision['Permitted'], $decision['ChangeId'], $decision['PreviewPath'], @($decision['Finding']).Count |
-                Should -BeExactly ('True|{0}|{1}|0' -f $script:ChangeId, $change.PreviewPath) -Because 'an apply that cannot name the approved plan it is running is an apply from configuration alone'
+                Should -BeExactly ('True|{0}|{1}|0' -f $script:ChangeId, $change.PreviewPath) -Because ($decision['Finding'] -join ';')
         }
     }
 }
