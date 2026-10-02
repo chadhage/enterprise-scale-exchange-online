@@ -5,7 +5,7 @@ function Initialize-AdapterDoubles {
     $global:adapterReadbackFault = ''
     $global:adapterState = @{
         TransportConfig = @(@{ Identity = 'Transport'; SmtpClientAuthenticationDisabled = $false; ExternalPostmasterAddress = 'old@example.test' })
-        OrganizationConfig = @(@{ Identity = 'Organization'; AuditDisabled = $true; EwsEnabled = $true; EwsApplicationAccessPolicy = $null; EwsAllowList = @('old-agent') })
+        OrganizationConfig = @(@{ Identity = 'Organization'; AuditDisabled = $true; EwsEnabled = $true; EwsApplicationAccessPolicy = $null; EwsAllowList = @('old-agent'); EwsAllowedAppIDs = '' })
         ExternalInOutlook = @(@{ Identity = 'External'; Enabled = $false; AllowList = @('old.example') })
         HostedOutboundSpamFilterPolicy = @(@{ Identity = 'Default'; AutoForwardingMode = 'On' })
         RemoteDomain = @(@{ Identity = 'Default'; DomainName = '*'; AutoForwardEnabled = $true; AutoReplyEnabled = $true; AllowedOOFType = 'External'; DeliveryReportEnabled = $true; NDREnabled = $true })
@@ -24,7 +24,10 @@ function Initialize-AdapterDoubles {
         QuarantinePolicy = @(@{ Identity = 'Baseline-AdminOnlyAccess'; Name = 'Baseline-AdminOnlyAccess'; EndUserQuarantinePermissionsValue = 236 }, @{ Identity = 'Baseline-LimitedAccess'; Name = 'Baseline-LimitedAccess'; EndUserQuarantinePermissionsValue = 236 }, @{ Identity = 'DefaultGlobalTag'; Name = 'DefaultGlobalTag'; EndUserSpamNotificationFrequency = [timespan]::FromDays(3); IncludeMessagesFromBlockedSenderAddress = $true })
         HostedContentFilterPolicy = @(@{ Identity = 'Default'; HighConfidencePhishQuarantineTag = 'Old'; PhishQuarantineTag = 'Old'; HighConfidenceSpamQuarantineTag = 'Old'; SpamQuarantineTag = 'Old'; BulkQuarantineTag = 'Old'; SpoofQuarantineTag = 'Old' })
         MalwareFilterPolicy = @(@{ Identity = 'Default'; QuarantineTag = 'Old' })
-        Mailbox = @(@{ Identity = 'user@example.test'; PrimarySmtpAddress = 'user@example.test'; ForwardingAddress = $null; ForwardingSmtpAddress = 'smtp:external@example.net' })
+        Mailbox = @(
+            @{ Identity = 'user@example.test'; PrimarySmtpAddress = 'user@example.test'; RecipientTypeDetails = 'UserMailbox'; ForwardingAddress = $null; ForwardingSmtpAddress = 'smtp:external@example.net'; DeliverToMailboxAndForward = $false }
+            @{ Identity = 'secops@contoso.example'; PrimarySmtpAddress = 'secops@contoso.example'; RecipientTypeDetails = 'SharedMailbox'; ForwardingAddress = $null; ForwardingSmtpAddress = $null; DeliverToMailboxAndForward = $false }
+        )
         InboxRule = @(@{ Identity = 'rule-1'; Mailbox = 'user@example.test'; Enabled = $true; ForwardTo = @('external@example.net'); ForwardAsAttachmentTo = @(); RedirectTo = @() })
         RoleAssignmentPolicy = @(@{ Identity = 'Default Policy'; IsDefault = $true })
         ManagementRoleAssignment = @(@{ Identity = 'GrantA'; Name = 'GrantA'; Role = 'My Custom Apps'; RoleAssignee = 'Default Policy'; RoleAssigneeType = 'RoleAssignmentPolicy'; Delegating = $false; RecipientWriteScope = 'Self'; ConfigWriteScope = 'None'; CustomRecipientWriteScope = $null; CustomConfigWriteScope = $null; ExclusiveRecipientWriteScope = $null; ExclusiveConfigWriteScope = $null })
@@ -52,7 +55,7 @@ function Initialize-AdapterDoubles {
         @{ Noun = 'QuarantinePolicy'; Read = '[string]$Identity'; Fields = '[int]$EndUserQuarantinePermissionsValue,[timespan]$EndUserSpamNotificationFrequency,[bool]$IncludeMessagesFromBlockedSenderAddress'; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name' },
         @{ Noun = 'HostedContentFilterPolicy'; Read = '[string]$Identity'; Fields = '[string]$HighConfidencePhishQuarantineTag,[string]$PhishQuarantineTag,[string]$HighConfidenceSpamQuarantineTag,[string]$SpamQuarantineTag,[string]$BulkQuarantineTag,[string]$SpoofQuarantineTag'; Target = '[Parameter(Mandatory)][string]$Identity' },
         @{ Noun = 'MalwareFilterPolicy'; Read = '[string]$Identity'; Fields = '[string]$QuarantineTag'; Target = '[Parameter(Mandatory)][string]$Identity' },
-        @{ Noun = 'Mailbox'; Read = '[string]$Identity,[string]$ResultSize'; Fields = '[AllowNull()][object]$ForwardingAddress,[AllowNull()][object]$ForwardingSmtpAddress'; Target = '[Parameter(Mandatory)][string]$Identity' },
+        @{ Noun = 'Mailbox'; Read = '[string]$Identity,[string]$Mailbox,[string]$ResultSize'; Fields = '[AllowNull()][object]$ForwardingAddress,[AllowNull()][object]$ForwardingSmtpAddress'; Target = '[Parameter(Mandatory)][string]$Identity' },
         @{ Noun = 'InboxRule'; Read = '[string]$Identity,[Parameter(Mandatory)][string]$Mailbox,[switch]$IncludeHidden'; Fields = ''; Target = '[Parameter(Mandatory)][string]$Identity,[Parameter(Mandatory)][string]$Mailbox'; Toggle = $true },
         @{ Noun = 'RoleAssignmentPolicy'; Read = '[string]$Identity'; ReadOnly = $true },
         @{ Noun = 'ManagementRoleAssignment'; Read = '[string]$Identity'; Fields = ''; Target = '[Parameter(Mandatory)][string]$Identity'; Create = '[Parameter(Mandatory)][string]$Name,[Parameter(Mandatory)][string]$Role,[Parameter(Mandatory)][string]$Policy' },
@@ -79,6 +82,10 @@ function Initialize-AdapterDoubles {
             Set-Item "Function:global:$name" ([scriptblock]::Create($body))
             $global:adapterCommands.Add($name)
         }
+    }
+    function global:Get-Mailbox {
+        param([string]$Identity, [string]$Mailbox, [string]$ResultSize)
+        Invoke-OfflineAdapterCommand 'Get' 'Mailbox' $PSBoundParameters
     }
     function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = '00000000-0000-0000-0000-000000000000'; State = 'Connected' } }
 }
@@ -136,7 +143,17 @@ function New-StatefulAdapterFixture {
         @{ address = $parameters.SECURITY_OPERATIONS_MAILBOX; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') }
     )
     $created = [datetimeoffset]::UtcNow
-    $parameters.workflowOptions = @{ enableDkim = $true; tenantAllowBlockEntries = @(@{ entryType = 'Domain'; entryValue = 'blocked.example'; action = 'Block'; owner = 'SecOps'; ticket = 'CHG004'; createdDateTime = $created.ToString('o'); expirationDateTime = $created.AddDays(90).ToString('o'); justification = 'Approved test block' }) }
+    $parameters.workflowOptions = @{
+        enableDkim = $true
+        tenantAllowBlockEntries = @(@{ entryType = 'Domain'; entryValue = 'blocked.example'; action = 'Block'; owner = 'SecOps'; ticket = 'CHG004'; createdDateTime = $created.ToString('o'); expirationDateTime = $created.AddDays(90).ToString('o'); justification = 'Approved test block' })
+    }
+    $parameters.reportingEvidence = @{
+        dlp = @{
+            mailbox = $parameters.SECURITY_OPERATIONS_MAILBOX
+            status = 'Excluded'
+            approval = @{ reference = 'OFFLINE-DLP'; owner = 'compliance'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+        }
+    }
     $parameterPath = Join-Path $directory 'parameters.json'
     $parameters | ConvertTo-Json -Depth 30 | Set-Content $parameterPath
     $authorityPath = Join-Path $directory 'authority.json'

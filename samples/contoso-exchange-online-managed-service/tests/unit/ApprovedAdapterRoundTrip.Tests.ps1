@@ -78,21 +78,23 @@ BeforeEach {
         param($CanonicalBytes, $Signature)
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($CanonicalBytes), $true)
         $cms.Decode([Convert]::FromBase64String($Signature.Value)); $cms.CheckSignature($true)
-        @{ Verified = $true; SignerSubject = $cms.SignerInfos[0].Certificate.Subject; SigningTimeUtc = [datetimeoffset]::UtcNow; CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
+        $signingAttribute = @($cms.SignerInfos[0].SignedAttributes | Where-Object { $_.Oid.Value -ceq '1.2.840.113549.1.9.5' })
+        $signingTime = [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new($signingAttribute[0].Values[0].RawData).SigningTime.ToUniversalTime()
+        @{ Verified = $true; SignerSubject = $cms.SignerInfos[0].Certificate.Subject; SigningTimeUtc = [datetimeoffset]$signingTime; CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
     }
 }
 Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
     It 'refuses an unavailable mutation command before any writes' {
         # Arrange
         $arguments = New-StatefulAdapterFixture -Scope $Scope -Approved
-        $global:adapterMissingCommand = $Mutator
-        Mock Get-Command -ModuleName ExchangeOnlineBaseline.Common { $null } -ParameterFilter { $Name -eq $global:adapterMissingCommand }
+        $Mutator | Should -Not -BeNullOrEmpty
+        Remove-Item -LiteralPath "Function:\$Mutator"
+        Get-Command -Name $Mutator -ErrorAction SilentlyContinue | Should -BeNullOrEmpty
         # Act
         $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
         # Assert
         $failure = $null
         try { & $invoke } catch { $failure = $_ }
-        Should -Invoke Get-Command -ModuleName ExchangeOnlineBaseline.Common -Times 1 -ParameterFilter { $Name -eq $global:adapterMissingCommand }
         $failure.Exception.Message | Should -BeLike '*ChangeCommandUnavailable*'
         $global:adapterCalls.Count | Should -Be 0
         Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeFalse
@@ -107,7 +109,7 @@ Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
         # Act
         $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
         # Assert
-        $invoke | Should -Throw '*ChangeOperationMismatch*'
+        $invoke | Should -Throw '*ChangeApprovalPreviewTampered*'
         $global:adapterCalls.Count | Should -Be 0
     }
 
@@ -149,7 +151,7 @@ Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
         $result.RepeatedStatus | Should -BeExactly 'Succeeded'
         $result.RepeatedWrites | Should -Be 0
         $preview = Get-Content $arguments.PreviewPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
-        $preview.ParameterHash | Should -Match '^[0-9a-f]{64}$'
+        $preview.ParameterHash.Hash | Should -Match '^[0-9a-f]{64}$'
         foreach ($operation in $preview.Operation) {
             $operation.Before.ContainsKey('Exists') | Should -BeTrue
             ($operation.Identity | ConvertFrom-Json -AsHashtable) | Should -BeOfType [System.Collections.IDictionary]
@@ -349,7 +351,9 @@ Context 'Signed TABL governance binding' {
         finally { $global:adapterWriteFault = '' }
         Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeTrue
         Test-Path (Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') | Should -BeTrue
-        Test-Path (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') | Should -BeFalse
+        $failedApply = Get-Content (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') -Raw | ConvertFrom-Json
+        $failedApply.Status | Should -BeExactly 'Failed'
+        $failedApply.Operation[0].Progress | Should -BeExactly ''
         Import-Module (Join-Path $script:adapterRoot 'scripts/ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
         Mock Initialize-ExchangeOnlineSession { }
         { & (Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') -Apply -Confirm:$false | Out-Null } | Should -Not -Throw
@@ -693,6 +697,9 @@ Context 'Partial apply recovery' {
         $arguments = New-StatefulAdapterFixture -Scope $scope -Approved
         $global:adapterWriteFault = 'Set-ExternalInOutlook'
         try { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false } catch { }
+        $failedApply = Get-Content (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') -Raw | ConvertFrom-Json
+        $failedApply.Status | Should -BeExactly 'Failed'
+        @($failedApply.Operation).Count | Should -Be 2
         $global:adapterWriteFault = ''
         $global:adapterState.HostedOutboundSpamFilterPolicy[0].AutoForwardingMode = 'Automatic'
         $global:adapterReadFault = 'HostedOutboundSpamFilterPolicy'
@@ -711,7 +718,35 @@ Context 'Partial apply recovery' {
         $before = Get-AdapterSnapshot
         $global:adapterWriteFault = 'New-TenantAllowBlockListItems'
         try { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false } catch { }
+        $failedApply = Get-Content (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') -Raw | ConvertFrom-Json
+        $failedApply.Status | Should -BeExactly 'Failed'
+        $failedApply.Operation[0].Progress | Should -BeExactly 'Removed'
+        $failedApply.Operation[0].Fault | Should -Not -BeNullOrEmpty
+        { & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false } | Should -Throw '*ChangeExecutionFailed*'
+        $rollbackAttempt = Get-ChildItem $arguments.ArtifactRoot -Filter 'rollback-attempt-*.json' |
+            Select-Object -First 1
+        $attempt = Get-Content $rollbackAttempt.FullName -Raw | ConvertFrom-Json
+        $attempt.RecoverySource | Should -BeExactly 'ApplyReceipt'
+        $attempt.RecoverySourceHash | Should -BeExactly (Get-FileHash (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json')).Hash.ToLowerInvariant()
         $global:adapterWriteFault = ''
+        # Act
+        $result = & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false
+        # Assert
+        $result.Status | Should -BeExactly 'Succeeded'
+        (Get-AdapterSnapshot) | Should -BeExactly $before
+        $global:adapterState.TenantAllowBlockListItems = @()
+        $writes = $global:adapterCalls.Count
+        { & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false } | Should -Throw '*ChangeStateDrift*'
+        $global:adapterCalls.Count | Should -Be $writes
+    }
+    It 'recovers an interrupted TABL apply from the sealed pre-change capture' {
+        # Arrange
+        $arguments = New-StatefulAdapterFixture -Scope TenantAllowBlockList -Approved
+        $before = Get-AdapterSnapshot
+        $global:adapterWriteFault = 'New-TenantAllowBlockListItems'
+        try { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false } catch { }
+        $global:adapterWriteFault = ''
+        Remove-Item -LiteralPath (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json')
         # Act
         $result = & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false
         # Assert
