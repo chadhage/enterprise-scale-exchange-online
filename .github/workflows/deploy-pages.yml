@@ -27,6 +27,11 @@ jobs:
         with:
           enablement: true
 
+      - name: Bundle repository guides for the in-site reader
+        run: |
+          mkdir -p microsite/docs
+          cp samples/contoso-exchange-online-managed-service/docs/*.md microsite/docs/
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

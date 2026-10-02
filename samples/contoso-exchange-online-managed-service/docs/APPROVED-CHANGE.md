@@ -35,11 +35,21 @@ All existing Exchange-only baseline mutation adapters are covered. Deliberately 
 
 ## External Prerequisites
 
-The operator supplies `$parameterPath` (absolute path to a resolved Exchange-only parameter JSON with a current RAID-D02 licensing handoff), `$artifactRoot` (a new protected absolute directory), `$changeId` (unique letters/digits/hyphens), and `$requestedBy` (the authenticated change requester). Establish exactly one authorized Exchange Online session to the tenant in the parameter file before preview/apply/rollback. The commands do not connect, collect credentials, provision a tenant, install PKI or change trust stores.
+The operator supplies `$parameterPath` (absolute path to a resolved Exchange-only parameter JSON with a current RAID-D02 licensing handoff), `$artifactRoot` (a new protected absolute directory), `$changeId` (unique letters/digits/hyphens), and `$requestedBy` (the authenticated change requester). Establish exactly one authorized Exchange Online session to the tenant in the parameter file before preview/apply/rollback. The readiness check and the Preview/Apply/Rollback stages of `Invoke-ExchangeOnlineChange.ps1` handle this for you. They verify the ExchangeOnlineManagement module, reuse an existing session or sign in interactively (MFA in the browser; `-UseDeviceCode` for browserless hosts; `-UserPrincipalName` to pick the account), show the signed-in account and tenant for confirmation (`-ConfirmSession:$false` skips the prompt), and verify the tenant and the role's read cmdlets before any work. They fail with an actionable error code (for example `ExchangeSessionTenantMismatch` or `ExchangeRoleMissing`). `-NonInteractive` refuses to prompt. Approve and Validate never connect. The commands do not store credentials, provision a tenant, install PKI or change trust stores.
 
 RAID-D05 supplies `$authorityPath`, an independently administered JSON array with `Identity`, `Subject`, and `Authority` (`ExchangeOnlineChangeApproval`) for each approved signer. Keep it protected from the requester; do not derive it from the incoming signature. The independent approver supplies `$approvalIdentity` and `$certificate`, an existing enterprise `X509Certificate2` with an accessible signing key (for example obtained from their approved certificate-store or HSM integration). Never place private keys in the repository. Chain, certificate validity and cached revocation evidence must verify offline; unavailable trust stops with `ChangeApprovalSignatureUnverified`. There is no self-signed production fallback. The requester and approver must be different people; these identity inputs come from the trusted change channel, not an untrusted web request.
 
 The independent approver inspects the immutable preview before running the Approve line in their own controlled session. Signing does not require an Exchange connection. The approval binds the SHA-256 of the exact preview bytes, ChangeId, tenant GUID, resolved configuration hash, approver identity, authority and time. The signed payload is canonical UTF-8 JSON of every approval member except `Signature`; `Signature` is `{ "Model": "DetachedCms", "Value": "base64 CMS bytes" }`. Moving approved files to another host is permitted only while preserving their bytes and supplying paths consistently on that host.
+
+## Readiness Check
+
+Before Preview, run the read-only readiness gate from the kit folder. `-WorkstationOnly` checks PowerShell 7, kit files, Mark-of-the-Web, execution policy and the ExchangeOnlineManagement module. The full form also checks the parameter file (location, resolution, real tenant ID, licensing handoff and `ATP_ENTERPRISE` for ATP scopes), scope, ChangeId, requester, artifact folder, authorized signer metadata (including a signer other than the requester), exactly one Worldwide session for the parameter tenant, the role's read cmdlets per scope and initialized preset rules. Each failure prints its fix. When every check passes, it prints the exact `$change` block and Preview command below. Use `-SkipTenantConnection` for an offline input check and `-PassThru` for objects. The exit code is 1 when not ready.
+
+```powershell
+./scripts/Test-ExchangeOnlineChangeReadiness.ps1 -WorkstationOnly
+./scripts/Test-ExchangeOnlineChangeReadiness.ps1 -ParameterPath $parameterPath -ArtifactRoot $artifactRoot `
+    -ChangeId $changeId -RequestedBy $requestedBy -AuthorizedSignerPath $authorityPath -Scope Transport
+```
 
 ## Commands
 
@@ -65,6 +75,16 @@ $change = @{
 ```
 
 `Deploy` without `-Apply` is only an inventory. Its console output or a WhatIf transcript is not an approval artifact. To rehearse the signed change use the complete Apply invocation with `-WhatIf`; it checks approval/session/state but emits no execution artifacts and makes no mutation. Preview captures concrete typed before/after parameter values; apply refuses state or configuration drift and executes those exact approved values.
+
+## Evidence Report
+
+After apply, collect evidence with the same inputs and session, then summarise the whole change record for the ticket. The report script never connects to the tenant. It writes `evidence-report-<id>.md` into the artifact folder with the change, tenant, scope, approver and hashes; every change artifact with its SHA-256 and present/missing status; each approved operation and its result; evidence status counts; every check that did not pass, with its reason; external readiness; and exclusions. If any artifact is missing or apply/post-change did not succeed, the outcome is `INCOMPLETE`. The report is not a go-live approval.
+
+```powershell
+./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $change.ParameterPath -ConfigurationPath $change.ConfigurationPath `
+    -OutputPath (Join-Path $change.ArtifactRoot 'evidence') -SkipConnection
+./scripts/New-ExchangeChangeEvidenceReport.ps1 -ArtifactRoot $change.ArtifactRoot -ChangeId $change.ChangeId
+```
 
 ## Files And Recovery
 

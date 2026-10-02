@@ -141,7 +141,7 @@ function New-StatefulAdapterFixture {
     $parameters | ConvertTo-Json -Depth 30 | Set-Content $parameterPath
     $authorityPath = Join-Path $directory 'authority.json'
     @(@{ Identity = 'reviewer@example.test'; Subject = 'CN=Offline Adapter'; Authority = 'ExchangeOnlineChangeApproval' }) | ConvertTo-Json -AsArray | Set-Content $authorityPath
-    $arguments = @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:adapterRoot 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; PreviewPath = (Join-Path $directory 'preview-ADAPTER004.json'); ApprovalPath = (Join-Path $directory 'approval-ADAPTER004.json'); AuthorizedSignerPath = $authorityPath }
+    $arguments = @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:adapterRoot 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; SkipConnectionCheck = $true; PreviewPath = (Join-Path $directory 'preview-ADAPTER004.json'); ApprovalPath = (Join-Path $directory 'approval-ADAPTER004.json'); AuthorizedSignerPath = $authorityPath }
     $configuration = Get-Content $arguments.ConfigurationPath -Raw | ConvertFrom-Json -AsHashtable
     $configuration.controls['MDO-009'].protectedUsers = @($parameters.SECURITY_OPERATIONS_MAILBOX)
     $configuration.controls['MDO-006'].approval = @{ reference = 'OFFLINE-010'; owner = 'security'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }

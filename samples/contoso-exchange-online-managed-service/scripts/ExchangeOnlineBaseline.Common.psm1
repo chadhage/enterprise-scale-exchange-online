@@ -4334,6 +4334,10 @@ function Test-BaselineChangeApproval {
         [string]$RequestedBy,
 
         [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$AuthorizedSigner = @(),
+
+        [AllowNull()]
         [object]$AsOf
     )
 
@@ -4368,7 +4372,7 @@ function Test-BaselineChangeApproval {
         }
 
         $approvedChangeId = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ChangeId')
-        if ($approvedChangeId -ne $changeId) {
+        if ($approvedChangeId -cne $changeId) {
             $finding.Add("ChangeApprovalChangeMismatch: the approval names change '$approvedChangeId' and the preview plans change '$changeId'.")
         }
 
@@ -4447,6 +4451,53 @@ function Test-BaselineChangeApproval {
             $finding.Add("ChangeApprovalSignatureModelNotApproved: the approval is signed under '$signatureModel' and only $($selectedModel -join ', ') is selected; a signature model nobody selected is a signature nobody can verify.")
         }
 
+        $signedApproval = [ordered]@{}
+        foreach ($member in (Get-BaselineRecordMemberName -Node $approval.Document)) {
+            if ($member -cne 'Signature') {
+                $signedApproval[$member] = Get-BaselineRecordMember -Node $approval.Document -Name $member
+            }
+        }
+        $canonicalApproval = [System.Text.UTF8Encoding]::new($false).GetBytes(
+            (ConvertTo-CanonicalJson -InputObject $signedApproval)
+        )
+        $signatureVerification = Test-BaselineDetachedCmsSignature -CanonicalBytes $canonicalApproval `
+            -Signature $signature -VerificationScript {
+            param($ContentBytes, $DetachedSignatureBytes)
+
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+                [Security.Cryptography.Pkcs.ContentInfo]::new($ContentBytes), $true
+            )
+            $cms.Decode($DetachedSignatureBytes)
+            $cms.CheckSignature($true)
+            if ($cms.SignerInfos.Count -ne 1) {
+                throw 'Exactly one authorized approver is required.'
+            }
+            $certificate = $cms.SignerInfos[0].Certificate
+            $attributes = @($cms.SignerInfos[0].SignedAttributes |
+                Where-Object { $_.Oid.Value -eq '1.2.840.113549.1.9.5' })
+            if ($attributes.Count -ne 1 -or $attributes[0].Values.Count -ne 1) {
+                throw 'One authenticated CMS signing time is required.'
+            }
+            $signingTime = [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new(
+                $attributes[0].Values[0].RawData
+            ).SigningTime.ToUniversalTime()
+            $chainEvidence = Test-BaselineEvidenceCertificateChain -Certificate $certificate `
+                -CertificateCollection $cms.Certificates
+            @{
+                ContentMatched = $true
+                SignatureValid = $true
+                SignerSubject = $certificate.Subject
+                SigningTimeUtc = $signingTime.ToString('o')
+                CertificateNotBeforeUtc = $certificate.NotBefore.ToUniversalTime().ToString('o')
+                CertificateNotAfterUtc = $certificate.NotAfter.ToUniversalTime().ToString('o')
+                ChainTrusted = [bool]$chainEvidence.ChainTrusted
+                RevocationStatus = [string]$chainEvidence.RevocationStatus
+            }
+        }
+        if (-not $signatureVerification.Verified) {
+            $finding.Add("ChangeApprovalSignatureUnverified: detached CMS verification failed ($($signatureVerification.Reason)); an approval without a valid signature over its canonical fields grants nothing.")
+        }
+
         $approvalAuthority = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalAuthority')
         if ($approvalAuthority -ne $script:BaselineChangeApprovalAuthority) {
             $finding.Add("ChangeApprovalAuthorityNotApproved: the approval was granted under '$approvalAuthority' and only $($script:BaselineChangeApprovalAuthority) admits a change; an approval from somebody who does not hold the role is not an approval.")
@@ -4455,6 +4506,48 @@ function Test-BaselineChangeApproval {
         $approvalIdentity = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')
         if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and $approvalIdentity -eq [string]$RequestedBy) {
             $finding.Add("ChangeApprovalSelfApproved: '$approvalIdentity' both requested and approved this change, which removes the review entirely.")
+        }
+
+        $approvalTime = [datetimeoffset]::MinValue
+        $approvalTimeParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalTimeUtc'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$approvalTime
+        )
+        $previewGeneratedOn = [datetimeoffset]::MinValue
+        $previewGeneratedParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $preview.Document -Name 'GeneratedOn'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$previewGeneratedOn
+        )
+        $signingTime = [datetimeoffset]::MinValue
+        $signingTimeParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $signatureVerification -Name 'SigningTimeUtc'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$signingTime
+        )
+        if (-not $approvalTimeParsed -or -not $previewGeneratedParsed -or
+            $approvalTime -gt [datetimeoffset]$decisionInstant -or
+            $approvalTime -lt $previewGeneratedOn -or
+            ($expiryParsed -and $approvalTime.UtcDateTime -ge $expiryInstant) -or
+            ($signatureVerification.Verified -and (
+                -not $signingTimeParsed -or
+                [math]::Abs(($approvalTime - $signingTime).TotalSeconds) -gt 1
+            ))) {
+            $finding.Add('ChangeApprovalTimeInvalid: the signed approval time is missing, future-dated, outside the preview validity window, or does not match the authenticated CMS signing time.')
+        }
+
+        if ($signatureVerification.Verified) {
+            $signerDecision = Test-BaselineExternalEvidenceSigner -SignatureVerification $signatureVerification `
+                -DeclaredSignerIdentity $approvalIdentity -DeclaredAuthority $approvalAuthority `
+                -AuthorizedSigner $AuthorizedSigner -DecisionTimeUtc ([datetimeoffset]$decisionInstant)
+            if (-not $signerDecision.Authorized) {
+                $signerReason = [string]$signerDecision.Reason
+                $finding.Add("ChangeApproval$($signerReason -replace '^ExternalEvidence', '')`: the CMS signer is not authorized for this approval ($signerReason).")
+            }
         }
     }
 
@@ -17854,6 +17947,7 @@ function Invoke-BaselineApprovedChange {
             [string]::IsNullOrWhiteSpace($ApprovalIdentity)) {
             throw 'ChangeSigningPrerequisite: an independent approver and signing certificate are required.'
         }
+        $approvalTime = [datetimeoffset]::UtcNow
         $approval = [ordered]@{
             SchemaVersion = '1.0.0'
             ChangeId = $ChangeId
@@ -17862,13 +17956,16 @@ function Invoke-BaselineApprovedChange {
             PreviewHash = $previewRecord.Hash
             ApprovalIdentity = $ApprovalIdentity
             ApprovalAuthority = 'ExchangeOnlineChangeApproval'
-            ApprovalTimeUtc = [datetimeoffset]::UtcNow.ToString('o')
+            ApprovalTimeUtc = $approvalTime.ToString('o')
         }
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
             [Security.Cryptography.Pkcs.ContentInfo]::new(
                 [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson $approval))), $true)
         $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
         $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+        $null = $signer.SignedAttributes.Add(
+            [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new($approvalTime.UtcDateTime)
+        )
         $cms.ComputeSignature($signer, $true)
         $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
         if ($PSCmdlet.ShouldProcess($ChangeId, 'Emit independently signed approval')) {
@@ -17877,8 +17974,30 @@ function Invoke-BaselineApprovedChange {
         return
     }
 
+    if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
+        -not (Test-Path -LiteralPath $AuthorizedSignerPath -PathType Leaf)) {
+        throw 'ChangeSigningPrerequisite: authorized signer metadata is required to verify an approval.'
+    }
+    try {
+        $authorizedSigner = Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
+            ConvertFrom-Json -AsHashtable -Depth 20 -DateKind String -NoEnumerate
+    }
+    catch {
+        throw "AuthorizedSignerMetadataUnreadable: '$AuthorizedSignerPath' is not readable JSON."
+    }
+    if ($authorizedSigner -isnot [array] -or $authorizedSigner.Count -eq 0 -or
+        @($authorizedSigner | Where-Object {
+                $_ -isnot [System.Collections.IDictionary] -or
+                [string]::IsNullOrWhiteSpace([string]$_.Identity) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Subject) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Authority)
+            }).Count -gt 0) {
+        throw "AuthorizedSignerMetadataInvalid: '$AuthorizedSignerPath' must contain a nonempty array of Identity, Subject and Authority entries."
+    }
+
     $decision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath -Tenant $tenant `
-        -DeploymentProfile ExchangeOnly -ConfigurationHash $configurationHash -RequestedBy $RequestedBy
+        -DeploymentProfile ExchangeOnly -ConfigurationHash $configurationHash -RequestedBy $RequestedBy `
+        -AuthorizedSigner $authorizedSigner
     if (-not $decision.Permitted) { throw ('ApplyRefused: ' + ($decision.Finding -join '; ')) }
     $frozenParameterHash = Get-BaselineRecordMember -Node $preview -Name 'ParameterHash'
     if ([string](Get-BaselineRecordMember -Node $frozenParameterHash -Name 'Algorithm') -cne [string]$parameterHash.Algorithm -or
