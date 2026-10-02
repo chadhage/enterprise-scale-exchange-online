@@ -37,6 +37,27 @@ $ArtifactRoot = (Resolve-Path -LiteralPath $ArtifactRoot).ProviderPath
 if ([string]::IsNullOrWhiteSpace($EvidencePath)) { $EvidencePath = Join-Path $ArtifactRoot 'evidence/exchange-online-evidence.json' }
 if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $ArtifactRoot "evidence-report-$($ChangeId).md" }
 
+$artifactSpec = @(
+    @{ Artifact = 'Preview'; Name = "preview-$($ChangeId).json" }
+    @{ Artifact = 'Approval'; Name = "approval-$($ChangeId).json" }
+    @{ Artifact = 'PreChange'; Name = "prechange-$($ChangeId).json" }
+    @{ Artifact = 'Apply'; Name = "apply-$($ChangeId).json" }
+    @{ Artifact = 'Rollback'; Name = "rollback-$($ChangeId).ps1" }
+    @{ Artifact = 'PostChange'; Name = "postchange-$($ChangeId).json" }
+)
+$outputFullPath = [IO.Path]::GetFullPath($OutputPath)
+$pathComparison = if ([IO.Path]::DirectorySeparatorChar -eq '\') {
+    [StringComparison]::OrdinalIgnoreCase
+} else {
+    [StringComparison]::Ordinal
+}
+$protectedPaths = @($EvidencePath) + @($artifactSpec | ForEach-Object { Join-Path $ArtifactRoot $_.Name })
+foreach ($protectedPath in $protectedPaths) {
+    if ([string]::Equals($outputFullPath, [IO.Path]::GetFullPath($protectedPath), $pathComparison)) {
+        throw "EvidenceReportOutputPathCollision: OutputPath '$outputFullPath' resolves to a change artifact or evidence input '$protectedPath'; choose a separate report path."
+    }
+}
+
 if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
     throw ("EvidenceMissing: '$($EvidencePath)' was not found. Collect evidence first:`n" +
         "  ./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath `$change.ParameterPath -ConfigurationPath `$change.ConfigurationPath -OutputPath (Join-Path `$change.ArtifactRoot 'evidence')`n" +
@@ -67,14 +88,6 @@ function Format-Cell {
 
 $evidence = Read-JsonFile -Path $EvidencePath -Label 'Evidence'
 
-$artifactSpec = @(
-    @{ Artifact = 'Preview'; Name = "preview-$($ChangeId).json" }
-    @{ Artifact = 'Approval'; Name = "approval-$($ChangeId).json" }
-    @{ Artifact = 'PreChange'; Name = "prechange-$($ChangeId).json" }
-    @{ Artifact = 'Apply'; Name = "apply-$($ChangeId).json" }
-    @{ Artifact = 'Rollback'; Name = "rollback-$($ChangeId).ps1" }
-    @{ Artifact = 'PostChange'; Name = "postchange-$($ChangeId).json" }
-)
 $artifacts = foreach ($spec in $artifactSpec) {
     $path = Join-Path $ArtifactRoot $spec.Name
     $present = Test-Path -LiteralPath $path -PathType Leaf
@@ -290,9 +303,9 @@ if ($needsAttention.Count -gt 0) { Add-Line "- Assign an owner to each of the $(
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
 Add-Line '- Disconnect: `Disconnect-ExchangeOnline -Confirm:$false`.'
 
-$outputDirectory = Split-Path -Parent ([IO.Path]::GetFullPath($OutputPath))
+$outputDirectory = Split-Path -Parent $outputFullPath
 $null = New-Item -ItemType Directory -Path $outputDirectory -Force
-[IO.File]::WriteAllText([IO.Path]::GetFullPath($OutputPath), $md.ToString(), [Text.UTF8Encoding]::new($false))
+[IO.File]::WriteAllText($outputFullPath, $md.ToString(), [Text.UTF8Encoding]::new($false))
 
 $color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.Green } elseif ($complete) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Red }
 Write-Information "$($color)$($overall)$($PSStyle.Reset)"
@@ -301,11 +314,11 @@ if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bi
 if ($artifactMismatch.Count -gt 0) { Write-Information "  Artifact binding: $($artifactMismatch -join ', ') belong to another change or preview" }
 Write-Information "  Evidence: $(($statusCount.Keys | Where-Object { $statusCount[$_] -gt 0 } | ForEach-Object { "$($_) $($statusCount[$_])" }) -join ', ')"
 if ($noEvidenceChecks) { Write-Information '  Evidence checks: none found; collection is incomplete' }
-Write-Information "  Report: $([IO.Path]::GetFullPath($OutputPath))"
+Write-Information "  Report: $outputFullPath"
 
 if ($PassThru) {
     [pscustomobject]@{
-        Path            = [IO.Path]::GetFullPath($OutputPath)
+        Path            = $outputFullPath
         Outcome         = $overall
         Complete        = $complete
         MissingArtifact = $missing

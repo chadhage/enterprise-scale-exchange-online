@@ -88,6 +88,34 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $act | Should -Throw '*EvidenceUnreadable*'
     }
 
+    It 'refuses an output path that would overwrite the <Source> input' -ForEach @(
+        @{ Source = 'preview'; RelativePath = 'preview-CHG-1001.json' }
+        @{ Source = 'apply'; RelativePath = 'apply-CHG-1001.json' }
+        @{ Source = 'evidence'; RelativePath = 'evidence\exchange-online-evidence.json' }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $sourcePath = Join-Path $root $RelativePath
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($sourcePath))
+        # Act
+        $act = { & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -OutputPath $sourcePath -InformationAction Ignore }
+        # Assert
+        $act | Should -Throw '*EvidenceReportOutputPathCollision*'
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($sourcePath)) | Should -BeExactly $before
+    }
+
+    It 'refuses an output path that resolves to the custom evidence input' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence\exchange-online-evidence.json'
+        $before = [Convert]::ToBase64String([IO.File]::ReadAllBytes($evidencePath))
+        # Act
+        $act = { & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -EvidencePath $evidencePath -OutputPath $evidencePath -InformationAction Ignore }
+        # Assert
+        $act | Should -Throw '*EvidenceReportOutputPathCollision*'
+        [Convert]::ToBase64String([IO.File]::ReadAllBytes($evidencePath)) | Should -BeExactly $before
+    }
+
     It 'reports missing change artifacts as missing and marks the record incomplete' {
         # Arrange
         $root = New-EvidenceFixture -Omit 'Rollback', 'PostChange'
