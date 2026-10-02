@@ -97,6 +97,17 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         $result.Results.Where({ $_.Check -eq 'Authorized signer metadata' }).Detail | Should -Be 'every authorized signer is the requester'
     }
 
+    It 'treats a padded case-variant requester signer as the requester' {
+        # Arrange
+        $arguments = Get-ReadinessArgument -RequesterIsOnlySigner ' REQUESTER@CONTOSO.EXAMPLE '
+        # Act
+        $result = & $script:readiness @arguments
+        # Assert
+        Get-FailedCheck $result | Should -Contain 'Authorized signer metadata'
+        $result.Results.Where({ $_.Check -eq 'Authorized signer metadata' }).Detail |
+            Should -Be 'every authorized signer is the requester'
+    }
+
     It 'refuses duplicate authorized signer entries after case-insensitive normalization' {
         # Arrange
         $arguments = Get-ReadinessArgument

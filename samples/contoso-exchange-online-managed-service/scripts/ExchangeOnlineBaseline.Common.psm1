@@ -4503,8 +4503,10 @@ function Test-BaselineChangeApproval {
             $finding.Add("ChangeApprovalAuthorityNotApproved: the approval was granted under '$approvalAuthority' and only $($script:BaselineChangeApprovalAuthority) admits a change; an approval from somebody who does not hold the role is not an approval.")
         }
 
-        $approvalIdentity = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')
-        if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and $approvalIdentity -eq [string]$RequestedBy) {
+        $approvalIdentity = ([string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')).Trim()
+        $requesterIdentity = ([string]$RequestedBy).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and
+            [string]::Equals($approvalIdentity, $requesterIdentity, [System.StringComparison]::OrdinalIgnoreCase)) {
             $finding.Add("ChangeApprovalSelfApproved: '$approvalIdentity' both requested and approved this change, which removes the review entirely.")
         }
 

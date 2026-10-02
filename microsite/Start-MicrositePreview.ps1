@@ -59,7 +59,8 @@ try {
             }
             $fullPath = [System.IO.Path]::GetFullPath((Join-Path $siteRoot $relative))
             $insideRoot = $fullPath.StartsWith($siteRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase)
-            if (-not $insideRoot -or -not (Test-Path -LiteralPath $fullPath -PathType Leaf) -or $fullPath.EndsWith('.ps1')) {
+            if (-not $insideRoot -or -not (Test-Path -LiteralPath $fullPath -PathType Leaf) -or
+                $fullPath.EndsWith('.ps1', [System.StringComparison]::OrdinalIgnoreCase)) {
                 $response.StatusCode = 404
             }
             else {

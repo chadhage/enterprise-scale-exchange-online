@@ -11,6 +11,16 @@ BeforeAll {
 }
 
 Describe 'Microsite supported content boundary' {
+    It 'blocks PowerShell preview files regardless of extension casing' {
+        $script:previewServer = Get-Content -LiteralPath (Join-Path $script:repositoryRoot 'microsite\Start-MicrositePreview.ps1') -Raw
+        $script:previewServer | Should -Match "EndsWith\('\.ps1', \[System\.StringComparison\]::OrdinalIgnoreCase\)"
+        '.ps1', '.PS1' | ForEach-Object {
+            ([System.IO.Path]::GetExtension("Start-MicrositePreview$_")).EndsWith(
+                '.ps1', [System.StringComparison]::OrdinalIgnoreCase
+            ) | Should -BeTrue
+        }
+    }
+
     It 'uses the active Exchange-only contract' {
         $script:index | Should -Match 'exchange-only\.v1\.json'
         $script:index | Should -Match 'exchange-only\.schema\.v1\.json'

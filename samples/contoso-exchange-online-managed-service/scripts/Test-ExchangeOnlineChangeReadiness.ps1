@@ -315,7 +315,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                         if (-not $signerKeys.Add($key)) { $duplicateSigner = $true }
                     }
                 }
-                $independent = @($signers | Where-Object { [string]$_.Identity -ne $RequestedBy }).Count -gt 0
+                $requesterIdentity = ([string]$RequestedBy).Trim()
+                $independent = @($signers | Where-Object {
+                        -not [string]::Equals(
+                            ([string]$_.Identity).Trim(),
+                            $requesterIdentity,
+                            [System.StringComparison]::OrdinalIgnoreCase
+                        )
+                    }).Count -gt 0
                 $signerOk = $valid -and -not $duplicateSigner -and $independent -and -not (Test-PathInsideKit $AuthorizedSignerPath)
                 $signerDetail = if (-not $valid) { 'entries need Identity, Subject, and Authority = ExchangeOnlineChangeApproval' }
                 elseif ($duplicateSigner) { 'duplicate authorized signer entries after case-insensitive normalization' }

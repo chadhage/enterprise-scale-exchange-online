@@ -10,8 +10,8 @@ BeforeAll {
     $script:Tenant = 'contoso.onmicrosoft.com'
     $script:Profile = 'ThirdPartyGateway'
     $script:ConfigurationHash = 'a3f1c0de5b7288119ce2a6d4f0b9e7a15d3c48b6720fe9134a8c5d6e7f809123'
-    $script:GeneratedOn = [datetime]::new(2026, 9, 18, 7, 30, 0, [System.DateTimeKind]::Utc)
-    $script:AsOf = [datetime]::new(2026, 9, 18, 9, 0, 0, [System.DateTimeKind]::Utc)
+    $script:GeneratedOn = [datetime]::UtcNow.AddHours(-1)
+    $script:AsOf = [datetime]::UtcNow
     $script:RequestedBy = 'operator@contoso.com'
     $script:Approver = 'approver@contoso.com'
     $script:Authority = 'ExchangeOnlineChangeApproval'
@@ -361,6 +361,16 @@ Describe 'SAFE-003-A approved immutable preview gate' {
             # Assert
             '{0}|{1}' -f $decision['Permitted'], (@($decision['Finding']) -like 'ChangeApprovalSelfApproved*').Count |
                 Should -BeExactly 'False|1' -Because 'an operator who approves their own change has removed the review entirely'
+        }
+
+        It 'refuses self-approval when the approval identity is padded and differs only by case' {
+            # Arrange
+            $change = New-ApprovedChange -ApprovalOverride @{ ApprovalIdentity = ' OPERATOR@CONTOSO.COM ' }
+            # Act
+            $decision = Invoke-Gate -Change $change
+            # Assert
+            '{0}|{1}' -f $decision['Permitted'], (@($decision['Finding']) -like 'ChangeApprovalSelfApproved*').Count |
+                Should -BeExactly 'False|1'
         }
     }
 
