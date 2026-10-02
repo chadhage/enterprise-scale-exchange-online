@@ -4,7 +4,7 @@ This protocol applies only to an explicitly started `Cohort <name> start` sessio
 
 ## Coordination Authority
 
-- Exactly one canonical board writer may update this registry, backlog status/evidence, or the subordinate Kanban view at a time. In one orchestrating session, its designated steward is that writer and the root serializes steward invocations. Secondary stewards return proposals without editing shared state.
+- Exactly one shared root canonical writer may update this registry, backlog status/evidence, or the subordinate Kanban view at a time. The root serializes every cohort steward invocation and applies accepted proposals. Secondary stewards return proposals without editing shared state.
 - Independent sessions require an explicit acknowledged coordinator and a working request/response channel, or a host-provided exclusive coordination mechanism spanning claim read, validation and write. A plain Markdown read/edit, check-then-create, timestamp or best-effort file merge is not a lock. If these facilities are unavailable, keep other sessions read-only and serialize cohorts under the established coordinator. Do not run independently writing cohorts in the same checkout.
 - Startup with no confirmed writer is not permission for each session to elect itself. A sole session can designate its own steward only after confirming no other run is active. Ambiguous or simultaneous startup requires explicit coordination before claims. Record the session and acknowledgment, not just a friendly cohort name.
 - Every proposal carries the last observed allocation generation. The writer rereads state, rejects stale proposals, validates unique claims/dependencies/file reservations, applies the change, increments the generation and publishes an acknowledgment. No worker proceeds on a proposal alone. A generation check supplements exclusive ownership; it does not implement mutual exclusion.
@@ -15,11 +15,13 @@ This protocol applies only to an explicitly started `Cohort <name> start` sessio
 1. Read actual executable To Do cards, excluding summary parents. Dependencies must be Done with evidence and any card-specific external prerequisites satisfied; offline-authoring tasks do not need fabricated live readiness.
 2. Retain accepted In Progress ownership. For executable activation, pool unstarted executable reservations when membership changes and allocate dependency-eligible cards in force-rank order to the least-loaded active cohort, breaking ties by registration order. Executable load is the active card plus executable-reserved eligible cards; distribute remaining executable-eligible cards round-robin so feasible loads differ by at most one. Record why dependencies or file conflicts prevent balance. Do not invent effort estimates.
 3. Two reservation states are distinct. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; it grants no card ownership, WIP slot, repository or output path lock, implementation attempt, ACK, worker grant or execution authority. An **executable reservation/active ownership** may exist only for dependency-eligible work after the sole canonical writer issues a generation-bound ACK; it controls WIP, repository/output paths, attempts and execution authority. This supersedes the former rule that dependency-ineligible cards must remain unreserved: such cards may carry queue affinity, but remain global To Do, execution-ineligible and unowned until activation rechecks force rank, dependencies, external prerequisites, WIP, quiescence and conflicts. Equal counts never override those checks. A waiting cohort can review read-only, but cannot execute an ineligible card to appear busy.
-4. Each Coworker holds at most one In Progress implementation card; a three-Coworker cohort may therefore hold up to three nonconflicting cards. When a Coworker becomes idle, allocate the highest-ranked dependency-eligible card that passes exact reservation checks without waiting for the cohort's other cards to finish. Coworkers may assist or independently review peer cards read-only, but the claimed card's writer remains exclusive. Queue affinities remain To Do and do not count as WIP or ownership. Executable-reservation or active-ownership changes require acknowledgment by affected stewards; only the canonical writer commits the plan. Never transfer active work without a quiescent handoff.
-5. Across a shared checkout, reserve whole writable files and test-output locations, not merely named functions. Overlapping module/test/config paths serialize the conflicting implementation phases. Any newly discovered file requires a new acknowledged reservation before editing. Read-only review may overlap; integrated validation waits for all writers to its inputs to quiesce. No worktree or branch is created without separate permission.
+4. A cohort swarms one In Progress card with exactly three logical Coworker roles: test author, implementation owner and independent verifier. The root may launch these exact agents when nested depth would fail, but must retain the cohort/role identities and may not substitute generic workers. Queue affinities remain To Do and do not count as WIP or ownership. Executable-reservation or active-ownership changes require acknowledgment by affected stewards; only the root canonical writer commits the plan. Never transfer writable ownership without a quiescent handoff.
+5. Cohort Start implicitly authorizes a card-specific local branch, isolated worktree and exclusive per-role evidence roots. Across a shared checkout, reserve whole writable files and test-output locations, not merely named functions. Overlapping module/test/config paths serialize the conflicting implementation phases. Any newly discovered file requires a new acknowledged reservation before editing. Read-only review may overlap; integrated validation waits for all writers to its inputs to quiesce. Commits, pushes, live tenants, credentials, provisioning and destructive actions remain separately authorized.
 6. Every completion is evaluated against the card's acceptance, including negative-first AAA coverage, one positive per behavioral unit, independently verified observed results, scoped/full regression as required, and exact working-tree identity. Existing unrelated failures stay owned and disclosed; no new unowned regression or silent discovery loss is allowed. A child need not wait for a later integration card unless its own contract requires that gate.
 7. Failed or interrupted work is never moved to Done. Return a quiesced card to To Do with remaining work and evidence when appropriate; preserve user changes. Refresh board counts, backlog status, registry and activity log together under the sole writer, then validate consistency before new assignments.
 8. After every claim, completion, requeue, dependency transition, external-gate transition or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards. Promote existing atomic dependency-clear work first; split a composite only where its existing acceptance already contains independently claimable outcomes with separate validation/evidence contracts. Never override dependency, external, conflict or atomicity gates to fill the bank; record the exact deficit instead.
+9. Syntactic READY proves only manifest/dependency shape. Acceptance-safe READY additionally requires satisfied prerequisites, conflict-free frozen scope and a credible path through every focused and affected closure gate. A red shared affected suite makes downstream work acceptance-unsafe; create and prioritize foundational remediation cards for its owning failures, beginning with `REG-001` for `ExchangeEvidenceSigning.Tests.ps1`.
+10. Before any workers dispatch, the root writer allocates every active cohort's queue affinity, reservation state and executable claim in one generation. Partial multi-generation allocation is invalid. Required full-suite gates remain fail-closed with no waiver, baseline subtraction, silent narrowing or scoped-success substitution.
 
 ## Report Contract
 
@@ -35,9 +37,70 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 664
+Allocation generation: 672
 
-Allocation readiness: **BOARD READY — generation 664**. Platinum D01-D03 are safely requeued after independent-review NACKs. All workers are quiescent, no active claim or reservation exists, and sixteen documentation children are unclaimed READY.
+Allocation readiness: **BOARD READY — generation 672**. REG-001 is safely requeued after the preserved 67/69 focused NACK; all Platinum roles are quiescent and all g665 ownership is released. Sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+
+### Generation 672 REG-001 Focused NACK, Release And Safe Requeue
+
+- **Decision:** NACK completion. C2's final bounded run remains 69 total, 67 passed, 2 failed, zero skipped/not-run/failed containers, exit 1, retry 0; C3 independently reported the same two ApprovedException failures. Full affected was correctly withheld.
+- **Preservation:** retain branch `dispatch/REG-001/Platinum/Coworker-1/g665`, worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`, and every C1/C2/C3 evidence root read-only. Preserve prior `.artifacts` and rejected candidates.
+- **Release:** all three roles are quiescent. Release token `REG-001/Platinum/g665/4ed34a64d8124e12910989424f1449d3`, lease, tracked paths, evidence roots and role bindings. REG-001 returns In Progress -> To Do/unassigned as `WAIT-SUITE`.
+- **State:** 47 To Do / 0 In Progress / 57 Done; 104 executable cards; sixteen syntactic READY and zero acceptance-safe downstream cards. No Done transition, waiver, narrowing, baseline subtraction, commit, push, publication or live action.
+
+### Generation 671 REG-001 Verifier NACK And ApprovedException Repair Grant
+
+- **NACK evidence:** C3 independently ran focused once: 69 total, 67 passed, 2 failed, zero skipped/not-run/failed containers, exit 1, retry 0. Full affected was not run.
+- **ACK:** `Platinum-root-coordinator/Kanban/g671/grant-REG-001-approved-exception-repair-to-Coworker-2`.
+- **Grant:** C2 may write only the reserved Common module to preserve ApprovedException and its exception inventory in the two failing public signing paths, then run focused once.
+- **State:** C1 quiescent; C3 evidence immutable/read-only; counts 46/1/57. No new path, waiver, retry, affected run, commit, push or live authority.
+
+### Generation 670 REG-001 Independent Verification Handoff
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g670/grant-REG-001-independent-focused-and-affected-to-Coworker-3`.
+- **Disposition:** C2's g669 command ran in the primary checkout and is invalid candidate evidence; preserve it, retry 0. C2 is quiescent and all tracked paths are read-only.
+- **Verifier grant:** C3 uses absolute worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`, runs focused once, then the full managed-service suite once only if focused is total=passed with zero other outcomes/containers.
+- **Evidence:** C3 writes only `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-3/`, records exact commands, identities, counts, exits, timestamps, retries and hashes, plus `git diff --check`.
+- **Gate:** any failure, skip, not-run, failed container, nonzero exit, checkout/hash drift or retry is a completion NACK. No waiver, narrowing, baseline subtraction, commit, push or live action.
+
+### Generation 669 REG-001 Five-Failure Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g669/grant-REG-001-five-contract-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 64 passed, 5 failed, zero skipped/not-run/failed containers, exit 1, retry 0.
+- **Grant:** C2 may write only the reserved Common module and public entrypoint for the five frozen required-input, forged-verification and ApprovedException failures, then run focused once.
+- **State:** C1 quiescent; C3 read-only; counts 46/1/57. No new path, affected run, waiver, commit, push or live authority.
+
+### Generation 668 REG-001 Common-Module Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g668/grant-REG-001-common-normalization-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 53 passed, 16 failed, zero skipped/not-run/failed containers, exit 1, retry 0.
+- **Grant:** C2 retains only the reserved Common module for the exact malformed-input, mixed-authority and ApprovedException defects, then runs focused once and quiesces.
+- **State:** C1 quiescent; C3 read-only; counts 46/1/57. No new path, affected run, waiver, commit, push or live authority.
+
+### Generation 667 REG-001 Entrypoint Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g667/grant-REG-001-entrypoint-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 3 passed, 66 failed, zero skipped/not-run/failed containers, exit 1, retry 0; full suite not run.
+- **Grant:** C2 may write the already-reserved `samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1` only to restore the rejected `EvidencePath`, `EvidenceSignaturePath`, and `EvidenceSignerIdentity` public signing contract, then run focused once.
+- **Barrier:** C1 is quiescent; C3 remains read-only. No additional path, retry, affected run, waiver, commit, push or live authority.
+
+### Generation 666 REG-001 C1-To-C2 Fixture Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g666/handoff-REG-001-test-fixture-to-Coworker-2`.
+- **Evidence decision:** C1's 69-test intended-red packet is diagnostic only because retry count is 2. C2's focused checkpoint ran once with 69 total, 0 passed, 69 failed, one failed container, exit 1 and retry 0.
+- **Ownership transfer:** C1 is quiescent. Transfer writable ownership of the already-reserved `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEvidenceSigning.Tests.ps1` to C2 only for mailbox-plan/mailbox raw-fixture alignment. C2 retains `ExchangeOnlineBaseline.Common.psm1`; all other tracked paths remain read-only.
+- **Next barrier:** C2 runs focused exactly once after the fixture correction, then quiesces. C3 alone receives independent focused/full-suite validation authority in a later root ACK.
+- **State:** counts remain 46/1/57; no reservation expansion, waiver, retry, commit, push, live action or external authority. Sixteen documentation children remain syntactically READY but acceptance-unsafe while the shared suite is red. The root canonical writer atomically claims foundational `REG-001` for Platinum before dispatch.
+
+### Generation 665 Root Atomic REG-001 Allocation And Claim
+
+- **Writer/run:** shared root canonical writer `Platinum-root-coordinator/Kanban`; run `platinum-g664-reg001-20261002T092913Z`; observed published generation 664 and atomically advanced all canonical views to 665 before worker dispatch.
+- **Readiness:** sixteen documentation children remain syntactically READY. They are not acceptance-safe while their mandatory full affected suite includes the failed `ExchangeEvidenceSigning.Tests.ps1` container. `REG-001` is the highest-priority acceptance-safe foundational route.
+- **Claim ACK:** `Platinum-root-coordinator/Kanban/g665/claim-REG-001`; token `REG-001/Platinum/g665/4ed34a64d8124e12910989424f1449d3`; card In Progress; exactly one steward and roles `Platinum/Coworker-1` test author, `Platinum/Coworker-2` implementation owner, `Platinum/Coworker-3` independent verifier.
+- **Isolation:** branch `dispatch/REG-001/Platinum/Coworker-1/g665`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`; preserved evidence roots `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-1/`, `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-2/`, and `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-3/`.
+- **Tracked reservation:** `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEvidenceSigning.Tests.ps1`, `samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeGovernanceRawFixture.ps1`, `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, and `samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1`. Only one role may write a reserved file at a time; newly needed paths require a new root ACK.
+- **Gates:** negative-first AAA and one positive per behavioral unit; focused `ExchangeEvidenceSigning.Tests.ps1`; then the complete managed-service test tree. Both require total=passed, failed/skipped/not-run/failed-containers=0, exit 0, stable hashes, clean `git diff --check`, and retry 0. No waiver or narrowing.
+- **State:** 46 To Do / 1 In Progress / 57 Done; 104 executable cards; 28 summaries; sixteen unclaimed syntactic READY cards and zero additional acceptance-safe executable cards.
 
 ### Generation 664 Platinum Three-Card Review NACK, Release And Requeue
 

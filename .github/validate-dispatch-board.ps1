@@ -31,7 +31,7 @@ function Get-CanonicalCards {
     $tail = $Content.Substring($start.Index + $start.Length)
     $next = [regex]::Match($tail, '(?m)^## [^\r\n]+\r?$')
     $canonical = if ($next.Success) { $tail.Substring(0, $next.Index) } else { $tail }
-    $headings = [regex]::Matches($canonical, '(?m)^### (?<id>EXR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)[ \t]*\r?$')
+    $headings = [regex]::Matches($canonical, '(?m)^### (?<id>(?:EXR|REG)-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)[ \t]*\r?$')
     $cards = [System.Collections.Generic.List[object]]::new()
 
     for ($index = 0; $index -lt $headings.Count; $index++) {
@@ -60,7 +60,7 @@ function Get-CanonicalCards {
             Assert-Board $dependencyLine.Success "$($heading.Groups['id'].Value) dependencies are missing."
             $dependencies = @([regex]::Matches(
                     $dependencyLine.Groups['dependencies'].Value,
-                    '\bEXR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*\b'
+                    '\b(?:EXR|REG)-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*\b'
                 ) | ForEach-Object { $_.Value } | Select-Object -Unique)
         }
         $cards.Add([pscustomobject]@{
@@ -115,9 +115,10 @@ $summaries = @($cards | Where-Object IsSummary)
 $todo = @($executables | Where-Object Status -eq 'To Do')
 $inProgress = @($executables | Where-Object Status -eq 'In Progress')
 $done = @($executables | Where-Object Status -eq 'Done')
-Assert-Board ($executables.Count -eq 103) "expected 103 executable cards, found $($executables.Count)."
+Assert-Board ($executables.Count -eq 104) "expected 104 executable cards, found $($executables.Count)."
 Assert-Board ($summaries.Count -eq 28) "expected 28 summary parents, found $($summaries.Count)."
-Assert-Board ($todo.Count -eq 46 -and $inProgress.Count -eq 0 -and $done.Count -eq 57) "expected 46/0/57 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board ($todo.Count -eq 47 -and $inProgress.Count -eq 0 -and $done.Count -eq 57) "expected 47/0/57 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board (@($todo | Where-Object Id -ceq 'REG-001').Count -eq 1) 'REG-001 must be safely requeued To Do.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-010-A12-L01-F02').Count -eq 1) 'F02 must be Done.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-018-A01').Count -eq 1) 'EXR-018-A01 must be Done.'
 $c01 = @($cards | Where-Object Id -ceq 'EXR-010-A12-L01-C01')
@@ -154,7 +155,7 @@ Assert-Board ($profiles.Count -ge 1) 'no dispatch profiles resolved.'
 $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest' 'card')
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
-Assert-Board ($manifest.Count -eq 46) "expected 46 manifest entries, found $($manifest.Count)."
+Assert-Board ($manifest.Count -eq 47) "expected 47 manifest entries, found $($manifest.Count)."
 $unfinishedIds = @(($todo.Id + $inProgress.Id) | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
 Assert-Board (($unfinishedIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match unfinished executable IDs.'
@@ -164,7 +165,7 @@ foreach ($entry in $manifest) {
     foreach ($field in 'Dependency', 'Reservation', 'ReadOnly', 'Validation') {
         Assert-Board (-not [string]::IsNullOrWhiteSpace($entry.$field)) "$($entry.Id) field $field is empty."
     }
-    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT|CLAIMED:[^`]+)') "$($entry.Id) eligibility or claim binding is missing."
+    Assert-Board ($entry.Dependency -match '`(?:READY|WAIT-DEP|WAIT-EXT|WAIT-SUITE|CLAIMED:[^`]+)') "$($entry.Id) eligibility or claim binding is missing."
     Assert-Board ($entry.Validation -match 'F=' -and $entry.Validation -match 'A=') "$($entry.Id) focused/affected binding is incomplete."
     $profile = $profiles[$entry.Profile]
     foreach ($field in 'envelope', 'validation', 'expected', 'evidence', 'integration', 'abort', 'handoff') {
@@ -192,7 +193,7 @@ $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
 Assert-Board ($eligible.Count -eq 16) "Platinum three-card release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No card may remain In Progress after the generation-664 release.'
+Assert-Board ($inProgress.Count -eq 0) 'All REG-001 roles must be released after the generation-672 NACK.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -231,7 +232,42 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 664) 'Platinum three-card review-NACK release generation must be 664.'
+Assert-Board ($backlogGeneration -eq 672) 'REG-001 release generation must be 672.'
+Assert-Board ($backlog -match 'Generation 672 REG-001 focused NACK, release, and safe requeue') 'Generation-672 backlog release record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 672 REG-001 Focused NACK, Release And Safe Requeue\r?$') 'Generation-672 registry release record is missing.'
+Assert-Board ($backlog -match '67/69' -and $backlog -match 'full affected suite was correctly withheld') 'Generation-672 focused NACK evidence is missing.'
+Assert-Board ($cohorts -match 'REG-001 returns In Progress -> To Do/unassigned as `WAIT-SUITE`') 'Generation-672 release disposition is missing.'
+Assert-Board ($backlog -match 'Generation 671 REG-001 verifier NACK and ApprovedException repair grant') 'Generation-671 backlog NACK record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 671 REG-001 Verifier NACK And ApprovedException Repair Grant\r?$') 'Generation-671 registry NACK record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g671/grant-REG-001-approved-exception-repair-to-Coworker-2') 'Generation-671 backlog repair ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g671/grant-REG-001-approved-exception-repair-to-Coworker-2') 'Generation-671 registry repair ACK is missing.'
+Assert-Board ($backlog -match 'Generation 670 REG-001 independent-verification handoff') 'Generation-670 backlog handoff record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 670 REG-001 Independent Verification Handoff\r?$') 'Generation-670 registry handoff record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g670/grant-REG-001-independent-focused-and-affected-to-Coworker-3') 'Generation-670 backlog verifier ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g670/grant-REG-001-independent-focused-and-affected-to-Coworker-3') 'Generation-670 registry verifier ACK is missing.'
+Assert-Board ($backlog -match 'Generation 669 REG-001 five-failure repair barrier') 'Generation-669 backlog barrier record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 669 REG-001 Five-Failure Repair Barrier\r?$') 'Generation-669 registry barrier record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g669/grant-REG-001-five-contract-repair-to-Coworker-2') 'Generation-669 backlog barrier ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g669/grant-REG-001-five-contract-repair-to-Coworker-2') 'Generation-669 registry barrier ACK is missing.'
+Assert-Board ($backlog -match 'Generation 668 REG-001 Common-module repair barrier') 'Generation-668 backlog barrier record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 668 REG-001 Common-Module Repair Barrier\r?$') 'Generation-668 registry barrier record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g668/grant-REG-001-common-normalization-repair-to-Coworker-2') 'Generation-668 backlog barrier ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g668/grant-REG-001-common-normalization-repair-to-Coworker-2') 'Generation-668 registry barrier ACK is missing.'
+Assert-Board ($backlog -match 'Generation 667 REG-001 entrypoint repair barrier') 'Generation-667 backlog barrier record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 667 REG-001 Entrypoint Repair Barrier\r?$') 'Generation-667 registry barrier record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g667/grant-REG-001-entrypoint-repair-to-Coworker-2') 'Generation-667 backlog barrier ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g667/grant-REG-001-entrypoint-repair-to-Coworker-2') 'Generation-667 registry barrier ACK is missing.'
+Assert-Board ($backlog -match 'Generation 666 REG-001 C1-to-C2 barrier') 'Generation-666 backlog barrier record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 666 REG-001 C1-To-C2 Fixture Barrier\r?$') 'Generation-666 registry barrier record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g666/handoff-REG-001-test-fixture-to-Coworker-2') 'Generation-666 backlog barrier ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g666/handoff-REG-001-test-fixture-to-Coworker-2') 'Generation-666 registry barrier ACK is missing.'
+Assert-Board ($backlog -match 'Generation 665 foundational allocation and claim') 'Generation-665 backlog allocation record is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 665 Root Atomic REG-001 Allocation And Claim\r?$') 'Generation-665 registry allocation record is missing.'
+Assert-Board ($backlog -match 'Platinum-root-coordinator/Kanban/g665/claim-REG-001') 'REG-001 backlog claim ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g665/claim-REG-001') 'REG-001 registry claim ACK is missing.'
+Assert-Board ($cohorts -match 'Platinum/Coworker-1' -and $cohorts -match 'Platinum/Coworker-2' -and $cohorts -match 'Platinum/Coworker-3') 'Exact Platinum Coworker roles are missing.'
+Assert-Board ($backlog -match 'syntactically READY' -and $backlog -match 'acceptance-unsafe') 'Syntactic and acceptance-safe readiness are not distinguished.'
+Assert-Board ($backlog -match 'No waiver, narrowing, baseline subtraction') 'REG-001 fail-closed no-waiver contract is missing.'
 Assert-Board ($backlog -match 'Generation 664 Platinum three-card review NACK, release, and safe requeue') 'Platinum generation-664 backlog release record is missing.'
 Assert-Board ($cohorts -match '(?m)^### Generation 664 Platinum Three-Card Review NACK, Release And Requeue\r?$') 'Platinum generation-664 registry release record is missing.'
 Assert-Board ($backlog -match '5,476' -and $backlog -match '5,469' -and $backlog -match '5,463') 'Platinum generation-664 affected result counts are missing.'
@@ -299,7 +335,7 @@ foreach ($role in 1..3) {
 }
 Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
 Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
-Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 103; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
+Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 104; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
 Assert-Board ($backlog -match '(?m)^\d+\. \*\*READY-bank replenishment\.\*\* After every claim, completion, requeue, dependency transition, external-gate transition, or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'canonical READY-bank replenishment contract is missing.'
 Assert-Board ($cohorts -match '(?m)^8\. After every claim, completion, requeue, dependency transition, external-gate transition or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'allocation READY-bank replenishment contract is missing.'
 Assert-Board ($backlog -match '(?m)^Generation 614 Purple C01 final candidate: \*\*Canonical decision: ACCEPT `EXR-010-A12-L01-C01` as Done\.\*\*') 'C01 canonical decision record is missing.'
@@ -313,9 +349,9 @@ Assert-Board ($cohorts -match '(?m)^### Generation 615 Purple C01 Acceptance And
 Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 614:\*\* canonical decision ACCEPT marks `EXR-010-A12-L01-C01` Done ') 'C01 compatibility activity record is missing.'
 Assert-Board ($kanban -match '(?m)^- \*\*2026-09-30 / compatibility synchronization to generation 615:\*\* accepted the generation-614 C01 candidate ') 'C01 compatibility release activity is missing.'
 Assert-Board ($backlog -match '(?m)^- Generation 614 accepted candidate evidence: canonical decision ACCEPT;') 'C01 accepted candidate evidence is missing from its canonical card section.'
-Assert-Board ($backlog -match '(?m)^\d+\. \*\*Worker-slot WIP and isolation\.\*\* Each coworker owns at most one In Progress implementation card, so a three-worker cohort may hold up to three nonconflicting cards; there is no unrelated global one-card gate\.') 'canonical worker-slot WIP contract is missing.'
-Assert-Board ($backlog -match '(?m)^\d+\. \*\*Idle pull behavior\.\*\* When a coworker becomes idle, the steward immediately reruns the dependency-ready query') 'canonical idle-coworker pull contract is missing.'
-Assert-Board ($cohorts -match '(?m)^4\. Each Coworker holds at most one In Progress implementation card; a three-Coworker cohort may therefore hold up to three nonconflicting cards\.') 'allocation worker-slot contract is missing.'
+Assert-Board ($backlog -match '(?m)^\d+\. \*\*One-card swarm WIP and isolation\.\*\* Each cohort owns at most one In Progress card and binds exactly three logical roles: test author, implementation owner and independent verifier\.') 'canonical one-card swarm contract is missing.'
+Assert-Board ($backlog -match '(?m)^\d+\. \*\*Exact-role barrier behavior\.\*\* The test author freezes negative-first evidence before the implementation owner receives writable ownership') 'canonical exact-role barrier contract is missing.'
+Assert-Board ($cohorts -match '(?m)^4\. A cohort swarms one In Progress card with exactly three logical Coworker roles: test author, implementation owner and independent verifier\.') 'allocation one-card swarm contract is missing.'
 Assert-Board ($backlog -match '(?m)^Generation 618 four-cohort allocation and Purple D01 claim: ') 'generation-618 backlog claim record is missing.'
 Assert-Board ($cohorts -match '(?m)^### Generation 618 Four-Cohort Allocation And Purple D01 Claim\r?$') 'generation-618 registry claim is missing.'
 Assert-Board ($cohorts -match [regex]::Escape('EXR-012-A01-D01/Purple/g618/56c2a84b94b34c03846814657ca5202d')) 'Purple D01 token is missing.'
