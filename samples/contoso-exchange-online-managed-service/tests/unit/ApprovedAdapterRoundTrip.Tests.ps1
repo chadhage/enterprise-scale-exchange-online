@@ -256,6 +256,26 @@ Context 'Signed TABL governance binding' {
         Should -Invoke Initialize-ExchangeOnlineSession -Times 1 -Exactly
     }
 
+    It 'persists pre-change state and an executable rollback before a failing apply write' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $global:adapterWriteFault = 'New-TenantAllowBlockListItems'
+        try {
+            # Act
+            $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+            # Assert
+            $invoke | Should -Throw
+        }
+        finally { $global:adapterWriteFault = '' }
+        Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json') | Should -BeTrue
+        Test-Path (Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') | Should -BeTrue
+        Test-Path (Join-Path $arguments.ArtifactRoot 'apply-ADAPTER004.json') | Should -BeFalse
+        Import-Module (Join-Path $script:adapterRoot 'scripts/ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        Mock Initialize-ExchangeOnlineSession { }
+        { & (Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') -Apply -Confirm:$false | Out-Null } | Should -Not -Throw
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 0
+    }
+
     It 'keeps unchanged approved TABL governance fields bound through apply' {
         # Arrange
         $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'

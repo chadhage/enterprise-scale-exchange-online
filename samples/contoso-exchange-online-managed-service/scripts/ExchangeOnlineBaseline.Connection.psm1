@@ -281,6 +281,16 @@ function Initialize-ExchangeOnlineSession {
         -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion $MinimumModuleVersion
     $commands = @(@($RequiredCommand) + @(Get-ExchangeScopeReadCommand -Scope $Scope) | Where-Object { $_ } | Select-Object -Unique)
     $null = Assert-ExchangeOnlineSession -Session $session -ExpectedTenantId $ExpectedTenantId -RequiredCommand $commands
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedTenantId)) {
+        # Apply/Rollback refuse if any connected session (including Security & Compliance) is another tenant; fail here first.
+        $foreign = @(Get-ConnectionInformation -ErrorAction SilentlyContinue |
+                Where-Object { $_.State -eq 'Connected' -and [string]$_.TenantID -ne $ExpectedTenantId })
+        if ($foreign.Count -gt 0) {
+            throw ("ExchangeSessionTenantMismatch: another connected session is in tenant $(($foreign | ForEach-Object { [string]$_.TenantID } | Select-Object -Unique) -join ', '), but the parameter file is for tenant $($ExpectedTenantId). Run:`n" +
+                "  Disconnect-ExchangeOnline -Confirm:`$false`n" +
+                'then rerun this script and sign in only to the parameter-file tenant.')
+        }
+    }
     Write-Information "Exchange Online session ready: $($session.UserPrincipalName), tenant $($session.TenantID)$(if ($commands.Count) { ", $($commands.Count) required cmdlet(s) available" })."
     $session
 }

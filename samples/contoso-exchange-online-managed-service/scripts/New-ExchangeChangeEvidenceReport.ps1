@@ -110,7 +110,27 @@ foreach ($check in $checks) {
 }
 $needsAttention = @($checks | Where-Object { [string](Get-RecordValue $_ 'Status') -ne 'Pass' })
 
-$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded'
+# Evidence only counts for this change when it was collected for the previewed tenant, profile and configuration.
+$normalizeHash = { param($Value) ([string]$Value -replace '(?i)^sha256:', '').Trim().ToLowerInvariant() }
+$binding = @(
+    [pscustomobject]@{ Field = 'Tenant'; Preview = [string](Get-RecordValue $preview 'Tenant'); Evidence = [string](Get-RecordValue $evidence 'TenantId'); Compare = { param($a, $b) $a.Trim() -eq $b.Trim() } }
+    [pscustomobject]@{ Field = 'DeploymentProfile'; Preview = [string](Get-RecordValue $preview 'DeploymentProfile'); Evidence = [string](Get-RecordValue $evidence 'DeploymentProfile'); Compare = { param($a, $b) $a -ceq $b } }
+    [pscustomobject]@{ Field = 'ConfigurationHash'; Preview = [string](Get-RecordValue $preview 'ConfigurationHash'); Evidence = [string](Get-RecordValue $evidence 'ConfigurationHash'); Compare = { param($a, $b) (& $normalizeHash $a) -ceq (& $normalizeHash $b) } }
+    [pscustomobject]@{ Field = 'CollectedAfterApply'; Preview = [string](Get-RecordValue $apply 'CompletedOn'); Evidence = [string](Get-RecordValue $evidence 'CollectedAtUtc'); Compare = {
+            param($a, $b)
+            $style = [Globalization.DateTimeStyles]::AssumeUniversal
+            $applied = [datetimeoffset]::MinValue; $collected = [datetimeoffset]::MinValue
+            [datetimeoffset]::TryParse($a, [Globalization.CultureInfo]::InvariantCulture, $style, [ref]$applied) -and
+            [datetimeoffset]::TryParse($b, [Globalization.CultureInfo]::InvariantCulture, $style, [ref]$collected) -and
+            $collected -ge $applied
+        } }
+) | ForEach-Object {
+    $match = -not [string]::IsNullOrWhiteSpace($_.Preview) -and -not [string]::IsNullOrWhiteSpace($_.Evidence) -and (& $_.Compare $_.Preview $_.Evidence)
+    [pscustomobject]@{ Field = $_.Field; Preview = $_.Preview; Evidence = $_.Evidence; Match = [bool]$match }
+}
+$bindingMismatch = @($binding | Where-Object { -not $_.Match } | ForEach-Object Field)
+
+$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and $bindingMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
 elseif (($statusCount['Fail'] + $statusCount['Error']) -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
@@ -129,7 +149,7 @@ Add-Line
 Add-Line '| Item | Value |'
 Add-Line '| --- | --- |'
 Add-Line "| Change | $(Format-Cell $ChangeId) |"
-Add-Line "| Tenant | $(Format-Cell ((Get-RecordValue $preview 'Tenant') ?? (Get-RecordValue $evidence 'TenantId'))) |"
+Add-Line "| Tenant | $(Format-Cell (Get-RecordValue $preview 'Tenant')) |"
 Add-Line "| Scope | $(Format-Cell (Get-RecordValue $preview 'Scope')) |"
 Add-Line "| Preview generated | $(Format-Cell (Get-RecordValue $preview 'GeneratedOn')) |"
 Add-Line "| Approved by | $(Format-Cell (Get-RecordValue $approval 'ApprovalIdentity')) |"
@@ -138,10 +158,23 @@ Add-Line "| Apply status | $(Format-Cell $applyStatus) |"
 Add-Line "| Apply completed | $(Format-Cell (Get-RecordValue $apply 'CompletedOn')) |"
 Add-Line "| Post-change status | $(Format-Cell $postStatus) |"
 Add-Line "| Evidence collected | $(Format-Cell (Get-RecordValue $evidence 'CollectedAtUtc')) |"
-Add-Line "| Configuration hash | $(Format-Cell ((Get-RecordValue $preview 'ConfigurationHash') ?? (Get-RecordValue $evidence 'ConfigurationHash'))) |"
+Add-Line "| Configuration hash | $(Format-Cell (Get-RecordValue $preview 'ConfigurationHash')) |"
 Add-Line "| Manifest hash | $(Format-Cell (Get-RecordValue $evidence 'ManifestHash')) |"
 Add-Line "| Report written | $([datetimeoffset]::UtcNow.ToString('u')) |"
 Add-Line
+
+Add-Line '## Evidence binding'
+Add-Line
+Add-Line '| Field | Change record | Evidence | Match |'
+Add-Line '| --- | --- | --- | --- |'
+foreach ($row in $binding) {
+    Add-Line "| $($row.Field) | $(Format-Cell $row.Preview) | $(Format-Cell $row.Evidence) | $(if ($row.Match) { 'Yes' } else { '**No**' }) |"
+}
+Add-Line
+if ($bindingMismatch.Count -gt 0) {
+    Add-Line "The evidence does not belong to this change ($($bindingMismatch -join ', ') differ, are missing, or were collected before apply completed). Recollect evidence after apply with this change's parameter and configuration files."
+    Add-Line
+}
 
 Add-Line '## Change artifacts'
 Add-Line
@@ -219,6 +252,7 @@ foreach ($section in @(
 Add-Line '## Next actions'
 Add-Line
 if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
+if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
 if ($needsAttention.Count -gt 0) { Add-Line "- Assign an owner to each of the $($needsAttention.Count) checks that did not pass." }
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
@@ -231,6 +265,7 @@ $null = New-Item -ItemType Directory -Path $outputDirectory -Force
 $color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.Green } elseif ($complete) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Red }
 Write-Information "$($color)$($overall)$($PSStyle.Reset)"
 Write-Information "  Artifacts present: $(6 - $missing.Count) of 6$(if ($missing.Count) { " (missing: $($missing -join ', '))" })"
+if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bindingMismatch -join ', ') do not match the change record" }
 Write-Information "  Evidence: $(($statusCount.Keys | Where-Object { $statusCount[$_] -gt 0 } | ForEach-Object { "$($_) $($statusCount[$_])" }) -join ', ')"
 Write-Information "  Report: $([IO.Path]::GetFullPath($OutputPath))"
 
@@ -240,6 +275,7 @@ if ($PassThru) {
         Outcome         = $overall
         Complete        = $complete
         MissingArtifact = $missing
+        BindingMismatch = $bindingMismatch
         StatusCount     = [pscustomobject]$statusCount
     }
 }

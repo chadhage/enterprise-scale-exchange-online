@@ -18032,22 +18032,52 @@ function Invoke-BaselineApprovedChange {
     $journal = [Collections.Generic.List[object]]::new()
     $ordered = if ($Stage -eq 'Rollback') { @($approved | Sort-Object Sequence -Descending) } else { $approved }
     $rollbackCurrentById = @{}
-    if ($Stage -eq 'Rollback') {
-        foreach ($operation in $ordered) {
-            $definition = $definitionById[[string]$operation.OperationId]
-            if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
-            $current = Read-ApprovedAdapterState $definition
-            $allowed = ConvertTo-BaselineHashableNode $operation.After
-            $desired = ConvertTo-BaselineHashableNode $operation.Before
-            if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
-                (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
-                throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
+    # Every target is read and drift-checked before WhatIf/Confirm and before any artifact or write,
+    # so a rehearsal reports drift exactly as the real run would.
+    foreach ($operation in $ordered) {
+        $definition = $definitionById[[string]$operation.OperationId]
+        if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
+        $current = Read-ApprovedAdapterState $definition
+        $allowed = ConvertTo-BaselineHashableNode $operation.After
+        $desired = ConvertTo-BaselineHashableNode $operation.Before
+        if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
+            (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+            if ($Stage -eq 'Apply' -and $definition.Adapter -ceq 'MailboxSafeSender') {
+                throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
             }
-            $rollbackCurrentById[[string]$operation.OperationId] = $current
+            throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
         }
+        if ($Stage -eq 'Rollback') { $rollbackCurrentById[[string]$operation.OperationId] = $current }
     }
     if (-not $PSCmdlet.ShouldProcess("$ChangeId in tenant $tenant", "$Stage $($approved.Count) approved Exchange operation(s)")) {
         return
+    }
+    if ($Stage -eq 'Apply') {
+        # Recovery artifacts are persisted before the first write so a partial apply can always be rolled back.
+        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
+        $toLiteral = { param($Value) "'" + ([string]$Value).Replace("'", "''") + "'" }
+        $toFullPath = { param($Value) & $toLiteral ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath([string]$Value)) }
+        $rollback = @(
+            '#requires -Version 7.5'
+            "# Recovery for approved change $ChangeId. Runs the approved Rollback stage, which re-verifies the"
+            '# approval, the signed-in tenant and current state before restoring only what this change touched.'
+            "[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]"
+            'param([switch]$Apply, [string]$UserPrincipalName, [switch]$UseDeviceCode, [bool]$ConfirmSession = $true, [switch]$NonInteractive)'
+            '$change = @{'
+            "    ParameterPath        = $(& $toFullPath $ParameterPath)"
+            "    ConfigurationPath    = $(& $toFullPath $ConfigurationPath)"
+            "    ArtifactRoot         = $(& $toFullPath $ArtifactRoot)"
+            "    ChangeId             = $(& $toLiteral $ChangeId)"
+            "    RequestedBy          = $(& $toLiteral $RequestedBy)"
+            "    AuthorizedSignerPath = $(& $toFullPath $AuthorizedSignerPath)"
+            "    PreviewPath          = $(& $toFullPath $PreviewPath)"
+            "    ApprovalPath         = $(& $toFullPath $ApprovalPath)"
+            '}'
+            '$forward = @{} + $PSBoundParameters'
+            "& $(& $toLiteral (Join-Path $PSScriptRoot 'Invoke-ExchangeOnlineChange.ps1')) -Stage Rollback @change @forward"
+        ) -join "`n"
+        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Rollback -Root $ArtifactRoot -Content $rollback
     }
     foreach ($operation in $ordered) {
         $definition = $definitionById[[string]$operation.OperationId]
@@ -18099,30 +18129,6 @@ function Invoke-BaselineApprovedChange {
         $receipt.Operations = @($receipt['Operations']) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
     }
     if ($Stage -eq 'Apply') {
-        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
-        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
-        $toLiteral = { param($Value) "'" + ([string]$Value).Replace("'", "''") + "'" }
-        $toFullPath = { param($Value) & $toLiteral ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath([string]$Value)) }
-        $rollback = @(
-            '#requires -Version 7.5'
-            "# Recovery for approved change $ChangeId. Runs the approved Rollback stage, which re-verifies the"
-            '# approval, the signed-in tenant and current state before restoring only what this change touched.'
-            "[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]"
-            'param([switch]$Apply, [string]$UserPrincipalName, [switch]$UseDeviceCode, [bool]$ConfirmSession = $true, [switch]$NonInteractive)'
-            '$change = @{'
-            "    ParameterPath        = $(& $toFullPath $ParameterPath)"
-            "    ConfigurationPath    = $(& $toFullPath $ConfigurationPath)"
-            "    ArtifactRoot         = $(& $toFullPath $ArtifactRoot)"
-            "    ChangeId             = $(& $toLiteral $ChangeId)"
-            "    RequestedBy          = $(& $toLiteral $RequestedBy)"
-            "    AuthorizedSignerPath = $(& $toFullPath $AuthorizedSignerPath)"
-            "    PreviewPath          = $(& $toFullPath $PreviewPath)"
-            "    ApprovalPath         = $(& $toFullPath $ApprovalPath)"
-            '}'
-            '$forward = @{} + $PSBoundParameters'
-            "& $(& $toLiteral (Join-Path $PSScriptRoot 'Invoke-ExchangeOnlineChange.ps1')) -Stage Rollback @change @forward"
-        ) -join "`n"
-        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Rollback -Root $ArtifactRoot -Content $rollback
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
         $post = @{}
         foreach ($key in $receipt.Keys) { $post[$key] = $receipt[$key] }

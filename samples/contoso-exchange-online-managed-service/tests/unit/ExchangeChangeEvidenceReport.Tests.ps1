@@ -104,6 +104,44 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         (Get-Content -LiteralPath $result.Path -Raw) | Should -Match 'Apply status \| Failed'
     }
 
+    It 'does not call evidence collected for <Field> <Value> evidence for this change' -ForEach @(
+        @{ Field = 'TenantId'; Value = '99999999-2222-3333-4444-555555555555'; Label = 'Tenant' }
+        @{ Field = 'DeploymentProfile'; Value = 'MicrosoftNative'; Label = 'DeploymentProfile' }
+        @{ Field = 'ConfigurationHash'; Value = 'sha256:ffff'; Label = 'ConfigurationHash' }
+        @{ Field = 'TenantId'; Value = ''; Label = 'Tenant' }
+        @{ Field = 'CollectedAtUtc'; Value = '2026-01-01T01:00:00Z'; Label = 'CollectedAfterApply' }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence[$Field] = $Value
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.BindingMismatch | Should -Be @($Label)
+        $markdown | Should -Match "\| $($Label) \| [^|]+ \| [^|]+ \| \*\*No\*\* \|"
+        $markdown | Should -Match 'Recollect evidence'
+    }
+
+    It 'binds evidence whose configuration hash carries the sha256 prefix' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.ConfigurationHash = 'sha256:ABC123'
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        # Assert
+        $result.Complete | Should -BeTrue
+        $result.BindingMismatch | Should -BeNullOrEmpty
+    }
+
     It 'writes a Markdown summary of every artifact, operation and evidence result' {
         # Arrange
         $root = New-EvidenceFixture
@@ -124,6 +162,7 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Not -Match '\| EXO-001 \|'
         $markdown | Should -Match 'EXT-001'
         $markdown | Should -Match 'not a go-live approval'
+        $markdown | Should -Match '\| Tenant \| [^|]+ \| [^|]+ \| Yes \|'
         $hash = (Get-FileHash -LiteralPath (Join-Path $root 'apply-CHG-1001.json') -Algorithm SHA256).Hash.ToLowerInvariant()
         $markdown | Should -Match $hash
     }

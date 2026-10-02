@@ -424,7 +424,7 @@ $preview.Operation | ForEach-Object {
                         <h3>Hand off to your approver</h3>
                         <p>When the preview matches your ticket, copy a handoff note to the clipboard and send it to your approver (chat, email, or the ticket). It contains the <code>$change</code> block they paste, the preview fingerprint they compare, and the expiry time:</p>
                         <pre><code>$previewHash = (Get-FileHash -LiteralPath $change.PreviewPath -Algorithm SHA256).Hash
-$changeBlock = '$change = @{' + [Environment]::NewLine + (($change.GetEnumerator() | Sort-Object Key | ForEach-Object { "    $($_.Key) = '$($_.Value)'" }) -join [Environment]::NewLine) + [Environment]::NewLine + '}'
+$changeBlock = '$change = @{' + [Environment]::NewLine + (($change.GetEnumerator() | Sort-Object Key | ForEach-Object { "    $($_.Key) = '$(([string]$_.Value).Replace("'", "''"))'" }) -join [Environment]::NewLine) + [Environment]::NewLine + '}'
 @(
     "Please review and sign Exchange change $($change.ChangeId) (requested by $($change.RequestedBy))."
     "Preview SHA-256: $($previewHash)"

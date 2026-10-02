@@ -191,6 +191,18 @@ Describe 'ExchangeOnlineBaseline.Connection' {
             @($supported | Where-Object { -not $map.Contains($_) }) | Should -BeNullOrEmpty
         }
 
+        It 'refuses a Security & Compliance session in another tenant that apply would refuse later' {
+            # Arrange
+            $eop = New-TestSession -TenantId '99999999-2222-3333-4444-555555555555'
+            $eop.IsEopSession = $true
+            $global:connectionTestSessions = @((New-TestSession), $eop)
+            Mock -ModuleName ExchangeOnlineBaseline.Connection Assert-ExchangeOnlineModule { }
+            # Act
+            $act = { Initialize-ExchangeOnlineSession -ExpectedTenantId $script:tenant -ConfirmSession $false -InformationAction Ignore }
+            # Assert
+            $act | Should -Throw '*ExchangeSessionTenantMismatch*99999999-2222-3333-4444-555555555555*Disconnect-ExchangeOnline*'
+        }
+
         It 'accepts a matching Worldwide session with the required cmdlets' {
             # Arrange
             $session = New-TestSession

@@ -353,7 +353,15 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
 
                 foreach ($preset in @(@{ Scope = 'EopPresets'; Cmdlet = 'Get-EOPProtectionPolicyRule' }, @{ Scope = 'AtpPresets'; Cmdlet = 'Get-ATPProtectionPolicyRule' })) {
                     if ($preset.Scope -notin $Scope -or -not (Get-Command -Name $preset.Cmdlet -ErrorAction SilentlyContinue)) { continue }
-                    $rules = @(& $preset.Cmdlet -ErrorAction SilentlyContinue)
+                    try {
+                        $rules = @(& $preset.Cmdlet -ErrorAction Stop)
+                    }
+                    catch {
+                        Add-ReadinessResult -Area Tenant -Check "$($preset.Scope) rules initialized" -Passed $false `
+                            -Detail "could not read preset rules: $($_.Exception.Message)" `
+                            -Fix "Your session could not run $($preset.Cmdlet). Confirm the account's Exchange role covers this scope, reconnect, and rerun this check."
+                        continue
+                    }
                     $names = @($rules | ForEach-Object { [string]$_.Identity })
                     Add-ReadinessResult -Area Tenant -Check "$($preset.Scope) rules initialized" -Passed ($rules.Count -gt 0) `
                         -Detail $(if ($names.Count) { $names -join '; ' } else { 'no Standard or Strict rule found' }) `

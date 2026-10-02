@@ -74,11 +74,11 @@ $change = @{
 & (Join-Path $artifactRoot "rollback-$changeId.ps1") -Apply -Confirm:$false
 ```
 
-`Deploy` without `-Apply` is only an inventory. Its console output or a WhatIf transcript is not an approval artifact. To rehearse the signed change use the complete Apply invocation with `-WhatIf`; it checks approval/session/state but emits no execution artifacts and makes no mutation. Preview captures concrete typed before/after parameter values; apply refuses state or configuration drift and executes those exact approved values.
+`Deploy` without `-Apply` is only an inventory. Its console output or a WhatIf transcript is not an approval artifact. To rehearse the signed change use the complete Apply invocation with `-WhatIf`; it checks approval, session, and live state (and reports `ChangeStateDrift` exactly as a real apply would), but emits no execution artifacts and makes no mutation. Preview captures concrete typed before/after parameter values; apply refuses state or configuration drift and executes those exact approved values.
 
 ## Evidence Report
 
-After apply, collect evidence with the same inputs and session, then summarise the whole change record for the ticket. The report script never connects to the tenant. It writes `evidence-report-<id>.md` into the artifact folder with the change, tenant, scope, approver and hashes; every change artifact with its SHA-256 and present/missing status; each approved operation and its result; evidence status counts; every check that did not pass, with its reason; external readiness; and exclusions. If any artifact is missing or apply/post-change did not succeed, the outcome is `INCOMPLETE`. The report is not a go-live approval.
+After apply, collect evidence with the same inputs and session, then summarise the whole change record for the ticket. The report script never connects to the tenant. It writes `evidence-report-<id>.md` into the artifact folder with the change, tenant, scope, approver and hashes; every change artifact with its SHA-256 and present/missing status; each approved operation and its result; evidence status counts; every check that did not pass, with its reason; external readiness; and exclusions. If any artifact is missing or apply/post-change did not succeed, the outcome is `INCOMPLETE`. The report also binds the evidence to this change: its tenant, deployment profile, and configuration hash must match the preview, and it must have been collected at or after apply completed. Any mismatch is listed in the "Evidence binding" table and makes the outcome `INCOMPLETE`. The report is not a go-live approval.
 
 ```powershell
 ./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $change.ParameterPath -ConfigurationPath $change.ConfigurationPath `

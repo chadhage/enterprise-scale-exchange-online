@@ -87,6 +87,12 @@ Describe 'Microsite supported content boundary' {
         $script:index | Should -Match 'Hand off to your approver'
         $script:index | Should -Match 'Set-Clipboard'
         $script:index | Should -Match '6a\. Approver \(not you\)'
+        $script:index | Should -Match ([regex]::Escape(@'
+'$(([string]$_.Value).Replace("'", "''"))'
+'@.Trim()))
+        $script:index | Should -Not -Match ([regex]::Escape(@'
+= '$($_.Value)'
+'@.Trim()))
         $script:index.IndexOf('Hand off to your approver') | Should -BeLessThan $script:index.IndexOf('id="wizardTitle5"')
     }
 
@@ -126,6 +132,8 @@ Describe 'Microsite supported content boundary' {
         $script:script | Should -Match 'content\.replaceChildren\(rendered\.content\)'
         $script:script | Should -Match 'link\.dataset\.document = sourceFile'
         $script:script | Should -Match 'route\.set\(''section'', section\)'
+        $script:script | Should -Match ([regex]::Escape('<(?:https?:\/\/|mailto:)[^<>\s]+>'))
+        $script:script | Should -Match ([regex]::Escape("token.startsWith('<')"))
         $script:index | Should -Not -Match 'github\.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/'
     }
 

@@ -85,7 +85,7 @@ function makeDocumentationLink(label, target, sourceFile) {
 }
 
 function appendInlineMarkdown(parent, source, sourceFile) {
-    const pattern = /(`[^`]+`|\[[^\]]+\]\([^)]+\)|\*\*.+?\*\*|~~.+?~~|\*.+?\*)/g;
+    const pattern = /(`[^`]+`|\[[^\]]+\]\([^)]+\)|<(?:https?:\/\/|mailto:)[^<>\s]+>|\*\*.+?\*\*|~~.+?~~|\*.+?\*)/g;
     let lastIndex = 0;
     let match;
     while ((match = pattern.exec(source)) !== null) {
@@ -95,6 +95,9 @@ function appendInlineMarkdown(parent, source, sourceFile) {
             const code = document.createElement('code');
             code.textContent = token.slice(1, -1);
             parent.append(code);
+        } else if (token.startsWith('<')) {
+            const target = token.slice(1, -1);
+            parent.append(makeDocumentationLink(target.replace(/^mailto:/, ''), target, sourceFile));
         } else if (token.startsWith('[')) {
             const linkMatch = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(token);
             if (linkMatch) {

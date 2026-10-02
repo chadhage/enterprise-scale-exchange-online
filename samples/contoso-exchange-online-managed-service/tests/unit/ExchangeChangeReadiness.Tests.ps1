@@ -198,6 +198,25 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         Get-FailedCheck $result | Should -Contain 'Role grants Get-DkimSigningConfig for Dkim'
     }
 
+    It 'reports a preset rule read failure as a role problem, not as uninitialized presets' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('EopPresets')
+        function global:Get-EOPProtectionPolicyRule { throw 'Access denied for Get-EOPProtectionPolicyRule' }
+        try {
+            # Act
+            $result = & $script:readiness @arguments
+        }
+        finally { Remove-Item Function:\Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue }
+
+        # Assert
+        $check = @($result.Results | Where-Object Check -EQ 'EopPresets rules initialized')
+        $check.Count | Should -Be 1
+        $check[0].Status | Should -Be 'FAIL'
+        $check[0].Detail | Should -Match 'could not read preset rules: Access denied'
+        $check[0].Fix | Should -Match 'Exchange role'
+    }
+
     It 'refuses a parameter file that still contains REPLACE- placeholders from the microsite templates' {
         # Arrange
         $arguments = Get-ReadinessArgument
