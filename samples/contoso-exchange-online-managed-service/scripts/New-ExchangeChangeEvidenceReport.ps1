@@ -149,6 +149,52 @@ $bindingMismatch = @($binding | Where-Object { -not $_.Match } | ForEach-Object 
 $previewSha256 = [string]($artifacts | Where-Object Artifact -EQ 'Preview' | ForEach-Object Sha256)
 $previewTenant = ([string](Get-RecordValue $preview 'Tenant')).Trim()
 $previewConfiguration = & $normalizeHash (Get-RecordValue $preview 'ConfigurationHash')
+$operations = @(Get-RecordValue $preview 'Operation' | Where-Object { $null -ne $_ })
+$applyOperations = @(Get-RecordValue $apply 'Operation' | Where-Object { $null -ne $_ })
+$previewOperationIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$stateById = [System.Collections.Generic.Dictionary[string, string]]::new([StringComparer]::Ordinal)
+$operationMismatch = @()
+if ($operations.Count -eq 0) {
+    $operationMismatch += 'Preview contains no operations'
+}
+foreach ($operation in $operations) {
+    $operationId = [string](Get-RecordValue $operation 'OperationId')
+    if ([string]::IsNullOrWhiteSpace($operationId)) {
+        $operationMismatch += 'Preview operation has no OperationId'
+    }
+    elseif (-not $previewOperationIds.Add($operationId)) {
+        $operationMismatch += "Preview contains duplicate operation '$operationId'"
+    }
+}
+foreach ($entry in $applyOperations) {
+    $operationId = [string](Get-RecordValue $entry 'OperationId')
+    if ([string]::IsNullOrWhiteSpace($operationId)) {
+        $operationMismatch += 'Apply result has no OperationId'
+        continue
+    }
+    if (-not $previewOperationIds.Contains($operationId)) {
+        $operationMismatch += "Apply contains unexpected operation '$operationId'"
+        continue
+    }
+    if ($stateById.ContainsKey($operationId)) {
+        $operationMismatch += "Apply contains duplicate results for '$operationId'"
+        $stateById[$operationId] = 'Duplicate results'
+        continue
+    }
+    $stateById[$operationId] = [string](Get-RecordValue $entry 'State')
+}
+foreach ($operation in $operations) {
+    $operationId = [string](Get-RecordValue $operation 'OperationId')
+    if ([string]::IsNullOrWhiteSpace($operationId) -or -not $stateById.ContainsKey($operationId)) {
+        if (-not [string]::IsNullOrWhiteSpace($operationId)) {
+            $operationMismatch += "Apply has no result for '$operationId'"
+        }
+        continue
+    }
+    if ($stateById[$operationId] -cnotin @('Succeeded', 'Unchanged', 'Duplicate results')) {
+        $operationMismatch += "Apply result for '$operationId' is not Succeeded or Unchanged"
+    }
+}
 $artifactMismatch = @(
     if ($null -ne $preview -and [string](Get-RecordValue $preview 'ChangeId') -cne $ChangeId) { 'Preview ChangeId' }
     foreach ($name in 'Approval', 'Apply', 'PostChange') {
@@ -166,7 +212,7 @@ $artifactMismatch = @(
 )
 
 $complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
-    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0
+    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
 elseif (($statusCount['Fail'] + $statusCount['Error']) -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
@@ -230,18 +276,17 @@ if ($artifactMismatch.Count -gt 0) {
     Add-Line "These artifact fields do not belong to this change: $($artifactMismatch -join ', '). Each file must name this change and tenant and carry this preview's SHA-256. Do not rename or edit change artifacts; use the files the stages wrote for this change."
     Add-Line
 }
+if ($operationMismatch.Count -gt 0) {
+    Add-Line "Apply operation results do not match the preview: $($operationMismatch -join '; ')."
+    Add-Line
+}
 
 Add-Line '## Operations'
 Add-Line
-$operations = @(Get-RecordValue $preview 'Operation' | Where-Object { $null -ne $_ })
 if ($operations.Count -eq 0) {
     Add-Line 'No preview operations were found.'
 }
 else {
-    $stateById = @{}
-    foreach ($entry in @(Get-RecordValue $apply 'Operation' | Where-Object { $null -ne $_ })) {
-        $stateById[[string](Get-RecordValue $entry 'OperationId')] = [string](Get-RecordValue $entry 'State')
-    }
     Add-Line '| # | Command | Identity | Result |'
     Add-Line '| --- | --- | --- | --- |'
     foreach ($operation in $operations | Sort-Object { [int](Get-RecordValue $_ 'Sequence') }) {
@@ -296,6 +341,7 @@ Add-Line '## Next actions'
 Add-Line
 if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
 if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
+if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Apply receipt so it contains exactly one successful result for every preview operation.' }
 if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
 if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
@@ -324,6 +370,7 @@ if ($PassThru) {
         MissingArtifact = $missing
         BindingMismatch = $bindingMismatch
         ArtifactMismatch = $artifactMismatch
+        OperationMismatch = $operationMismatch
         EvidenceCheckCount = $checks.Count
         StatusCount     = [pscustomobject]$statusCount
     }

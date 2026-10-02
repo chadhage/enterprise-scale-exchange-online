@@ -244,6 +244,49 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Match "do not belong to this change: $($Artifact) $($Field)"
     }
 
+    It 'marks an Apply receipt with <Scenario> operation results incomplete' -ForEach @(
+        @{ Scenario = 'no'; Operation = @() }
+        @{ Scenario = 'duplicate'; Operation = @(
+                @{ OperationId = 'Transport-01'; State = 'Succeeded'; Fault = '' }
+                @{ OperationId = 'Transport-01'; State = 'Unchanged'; Fault = '' }
+            ) }
+        @{ Scenario = 'missing'; Operation = @(@{ OperationId = 'Other-01'; State = 'Succeeded'; Fault = '' }) }
+        @{ Scenario = 'failed'; Operation = @(@{ OperationId = 'Transport-01'; State = 'Failed'; Fault = 'Mutation failed' }) }
+        @{ Scenario = 'extra'; Operation = @(
+                @{ OperationId = 'Transport-01'; State = 'Succeeded'; Fault = '' }
+                @{ OperationId = 'Unexpected-01'; State = 'Succeeded'; Fault = '' }
+            ) }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $applyPath = Join-Path $root 'apply-CHG-1001.json'
+        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
+        $apply.Operation = $Operation
+        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.OperationMismatch | Should -Not -BeNullOrEmpty
+        $markdown | Should -Match 'Apply operation results do not match the preview'
+    }
+
+    It 'accepts one Unchanged Apply result for each preview operation' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $applyPath = Join-Path $root 'apply-CHG-1001.json'
+        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
+        $apply.Operation[0].State = 'Unchanged'
+        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        # Assert
+        $result.Complete | Should -BeTrue
+        $result.OperationMismatch | Should -BeNullOrEmpty
+    }
+
     It 'writes a Markdown summary of every artifact, operation and evidence result' {
         # Arrange
         $root = New-EvidenceFixture
