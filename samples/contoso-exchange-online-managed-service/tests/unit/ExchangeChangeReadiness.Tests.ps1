@@ -258,6 +258,7 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         $result.Ready | Should -BeTrue
         $result.ChangeBlock | Should -Match ([regex]::Escape("ParameterPath        = '$($arguments.ParameterPath)'"))
         $result.ChangeBlock | Should -Match ([regex]::Escape("PreviewPath          = '$(Join-Path $arguments.ArtifactRoot 'preview-CHG-1001.json')'"))
+        $result.ChangeBlock | Should -Match ([regex]::Escape("ConfigurationPath    = './config/exchange-only.v1.json'"))
         $result.PreviewCommand | Should -BeExactly "./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope 'Transport' -Confirm:`$false"
         $result.Results.Where({ $_.Check -eq 'Exactly one Exchange Online session' }).Detail | Should -Be "admin@contoso.example in tenant $($script:tenant)"
         Test-Path -LiteralPath $arguments.ArtifactRoot | Should -BeFalse

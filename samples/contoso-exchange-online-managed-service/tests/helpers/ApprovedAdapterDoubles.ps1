@@ -160,7 +160,9 @@ function Invoke-AdapterRoundTrip {
     & $script:adapterCommand -Stage Approve @Arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:adapterCertificate -Confirm:$false | Out-Null
     & $script:adapterCommand -Stage Validate @Arguments | Out-Null
     & $script:adapterCommand -Stage Apply @Arguments -Apply -Confirm:$false | Out-Null
-    & (Join-Path $Arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') -Apply -Confirm:$false | Out-Null
+    # The rollback artifact signs in through the wrapper; its execution is covered by a dedicated test.
+    $rollbackArtifact = Join-Path $Arguments.ArtifactRoot 'rollback-ADAPTER004.ps1'
+    if (-not (Select-String -LiteralPath $rollbackArtifact -SimpleMatch '-Stage Rollback' -Quiet)) { throw 'Rollback artifact does not invoke the approved Rollback stage.' }
     $result = & $script:adapterCommand -Stage Rollback @Arguments -Apply -Confirm:$false
     $writes = $global:adapterCalls.Count
     $repeated = & $script:adapterCommand -Stage Rollback @Arguments -Apply -Confirm:$false

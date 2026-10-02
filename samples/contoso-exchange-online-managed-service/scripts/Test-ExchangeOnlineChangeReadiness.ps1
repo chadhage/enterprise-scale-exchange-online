@@ -364,10 +364,18 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
 
         if ($previewPath) {
             $signerLine = "    AuthorizedSignerPath = $(ConvertTo-Literal $AuthorizedSignerPath)"
+            $shippedConfigurationPath = [System.IO.Path]::GetFullPath((Join-Path $kitRoot 'config/exchange-only.v1.json'))
+            # Both requester and approver run from their own kit folder, so the shipped configuration is kit-relative.
+            $configurationLiteral = if ([System.IO.Path]::GetFullPath($ConfigurationPath).Equals($shippedConfigurationPath, [StringComparison]::OrdinalIgnoreCase)) {
+                "'./config/exchange-only.v1.json'"
+            }
+            else {
+                ConvertTo-Literal $ConfigurationPath
+            }
             $changeBlock = @(
                 '$change = @{'
                 "    ParameterPath        = $(ConvertTo-Literal $ParameterPath)"
-                "    ConfigurationPath    = $(ConvertTo-Literal $ConfigurationPath)"
+                "    ConfigurationPath    = $($configurationLiteral)"
                 "    ArtifactRoot         = $(ConvertTo-Literal $ArtifactRoot)"
                 "    ChangeId             = $(ConvertTo-Literal $ChangeId)"
                 "    RequestedBy          = $(ConvertTo-Literal $RequestedBy)"

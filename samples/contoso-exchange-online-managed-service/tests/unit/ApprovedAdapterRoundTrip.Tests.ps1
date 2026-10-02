@@ -226,6 +226,36 @@ Context 'Signed TABL governance binding' {
         finally { Set-Item -Path Function:global:Get-ConnectionInformation -Value $original }
     }
 
+    It 'changes nothing and writes no execution artifacts when apply runs with WhatIf' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        # Act
+        $result = & $script:adapterCommand -Stage Apply @arguments -Apply -WhatIf
+        # Assert
+        $result | Should -BeNullOrEmpty
+        $global:adapterCalls.Count | Should -Be 0
+        foreach ($name in 'prechange', 'apply', 'postchange') {
+            Test-Path (Join-Path $arguments.ArtifactRoot "$name-ADAPTER004.json") | Should -BeFalse
+        }
+        Test-Path (Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1') | Should -BeFalse
+    }
+
+    It 'writes a rollback artifact that runs the approved Rollback stage' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false | Out-Null
+        $appliedCount = @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count
+        Import-Module (Join-Path $script:adapterRoot 'scripts/ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        Mock Initialize-ExchangeOnlineSession { }
+        $rollbackScript = Join-Path $arguments.ArtifactRoot 'rollback-ADAPTER004.ps1'
+        # Act
+        & $rollbackScript -Apply -Confirm:$false | Out-Null
+        # Assert
+        $appliedCount | Should -Be 1
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 0
+        Should -Invoke Initialize-ExchangeOnlineSession -Times 1 -Exactly
+    }
+
     It 'keeps unchanged approved TABL governance fields bound through apply' {
         # Arrange
         $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'

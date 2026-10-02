@@ -905,6 +905,9 @@ function showSection(sectionId, selectedNavItem) {
         window.scrollTo(0, 0);
         if (sectionId !== 'documentViewer') {
             saveViewState({ section: sectionId });
+            if (new URLSearchParams(window.location.hash.slice(1)).has('doc')) {
+                history.replaceState(null, '', `${window.location.pathname}${window.location.search}`);
+            }
         }
     }
 

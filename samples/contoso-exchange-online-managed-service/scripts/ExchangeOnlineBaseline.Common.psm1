@@ -18046,6 +18046,9 @@ function Invoke-BaselineApprovedChange {
             $rollbackCurrentById[[string]$operation.OperationId] = $current
         }
     }
+    if (-not $PSCmdlet.ShouldProcess("$ChangeId in tenant $tenant", "$Stage $($approved.Count) approved Exchange operation(s)")) {
+        return
+    }
     foreach ($operation in $ordered) {
         $definition = $definitionById[[string]$operation.OperationId]
         if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
@@ -18098,7 +18101,27 @@ function Invoke-BaselineApprovedChange {
     if ($Stage -eq 'Apply') {
         $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
-        $rollback = "#requires -Version 7.5`n# Invoke the approved Rollback stage for change $ChangeId.`n"
+        $toLiteral = { param($Value) "'" + ([string]$Value).Replace("'", "''") + "'" }
+        $toFullPath = { param($Value) & $toLiteral ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath([string]$Value)) }
+        $rollback = @(
+            '#requires -Version 7.5'
+            "# Recovery for approved change $ChangeId. Runs the approved Rollback stage, which re-verifies the"
+            '# approval, the signed-in tenant and current state before restoring only what this change touched.'
+            "[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]"
+            'param([switch]$Apply, [string]$UserPrincipalName, [switch]$UseDeviceCode, [bool]$ConfirmSession = $true, [switch]$NonInteractive)'
+            '$change = @{'
+            "    ParameterPath        = $(& $toFullPath $ParameterPath)"
+            "    ConfigurationPath    = $(& $toFullPath $ConfigurationPath)"
+            "    ArtifactRoot         = $(& $toFullPath $ArtifactRoot)"
+            "    ChangeId             = $(& $toLiteral $ChangeId)"
+            "    RequestedBy          = $(& $toLiteral $RequestedBy)"
+            "    AuthorizedSignerPath = $(& $toFullPath $AuthorizedSignerPath)"
+            "    PreviewPath          = $(& $toFullPath $PreviewPath)"
+            "    ApprovalPath         = $(& $toFullPath $ApprovalPath)"
+            '}'
+            '$forward = @{} + $PSBoundParameters'
+            "& $(& $toLiteral (Join-Path $PSScriptRoot 'Invoke-ExchangeOnlineChange.ps1')) -Stage Rollback @change @forward"
+        ) -join "`n"
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Rollback -Root $ArtifactRoot -Content $rollback
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
         $post = @{}

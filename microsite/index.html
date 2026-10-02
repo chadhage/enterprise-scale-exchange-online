@@ -389,7 +389,7 @@ Copy these lines into this same terminal to create the preview:
 
 $change = @{
     ParameterPath        = 'D:\ExchangeChanges\contoso.parameters.json'
-    ConfigurationPath    = 'C:\Users\admin\exchange-online-change-kit\config\exchange-only.v1.json'
+    ConfigurationPath    = './config/exchange-only.v1.json'
     ArtifactRoot         = 'D:\ExchangeChanges\CHG-1001'
     ChangeId             = 'CHG-1001'
     RequestedBy          = 'requester@contoso.com'
@@ -466,9 +466,9 @@ $certificate = Get-Item -LiteralPath 'Cert:\CurrentUser\My\CERTIFICATE-THUMBPRIN
                     <article class="card wizard-panel" data-wizard-panel="6" aria-labelledby="wizardTitle6" hidden>
                         <p class="wizard-eyebrow">Step 7 · Apply</p>
                         <h2 id="wizardTitle6" tabindex="-1">Apply only the reviewed change</h2>
-                        <p>Use your approved change window. First rehearse: <code>-WhatIf</code> checks the approval, session, and current state but changes nothing. Then apply.</p>
-                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -WhatIf</code></pre>
-                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection</code></pre>
+                        <p>Use your approved change window. First rehearse: <code>-WhatIf</code> confirms your session, checks the approval and current state, and lists the operations, but changes nothing and writes no files. Then apply.</p>
+                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -WhatIf</code></pre>
+                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply</code></pre>
                         <p>Answer <strong>Y</strong> at the confirmation prompt only after checking the tenant and change ID it shows. Apply writes <code>prechange</code>, <code>apply</code>, <code>postchange</code>, and <code>rollback</code> files to the artifact folder.</p>
                         <div class="wizard-callout"><strong>This is a production change.</strong> The microsite cannot run it. If apply refuses because the tenant changed since the preview, do not retry with edited files. Start a new change ID from Step 4.</div>
                         <p class="stop-condition"><strong>Stop if:</strong> the rehearsal fails, the prompt shows the wrong tenant or change, or apply reports drift.</p>

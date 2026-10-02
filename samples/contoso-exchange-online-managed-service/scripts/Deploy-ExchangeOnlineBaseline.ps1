@@ -64,6 +64,7 @@ if ($loadedCommonModule.Count -eq 0) {
     Import-Module $commonModulePath -DisableNameChecking
 }
 
+$signerMetadata = @()
 if ($PSBoundParameters.ContainsKey('AuthorizedSignerPath')) {
     if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
         -not (Test-Path -LiteralPath $AuthorizedSignerPath -PathType Leaf)) {
@@ -1447,8 +1448,11 @@ if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
         ApprovalPath = $ApprovalPath
         AuthorizedSignerPath = $AuthorizedSignerPath
         Apply = $true
-        Confirm = $false
     }
+    foreach ($preference in @('WhatIf', 'Confirm')) {
+        if ($PSBoundParameters.ContainsKey($preference)) { $approvedChange[$preference] = [bool]$PSBoundParameters[$preference] }
+    }
+    if ($WhatIfPreference) { $approvedChange.WhatIf = $true }
     $exchangeApplyResult = Invoke-BaselineApprovedChange @approvedChange
     return $exchangeApplyResult
 }
