@@ -23,6 +23,12 @@ BeforeAll {
         foreach ($key in $files.Keys) {
             if ($key -in $Omit) { continue }
             $path = Join-Path $directory $files[$key].Name
+            if ($key -in 'Approval', 'Apply', 'PostChange' -and 'Preview' -notin $Omit) {
+                $files[$key].Content.Tenant = $script:tenant
+                $files[$key].Content.DeploymentProfile = 'ExchangeOnly'
+                $files[$key].Content.PreviewHash = (Get-FileHash -LiteralPath (Join-Path $directory $files.Preview.Name) -Algorithm SHA256).Hash.ToLowerInvariant()
+                if ($key -ne 'Approval') { $files[$key].Content.ConfigurationHash = 'abc123' }
+            }
             if ($null -eq $files[$key].Content) { Set-Content -LiteralPath $path -Value '#requires -Version 7.5' }
             else { $files[$key].Content | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path }
         }
@@ -66,9 +72,10 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         # Arrange
         $root = New-EvidenceFixture -Omit 'Evidence'
         # Act
-        $act = { & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -InformationAction Ignore }
+        $message = try { & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -InformationAction Ignore; '' } catch { $_.Exception.Message }
         # Assert
-        $act | Should -Throw '*EvidenceMissing*Test-ExchangeOnlineBaseline.ps1*'
+        $message | Should -BeLike '*EvidenceMissing*Test-ExchangeOnlineBaseline.ps1*'
+        $message | Should -Not -BeLike '*SkipConnection*'
     }
 
     It 'refuses unreadable evidence JSON' {
@@ -142,6 +149,37 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $result.BindingMismatch | Should -BeNullOrEmpty
     }
 
+    It 'does not accept a <Artifact> artifact whose <Field> belongs to another change' -ForEach @(
+        @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'PreviewHash'; Value = ('0' * 64) }
+        @{ Artifact = 'Approval'; Name = 'approval-CHG-1001.json'; Field = 'ChangeId'; Value = 'CHG-2002' }
+        @{ Artifact = 'Apply'; Name = 'apply-CHG-1001.json'; Field = 'Tenant'; Value = '99999999-2222-3333-4444-555555555555' }
+        @{ Artifact = 'Apply'; Name = 'apply-CHG-1001.json'; Field = 'ConfigurationHash'; Value = 'ffff' }
+        @{ Artifact = 'PostChange'; Name = 'postchange-CHG-1001.json'; Field = 'PreviewHash'; Value = '' }
+        @{ Artifact = 'Preview'; Name = 'preview-CHG-1001.json'; Field = 'ChangeId'; Value = 'CHG-2002' }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $path = Join-Path $root $Name
+        $document = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
+        $document[$Field] = $Value
+        $document | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path
+        foreach ($dependent in 'approval', 'apply', 'postchange') {
+            if ($Artifact -ne 'Preview') { break }
+            $dependentPath = Join-Path $root "$($dependent)-CHG-1001.json"
+            $record = Get-Content -LiteralPath $dependentPath -Raw | ConvertFrom-Json -AsHashtable
+            $record.PreviewHash = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+            $record | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $dependentPath
+        }
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.ArtifactMismatch | Should -Be @("$($Artifact) $($Field)")
+        $markdown | Should -Match "do not belong to this change: $($Artifact) $($Field)"
+    }
+
     It 'writes a Markdown summary of every artifact, operation and evidence result' {
         # Arrange
         $root = New-EvidenceFixture
@@ -151,6 +189,7 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         # Assert
         $result.Path | Should -Be (Join-Path $root 'evidence-report-CHG-1001.md')
         $result.Complete | Should -BeTrue
+        $result.ArtifactMismatch | Should -BeNullOrEmpty
         $result.StatusCount.Fail | Should -Be 1
         $markdown | Should -Match '^# Exchange Online change evidence report: CHG-1001'
         $markdown | Should -Match "Tenant \| $($script:tenant)"

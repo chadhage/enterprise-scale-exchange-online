@@ -133,7 +133,7 @@
 
         <section id="deployment" class="section">
             <h1>Guided Exchange change wizard</h1>
-            <p class="subtitle">Start with the prerequisites and support boundary. When those fit your situation, continue to the ordered steps. Progress stays in this page session; the microsite does not save tenant data, connect to your tenant, or execute scripts.</p>
+            <p class="subtitle">Start with the prerequisites and support boundary. When those fit your situation, continue to the ordered steps. Progress stays in this browser tab: your current step and scope and preset choices survive a refresh, but typed domains and addresses are not saved. The microsite does not save tenant data, connect to your tenant, or execute scripts.</p>
 
             <div id="wizardIntro">
                 <div class="disclaimer-banner" role="note">
@@ -481,10 +481,10 @@ $certificate = Get-Item -LiteralPath 'Cert:\CurrentUser\My\CERTIFICATE-THUMBPRIN
                     <article class="card wizard-panel" data-wizard-panel="7" aria-labelledby="wizardTitle7" hidden>
                         <p class="wizard-eyebrow">Step 8 · Verify and close</p>
                         <h2 id="wizardTitle7" tabindex="-1">Collect evidence, assess outcome, and retain recovery artifacts</h2>
-                        <p>Collect evidence with the same inputs and the existing session, then build the Markdown report for the ticket:</p>
-                        <pre><code>./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $change.ParameterPath -ConfigurationPath $change.ConfigurationPath -OutputPath (Join-Path $change.ArtifactRoot 'evidence') -SkipConnection
+                        <p>Collect evidence with the same inputs. The collector reuses your existing session after it shows the signed-in account and confirms the tenant, so evidence is never read from the wrong tenant. Then build the Markdown report for the ticket:</p>
+                        <pre><code>./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $change.ParameterPath -ConfigurationPath $change.ConfigurationPath -OutputPath (Join-Path $change.ArtifactRoot 'evidence')
 ./scripts/New-ExchangeChangeEvidenceReport.ps1 -ArtifactRoot $change.ArtifactRoot -ChangeId $change.ChangeId</code></pre>
-                        <p>The second command reads every change artifact and the evidence file, then writes <code>evidence-report-&lt;ChangeId&gt;.md</code> into the artifact folder. It does not connect to the tenant. Expected output:</p>
+                        <p>The second command reads every change artifact and the evidence file, then writes <code>evidence-report-&lt;ChangeId&gt;.md</code> into the artifact folder. It does not connect to the tenant. It reports <code>INCOMPLETE</code> if any artifact belongs to a different change or the evidence was collected for another tenant, configuration, or before apply. Expected output:</p>
                         <pre class="terminal-sample"><code>APPLIED - EVIDENCE COLLECTED
   Artifacts present: 6 of 6
   Evidence: Pass 41, Manual 3

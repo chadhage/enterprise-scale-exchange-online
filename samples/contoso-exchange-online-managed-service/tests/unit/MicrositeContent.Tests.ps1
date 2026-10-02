@@ -100,6 +100,12 @@ Describe 'Microsite supported content boundary' {
         $script:index | Should -Match 'New-ExchangeChangeEvidenceReport\.ps1 -ArtifactRoot \$change\.ArtifactRoot -ChangeId \$change\.ChangeId'
         $script:index | Should -Match 'evidence-report-&lt;ChangeId&gt;\.md'
         $script:index.IndexOf('id="wizardTitle7"') | Should -BeLessThan $script:index.IndexOf('New-ExchangeChangeEvidenceReport.ps1')
+        $collect = [regex]::Match($script:index, "Test-ExchangeOnlineBaseline\.ps1 [^\r\n]*OutputPath \(Join-Path \`$change\.ArtifactRoot 'evidence'\)[^\r\n]*").Value
+        $collect | Should -Not -BeNullOrEmpty
+        $collect | Should -Not -Match 'SkipConnection'
+        $approved = Get-Content -LiteralPath (Join-Path $script:docsPath 'APPROVED-CHANGE.md') -Raw
+        $approved | Should -Match "-OutputPath \(Join-Path \`$change\.ArtifactRoot 'evidence'\)\r?\n"
+        $approved | Should -Not -Match "'evidence'\) -SkipConnection"
         Test-Path -LiteralPath (Join-Path $script:repositoryRoot 'samples\contoso-exchange-online-managed-service\scripts\New-ExchangeChangeEvidenceReport.ps1') | Should -BeTrue
     }
 
@@ -160,6 +166,14 @@ Describe 'Microsite supported content boundary' {
         $script:script | Should -Match 'saveViewState\(\{ section: sectionId \}\)'
         $script:script | Should -Match 'saveViewState\(\{ wizard:'
         $script:script | Should -Match 'currentStep > firstOpen'
+    }
+
+    It 'never stores typed tenant domains or addresses in session storage' {
+        $script:script | Should -Not -Match 'saveViewState\(\{ builder: state \}\)'
+        $script:script | Should -Match "persistedBuilderChoices = \['scopes', 'preset', 'optional'\]"
+        $script:script | Should -Match 'saveViewState\(\{ builder: builderChoices\(state\) \}\)'
+        $script:script | Should -Match '\.\.\.builderChoices\(readViewState\(\)\.builder\)'
+        $script:index | Should -Match 'typed domains and addresses are not saved'
     }
 
     It 'does not expose quarantined scripts or schema names' {

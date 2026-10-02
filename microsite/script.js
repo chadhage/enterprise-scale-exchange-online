@@ -564,7 +564,10 @@ function initializeScopeBuilder(root) {
     if (!picker) {
         return;
     }
-    const state = { scopes: [], preset: 'standard', domain: 'contoso.com', group: 'priority-users@contoso.com', secops: 'secops@contoso.com', optional: [], ...(readViewState().builder || {}) };
+    // Only non-identifying choices survive a refresh; typed tenant domains and addresses are never stored.
+    const persistedBuilderChoices = ['scopes', 'preset', 'optional'];
+    const builderChoices = source => Object.fromEntries(persistedBuilderChoices.filter(key => source && key in source).map(key => [key, source[key]]));
+    const state = { scopes: [], preset: 'standard', domain: 'contoso.com', group: 'priority-users@contoso.com', secops: 'secops@contoso.com', optional: [], ...builderChoices(readViewState().builder) };
     const element = id => root.querySelector(`#${id}`);
     const quote = value => `'${value.replace(/'/g, "''")}'`;
     const listItems = (list, items) => list.replaceChildren(...items.map(html => {
@@ -703,7 +706,7 @@ function initializeScopeBuilder(root) {
             confirm.checked = false;
             confirm.dispatchEvent(new Event('change'));
         }
-        saveViewState({ builder: state });
+        saveViewState({ builder: builderChoices(state) });
         addCopyButtons(root.querySelector('[data-wizard-panel="1"]'));
     }
 

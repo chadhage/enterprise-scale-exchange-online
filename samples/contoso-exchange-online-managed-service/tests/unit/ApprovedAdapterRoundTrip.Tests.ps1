@@ -256,6 +256,67 @@ Context 'Signed TABL governance binding' {
         Should -Invoke Initialize-ExchangeOnlineSession -Times 1 -Exactly
     }
 
+    It 'does not roll back state that was already approved before this apply ran' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        $earlier = @{} + $arguments
+        $earlier.ArtifactRoot = Join-Path $TestDrive "earlier-$([guid]::NewGuid().ToString('N'))"
+        & $script:adapterCommand -Stage Apply @earlier -Apply -Confirm:$false | Out-Null
+        $receipt = & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false
+        $writesBeforeRollback = $global:adapterCalls.Count
+        # Act
+        $result = & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false
+        # Assert
+        @($receipt.Operation | Where-Object State -NE 'Unchanged').Count | Should -Be 0
+        $global:adapterCalls.Count | Should -Be $writesBeforeRollback
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 1
+        @($result.Operation | ForEach-Object State | Select-Object -Unique) | Should -Be 'NotChangedByApply'
+    }
+
+    It 'refuses rollback when the pre-change capture is missing' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false | Out-Null
+        Remove-Item (Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json')
+        $writes = $global:adapterCalls.Count
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false }
+        # Assert
+        $invoke | Should -Throw '*ChangeRecoveryCaptureMissing*'
+        $global:adapterCalls.Count | Should -Be $writes
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 1
+    }
+
+    It 'refuses rollback when the pre-change capture belongs to a <Field> other than this change' -ForEach @(
+        @{ Field = 'ChangeId'; Value = 'ADAPTER999' }
+        @{ Field = 'Tenant'; Value = 'other.onmicrosoft.com' }
+    ) {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false | Out-Null
+        $capturePath = Join-Path $arguments.ArtifactRoot 'prechange-ADAPTER004.json'
+        $capture = Get-Content $capturePath -Raw | ConvertFrom-Json -AsHashtable
+        $capture[$Field] = $Value
+        $capture | ConvertTo-Json -Depth 100 | Set-Content $capturePath
+        $writes = $global:adapterCalls.Count
+        # Act
+        $invoke = { & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false }
+        # Assert
+        $invoke | Should -Throw '*ChangeRecoveryCaptureMismatch*'
+        $global:adapterCalls.Count | Should -Be $writes
+    }
+
+    It 'restores a target this apply moved when its pre-change capture records the prior value' {
+        # Arrange
+        $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'
+        & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false | Out-Null
+        # Act
+        $result = & $script:adapterCommand -Stage Rollback @arguments -Apply -Confirm:$false
+        # Assert
+        $result.Status | Should -BeExactly 'Succeeded'
+        @($global:adapterState.TenantAllowBlockListItems | Where-Object Value -EQ 'governed@contoso.example').Count | Should -Be 0
+    }
+
     It 'persists pre-change state and an executable rollback before a failing apply write' {
         # Arrange
         $arguments = New-ApprovedTablAdmissionFixture -EntryType Sender -EntryValue 'governed@contoso.example'

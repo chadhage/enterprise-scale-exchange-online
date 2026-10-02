@@ -39,7 +39,8 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) { $OutputPath = Join-Path $Artifa
 
 if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
     throw ("EvidenceMissing: '$($EvidencePath)' was not found. Collect evidence first:`n" +
-        "  ./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath `$change.ParameterPath -ConfigurationPath `$change.ConfigurationPath -OutputPath (Join-Path `$change.ArtifactRoot 'evidence') -SkipConnection")
+        "  ./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath `$change.ParameterPath -ConfigurationPath `$change.ConfigurationPath -OutputPath (Join-Path `$change.ArtifactRoot 'evidence')`n" +
+        'The collector confirms the signed-in account and tenant before it reads anything.')
 }
 
 function Read-JsonFile {
@@ -130,7 +131,27 @@ $binding = @(
 }
 $bindingMismatch = @($binding | Where-Object { -not $_.Match } | ForEach-Object Field)
 
-$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and $bindingMismatch.Count -eq 0
+# Approval, apply and post-change only count when they were written for this change and this frozen preview.
+$previewSha256 = [string]($artifacts | Where-Object Artifact -EQ 'Preview' | ForEach-Object Sha256)
+$previewTenant = ([string](Get-RecordValue $preview 'Tenant')).Trim()
+$previewConfiguration = & $normalizeHash (Get-RecordValue $preview 'ConfigurationHash')
+$artifactMismatch = @(
+    if ($null -ne $preview -and [string](Get-RecordValue $preview 'ChangeId') -cne $ChangeId) { 'Preview ChangeId' }
+    foreach ($name in 'Approval', 'Apply', 'PostChange') {
+        $document = $documents[$name]
+        if ($null -eq $document -or $null -eq $preview) { continue }
+        if ([string](Get-RecordValue $document 'ChangeId') -cne $ChangeId) { "$($name) ChangeId" }
+        $documentTenant = ([string](Get-RecordValue $document 'Tenant')).Trim()
+        if ([string]::IsNullOrEmpty($documentTenant) -or $documentTenant -ne $previewTenant) { "$($name) Tenant" }
+        if ([string](Get-RecordValue $document 'PreviewHash') -cne $previewSha256) { "$($name) PreviewHash" }
+        if ($name -ne 'Approval') {
+            $documentConfiguration = & $normalizeHash (Get-RecordValue $document 'ConfigurationHash')
+            if ([string]::IsNullOrEmpty($documentConfiguration) -or $documentConfiguration -cne $previewConfiguration) { "$($name) ConfigurationHash" }
+        }
+    }
+)
+
+$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
 elseif (($statusCount['Fail'] + $statusCount['Error']) -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
@@ -188,6 +209,10 @@ Add-Line "| Evidence | ``$([IO.Path]::GetRelativePath($ArtifactRoot, $EvidencePa
 Add-Line
 if ($missing.Count -gt 0) {
     Add-Line "Missing artifacts: $($missing -join ', '). Every change leaves all six; find them before closing the ticket."
+    Add-Line
+}
+if ($artifactMismatch.Count -gt 0) {
+    Add-Line "These artifact fields do not belong to this change: $($artifactMismatch -join ', '). Each file must name this change and tenant and carry this preview's SHA-256. Do not rename or edit change artifacts; use the files the stages wrote for this change."
     Add-Line
 }
 
@@ -252,6 +277,7 @@ foreach ($section in @(
 Add-Line '## Next actions'
 Add-Line
 if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
+if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
 if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
 if ($needsAttention.Count -gt 0) { Add-Line "- Assign an owner to each of the $($needsAttention.Count) checks that did not pass." }
@@ -266,6 +292,7 @@ $color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.
 Write-Information "$($color)$($overall)$($PSStyle.Reset)"
 Write-Information "  Artifacts present: $(6 - $missing.Count) of 6$(if ($missing.Count) { " (missing: $($missing -join ', '))" })"
 if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bindingMismatch -join ', ') do not match the change record" }
+if ($artifactMismatch.Count -gt 0) { Write-Information "  Artifact binding: $($artifactMismatch -join ', ') belong to another change or preview" }
 Write-Information "  Evidence: $(($statusCount.Keys | Where-Object { $statusCount[$_] -gt 0 } | ForEach-Object { "$($_) $($statusCount[$_])" }) -join ', ')"
 Write-Information "  Report: $([IO.Path]::GetFullPath($OutputPath))"
 
@@ -276,6 +303,7 @@ if ($PassThru) {
         Complete        = $complete
         MissingArtifact = $missing
         BindingMismatch = $bindingMismatch
+        ArtifactMismatch = $artifactMismatch
         StatusCount     = [pscustomobject]$statusCount
     }
 }

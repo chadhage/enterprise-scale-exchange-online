@@ -18032,6 +18032,7 @@ function Invoke-BaselineApprovedChange {
     $journal = [Collections.Generic.List[object]]::new()
     $ordered = if ($Stage -eq 'Rollback') { @($approved | Sort-Object Sequence -Descending) } else { $approved }
     $rollbackCurrentById = @{}
+    $preApplyById = @{}
     # Every target is read and drift-checked before WhatIf/Confirm and before any artifact or write,
     # so a rehearsal reports drift exactly as the real run would.
     foreach ($operation in $ordered) {
@@ -18048,13 +18049,53 @@ function Invoke-BaselineApprovedChange {
             throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
         }
         if ($Stage -eq 'Rollback') { $rollbackCurrentById[[string]$operation.OperationId] = $current }
+        else { $preApplyById[[string]$operation.OperationId] = $current }
+    }
+    # Rollback restores only targets this change moved. A target the pre-change capture recorded as
+    # already holding the approved value was not touched by apply and is left as it is.
+    $notChangedByApply = @{}
+    if ($Stage -eq 'Rollback') {
+        if (-not (Test-Path -LiteralPath $paths['PreChange'] -PathType Leaf)) {
+            throw "ChangeRecoveryCaptureMissing: '$($paths['PreChange'])' is missing. Apply writes it before its first change; without it rollback cannot tell which targets this change moved."
+        }
+        $stateKey = {
+            param($Node)
+            ConvertTo-CanonicalJson ([ordered]@{
+                    Exists = [bool](Get-BaselineRecordMember -Node $Node -Name 'Exists')
+                    Value  = ConvertTo-BaselineHashableNode (Get-BaselineRecordMember -Node $Node -Name 'Value')
+                })
+        }
+        $prechange = Get-Content -LiteralPath $paths['PreChange'] -Raw |
+            ConvertFrom-Json -AsHashtable -Depth 100 -DateKind String
+        $captureChangeId = [string](Get-BaselineRecordMember -Node $prechange -Name 'ChangeId')
+        $captureTenant = ([string](Get-BaselineRecordMember -Node $prechange -Name 'Tenant')).Trim()
+        if ($captureChangeId -cne $ChangeId -or [string]::IsNullOrEmpty($captureTenant) -or $captureTenant -ne ([string]$tenant).Trim()) {
+            throw "ChangeRecoveryCaptureMismatch: '$($paths['PreChange'])' was captured for change '$captureChangeId' in tenant '$captureTenant', not '$ChangeId' in '$tenant'."
+        }
+        foreach ($captured in @(Get-BaselineRecordMember -Node $prechange -Name 'Entry')) {
+            $operationId = [string](Get-BaselineRecordMember -Node $captured -Name 'OperationId')
+            $operation = @($approved | Where-Object { [string]$_.OperationId -ceq $operationId }) | Select-Object -First 1
+            if ($null -ne $operation -and (& $stateKey $captured) -ceq (& $stateKey $operation.After)) {
+                $notChangedByApply[$operationId] = $true
+            }
+        }
     }
     if (-not $PSCmdlet.ShouldProcess("$ChangeId in tenant $tenant", "$Stage $($approved.Count) approved Exchange operation(s)")) {
         return
     }
     if ($Stage -eq 'Apply') {
         # Recovery artifacts are persisted before the first write so a partial apply can always be rolled back.
-        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
+        # The capture records what each target actually held now, not the preview's Before, so rollback
+        # can tell which targets this apply moved.
+        $captureOperation = foreach ($operation in $approved) {
+            [ordered]@{
+                OperationId = [string]$operation.OperationId
+                Command     = $operation.Command
+                Identity    = $operation.Identity
+                Before      = $preApplyById[[string]$operation.OperationId]
+            }
+        }
+        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation @($captureOperation)
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
         $toLiteral = { param($Value) "'" + ([string]$Value).Replace("'", "''") + "'" }
         $toFullPath = { param($Value) & $toLiteral ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath([string]$Value)) }
@@ -18082,10 +18123,16 @@ function Invoke-BaselineApprovedChange {
     foreach ($operation in $ordered) {
         $definition = $definitionById[[string]$operation.OperationId]
         if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
+        if ($notChangedByApply.ContainsKey([string]$operation.OperationId)) {
+            $journal.Add(@{ OperationId = [string]$operation.OperationId; State = 'NotChangedByApply'; Fault = '' })
+            continue
+        }
+        # Apply decides each write from the same pre-apply read the capture recorded, so the capture and
+        # the writes can never disagree about what this change moved.
         $current = if ($Stage -eq 'Rollback') {
             $rollbackCurrentById[[string]$operation.OperationId]
         } else {
-            Read-ApprovedAdapterState $definition
+            $preApplyById[[string]$operation.OperationId]
         }
         $allowed = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.After } else { $operation.Before })
         $desired = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.Before } else { $operation.After })
