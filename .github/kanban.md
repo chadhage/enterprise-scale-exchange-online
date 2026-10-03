@@ -2,10 +2,10 @@
 
 > **Compatibility view only.** `.github/backlog.md` is the canonical remediation inventory and status/evidence authority; `.github/cohorts.md` is the canonical allocation, claim, reservation, and writer-coordination authority. This file preserves the former Kanban presentation and pull-ready rules, but it cannot add executable inventory, grant a claim, or override either canonical file.
 
-Board updated: 2026-10-02 (generation-679 Purple REG-001 affected NACK and safe requeue)
+Board updated: 2026-10-02 (generation-686 REG-001-D02 capture NACK and release)
 Canonical source: `.github/backlog.md`
 Allocation source: `.github/cohorts.md`
-Allocation generation mirrored: 679
+Allocation generation mirrored: 686
 WIP limit: one In Progress card per cohort, swarmed by exactly three Coworker roles. Cards owned by other parties may run concurrently only through the root writer's atomic multi-cohort allocation.
 
 Conventions:
@@ -18,15 +18,15 @@ Conventions:
 
 | Bucket | Count |
 | --- | ---: |
-| To Do | 47 |
+| To Do | 48 |
 | In Progress | 0 |
-| Done | 57 |
+| Done | 58 |
 
-Canonical executable cards: 104; canonical summary parents excluded: 28. Compatibility generation: 679. The legacy detail retained below is not an inventory and must not be counted.
+Canonical executable cards: 106; canonical summary parents excluded: 28. Compatibility generation: 686. The legacy detail retained below is not an inventory and must not be counted.
 
 ## Dispatch and allocation contract
 
-Compatibility readiness: **mirrored only; BOARD READY at generation 679**. REG-001 is safely requeued after focused 70/70 but affected 4,751/6,293 with 1,542 failures and 62 failed containers. No active claim exists; sixteen documentation children remain syntactically READY but acceptance-unsafe.
+Compatibility readiness: **mirrored only; BOARD READY at generation 686**. No claim, grant, reservation, active token, or worker authority remains. Sixteen documentation children remain syntactically READY but acceptance-unsafe. `REG-001-D02` is To Do/unassigned and is not acceptance-safe READY: a separately authorized fresh XML-safe capture must retain all actual failed identities/details and native process-exit provenance before causal classification or any atomic remediation cards can be accepted.
 
 1. **Atomic pull claim and canonical writer.** A cohort proposes `card ID + cohort + C1/C2/C3 identities + observed generation + writable paths + evidence root`. The shared root canonical writer rereads `.github/backlog.md` and `.github/cohorts.md`, computes all active cohort affinities/reservations/claims in one allocation generation, checks status, dependencies, WIP, owner class, and every reservation, then records generation-bound ACKs in the same coordinated edit. This compatibility view is synchronized afterward and cannot acknowledge a claim.
 2. **Claim expiry and requeue.** Heartbeat is 30 minutes. A claim becomes stale after 120 minutes without an acknowledged heartbeat. Expiry suspends write authority immediately, but requeue occurs only after the writer confirms all prior workers and worktrees are quiescent, records preserved evidence/worktree disposition, releases reservations, returns the card to To Do, and increments generation. Ambiguity stops conflicting work; elapsed time alone never proves quiescence.
@@ -41,6 +41,13 @@ Dependency-safe force rank for the acceptance-recovery route: **1 SCOPE-001; 2 R
 
 ## Activity log
 
+- **2026-10-02 / generation-686 REG-001-D02 capture NACK and release:** independently verified the preserved generation-685 Platinum packet and NACK completion. The sole retry-zero invocation reports 6,292 total / 5,459 passed / 833 failed / 0 skipped / 0 not-run / 1 failed container with semantic exit 1, but native NUnit XML was truncated by an XML-illegal character; reconstruction recovered only 761 actual failed identities and substituted 72 ordinal placeholders. JSON/XML agreement is therefore circular, native process-exit provenance was not retained, and the packet cannot establish earliest shared causes or twelve truthful atomic remediation cards. C3 verification SHA-256 is `c7fba455e7d44dca2ba7db59c63c4b7604c6f85c6be3255008e0ad999c49e45a`; artifact hashes, count arithmetic, input stability, applicable sanitization shape, and grouping checks otherwise passed as recorded. Preserve all generation-685 evidence additive/read-only; release Platinum C1/C2/C3 grants, reservations, token, and claim; return `REG-001-D02` In Progress -> To Do/unassigned. No remediation cards are added. Follow-up is gated on separate authorization for one fresh XML-safe capture retaining every actual failed identity/detail and native structured result/process exit, followed by causal inspection; no second capture is authorized in this session. Counts become 48/0/58 across 106 executable cards; the sixteen-card syntactic READY bank is unchanged and remains acceptance-unsafe.
+- **2026-10-02 / generation-685 Platinum capture allocation:** add and atomically claim `REG-001-D02` for exactly one retry-zero affected-suite capture. Bind C1 to assertion/capture-contract freeze, C2 solely to capture/evidence production, and C3 to independent no-rerun verification; reserve only disjoint per-role evidence roots and keep every tracked source/product/documentation/test/governance path read-only. Counts become 47/1/58 across 106 executable cards.
+- **2026-10-02 / generation-684 diagnosis acceptance:** accept byte-identical independent regeneration, mark REG-001-D01 Done, release all ownership, and preserve the diagnostic evidence without changing REG-001 acceptance. Counts become 47/0/58.
+- **2026-10-02 / generation-683 diagnosis acceptance:** freeze C2's 21-cluster artifact and grant C3 independent static regeneration and reconciliation. Counts remain 47/1/57.
+- **2026-10-02 / generation-682 diagnostic inventory acceptance:** accept C1's source/container conservation packet and grant C2 only the derived diagnosis artifact. Counts remain 47/1/57.
+- **2026-10-02 / generation-681 diagnostic allocation:** add REG-001-D01 and assign it to Purple for static reconciliation of immutable g678 evidence. No tests or tracked edits; all 1,542 tests remain an explicit missing-detail aggregate. Counts become 47/1/57 across 105 executable cards.
+- **2026-10-02 / generation-680 atomic no-card acknowledgment:** reconcile Purple/Silver/Gold/White proposals, preserve REG-001 WAIT-SUITE and the acceptance-unsafe documentation bank, and grant no execution authority. Counts remain 47/0/57.
 - **2026-10-02 / generation-679 Purple affected NACK and release:** accept focused 70/70, NACK affected 4,751/6,293 with 1,542 failures and 62 failed containers, preserve the candidate/evidence, release all authority, and requeue REG-001. Counts return to 47/0/57.
 - **2026-10-02 / generation-678 Purple post-run NACK:** preserve C2's failed attempt, freeze the corrected final inputs, quiesce writers, and grant C3 one focused-then-affected zero-retry verification. Counts remain 46/1/57.
 - **2026-10-02 / generation-677 Purple accepted red:** accept 67/70 with only three intended ApprovedException failures, freeze inputs, and grant C2 only the two scripts plus one focused run. Counts remain 46/1/57.

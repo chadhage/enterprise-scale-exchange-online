@@ -37,9 +37,69 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 679
+Allocation generation: 686
 
-Allocation readiness: **BOARD READY — generation 679**. REG-001 is safely requeued after the affected NACK; all roles are quiescent and no active claim or reservation exists. Sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+Allocation readiness: **BOARD READY — generation 686**. No active claim, token, worker grant or reservation remains; sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+
+### Generation 686 Platinum REG-001-D02 Capture NACK And Release
+
+- **Decision/evidence:** NACK completion after independent C3 verification `c7fba455e7d44dca2ba7db59c63c4b7604c6f85c6be3255008e0ad999c49e45a`. Preserve all generation-685 evidence read-only.
+- **Observed result:** exactly one retry-zero invocation reports 6,292 total, 5,459 passed, 833 failed, zero skipped/not-run and one failed container. Native NUnit truncated; 761 actual identities and 72 ordinal placeholders do not satisfy one-to-one identity/detail acceptance; reconstructed XML/JSON agreement is circular and native process-exit provenance is absent.
+- **Release:** all three Platinum workers are quiescent. Release token `REG-001-D02/Platinum/g685/7c9e2a84d5f64b1c9a37e2084f6d1b52`, claim, lease, all three evidence reservations and worker bindings. Move the card In Progress -> To Do/unassigned; no branch/worktree authority existed.
+- **Fail-closed disposition:** no twelve remediation cards are created because the packet cannot truthfully establish earliest shared causes or atomic ownership. A fresh XML-safe capture requires separate authorization; this run's one-capture authority is exhausted. Counts are 48 To Do / 0 In Progress / 58 Done across 106 executable cards.
+
+### Generation 685 Platinum REG-001-D02 Atomic Capture Claim
+
+- **Writer/run:** sole canonical writer `Platinum-root-coordinator/Kanban`; continuation `Platinum-20261002T135932Z-g684-resume`; observed generation 684, HEAD `5b06a85a7319ef0e3a8501ea9f5f80d69380a828`, historical Platinum sessions explicitly quiescent/non-owning. User-acknowledged pre-existing paths are `.github/backlog.md`, `.github/cohorts.md`, `.github/kanban.md`, `.github/validate-dispatch-board.ps1`, and `.artifacts/`.
+- **ACK/token/transition:** ACK `Platinum-root-coordinator/Kanban/g685/add-claim-REG-001-D02-retry-zero-capture`; token `REG-001-D02/Platinum/g685/7c9e2a84d5f64b1c9a37e2084f6d1b52`; move `REG-001-D02` To Do -> In Progress. ACK time `2026-10-02T14:01:18Z`; heartbeat due `2026-10-02T14:31:18Z`; stale-review boundary `2026-10-02T16:01:18Z`. Time alone never releases authority.
+- **Exact roles:** `Platinum/Coworker-1` owns assertion/capture-contract freeze only; `Platinum/Coworker-2` alone owns the one retry-zero affected-suite invocation and evidence production; `Platinum/Coworker-3` independently verifies without rerunning. Workers may not spawn agents or edit canonical boards.
+- **Exclusive evidence reservations:** C1 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/`; C2 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/`; C3 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-3/`. These roots are pairwise disjoint. All repository source, product, documentation, tests and governance paths are read-only; no branch/worktree or tracked-file reservation is granted.
+- **Command/acceptance:** the exact command and full acceptance contract are canonical in backlog card `REG-001-D02`. C1 must freeze its byte identity before C2 runs it exactly once. C2 must produce `affected.junit.xml` and `affected-failures.sanitized.json` plus schema evidence. C3 verifies one-to-one failed-test identity/detail conservation, sanitized content, hashes, retry zero, tracked immutability and clean diff without invoking Pester.
+- **Boundary/state:** no capture has been performed and no worker dispatched by this allocation. Dispatch is additionally withheld until the generation-685 validator exits 0. No edit outside evidence roots, second invocation, retry, remediation, cause/owner assignment, commit, push, live/network/tenant/credential action, provisioning or destruction. Counts are 47 To Do / 1 In Progress / 58 Done across 106 executable cards; 28 summaries remain excluded and sixteen documentation children remain syntactically READY.
+
+### Generation 684 REG-001-D01 Acceptance And Release
+
+- **Independent ACCEPT:** verification `83B7FA8727A5E8433C5CDC487D9CCF82CD6A2350466D413BB1DF75629C2621CF`; independently regenerated diagnosis is byte-identical to `05F1F0BCAED573FBA2BBE65D2B99B18D8BD3E9BA2480B7F4675C577A62C55C81` / 57,775 bytes.
+- **Reconciliation:** 21 clusters; 62/62 containers exactly once; duplicate/missing/extra 0/0/0; 1,542 tests once as `Unknown/MissingFailureDetail`; stable source hashes; zero tracked changes; `git diff --check` exit 0; zero tests invoked.
+- **ACK/transition:** `root-canonical/Kanban/g684/accept-REG-001-D01-release-diagnostic-ownership` moves REG-001-D01 In Progress -> Done.
+- **Release/preservation:** quiesce all Purple roles and release token `REG-001-D01/Purple/g681/d51f80efceec4327b4b7a363ddb950e4`, lease, isolation authority, evidence roots and role bindings. Preserve the g681 worktree and all evidence read-only.
+- **Boundary/state:** completion does not complete REG-001, infer causes/owners, waive/narrow/subtract its gate, or make downstream documentation acceptance-safe. Counts are 47/0/58 across 105 executable cards.
+
+### Generation 683 REG-001-D01 C2 Acceptance And C3 Verification
+
+- **Accepted C2 artifact:** diagnosis `05F1F0BCAED573FBA2BBE65D2B99B18D8BD3E9BA2480B7F4675C577A62C55C81` / 57,775 bytes; handoff `8E0C7D408F8DE9BD44CF4C4385D42C29D766B14CB72E3EEED1CBFECB41B24968` / 1,720 bytes.
+- **Conservation:** 21 deterministic path/family clusters; 62 input/clustered/unique containers; zero duplicate/missing/extra; 1,542 tests once as `Unknown/MissingFailureDetail`; required facts/prohibitions/falsifiers/follow-ups present.
+- **ACK/grant:** `root-canonical/Kanban/g683/accept-C2-diagnosis-and-grant-C3-independent-regeneration` quiesces C1/C2 and grants C3 only `.artifacts/dispatch/REG-001-D01/g683/Purple/Coworker-3/`.
+- **C3 contract:** independently regenerate from accepted C1 inputs, compare byte identity and SHA-256, reconcile every container and arithmetic field, verify source hashes unchanged and no tracked changes, and return ACCEPT/NACK.
+- **Boundary/state:** no test invocation, tracked edit, source-evidence mutation, causal/owner inference, commit, push, tenant, credential, provisioning or destructive action. Counts remain 47/1/57.
+
+### Generation 682 REG-001-D01 Inventory Acceptance And C2 Grant
+
+- **Accepted C1 packet:** source manifest `0207C8BA7039A7A25B20D49F2BA46CCE5D73DB3E61033E3957BEB632E79571E4` / 4,114 bytes; container inventory `014348D67B8736EFB3AD2AFAF155DA2043F309EA04BC8527F2824C3EFEBEE6DD` / 10,418 bytes.
+- **Conservation:** 9 sources (4 admitted, 5 excluded), all UTF-8; containers 62 reported/extracted/normalized/unique with zero duplicate/missing/extra; failed tests 1,542 represented once as `Unknown/MissingFailureDetail`; arithmetic difference zero.
+- **ACK/grant:** `root-canonical/Kanban/g682/accept-C1-inventory-and-grant-C2-derived-diagnosis` quiesces C1 and grants C2 only `.artifacts/dispatch/REG-001-D01/g682/Purple/Coworker-2/`.
+- **C2 deliverable:** deterministic `failure-cluster-diagnosis.json` grouping all 62 containers by normalized family/path and conserving the 1,542-test aggregate, with evidence facts, prohibited inferences, falsifiers and smallest safe follow-up actions.
+- **Boundary/state:** no causal/owner attribution unsupported by evidence, test invocation, tracked edit, source-evidence mutation, commit, push, tenant, credential, provisioning or destructive action. C3 remains blocked. Counts remain 47/1/57.
+
+### Generation 681 Four-Cohort Diagnostic Allocation And Purple Claim
+
+- **Decision:** reconcile Purple/Silver/Gold/White proposals to canonical `REG-001-D01`; Purple wins the equal-load tie by registration order.
+- **ACK/token:** `root-canonical/Kanban/g681/add-and-claim-REG-001-D01-Purple`; `REG-001-D01/Purple/g681/d51f80efceec4327b4b7a363ddb950e4`.
+- **Isolation:** branch `dispatch/REG-001-D01/Purple/Coworker-1/g681`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-D01-Purple-Coworker-1-g681`.
+- **Immutable inputs:** read only `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673\.artifacts\dispatch\REG-001\g678\Purple\Coworker-3\` and generation-679 canonical disposition. Do not modify or supplement source evidence.
+- **C1:** `Purple/Coworker-1` writes only `.artifacts/dispatch/REG-001-D01/g681/Purple/Coworker-1/` to produce source manifest and exact 62-container inventory. No tests.
+- **C2 barrier:** `Purple/Coworker-2` waits for accepted C1 inventory, then may write only its role evidence root and derived diagnosis JSON.
+- **C3 barrier:** `Purple/Coworker-3` waits for quiescent C1/C2 and independently regenerates/validates without tracked writes or tests.
+- **Fail-closed scope:** preserved evidence has no individual failed-test identities. All 1,542 tests remain one `Unknown/MissingFailureDetail` aggregate; no causal/owner attribution is authorized. REG-001 stays `WAIT-SUITE` and downstream documentation remains acceptance-unsafe.
+- **Other cohorts/state:** Silver retains D02 queue affinity; Silver, Gold, White have no execution ownership. Counts are 47 To Do / 1 In Progress / 57 Done across 105 executable cards.
+
+### Generation 680 Four-Cohort Atomic No-Card Acknowledgment
+
+- **Proposals:** Purple, Silver, Gold, and White observed generation 679 and remained read-only. All identified the shared-suite foundation as the priority and refused acceptance-unsafe documentation execution.
+- **ACK:** `root-canonical/Kanban/g680/atomic-four-cohort-no-acceptance-safe-card`.
+- **Decision:** no executable allocation. REG-001 remains `WAIT-SUITE`: focused 70/70 is preserved, but affected remains 4,751/6,293 with 1,542 failures and 62 failed containers. Sixteen documentation children remain syntactically READY and acceptance-unsafe.
+- **Cohort state:** Purple, Silver, Gold, and White receive no token, lease, worktree, tracked/evidence reservation, role binding or worker authority. Silver retains D02 queue affinity only. Duplicate White-labeled proposals are non-owning observations and are superseded by this single root acknowledgment.
+- **State/boundary:** counts remain 47/0/57; all roles are quiescent. No card transition, test, worker dispatch, waiver, narrowing, baseline subtraction, commit, push, publication, live access, credential, provisioning or destructive authority.
 
 ### Generation 679 Purple REG-001 Affected NACK, Release And Requeue
 

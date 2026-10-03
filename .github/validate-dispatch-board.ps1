@@ -115,10 +115,12 @@ $summaries = @($cards | Where-Object IsSummary)
 $todo = @($executables | Where-Object Status -eq 'To Do')
 $inProgress = @($executables | Where-Object Status -eq 'In Progress')
 $done = @($executables | Where-Object Status -eq 'Done')
-Assert-Board ($executables.Count -eq 104) "expected 104 executable cards, found $($executables.Count)."
+Assert-Board ($executables.Count -eq 106) "expected 106 executable cards, found $($executables.Count)."
 Assert-Board ($summaries.Count -eq 28) "expected 28 summary parents, found $($summaries.Count)."
-Assert-Board ($todo.Count -eq 47 -and $inProgress.Count -eq 0 -and $done.Count -eq 57) "expected 47/0/57 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
+Assert-Board ($todo.Count -eq 48 -and $inProgress.Count -eq 0 -and $done.Count -eq 58) "expected 48/0/58 buckets, found $($todo.Count)/$($inProgress.Count)/$($done.Count)."
 Assert-Board (@($todo | Where-Object Id -ceq 'REG-001').Count -eq 1) 'REG-001 must be safely requeued To Do.'
+Assert-Board (@($done | Where-Object Id -ceq 'REG-001-D01').Count -eq 1) 'REG-001-D01 must be Done.'
+Assert-Board (@($todo | Where-Object Id -ceq 'REG-001-D02').Count -eq 1) 'REG-001-D02 must be safely requeued To Do.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-010-A12-L01-F02').Count -eq 1) 'F02 must be Done.'
 Assert-Board (($done | Where-Object Id -eq 'EXR-018-A01').Count -eq 1) 'EXR-018-A01 must be Done.'
 $c01 = @($cards | Where-Object Id -ceq 'EXR-010-A12-L01-C01')
@@ -155,7 +157,7 @@ Assert-Board ($profiles.Count -ge 1) 'no dispatch profiles resolved.'
 $manifest = @(Get-MarkdownTableRows $backlog 'Canonical To Do dispatch manifest' 'card')
 $manifestDuplicates = @($manifest | Group-Object Id | Where-Object Count -gt 1)
 Assert-Board ($manifestDuplicates.Count -eq 0) "duplicate manifest IDs: $($manifestDuplicates.Name -join ', ')."
-Assert-Board ($manifest.Count -eq 47) "expected 47 manifest entries, found $($manifest.Count)."
+Assert-Board ($manifest.Count -eq 48) "expected 48 manifest entries, found $($manifest.Count)."
 $unfinishedIds = @(($todo.Id + $inProgress.Id) | Sort-Object)
 $manifestIds = @($manifest.Id | Sort-Object)
 Assert-Board (($unfinishedIds -join "`n") -ceq ($manifestIds -join "`n")) 'manifest IDs do not exactly match unfinished executable IDs.'
@@ -191,9 +193,9 @@ $expectedReady = @(
 )
 $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
-Assert-Board ($eligible.Count -eq 16) "Platinum three-card release must restore exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board ($eligible.Count -eq 16) "Generation-685 capture claim must preserve exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No REG-001 role may remain active after the generation-679 release.'
+Assert-Board ($inProgress.Count -eq 0) 'No active claim may remain after the REG-001-D02 NACK.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -232,7 +234,33 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 679) 'REG-001 Purple release generation must be 679.'
+Assert-Board ($backlogGeneration -eq 686) 'REG-001-D02 NACK/release generation must be 686.'
+Assert-Board ($backlog -match 'Generation 686 Platinum REG-001-D02 capture NACK and release') 'Generation-686 backlog disposition is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 686 Platinum REG-001-D02 Capture NACK And Release\r?$') 'Generation-686 registry disposition is missing.'
+Assert-Board ($cohorts -match 'c7fba455e7d44dca2ba7db59c63c4b7604c6f85c6be3255008e0ad999c49e45a') 'Generation-686 independent verification identity is missing.'
+Assert-Board ($backlog -match 'Generation 685 Platinum REG-001-D02 atomic capture claim') 'Generation-685 backlog allocation is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 685 Platinum REG-001-D02 Atomic Capture Claim\r?$') 'Generation-685 registry allocation is missing.'
+Assert-Board ($cohorts -match 'Platinum-root-coordinator/Kanban/g685/add-claim-REG-001-D02-retry-zero-capture') 'Generation-685 ACK is missing.'
+Assert-Board ($cohorts -match 'REG-001-D02/Platinum/g685/7c9e2a84d5f64b1c9a37e2084f6d1b52') 'Generation-685 token is missing.'
+Assert-Board ($backlog -match 'affected-failures\.sanitized\.json' -and $backlog -match 'affected\.junit\.xml') 'Generation-685 machine-readable capture artifacts are missing.'
+Assert-Board ($cohorts -match 'Platinum/Coworker-1' -and $cohorts -match 'Platinum/Coworker-2' -and $cohorts -match 'Platinum/Coworker-3') 'Generation-685 exact Platinum roles are missing.'
+Assert-Board ($backlog -match 'Generation 684 REG-001-D01 acceptance, release, and diagnostic closure') 'Generation-684 backlog acceptance is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 684 REG-001-D01 Acceptance And Release\r?$') 'Generation-684 registry acceptance is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g684/accept-REG-001-D01-release-diagnostic-ownership') 'Generation-684 acceptance ACK is missing.'
+Assert-Board ($backlog -match '83B7FA8727A5E8433C5CDC487D9CCF82CD6A2350466D413BB1DF75629C2621CF') 'Generation-684 independent verification identity is missing.'
+Assert-Board ($backlog -match 'Generation 683 REG-001-D01 derived-diagnosis acceptance and independent verification grant') 'Generation-683 backlog grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 683 REG-001-D01 C2 Acceptance And C3 Verification\r?$') 'Generation-683 registry grant is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g683/accept-C2-diagnosis-and-grant-C3-independent-regeneration') 'Generation-683 C3 grant ACK is missing.'
+Assert-Board ($backlog -match 'Generation 682 REG-001-D01 inventory acceptance and derived-report grant') 'Generation-682 backlog grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 682 REG-001-D01 Inventory Acceptance And C2 Grant\r?$') 'Generation-682 registry grant is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g682/accept-C1-inventory-and-grant-C2-derived-diagnosis') 'Generation-682 C2 grant ACK is missing.'
+Assert-Board ($backlog -match 'Generation 681 four-cohort diagnostic allocation and Purple REG-001-D01 claim') 'Generation-681 backlog allocation is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 681 Four-Cohort Diagnostic Allocation And Purple Claim\r?$') 'Generation-681 registry allocation is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g681/add-and-claim-REG-001-D01-Purple') 'Generation-681 root ACK is missing.'
+Assert-Board ($cohorts -match 'REG-001-D01/Purple/g681/d51f80efceec4327b4b7a363ddb950e4') 'Generation-681 token is missing.'
+Assert-Board ($backlog -match 'Generation 680 four-cohort atomic no-card acknowledgment') 'Generation-680 backlog acknowledgment is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 680 Four-Cohort Atomic No-Card Acknowledgment\r?$') 'Generation-680 registry acknowledgment is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g680/atomic-four-cohort-no-acceptance-safe-card') 'Generation-680 root ACK is missing.'
 Assert-Board ($backlog -match 'Generation 679 Purple REG-001 affected NACK, release, and safe requeue') 'Generation-679 backlog release is missing.'
 Assert-Board ($cohorts -match '(?m)^### Generation 679 Purple REG-001 Affected NACK, Release And Requeue\r?$') 'Generation-679 registry release is missing.'
 Assert-Board ($backlog -match '4,751' -and $backlog -match '1,542' -and $backlog -match '62 failed containers') 'Generation-679 affected NACK counts are missing.'
@@ -364,7 +392,7 @@ foreach ($role in 1..3) {
 }
 Assert-Board ($backlog -match "(?m)^Board readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'backlog readiness declaration is missing or stale.'
 Assert-Board ($cohorts -match "(?m)^Allocation readiness: \*\*BOARD READY — generation $generationPattern\*\*") 'cohort readiness declaration is missing or stale.'
-Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 104; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
+Assert-Board ($kanban -match "(?m)^Allocation generation mirrored: $generationPattern[ \t]*\r?$" -and $kanban -match "(?m)^Canonical executable cards: 106; canonical summary parents excluded: 28\. Compatibility generation: $generationPattern\. ") 'kanban generation is missing or stale.'
 Assert-Board ($backlog -match '(?m)^\d+\. \*\*READY-bank replenishment\.\*\* After every claim, completion, requeue, dependency transition, external-gate transition, or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'canonical READY-bank replenishment contract is missing.'
 Assert-Board ($cohorts -match '(?m)^8\. After every claim, completion, requeue, dependency transition, external-gate transition or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards\.') 'allocation READY-bank replenishment contract is missing.'
 Assert-Board ($backlog -match '(?m)^Generation 614 Purple C01 final candidate: \*\*Canonical decision: ACCEPT `EXR-010-A12-L01-C01` as Done\.\*\*') 'C01 canonical decision record is missing.'
