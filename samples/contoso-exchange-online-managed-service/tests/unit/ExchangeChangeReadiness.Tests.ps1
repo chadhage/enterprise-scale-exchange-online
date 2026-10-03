@@ -223,6 +223,24 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         Get-FailedCheck $result | Should -Contain 'Role grants Get-DkimSigningConfig for Dkim'
     }
 
+    It 'checks each read dependency for a multi-command scope' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('Forwarding')
+        $availableCommands = @('Get-Mailbox', 'Get-InboxRule')
+        Mock Get-Command -ParameterFilter { $Name -in @('Get-Mailbox', 'Get-InboxRule', 'Get-AcceptedDomain') } -MockWith {
+            if ($Name -in $availableCommands) { [pscustomobject]@{ Name = $Name } }
+        }
+        # Act
+        $result = & $script:readiness @arguments
+        # Assert
+        $checks = @($result.Results | Where-Object Check -Like 'Role grants * for Forwarding')
+        $checks.Count | Should -Be 3
+        @($checks | Where-Object { $_.Check -eq 'Role grants Get-Mailbox for Forwarding' -and $_.Status -eq 'PASS' }).Count | Should -Be 1
+        @($checks | Where-Object { $_.Check -eq 'Role grants Get-InboxRule for Forwarding' -and $_.Status -eq 'PASS' }).Count | Should -Be 1
+        @($checks | Where-Object { $_.Check -eq 'Role grants Get-AcceptedDomain for Forwarding' -and $_.Status -eq 'FAIL' }).Count | Should -Be 1
+    }
+
     It 'reports a preset rule read failure as a role problem, not as uninitialized presets' {
         # Arrange
         $arguments = Get-ReadinessArgument

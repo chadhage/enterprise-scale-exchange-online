@@ -364,11 +364,13 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
 
                 $scopeCmdlets = Get-ExchangeScopeReadCommand
                 foreach ($area in $Scope) {
-                    $cmdlet = $scopeCmdlets[$area]
-                    if (-not $cmdlet) { continue }
-                    Add-ReadinessResult -Area Tenant -Check "Role grants $($cmdlet) for $($area)" `
-                        -Passed ($null -ne (Get-Command -Name $cmdlet -ErrorAction SilentlyContinue)) `
-                        -Fix 'Your Exchange role does not expose this cmdlet. Ask the role owner for the least-privilege role group that covers this scope, then reconnect.'
+                    $cmdlets = @($scopeCmdlets[$area])
+                    foreach ($cmdlet in $cmdlets) {
+                        if (-not $cmdlet) { continue }
+                        Add-ReadinessResult -Area Tenant -Check "Role grants $($cmdlet) for $($area)" `
+                            -Passed ($null -ne (Get-Command -Name $cmdlet -ErrorAction SilentlyContinue)) `
+                            -Fix 'Your Exchange role does not expose this cmdlet. Ask the role owner for the least-privilege role group that covers this scope, then reconnect.'
+                    }
                 }
 
                 foreach ($preset in @(@{ Scope = 'EopPresets'; Cmdlet = 'Get-EOPProtectionPolicyRule' }, @{ Scope = 'AtpPresets'; Cmdlet = 'Get-ATPProtectionPolicyRule' })) {
