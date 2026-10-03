@@ -64,20 +64,22 @@ function Get-ExchangeScopeReadCommand {
 function Get-ExchangeExpectedTenantId {
     <#
     .SYNOPSIS
-    Reads MICROSOFT_ENTRA_TENANT_GUID from a parameter file; returns an empty string when it is not a GUID.
+    Reads and validates MICROSOFT_ENTRA_TENANT_GUID from a parameter file.
     #>
     [CmdletBinding()]
     [OutputType([string])]
     param([Parameter(Mandatory)][string]$ParameterPath)
     try {
-        $value = [string](Get-Content -LiteralPath $ParameterPath -Raw | ConvertFrom-Json -Depth 50).MICROSOFT_ENTRA_TENANT_GUID
-        $guid = [guid]::Empty
-        if ([guid]::TryParse($value, [ref]$guid) -and $guid -ne [guid]::Empty) { return $value }
+        $parameters = Get-Content -LiteralPath $ParameterPath -Raw -ErrorAction Stop | ConvertFrom-Json -Depth 50 -ErrorAction Stop
     }
     catch {
-        Write-Verbose "Parameter file tenant not readable: $($_.Exception.Message)"
+        throw 'ExchangeParameterTenantInvalid: the parameter file could not be read as JSON. Fix MICROSOFT_ENTRA_TENANT_GUID to a valid, non-zero tenant GUID and rerun this script.'
     }
-    ''
+    $tenantProperty = if ($null -ne $parameters) { $parameters.PSObject.Properties['MICROSOFT_ENTRA_TENANT_GUID'] }
+    $value = if ($null -ne $tenantProperty) { [string]$tenantProperty.Value } else { '' }
+    $guid = [guid]::Empty
+    if ([guid]::TryParse($value, [ref]$guid) -and $guid -ne [guid]::Empty) { return $value }
+    throw 'ExchangeParameterTenantInvalid: MICROSOFT_ENTRA_TENANT_GUID is missing or invalid. Set it to a valid, non-zero tenant GUID and rerun this script.'
 }
 
 function Test-ExchangeInteractiveHost {

@@ -60,6 +60,39 @@ Describe 'ExchangeOnlineBaseline.Connection' {
         }
     }
 
+    Context 'parameter tenant validation' {
+        It 'returns a valid tenant GUID from the parameter file' {
+            # Arrange
+            $path = Join-Path $TestDrive 'parameters.json'
+            '{"MICROSOFT_ENTRA_TENANT_GUID":"11111111-2222-3333-4444-555555555555"}' | Set-Content -LiteralPath $path
+            # Act / Assert
+            Get-ExchangeExpectedTenantId -ParameterPath $path | Should -Be '11111111-2222-3333-4444-555555555555'
+        }
+
+        It 'refuses missing, malformed, invalid, and all-zero tenant identifiers' {
+            # Arrange / Act / Assert
+            $path = Join-Path $TestDrive 'parameters.json'
+            foreach ($json in @(
+                    '{}',
+                    '{"MICROSOFT_ENTRA_TENANT_GUID":"not-a-guid"}',
+                    '{"MICROSOFT_ENTRA_TENANT_GUID":"00000000-0000-0000-0000-000000000000"}',
+                    'not json'
+                )) {
+                $json | Set-Content -LiteralPath $path
+                $act = { Get-ExchangeExpectedTenantId -ParameterPath $path }
+                $act | Should -Throw '*ExchangeParameterTenantInvalid*'
+            }
+        }
+
+        It 'refuses an unreadable or missing parameter file' {
+            # Arrange
+            $path = Join-Path $TestDrive 'missing.json'
+            # Act / Assert
+            $act = { Get-ExchangeExpectedTenantId -ParameterPath $path }
+            $act | Should -Throw '*ExchangeParameterTenantInvalid*'
+        }
+    }
+
     Context 'session selection and sign-in' {
         It 'refuses more than one session and says how to reset' {
             # Arrange
