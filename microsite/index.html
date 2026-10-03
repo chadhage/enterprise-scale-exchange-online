@@ -26,17 +26,17 @@
             <button class="drawer-close" id="drawerClose" type="button" aria-label="Close navigation">&times;</button>
         </div>
         <div class="nav-menu" aria-label="Microsite sections">
-            <button class="nav-item active" type="button" data-section="overview">Overview</button>
-            <button class="nav-item" type="button" data-section="configurator">Configuration</button>
-            <button class="nav-item" type="button" data-section="deployment">Administrator journey</button>
-            <button class="nav-item" type="button" data-section="testing">Validation</button>
-            <button class="nav-item" type="button" data-section="faq">FAQ</button>
-            <button class="nav-item" type="button" data-section="resources">Resources</button>
+            <button class="nav-item active" type="button" data-section="overview" aria-current="page">Overview</button>
+            <button class="nav-item" type="button" data-section="configurator" aria-current="false">Configuration</button>
+            <button class="nav-item" type="button" data-section="deployment" aria-current="false">Start here</button>
+            <button class="nav-item" type="button" data-section="testing" aria-current="false">Validation</button>
+            <button class="nav-item" type="button" data-section="faq" aria-current="false">FAQ</button>
+            <button class="nav-item" type="button" data-section="resources" aria-current="false">Resources</button>
         </div>
         <div class="repository-panel">
             <p class="repository-label">Source repository</p>
             <a class="repository-link" href="https://github.com/chadhage/enterprise-scale-exchange-online" target="_blank" rel="noopener noreferrer">
-                Open on GitHub <span aria-hidden="true">&nearr;</span>
+                Open on GitHub
             </a>
             <div class="clone-command">
                 <code>git clone https://github.com/chadhage/enterprise-scale-exchange-online.git</code>
@@ -50,7 +50,8 @@
         <section id="overview" class="section active">
             <div class="hero">
                 <h1>Exchange Online Protection Baseline</h1>
-                <p class="subtitle">A documentation-led, evidence-oriented example for an Exchange Online administrator journey</p>
+                <p class="subtitle">A guided path from approved inputs to a reviewed Exchange change</p>
+                <a class="btn btn-primary start-button" href="#deployment" data-section-link="deployment">Start the eight-step wizard</a>
             </div>
 
             <div class="disclaimer-banner" role="alert">
@@ -98,99 +99,425 @@
         </section>
 
         <section id="configurator" class="section">
-            <h1>Supported configuration contract</h1>
-            <p class="subtitle">The legacy browser configuration generator has been removed</p>
-
-            <div class="disclaimer-banner" role="alert">
-                The former generator emitted a quarantined custom-policy format and could not be used with the active schema. Use the versioned configuration, manifest, schema, and parameter contracts below.
-            </div>
+            <h1>Configuration files</h1>
+            <p class="subtitle">One versioned Exchange-only configuration; Standard and Strict are recipient-targeted Microsoft presets, not separate script downloads.</p>
 
             <div class="content-grid">
                 <article class="card">
-                    <h2>Active artifacts</h2>
+                    <h2>Start with these files</h2>
                     <ul>
                         <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.v1.json</a> - retained Exchange control configuration</li>
                         <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.schema.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.schema.v1.json</a> - closed validation schema</li>
                         <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/exchange-only.manifest.v1.json" target="_blank" rel="noopener noreferrer">exchange-only.manifest.v1.json</a> - retained controls and explicit exclusions</li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/parameters.exchange-only.sample.json" target="_blank" rel="noopener noreferrer">parameters.exchange-only.sample.json</a> - synthetic input example, not approval</li>
+                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/config/parameters.exchange-only.sample.json" target="_blank" rel="noopener noreferrer">parameters.exchange-only.sample.json</a> - example structure only; resolve and protect your own copy</li>
                     </ul>
                 </article>
 
                 <article class="card">
-                    <h2>Input rules</h2>
+                    <h2>Before you run anything</h2>
                     <ul>
-                        <li>Keep resolved tenant input outside source control.</li>
+                        <li>Use approved tenant-specific inputs outside source control; the sample is synthetic and must not be used for a live change.</li>
                         <li>Replace every <code>__ADMIN_REQUIRED:...</code> token with independently approved data.</li>
-                        <li>Supply current tenant- and recipient-bound entitlement evidence.</li>
-                        <li>Bind domain inventory, recipient scope, approvals, exceptions, and external handoffs to named owners and evidence references.</li>
-                        <li>Stop on missing, stale, malformed, unresolved, or scope-mismatched input.</li>
+                        <li>Get current tenant- and recipient-bound entitlement evidence and the required owner approvals.</li>
+                        <li>Stop if anything is missing, stale, malformed, or outside the approved scope.</li>
                     </ul>
+                    <a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md">Open the input preparation guide</a>
                 </article>
 
                 <article class="card full-width">
-                    <h2>Customization boundary</h2>
-                    <p>Virtually all individual settings in Standard and Strict preset security policies are Microsoft-managed and cannot be customized. Administrators can manage supported recipient scope and exclusions. Custom policies require a documented business need and do not override an applicable Strict or Standard preset because presets have higher precedence.</p>
-                    <p>Repository values identify their provenance as a Microsoft recommendation, local policy, or approved exception. A local choice must never be represented as a Microsoft default.</p>
+                    <h2>What Standard and Strict mean here</h2>
+                    <p>Standard and Strict are Microsoft-managed preset policies. This repository does not ship different scripts for them; administrators initialize the presets in the Microsoft Defender portal and manage the supported recipient scope. Virtually all individual settings in these presets are Microsoft-managed and cannot be customized. Custom policies do not override an applicable Standard or Strict preset because presets have higher precedence.</p>
                 </article>
             </div>
         </section>
 
         <section id="deployment" class="section">
-            <h1>Exchange administrator journey</h1>
-            <p class="subtitle">Resolve inputs, preview approved scope, apply through change control, and verify frozen evidence</p>
+            <h1>Guided Exchange change wizard</h1>
+            <p class="subtitle">Start with the prerequisites and support boundary. When those fit your situation, continue to the ordered steps. Progress stays in this browser tab: your current step and scope and preset choices survive a refresh, but typed domains and addresses are not saved. The microsite does not save tenant data, connect to your tenant, or execute scripts.</p>
 
-            <div class="content-grid">
-                <article class="card">
-                    <h2>Runtime</h2>
-                    <ul class="checklist">
-                        <li>PowerShell 7.6 or later</li>
-                        <li>ExchangeOnlineManagement 3.10.0 or later</li>
-                        <li>Worldwide tenant (<code>O365Default</code>)</li>
-                        <li>Approved Exchange identity with least-privilege access</li>
-                        <li>Protected input and artifact locations outside source control</li>
-                    </ul>
-                    <p>Pin and validate the exact module version used by the approved change. Do not rely on an unqualified "PowerShell 7+" prerequisite.</p>
-                </article>
-
-                <article class="card">
-                    <h2>Least privilege</h2>
-                    <p>Use the narrowest supported permissions for each operation. Preset policies can be managed through applicable Defender Unified RBAC permissions or Exchange Online Organization Management or Security Administrator role groups.</p>
-                    <p>Global Administrator is highly privileged and should be limited to emergency scenarios or cases where a narrower role cannot be used.</p>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Offline input validation and plan</h2>
-                    <p>From <code>samples\contoso-exchange-online-managed-service</code>, start with the synthetic parameter file only for offline structure validation:</p>
-                    <pre><code>.\scripts\Deploy-ExchangeOnlineBaseline.ps1 `
-    -ParameterPath .\config\parameters.exchange-only.sample.json `
-    -SkipConnection</code></pre>
-                    <p>The unmodified sample must stop because its licensing handoff is unverified. With approved input, this command produces an Exchange-only plan and configuration hash; it makes no changes and is not a signed approval artifact.</p>
-                </article>
-
-                <article class="card">
-                    <h2>Approved change</h2>
-                    <ol class="ordered-list">
-                        <li>Resolve all owner handoffs and administrator inputs.</li>
-                        <li>Validate the closed schema, manifest, domain inventory, entitlement, and recipient matrix.</li>
-                        <li>Initialize Standard and Strict preset objects in the Microsoft Defender portal.</li>
-                        <li>Create an immutable preview bound to exact before-state and approval.</li>
-                        <li>Apply only adapters explicitly supported by the approved-change contract.</li>
-                        <li>Recollect the complete evidence matrix and verify the exact configuration hash.</li>
-                    </ol>
-                </article>
-
-                <article class="card">
-                    <h2>Recovery</h2>
-                    <p>Rollback uses before-state captured by the approved-change workflow and restores only settings covered by reviewed adapters. Never recreate Microsoft-managed preset backing policies from serialized PowerShell output.</p>
-                    <p>After recovery, recollect and verify the complete evidence matrix. Configuration recovery cannot reverse messages already delivered, quarantined, or otherwise processed.</p>
-                </article>
-
-                <article class="card full-width">
-                    <h2>Government and sovereign clouds</h2>
-                    <p>Microsoft Defender for Office 365 is available in GCC, GCC High, and DoD with environment-specific portals, licensing, and capability differences. This repository's active journey is limited to Worldwide tenants and has not validated sovereign-cloud or hybrid endpoints, authentication, licensing, or feature behavior.</p>
-                    <p>Do not use this microsite as evidence that GCC High, DoD, or hybrid deployments are supported.</p>
-                </article>
+            <div id="wizardIntro">
+                <div class="disclaimer-banner" role="note">
+                    <strong>Confirm this is the right path.</strong> This guided change is for an already provisioned Worldwide Exchange Online tenant. It does not build a tenant, create users or groups, initialize preset policies, grant access, establish licensing, or replace independent change approval.
+                    <strong>For a net-new environment,</strong> first follow the <a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md">net-new Exchange administrator journey</a>; foundational work has separate owner handoffs and approval requirements.
+                </div>
+                <div class="content-grid wizard-intro-grid">
+                    <article class="card">
+                        <h2>Runtime and access</h2>
+                        <ul class="checklist">
+                            <li>PowerShell 7.6 or later</li>
+                            <li>ExchangeOnlineManagement 3.10.0 or later</li>
+                            <li>Worldwide tenant (<code>O365Default</code>)</li>
+                            <li>Approved Exchange identity with least-privilege access</li>
+                            <li>Protected input and artifact locations outside source control</li>
+                        </ul>
+                        <p>Use the exact module version approved for the change. Preset policies can be managed through applicable Defender Unified RBAC permissions or Exchange Online Organization Management or Security Administrator role groups. Global Administrator is highly privileged; prefer narrower supported roles.</p>
+                    </article>
+                    <article class="card">
+                        <h2>Recovery</h2>
+                        <p>Rollback restores only reviewed settings whose current state still matches the approved change. It cannot undo delivered or processed messages. Follow the approved-change runbook; do not recreate Microsoft-managed preset policies from exported data.</p>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=files-and-recovery" data-document="APPROVED-CHANGE.md" data-document-section="files-and-recovery">Open recovery instructions</a>
+                    </article>
+                    <article class="card full-width" id="wizardRoles">
+                        <h2>Who is involved (line these people up before you start)</h2>
+                        <p>Every change needs two people. The scripts enforce this: Validate and Apply refuse an approval signed by the requester or by anyone not in the authorized signer file. This is the change's separation-of-duties control, not optional paperwork.</p>
+                        <table class="wizard-table">
+                            <thead><tr><th>Role</th><th>Who</th><th>What they do</th><th>What they need</th></tr></thead>
+                            <tbody>
+                                <tr><td><strong>You (requester and operator)</strong></td><td>The Exchange admin running this walkthrough</td><td>Steps 1–5, then 7 and 8: prepare, check, preview, apply, collect evidence</td><td>Least-privilege Exchange role, the kit, the protected folder</td></tr>
+                                <tr><td><strong>Approver</strong></td><td>A different person whose name is in the authorized signer file</td><td>Step 6 only, about 10 minutes: reviews your preview and signs it. Needs no Exchange connection or admin role.</td><td>PowerShell 7, the same kit, read/write access to your protected folder, and their enterprise signing certificate (with private key) whose subject matches the signer file</td></tr>
+                                <tr><td><strong>Approval authority owner</strong></td><td>Usually change management or security; not you</td><td>Before Step 3: gives you the path to the protected authorized signer file. Keeps it out of your control.</td><td>—</td></tr>
+                            </tbody>
+                        </table>
+                        <p><strong>Before Step 1:</strong> know who your approver is, confirm they are in the signer file and have their certificate, and agree a time. The preview you send them expires <strong>24 hours</strong> after Step 5, so they must sign within that window.</p>
+                    </article>
+                    <article class="card full-width">
+                        <h2>Support boundary</h2>
+                        <p>The active journey is limited to Worldwide tenants and has not validated sovereign-cloud or hybrid endpoints, authentication, licensing, or feature behavior.</p>
+                    </article>
+                </div>
+                <button type="button" class="btn btn-primary" id="wizardBegin">Prerequisites fit — begin Step 1</button>
             </div>
+
+            <template id="changeWizardTemplate">
+            <div class="wizard" id="changeWizard" data-current-step="0">
+                <div class="wizard-progress">
+                    <p id="wizardProgressText" class="wizard-progress-text" aria-live="polite">Step 1 of 8: Get the change kit and open PowerShell 7</p>
+                    <div class="wizard-progress-track" role="progressbar" aria-label="Wizard progress" aria-valuemin="1" aria-valuemax="8" aria-valuenow="1" id="wizardProgressBar">
+                        <span></span>
+                    </div>
+                </div>
+                <ol class="wizard-step-list" aria-label="Workflow steps">
+                    <li><button type="button" class="wizard-step-button is-current" data-wizard-go="0" aria-current="step"><span>1</span><span>Get kit</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="1" disabled><span>2</span><span>Choose</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="2" disabled><span>3</span><span>Inputs</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="3" disabled><span>4</span><span>Ready check</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="4" disabled><span>5</span><span>Preview</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="5" disabled><span>6</span><span>Approve</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="6" disabled><span>7</span><span>Apply</span></button></li>
+                    <li><button type="button" class="wizard-step-button" data-wizard-go="7" disabled><span>8</span><span>Verify</span></button></li>
+                </ol>
+
+                <div class="wizard-panels">
+                    <article class="card wizard-panel is-current" data-wizard-panel="0" aria-labelledby="wizardTitle0">
+                        <p class="wizard-eyebrow">Step 1 · Get the kit</p>
+                        <h2 id="wizardTitle0" tabindex="-1">Get the change kit and open PowerShell 7</h2>
+                        <p>Everything after this step runs in <strong>one PowerShell 7 terminal</strong>, from the expanded kit folder. Keep that terminal open until Step 8.</p>
+                        <h3>1a. Open PowerShell 7</h3>
+                        <p>Open <strong>Start, PowerShell 7</strong> (or Windows Terminal, then run <code>pwsh</code>). Do not use “Windows PowerShell” 5.1. If PowerShell 7 is missing, install it first:</p>
+                        <pre><code>winget install --id Microsoft.PowerShell --source winget</code></pre>
+                        <h3>1b. Download, check, unblock, and expand the kit</h3>
+                        <p>Paste this whole block. The hash check must print <code>True</code>; if it prints <code>False</code>, delete the zip and stop.</p>
+                        <pre><code>$kit = Join-Path $HOME 'exchange-online-change-kit'
+$release = 'https://github.com/chadhage/enterprise-scale-exchange-online/releases/latest/download'
+Invoke-WebRequest -Uri "$($release)/exchange-online-change-kit.zip" -OutFile "$($kit).zip"
+Invoke-WebRequest -Uri "$($release)/exchange-online-change-kit.zip.sha256" -OutFile "$($kit).zip.sha256"
+$expected = (Get-Content -LiteralPath "$($kit).zip.sha256").Split(' ')[0]
+(Get-FileHash -LiteralPath "$($kit).zip" -Algorithm SHA256).Hash -eq $expected
+Unblock-File -LiteralPath "$($kit).zip"
+Expand-Archive -LiteralPath "$($kit).zip" -DestinationPath $HOME -Force
+Get-ChildItem -LiteralPath $kit -Recurse -File | Unblock-File
+Set-Location -LiteralPath $kit</code></pre>
+                        <h3>1c. Install the Exchange module and check the workstation</h3>
+                        <pre><code>Install-Module ExchangeOnlineManagement -MinimumVersion 3.10.0 -Scope CurrentUser
+./scripts/Test-ExchangeOnlineChangeReadiness.ps1 -WorkstationOnly</code></pre>
+                        <figure class="terminal-sample">
+                            <figcaption>Sample output: what “ready” looks like</figcaption>
+                            <pre><code>Exchange Online change readiness (read-only)
+Kit folder: C:\Users\admin\exchange-online-change-kit
+
+1. Workstation and kit
+  [PASS] PowerShell 7 (pwsh) - Core 7.6.1; minimum 7.6
+  [PASS] Kit files present - 9 required files found
+  [PASS] Downloaded files unblocked - no Mark-of-the-Web found
+  [PASS] Execution policy allows local scripts - effective policy RemoteSigned
+  [PASS] ExchangeOnlineManagement module - installed 3.10.0; minimum 3.10.0
+
+WORKSTATION READY: 5 checks passed.</code></pre>
+                        </figure>
+                        <p>Any <strong>FAIL</strong> line prints the exact command that fixes it on the line below. Run that command, then rerun the check.</p>
+                        <p class="stop-condition"><strong>Stop if:</strong> the hash check prints <code>False</code>, or a FAIL remains after you run its fix.</p>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> The workstation check printed WORKSTATION READY, and the terminal is in the kit folder.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="1" aria-labelledby="wizardTitle1" hidden>
+                        <p class="wizard-eyebrow">Step 2 · Choose</p>
+                        <h2 id="wizardTitle1" tabindex="-1">Choose what this change will touch</h2>
+                        <p>Answer three questions. Each answer builds the exact values you paste in Step 3, and the commands in Steps 4 and 5 update to match. Record the same choices in your change ticket; the scope is frozen into the preview and cannot be widened later.</p>
+
+                        <h3>1. Which areas does your ticket approve?</h3>
+                        <p>Tick only the scopes your approved ticket names. New to the workflow? Start with <code>Transport</code> alone. Badges tell you what each scope needs.</p>
+                        <div class="scope-picker" id="scopePicker" role="group" aria-label="Scopes"></div>
+                        <div class="builder-result" aria-live="polite">
+                            <p class="builder-label">Your scope</p>
+                            <pre><code id="scopeArgument">Select at least one scope above.</code></pre>
+                            <ul id="scopeRequirements" class="builder-list"></ul>
+                        </div>
+
+                        <h3>2. Who gets Standard and who gets Strict?</h3>
+                        <div id="presetNotNeeded" class="wizard-callout">Not needed for the scopes you selected. This only applies to <code>EopPresets</code> or <code>AtpPresets</code>.</div>
+                        <div id="presetBuilder" hidden>
+                            <p>Standard and Strict are Microsoft-managed preset policies. Everyone in your primary domain gets Standard. Members of one mail-enabled security group get Strict instead. The group is always required, even if it is empty.</p>
+                            <fieldset class="builder-fieldset">
+                                <legend>Who should get Strict?</legend>
+                                <label><input type="radio" name="presetChoice" value="standard" checked> Nobody yet: everyone gets Standard</label>
+                                <label><input type="radio" name="presetChoice" value="strict"> A group of priority users (for example executives) gets Strict</label>
+                            </fieldset>
+                            <div class="builder-inputs">
+                                <label>Primary email domain <input type="text" id="presetDomain" value="contoso.com" spellcheck="false"></label>
+                                <label>Strict group address <input type="text" id="presetGroup" value="priority-users@contoso.com" spellcheck="false"></label>
+                                <label>Security operations mailbox <input type="text" id="presetSecOps" value="secops@contoso.com" spellcheck="false"></label>
+                            </div>
+                            <div class="builder-result" aria-live="polite">
+                                <p class="builder-label">What to do</p>
+                                <ol id="presetSteps" class="builder-list"></ol>
+                                <p class="builder-label">Paste into your parameter file in Step 3</p>
+                                <pre><code id="presetParameters"></code></pre>
+                            </div>
+                        </div>
+
+                        <h3>3. Which extra settings does your ticket include?</h3>
+                        <div id="optionsNotNeeded" class="wizard-callout">None needed for the scopes you selected. Your parameter file does not need a <code>workflowOptions</code> section.</div>
+                        <div id="optionsBuilder" hidden>
+                            <p>Some scopes need a <code>workflowOptions</code> section that names exactly what to change. Required sections are already ticked. Tick an optional one only if your ticket asks for it.</p>
+                            <div id="optionPicker" class="option-picker"></div>
+                            <div class="builder-result" aria-live="polite">
+                                <p class="builder-label">What to do</p>
+                                <ul id="optionSteps" class="builder-list"></ul>
+                                <p class="builder-label">Paste into your parameter file in Step 3, then replace every <code>REPLACE-</code> value</p>
+                                <pre><code id="optionJson"></code></pre>
+                            </div>
+                        </div>
+
+                        <p class="stop-condition"><strong>Stop if:</strong> there is no approved ticket, the ticket's scope is unclear, or the work needs a new tenant, new users or groups, or first-time preset activation. Use the <a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md">net-new Exchange administrator journey</a> for that work.</p>
+                        <a href="#doc=APPROVED-CHANGE.md" data-document="APPROVED-CHANGE.md">Full scope table and adapter coverage</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="https://learn.microsoft.com/defender-office-365/preset-security-policies" target="_blank" rel="noopener noreferrer">Microsoft: preset security policies</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> My ticket records these scopes, the Strict decision, and any extra settings.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="2" aria-labelledby="wizardTitle2" hidden>
+                        <p class="wizard-eyebrow">Step 3 · Inputs</p>
+                        <h2 id="wizardTitle2" tabindex="-1">Prepare your inputs</h2>
+                        <p>Create a protected folder <strong>outside the kit and outside any Git repository</strong>, then copy the sample parameter file into it. The sample is synthetic and is refused until you replace its values.</p>
+                        <pre><code>$protected = 'D:\ExchangeChanges'
+New-Item -ItemType Directory -Path $protected -Force
+Copy-Item -LiteralPath ./config/parameters.exchange-only.sample.json -Destination (Join-Path $protected 'contoso.parameters.json')
+notepad (Join-Path $protected 'contoso.parameters.json')</code></pre>
+
+                        <div class="builder-result" id="step3Selections" aria-live="polite">
+                            <p class="builder-label">From your Step 2 choices</p>
+                            <ul id="step3Checklist" class="builder-list"></ul>
+                        </div>
+
+                        <h3>Parameter file values</h3>
+                        <div class="wizard-table-wrap">
+                            <table class="wizard-table">
+                                <thead><tr><th>Field</th><th>What to enter</th><th>Where it comes from</th></tr></thead>
+                                <tbody>
+                                    <tr><td><code>MICROSOFT_ENTRA_TENANT_GUID</code></td><td>Your tenant ID (a GUID)</td><td>Microsoft Entra admin center, Overview, Tenant ID</td></tr>
+                                    <tr><td><code>PRIMARY_SMTP_DOMAIN</code></td><td>Main email domain, such as <code>contoso.com</code></td><td>You (Exchange admin)</td></tr>
+                                    <tr><td><code>INITIAL_ONMICROSOFT_DOMAIN</code></td><td>Such as <code>contoso.onmicrosoft.com</code></td><td>Microsoft 365 admin center, Settings, Domains</td></tr>
+                                    <tr><td><code>EXTERNAL_POSTMASTER_SMTP_ADDRESS</code></td><td>Postmaster address for NDRs</td><td>You (Exchange admin)</td></tr>
+                                    <tr><td><code>MAIL_ENABLED_PRIORITY_USERS_GROUP</code></td><td>Strict group email address (Step 2, question 2)</td><td>Group owner</td></tr>
+                                    <tr><td><code>SECURITY_OPERATIONS_MAILBOX</code></td><td>SecOps mailbox address</td><td>Security operations</td></tr>
+                                    <tr><td><code>MAILBOX_RETENTION_POLICY_NAME</code></td><td>Existing MRM policy name (governance scopes only)</td><td>Records management owner</td></tr>
+                                    <tr><td><code>domainInventory</code></td><td>Every accepted domain, whether it sends mail, and its owner; also set <code>tenantId</code></td><td>Domain/DNS owner</td></tr>
+                                    <tr><td><code>entitlement</code></td><td>Licensing handoff: <code>verified</code>, <code>tenantId</code>, <code>servicePlans</code>, per-recipient <code>recipients</code>, future <code>expiresOn</code>, <code>owner</code>, <code>reference</code></td><td><strong>Licensing owner only.</strong> Never set <code>verified</code> to <code>true</code> yourself.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3>Change details</h3>
+                        <div class="wizard-table-wrap">
+                            <table class="wizard-table">
+                                <thead><tr><th>Input</th><th>What to enter</th><th>Example</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Change ID</td><td>Your ticket number. Letters, digits, and hyphens, up to 64 characters. New for every attempt.</td><td><code>CHG-1001</code></td></tr>
+                                    <tr><td>Requested by</td><td>UPN of the person requesting the change (you)</td><td><code>requester@contoso.com</code></td></tr>
+                                    <tr><td>Artifact folder</td><td>A new folder for this change's files. Created at Preview.</td><td><code>D:\ExchangeChanges\CHG-1001</code></td></tr>
+                                    <tr><td>Authorized signer file</td><td>JSON list of who may approve. The approval authority owner provides it and keeps it protected from you.</td><td><code>D:\ExchangeChanges\authorized-signers.json</code></td></tr>
+                                    <tr><td>Your approver</td><td>The person you lined up before Step 1. Their UPN must be an <code>Identity</code> in the signer file and must not be yours. They sign in Step 6.</td><td><code>approver@contoso.com</code></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <p>The authorized signer file looks like this. You receive it; you do not write it:</p>
+                        <pre><code>[
+  { "Identity": "approver@contoso.com", "Subject": "CN=Approver Name", "Authority": "ExchangeOnlineChangeApproval" }
+]</code></pre>
+                        <p class="stop-condition"><strong>Stop if:</strong> an owner has not supplied their value, the licensing handoff is missing or expired, or you are the only authorized signer. Never fill in a value just to get past a check.</p>
+                        <a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md&amp;section=1-resolve-inputs-and-owner-handoffs" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document-section="1-resolve-inputs-and-owner-handoffs">How to resolve inputs and owner handoffs</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> My parameter copy and signer file are in the protected folder, and I have my change details.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="3" aria-labelledby="wizardTitle3" hidden>
+                        <p class="wizard-eyebrow">Step 4 · Ready check</p>
+                        <h2 id="wizardTitle3" tabindex="-1">Sign in and run the readiness check</h2>
+                        <p>Run the full readiness check with your values from Step 3. You do not need to connect first. The script checks the ExchangeOnlineManagement module, reuses an existing session, or signs you in (MFA prompts appear in your browser). It then shows the account and tenant and asks you to confirm them. The check is read-only. It confirms the workstation, files, inputs, licensing, signer list, the session tenant, your role's cmdlets, and preset initialization.</p>
+                        <pre><code>./scripts/Test-ExchangeOnlineChangeReadiness.ps1 `
+    -UserPrincipalName 'admin@contoso.onmicrosoft.com' `
+    -ParameterPath 'D:\ExchangeChanges\contoso.parameters.json' `
+    -ArtifactRoot 'D:\ExchangeChanges\CHG-1001' `
+    -ChangeId 'CHG-1001' `
+    -RequestedBy 'requester@contoso.com' `
+    -AuthorizedSignerPath 'D:\ExchangeChanges\authorized-signers.json' `<span data-config-arg></span>
+    -Scope <span data-scope-arg>'Transport'</span></code></pre>
+                        <p>The <code>-Scope</code> value comes from your Step 2 choices.</p>
+                        <ul>
+                            <li><strong>No browser on this machine?</strong> Add <code>-UseDeviceCode</code> and enter the code on another device.</li>
+                            <li><strong>Wrong account shown?</strong> Answer <code>N</code>, run <code>Disconnect-ExchangeOnline</code>, and rerun with the right <code>-UserPrincipalName</code>.</li>
+                            <li><strong>Unattended run?</strong> Add <code>-ConfirmSession:$false</code> to skip the account prompt. Use it only after you've checked the session.</li>
+                            <li>Preview, Apply, and Rollback do the same sign-in check. Approve and Validate run offline and never sign in.</li>
+                        </ul>
+                        <figure class="terminal-sample">
+                            <figcaption>Sample output: a failed check and its fix</figcaption>
+                            <pre><code>2. Change inputs (offline)
+  [FAIL] Licensing entitlement verified - ExchangeEntitlementUnverified: supply a current tenant- and recipient-bound licensing owner handoff (RAID-D02).
+         Ask the licensing owner for a current handoff; they set entitlement.verified, servicePlans, and a future expiresOn. Never set verified yourself.
+
+NOT READY: 1 of 18 checks failed. Fix each item above, then rerun this script.</code></pre>
+                        </figure>
+                        <figure class="terminal-sample">
+                            <figcaption>Sample output: ready, with your next commands</figcaption>
+                            <pre><code>3. Exchange Online session (read-only)
+  [PASS] Exactly one Exchange Online session - 1 connected session(s)
+  [PASS] Session tenant matches parameters - session 6c1f9a2e-… as admin@contoso.onmicrosoft.com
+  [PASS] Worldwide endpoint - https://outlook.office365.com/...
+  [PASS] Role grants Get-TransportConfig for Transport
+
+READY FOR PREVIEW: 18 checks passed.
+Copy these lines into this same terminal to create the preview:
+
+$change = @{
+    ParameterPath        = 'D:\ExchangeChanges\contoso.parameters.json'
+    ConfigurationPath    = './config/exchange-only.v1.json'
+    ArtifactRoot         = 'D:\ExchangeChanges\CHG-1001'
+    ChangeId             = 'CHG-1001'
+    RequestedBy          = 'requester@contoso.com'
+    AuthorizedSignerPath = 'D:\ExchangeChanges\authorized-signers.json'
+    PreviewPath          = 'D:\ExchangeChanges\CHG-1001\preview-CHG-1001.json'
+    ApprovalPath         = 'D:\ExchangeChanges\CHG-1001\approval-CHG-1001.json'
+}
+./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope 'Transport' -Confirm:$false</code></pre>
+                        </figure>
+                        <p class="stop-condition"><strong>Stop if:</strong> any line says FAIL after you apply its fix, especially the session tenant, licensing, or preset checks. For first-time preset activation, use the <a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md&amp;section=6-initialize-presets-in-the-supported-portal" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document-section="6-initialize-presets-in-the-supported-portal">net-new preset guidance</a>.</p>
+                        <a href="https://learn.microsoft.com/powershell/exchange/connect-to-exchange-online-powershell" target="_blank" rel="noopener noreferrer">Microsoft: connect to Exchange Online PowerShell</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> The readiness check printed READY FOR PREVIEW and my <code>$change</code> block.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="4" aria-labelledby="wizardTitle4" hidden>
+                        <p class="wizard-eyebrow">Step 5 · Preview</p>
+                        <h2 id="wizardTitle4" tabindex="-1">Create and inspect the immutable preview</h2>
+                        <p>Paste the <code>$change</code> block and the Preview command that the readiness check printed. Preview reads the tenant and records every exact before-and-after value. <strong>It changes nothing.</strong> It is valid for 24 hours.</p>
+                        <pre><code>./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope <span data-scope-arg>'Transport'</span> -Confirm:$false</code></pre>
+                        <p>Then review what it plans to do:</p>
+                        <pre><code>$preview = Get-Content -LiteralPath $change.PreviewPath -Raw | ConvertFrom-Json
+$preview | Select-Object ChangeId, Tenant, DeploymentProfile, Scope, GeneratedOn, ExpiresOn
+$preview.Operation | ForEach-Object {
+    [pscustomobject]@{
+        Command  = $_.Command
+        Identity = $_.Identity
+        Before   = $_.Before.Value | ConvertTo-Json -Compress -Depth 10
+        After    = $_.After.Value | ConvertTo-Json -Compress -Depth 10
+    }
+} | Format-List</code></pre>
+                        <p>Check each operation: the command, the object it targets, and the before and after values.</p>
+                        <h3>Hand off to your approver</h3>
+                        <p>When the preview matches your ticket, copy a handoff note to the clipboard and send it to your approver (chat, email, or the ticket). It contains the <code>$change</code> block they paste, the preview fingerprint they compare, and the expiry time:</p>
+                        <pre><code>$previewHash = (Get-FileHash -LiteralPath $change.PreviewPath -Algorithm SHA256).Hash
+$changeBlock = '$change = @{' + [Environment]::NewLine + (($change.GetEnumerator() | Sort-Object Key | ForEach-Object { "    $($_.Key) = '$(([string]$_.Value).Replace("'", "''"))'" }) -join [Environment]::NewLine) + [Environment]::NewLine + '}'
+@(
+    "Please review and sign Exchange change $($change.ChangeId) (requested by $($change.RequestedBy))."
+    "Preview SHA-256: $($previewHash)"
+    "Preview expires: $($preview.ExpiresOn) - please sign before then."
+    'In PowerShell 7, from the kit folder, paste this block, then follow Step 6a of the guided wizard:'
+    $changeBlock
+) -join [Environment]::NewLine | Set-Clipboard</code></pre>
+                        <p>Then wait. You continue with Step 6b after the approver tells you they have signed.</p>
+                        <p class="stop-condition"><strong>Stop if:</strong> the tenant, target, or value differs from your ticket. Do not edit the preview file. Fix the input, use a <strong>new change ID</strong>, and rerun Steps 4 and 5.</p>
+                        <a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/scripts/Invoke-ExchangeOnlineChange.ps1" target="_blank" rel="noopener noreferrer">Open Invoke-ExchangeOnlineChange.ps1</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=commands" data-document="APPROVED-CHANGE.md" data-document-section="commands">Preview command and review guidance</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> Every operation in the preview matches the approved ticket.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="5" aria-labelledby="wizardTitle5" hidden>
+                        <p class="wizard-eyebrow">Step 6 · Approve</p>
+                        <h2 id="wizardTitle5" tabindex="-1">Get a separate approval and validate it</h2>
+                        <p>This is the approver you lined up before Step 1 (see <em>Who is involved</em>). You sent them the handoff note at the end of Step 5. <strong>Step 6a is done by the approver on their own computer</strong>; you wait, then do 6b.</p>
+                        <h3>6a. Approver (not you): check, review, then sign</h3>
+                        <p>If you are the approver: open PowerShell 7 in the kit folder (Step 1 of this wizard, if you don't have the kit), paste the <code>$change</code> block from the handoff note, and confirm the preview is the one the requester sent. The hash must match the note exactly:</p>
+                        <pre><code>(Get-FileHash -LiteralPath $change.PreviewPath -Algorithm SHA256).Hash</code></pre>
+                        <p>Review the operations with the Step 5 review commands. If they match the ticket, sign with your enterprise certificate. You do not need an Exchange connection or admin role:</p>
+                        <pre><code>$approvalIdentity = 'approver@contoso.com'
+$certificate = Get-Item -LiteralPath 'Cert:\CurrentUser\My\CERTIFICATE-THUMBPRINT'
+./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Approve @change -ApprovalIdentity $approvalIdentity -SigningCertificate $certificate</code></pre>
+                        <p>To find your thumbprint, run <code>Get-ChildItem Cert:\CurrentUser\My | Select-Object Subject, Thumbprint, NotAfter</code> and pick the certificate whose subject matches your entry in the signer file. Signing writes <code>approval-&lt;ChangeId&gt;.json</code> into the shared folder. Tell the requester you have signed.</p>
+                        <p class="stop-condition"><strong>Approver, do not sign if:</strong> the hash differs from the note, an operation does not match the ticket, or you are the person who requested the change.</p>
+                        <h3>6b. You (requester): validate the approval</h3>
+                        <p>After the approver says they have signed, go back to your own terminal and confirm the signature, signer, certificate trust, and preview binding:</p>
+                        <pre><code>./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Validate @change</code></pre>
+                        <p class="stop-condition"><strong>Stop if:</strong> the approver is the requester, Validate reports a signature or trust error, the approval expired, or any file changed after signing. Never edit approval JSON by hand.</p>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=external-prerequisites" data-document="APPROVED-CHANGE.md" data-document-section="external-prerequisites">How approval and signer trust work</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=commands" data-document="APPROVED-CHANGE.md" data-document-section="commands">Approve and validate commands</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> An independent approver signed, and Validate succeeded.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="6" aria-labelledby="wizardTitle6" hidden>
+                        <p class="wizard-eyebrow">Step 7 · Apply</p>
+                        <h2 id="wizardTitle6" tabindex="-1">Apply only the reviewed change</h2>
+                        <p>Use your approved change window. First rehearse: <code>-WhatIf</code> confirms your session, checks the approval and current state, and lists the operations, but changes nothing and writes no files. Then apply.</p>
+                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -WhatIf</code></pre>
+                        <pre><code>./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply</code></pre>
+                        <p>Answer <strong>Y</strong> at the confirmation prompt only after checking the tenant and change ID it shows. Apply writes <code>prechange</code>, <code>apply</code>, <code>postchange</code>, and <code>rollback</code> files to the artifact folder.</p>
+                        <div class="wizard-callout"><strong>This is a production change.</strong> The microsite cannot run it. If apply refuses because the tenant changed since the preview, do not retry with edited files. Start a new change ID from Step 4.</div>
+                        <p class="stop-condition"><strong>Stop if:</strong> the rehearsal fails, the prompt shows the wrong tenant or change, or apply reports drift.</p>
+                        <a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/scripts/Deploy-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Open Deploy-ExchangeOnlineBaseline.ps1</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=commands" data-document="APPROVED-CHANGE.md" data-document-section="commands">Apply and WhatIf guidance</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> Apply completed, and its files are in the artifact folder.</label>
+                    </article>
+
+                    <article class="card wizard-panel" data-wizard-panel="7" aria-labelledby="wizardTitle7" hidden>
+                        <p class="wizard-eyebrow">Step 8 · Verify and close</p>
+                        <h2 id="wizardTitle7" tabindex="-1">Collect evidence, assess outcome, and retain recovery artifacts</h2>
+                        <p>Collect evidence with the same inputs. The collector reuses your existing session after it shows the signed-in account and confirms the tenant, so evidence is never read from the wrong tenant. Then build the Markdown report for the ticket:</p>
+                        <pre><code>./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $change.ParameterPath -ConfigurationPath $change.ConfigurationPath -OutputPath (Join-Path $change.ArtifactRoot 'evidence')
+./scripts/New-ExchangeChangeEvidenceReport.ps1 -ArtifactRoot $change.ArtifactRoot -ChangeId $change.ChangeId</code></pre>
+                        <p>The second command reads every change artifact and the evidence file, then writes <code>evidence-report-&lt;ChangeId&gt;.md</code> into the artifact folder. It does not connect to the tenant. It reports <code>INCOMPLETE</code> if any artifact belongs to a different change or the evidence was collected for another tenant, configuration, or before apply. Expected output:</p>
+                        <pre class="terminal-sample"><code>APPLIED - EVIDENCE COLLECTED
+  Artifacts present: 6 of 6
+  Evidence: Pass 41, Manual 3
+  Report: D:\ExchangeChanges\CHG-1001\evidence-report-CHG-1001.md</code></pre>
+                        <ul>
+                            <li><strong>INCOMPLETE</strong> means an artifact is missing or apply did not succeed. The report lists what is missing and what to do next.</li>
+                            <li><strong>APPLIED - CONTROLS NEED ATTENTION</strong> means some checks failed or errored. Each one is listed with its reason; assign an owner.</li>
+                            <li>The report and evidence are not a go-live approval and do not turn unverified readiness into Pass.</li>
+                            <li>Attach the report and keep the whole artifact folder (preview, approval, apply, postchange, rollback, evidence) with the ticket.</li>
+                            <li>When done, run <code>Disconnect-ExchangeOnline -Confirm:$false</code>.</li>
+                        </ul>
+                        <h3>Only if your recovery decision calls for rollback</h3>
+                        <p>Rollback restores only the settings this change touched, and only if they have not changed since apply. It works within the 24-hour approval window and cannot undo delivered or processed messages.</p>
+                        <pre><code>&amp; (Join-Path $change.ArtifactRoot "rollback-$($change.ChangeId).ps1") -Apply</code></pre>
+                        <p class="stop-condition"><strong>Stop and escalate if:</strong> evidence is missing or stale, a required control fails, or an external owner has not supplied evidence.</p>
+                        <a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1" target="_blank" rel="noopener noreferrer">Open Test-ExchangeOnlineBaseline.ps1</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="#doc=EXCHANGE-GO-LIVE.md" data-document="EXCHANGE-GO-LIVE.md">Evidence and go-live decision guide</a>
+                        <span aria-hidden="true"> · </span>
+                        <a href="#doc=APPROVED-CHANGE.md&amp;section=files-and-recovery" data-document="APPROVED-CHANGE.md" data-document-section="files-and-recovery">Recovery and artifact retention</a>
+                        <label class="wizard-confirm"><input type="checkbox" data-wizard-complete> Evidence and change records are reviewed and retained; follow-up owners are assigned.</label>
+                        <p class="wizard-finish" tabindex="-1" hidden>You have reached the end of the walkthrough. This is not a go-live approval; follow the evidence gate and your organization’s release decision.</p>
+                    </article>
+                </div>
+
+                <div class="wizard-controls">
+                    <button type="button" class="btn btn-secondary" id="wizardBack" disabled>Back</button>
+                    <span class="wizard-control-status" id="wizardStepStatus" aria-live="polite">Complete this step, then confirm to continue.</span>
+                    <button type="button" class="btn btn-primary" id="wizardNext" disabled>Confirm and continue</button>
+                </div>
+            </div>
+            </template>
+            <div id="wizardMount" hidden></div>
         </section>
 
         <section id="testing" class="section">
@@ -273,11 +600,20 @@
                 <article class="resource-card">
                     <h3>Active repository guidance</h3>
                     <ul>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-ADMINISTRATOR-JOURNEY.md" target="_blank" rel="noopener noreferrer">Exchange administrator journey</a></li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-ONLY.md" target="_blank" rel="noopener noreferrer">Exchange-only execution boundary</a></li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/APPROVED-CHANGE.md" target="_blank" rel="noopener noreferrer">Approved change and rollback</a></li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-GO-LIVE.md" target="_blank" rel="noopener noreferrer">Frozen evidence gate</a></li>
-                        <li><a href="https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/samples/contoso-exchange-online-managed-service/docs/EXCHANGE-EMAIL-PROTECTION.md" target="_blank" rel="noopener noreferrer">Exchange email protection contract</a></li>
+                        <li><a href="#doc=EXCHANGE-ADMINISTRATOR-JOURNEY.md" data-document="EXCHANGE-ADMINISTRATOR-JOURNEY.md">Net-new Exchange administrator journey</a></li>
+                        <li><a href="#doc=EXCHANGE-ONLY.md" data-document="EXCHANGE-ONLY.md">Exchange-only execution boundary</a></li>
+                        <li><a href="#doc=APPROVED-CHANGE.md" data-document="APPROVED-CHANGE.md">Approved change and rollback</a></li>
+                        <li><a href="#doc=EXCHANGE-GO-LIVE.md" data-document="EXCHANGE-GO-LIVE.md">Frozen evidence gate</a></li>
+                        <li><a href="#doc=EXCHANGE-EMAIL-PROTECTION.md" data-document="EXCHANGE-EMAIL-PROTECTION.md">Exchange email protection contract</a></li>
+                        <li><a href="#doc=EXCHANGE-GOVERNANCE.md" data-document="EXCHANGE-GOVERNANCE.md">Exchange governance contract</a></li>
+                        <li><a href="#doc=LICENSING-GATE.md" data-document="LICENSING-GATE.md">Licensing gate</a></li>
+                        <li><a href="#doc=IMPLEMENTATION-GUIDE.md" data-document="IMPLEMENTATION-GUIDE.md">Implementation guide</a></li>
+                        <li><a href="#doc=RUNBOOKS.md" data-document="RUNBOOKS.md">Control runbooks</a></li>
+                        <li><a href="#doc=CONTROL-CATALOG.md" data-document="CONTROL-CATALOG.md">Control catalog</a></li>
+                        <li><a href="#doc=EMAIL-SETTINGS-SOURCES.md" data-document="EMAIL-SETTINGS-SOURCES.md">Email settings sources</a></li>
+                        <li><a href="#doc=EXR007-RECOMMENDATION-INVENTORY.md" data-document="EXR007-RECOMMENDATION-INVENTORY.md">Recommendation inventory</a></li>
+                        <li><a href="#doc=EXR005-ADAPTER-AUDIT.md" data-document="EXR005-ADAPTER-AUDIT.md">Adapter audit</a></li>
+                        <li><a href="#doc=DESIGN.md" data-document="DESIGN.md">Design notes</a></li>
                     </ul>
                 </article>
 
@@ -292,6 +628,22 @@
                         <li><a href="https://learn.microsoft.com/powershell/exchange/exchange-online-powershell-v2?view=exchange-ps" target="_blank" rel="noopener noreferrer">Exchange Online PowerShell module requirements</a></li>
                     </ul>
                 </article>
+            </div>
+        </section>
+
+        <section id="documentViewer" class="section document-viewer" aria-labelledby="documentTitle">
+            <div class="document-toolbar">
+                <button type="button" class="btn btn-secondary" id="documentBack">Back to microsite</button>
+                <a id="documentSourceLink" href="https://github.com/chadhage/enterprise-scale-exchange-online/tree/main/samples/contoso-exchange-online-managed-service/docs" target="_blank" rel="noopener noreferrer">View source on GitHub</a>
+            </div>
+            <h1 id="documentTitle" tabindex="-1">Documentation</h1>
+            <p id="documentStatus" class="subtitle" role="status" aria-live="polite"></p>
+            <div class="document-layout">
+                <nav class="document-toc" aria-label="On this page">
+                    <h2>On this page</h2>
+                    <ol id="documentContents"></ol>
+                </nav>
+                <article class="document-content" id="documentContent"></article>
             </div>
         </section>
     </main>

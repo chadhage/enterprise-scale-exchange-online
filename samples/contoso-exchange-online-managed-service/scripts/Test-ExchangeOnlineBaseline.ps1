@@ -55,6 +55,14 @@ param(
 
     [System.Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate,
 
+    [string]$UserPrincipalName,
+
+    [switch]$UseDeviceCode,
+
+    [bool]$ConfirmSession = $true,
+
+    [switch]$NonInteractive,
+
     [switch]$SkipConnection
 )
 
@@ -99,8 +107,10 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
 
     if (-not $SkipConnection) {
         try {
-            Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-            Connect-ExchangeOnline -ShowBanner:$false
+            Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+            $null = Initialize-ExchangeOnlineSession -ExpectedTenantId ([string]$exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID) `
+                -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode -ConfirmSession $ConfirmSession `
+                -NonInteractive:$NonInteractive -MinimumModuleVersion '3.0.0' -InformationAction Continue
         }
         catch {
             Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
@@ -178,8 +188,9 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
 $graphRequest = $null
 if (-not $SkipConnection) {
     try {
-        Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-        Connect-ExchangeOnline -ShowBanner:$false
+        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        $null = Connect-ExchangeOnlineSession -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
+            -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion '3.0.0' -InformationAction Continue
 
         Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
         Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome

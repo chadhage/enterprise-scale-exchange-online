@@ -9,7 +9,7 @@ BeforeAll {
 
     $script:signingKey = [Security.Cryptography.RSA]::Create(2048)
     $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
-        'CN=Offline Sharing Policy Adapter',
+        'CN=Offline Adapter',
         $script:signingKey,
         [Security.Cryptography.HashAlgorithmName]::SHA256,
         [Security.Cryptography.RSASignaturePadding]::Pkcs1
@@ -220,7 +220,7 @@ BeforeAll {
         param($Arguments)
 
         & $script:changeCommand -Stage Preview @Arguments -Scope SharingPolicyBinding -Confirm:$false | Out-Null
-        & $script:changeCommand -Stage Approve @Arguments -ApprovalIdentity 'privacy-reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
+        & $script:changeCommand -Stage Approve @Arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
     }
 
     function Get-SharingPolicyBindingSnapshot {
