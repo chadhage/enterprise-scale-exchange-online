@@ -9,9 +9,11 @@ BeforeAll {
         param([string]$UserPrincipalName, [switch]$Device, [bool]$ShowBanner)
         $global:connectionTestCalls.Add(@{ Command = 'Connect'; UserPrincipalName = $UserPrincipalName; Device = [bool]$Device })
         if ($global:connectionTestConnectError) { throw $global:connectionTestConnectError }
-        $global:connectionTestSessions = @(New-TestSession -UserPrincipalName $(if ($UserPrincipalName) { $UserPrincipalName } else { 'signed-in@contoso.example' }))
+        $signInUser = if ($global:connectionTestSignInUserPrincipalName) { $global:connectionTestSignInUserPrincipalName } elseif ($UserPrincipalName) { $UserPrincipalName } else { 'signed-in@contoso.example' }
+        $global:connectionTestSessions = @(New-TestSession -UserPrincipalName $signInUser)
     }
     function global:Disconnect-ExchangeOnline {
+        [CmdletBinding()]
         param([bool]$Confirm)
         $global:connectionTestCalls.Add(@{ Command = 'Disconnect' })
         $global:connectionTestSessions = @()
@@ -36,6 +38,7 @@ Describe 'ExchangeOnlineBaseline.Connection' {
         $global:connectionTestSessions = @()
         $global:connectionTestCalls = [System.Collections.Generic.List[hashtable]]::new()
         $global:connectionTestConnectError = $null
+        $global:connectionTestSignInUserPrincipalName = $null
         Mock -ModuleName ExchangeOnlineBaseline.Connection Test-ExchangeInteractiveHost { $true }
         Mock -ModuleName ExchangeOnlineBaseline.Connection Read-ExchangeSessionConfirmation { $true }
     }
@@ -181,6 +184,19 @@ Describe 'ExchangeOnlineBaseline.Connection' {
             $global:connectionTestCalls[0].Command | Should -Be 'Connect'
             $global:connectionTestCalls[0].UserPrincipalName | Should -Be 'admin@contoso.example'
             $session.UserPrincipalName | Should -Be 'admin@contoso.example'
+        }
+
+        It 'disconnects and refuses an interactive sign-in for a different account than requested' {
+            # Arrange
+            $global:connectionTestSignInUserPrincipalName = 'other@contoso.example'
+
+            # Act
+            $act = { Connect-ExchangeOnlineSession -SkipModuleCheck -UserPrincipalName 'admin@contoso.example' -InformationAction Ignore }
+
+            # Assert
+            $act | Should -Throw '*ExchangeSessionWrongAccount*other@contoso.example*admin@contoso.example*Disconnect-ExchangeOnline -Confirm:$false*Connect-ExchangeOnline -UserPrincipalName*'
+            @($global:connectionTestCalls.Command) | Should -Be @('Connect', 'Disconnect')
+            $global:connectionTestSessions.Count | Should -Be 0
         }
     }
 

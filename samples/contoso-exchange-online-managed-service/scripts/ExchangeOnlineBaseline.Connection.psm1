@@ -230,6 +230,12 @@ function Connect-ExchangeOnlineSession {
     if ($sessions.Count -ne 1) {
         throw "ExchangeSignInFailed: sign-in finished but $($sessions.Count) Exchange Online sessions are connected. Run Disconnect-ExchangeOnline -Confirm:`$false and rerun this script."
     }
+    if (-not [string]::IsNullOrWhiteSpace($UserPrincipalName) -and
+        [string]$sessions[0].UserPrincipalName -ine $UserPrincipalName) {
+        Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue
+        throw ("ExchangeSessionWrongAccount: signed in as $($sessions[0].UserPrincipalName), not $($UserPrincipalName). Run:`n" +
+            "  Disconnect-ExchangeOnline -Confirm:`$false`n  $($signIn)`nthen rerun this script.")
+    }
     Write-Information "Signed in as $($sessions[0].UserPrincipalName) in tenant $($sessions[0].TenantID)."
     $sessions[0]
 }

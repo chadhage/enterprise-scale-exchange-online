@@ -96,6 +96,19 @@ catch {
     exit $exitCode.Configuration
 }
 
+if ($SkipConnection -and (Get-Command -Name Get-ConnectionInformation -ErrorAction SilentlyContinue)) {
+    try {
+        $connectedSessions = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' })
+        if ($connectedSessions.Count -gt 0) {
+            throw 'ExchangeConnectionBypassRefused: -SkipConnection is only allowed for offline test doubles. Run Disconnect-ExchangeOnline -Confirm:$false, then rerun without -SkipConnection.'
+        }
+    }
+    catch {
+        Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+        exit $exitCode.Connection
+    }
+}
+
 if ($deploymentProfile -ceq 'ExchangeOnly') {
     try {
         $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath

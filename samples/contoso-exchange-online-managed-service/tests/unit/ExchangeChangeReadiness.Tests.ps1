@@ -32,7 +32,6 @@ BeforeAll {
             RequestedBy              = 'requester@contoso.example'
             AuthorizedSignerPath     = $signerPath
             Scope                    = @('Transport')
-            MinimumPowerShellVersion = '7.0'
             MinimumModuleVersion     = '0.0'
             ConfirmSession           = $false
             NonInteractive           = $true
@@ -83,6 +82,19 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         # Assert
         $LASTEXITCODE | Should -Be 1
         Get-FailedCheck $result | Should -Contain 'Scope is supported'
+    }
+
+    It 'uses the documented PowerShell 7.5 minimum by default' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+
+        # Act
+        $result = & $script:readiness @arguments
+
+        # Assert
+        $runtimeCheck = $result.Results.Where({ $_.Check -eq 'PowerShell 7 (pwsh)' })
+        $runtimeCheck.Detail | Should -Match 'minimum 7\.5'
+        $runtimeCheck.Status | Should -Be 'PASS'
     }
 
     It 'refuses when the requester is the only authorized signer' {

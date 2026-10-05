@@ -37,7 +37,7 @@ param(
     [Parameter(ParameterSetName = 'Change')][switch]$UseDeviceCode,
     [Parameter(ParameterSetName = 'Change')][bool]$ConfirmSession = $true,
     [Parameter(ParameterSetName = 'Change')][switch]$NonInteractive,
-    [version]$MinimumPowerShellVersion = '7.6',
+    [version]$MinimumPowerShellVersion = '7.5',
     [version]$MinimumModuleVersion = '3.10.0',
     [switch]$PassThru
 )

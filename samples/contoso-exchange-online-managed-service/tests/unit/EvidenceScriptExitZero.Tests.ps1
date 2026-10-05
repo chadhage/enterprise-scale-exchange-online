@@ -40,7 +40,8 @@ function Get-InboundConnector { param([string]$Identity) @() }
         [CmdletBinding()]
         param(
             [Parameter(Mandatory)][string]$Directory,
-            [Parameter(Mandatory)][string]$Tenant
+            [Parameter(Mandatory)][string]$Tenant,
+            [switch]$ConnectedSession
         )
 
         $acceptedDomain = switch ($Tenant) {
@@ -50,7 +51,14 @@ function Get-InboundConnector { param([string]$Identity) @() }
 
         $smtpAuthDisabled = if ($Tenant -eq 'SmtpAuthEnabled') { '$false' } else { '$true' }
 
-        $observation = $script:TenantObservation.
+        $connectionInformation = if ($ConnectedSession) {
+            "function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected' } }"
+        }
+        else {
+            ''
+        }
+
+        $observation = ($script:TenantObservation + [Environment]::NewLine + $connectionInformation).
         Replace('__ACCEPTED_DOMAIN__', $acceptedDomain).
         Replace('__SMTP_AUTH_DISABLED__', $smtpAuthDisabled)
 
@@ -128,14 +136,15 @@ exit $LASTEXITCODE
         [CmdletBinding()]
         param(
             [Parameter(Mandatory)][string]$ScriptPath,
-            [Parameter(Mandatory)][string]$Tenant
+            [Parameter(Mandatory)][string]$Tenant,
+            [switch]$ConnectedSession
         )
 
         $runRoot = Join-Path $script:FixtureRoot ('run-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $runRoot -Force | Out-Null
         $outputPath = Join-Path $runRoot 'evidence'
 
-        $harnessPath = New-TenantHarness -Directory $runRoot -Tenant $Tenant
+        $harnessPath = New-TenantHarness -Directory $runRoot -Tenant $Tenant -ConnectedSession:$ConnectedSession
         $shell = [System.Diagnostics.Process]::GetCurrentProcess().MainModule.FileName
 
         $output = & $shell -NoProfile -NonInteractive -File $harnessPath `
@@ -302,6 +311,21 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
 
             # Assert
             $result.Reason | Should -BeExactly 'EvidenceCommandMissing'
+        }
+    }
+
+    Context 'Negative: offline connection bypass refuses a live Exchange session' {
+
+        It 'refuses to collect evidence when SkipConnection is used with a connected session' {
+            # Arrange
+            $scriptPath = $script:EvidenceScriptPath
+
+            # Act
+            $run = Invoke-EvidenceCommand -ScriptPath $scriptPath -Tenant 'Compliant' -ConnectedSession
+
+            # Assert
+            $run.ExitCode | Should -Be (Get-BaselineExitCodeContract).Connection
+            ($run.Output -join "`n") | Should -Match 'ExchangeConnectionBypassRefused'
         }
     }
 
