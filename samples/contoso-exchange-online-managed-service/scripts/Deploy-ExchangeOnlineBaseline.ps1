@@ -1427,7 +1427,22 @@ if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
         }
     }
 
-    if (-not $SkipConnection) {
+    if ($SkipConnection) {
+        $connectionInfoCommand = Get-Command -Name Get-ConnectionInformation -All -ListImported -ErrorAction SilentlyContinue |
+            Where-Object { $_.ModuleName -eq 'ExchangeOnlineManagement' } | Select-Object -First 1
+        if ($null -ne $connectionInfoCommand) {
+            try {
+                $connectedSessions = @(& $connectionInfoCommand -ErrorAction Stop | Where-Object { [string]$_.State -eq 'Connected' })
+            }
+            catch {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnection cannot be used because the loaded ExchangeOnlineManagement session could not be verified. Omit the switch to run the connection check.'
+            }
+            if ($connectedSessions.Count -gt 0) {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnection is for offline test doubles only and cannot be used with a connected Exchange Online session. Omit the switch to run the connection check.'
+            }
+        }
+    }
+    else {
         Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
         $previewScope = @()
         try { $previewScope = @((Get-Content -LiteralPath $PreviewPath -Raw | ConvertFrom-Json -Depth 64).Scope) }

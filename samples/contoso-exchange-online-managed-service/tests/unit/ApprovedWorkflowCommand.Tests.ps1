@@ -133,6 +133,27 @@ AfterAll {
         }
     }
 
+    It 'refuses the deployment connection bypass when ExchangeOnlineManagement has a connected session' {
+        # Arrange
+        $module = New-Module -Name ExchangeOnlineManagement -ScriptBlock {
+            function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected'; TenantID = '11111111-2222-3333-4444-555555555555' } }
+            Export-ModuleMember -Function Get-ConnectionInformation
+        }
+        Import-Module $module -Force
+        $arguments = New-WorkflowCommandFixture
+        $arguments.Remove('SkipConnectionCheck')
+        # Act
+        $invoke = { & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @arguments -Apply -SkipConnection -Confirm:$false }
+        # Assert
+        try {
+            $invoke | Should -Throw '*ExchangeConnectionCheckSkipDenied*'
+            $global:workflowWrites | Should -Be 0
+        }
+        finally {
+            Remove-Module ExchangeOnlineManagement -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'stops the deployment entrypoint clearly when signer metadata is absent' {
         # Arrange
         $arguments = New-WorkflowCommandFixture

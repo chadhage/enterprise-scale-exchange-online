@@ -3,7 +3,8 @@ BeforeAll {
     $script:report = Join-Path $script:root 'scripts/New-ExchangeChangeEvidenceReport.ps1'
     $script:tenant = '11111111-2222-3333-4444-555555555555'
     $script:expectedControlIds = @((Get-Content (Join-Path $script:root 'config/exchange-only.manifest.v1.json') -Raw | ConvertFrom-Json).ControlId)
-    Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Function New-BaselineChangeStateCapture -Force -DisableNameChecking
+    Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Function New-BaselineChangeStateCapture, Get-BaselineExchangeManifest -Force -DisableNameChecking
+    $script:manifestHash = (Get-BaselineExchangeManifest).Hash
 
     function New-EvidenceFixture {
         param([string[]]$Omit = @(), [string]$ApplyStatus = 'Succeeded')
@@ -44,7 +45,7 @@ BeforeAll {
         }
         if ('Evidence' -notin $Omit) {
             @{
-                TenantId = $script:tenant; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = 'abc123'; ManifestHash = 'def456'
+                TenantId = $script:tenant; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = 'abc123'; ManifestHash = $script:manifestHash
                 CollectedAtUtc = '2026-01-01T03:00:00Z'
                 Check = @($script:expectedControlIds | ForEach-Object {
                         $status = if ($_ -eq 'EXO-002') { 'Fail' } elseif ($_ -eq 'EXO-004') { 'Manual' } else { 'Pass' }
@@ -153,6 +154,7 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         @{ Field = 'TenantId'; Value = '99999999-2222-3333-4444-555555555555'; Label = 'Tenant' }
         @{ Field = 'DeploymentProfile'; Value = 'MicrosoftNative'; Label = 'DeploymentProfile' }
         @{ Field = 'ConfigurationHash'; Value = 'sha256:ffff'; Label = 'ConfigurationHash' }
+        @{ Field = 'ManifestHash'; Value = ('f' * 64); Label = 'ManifestHash' }
         @{ Field = 'TenantId'; Value = ''; Label = 'Tenant' }
         @{ Field = 'CollectedAtUtc'; Value = '2026-01-01T01:00:00Z'; Label = 'CollectedAfterApply' }
     ) {
@@ -410,5 +412,22 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Match '\| Tenant \| [^|]+ \| [^|]+ \| Yes \|'
         $hash = (Get-FileHash -LiteralPath (Join-Path $root 'apply-CHG-1001.json') -Algorithm SHA256).Hash.ToLowerInvariant()
         $markdown | Should -Match $hash
+    }
+
+    It 'marks evidence with no manifest hash incomplete' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        $evidence.Remove('ManifestHash')
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.BindingMismatch | Should -Contain 'ManifestHash'
+        $markdown | Should -Match '\| ManifestHash \| [^|]+ \| - \| \*\*No\*\* \|'
     }
 }

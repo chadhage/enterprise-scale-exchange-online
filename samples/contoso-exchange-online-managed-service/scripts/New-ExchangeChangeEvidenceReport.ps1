@@ -88,6 +88,12 @@ function Format-Cell {
 
 $evidence = Read-JsonFile -Path $EvidencePath -Label 'Evidence'
 $manifest = Read-JsonFile -Path (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') -Label 'Evidence manifest'
+Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Function ConvertTo-CanonicalJson -ErrorAction Stop
+$manifestHash = [Convert]::ToHexString(
+    [Security.Cryptography.SHA256]::HashData(
+        [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $manifest))
+    )
+).ToLowerInvariant()
 $expectedControlIds = @(Get-RecordValue $manifest 'ControlId' | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
 if ($expectedControlIds.Count -eq 0 -or @($expectedControlIds | Select-Object -Unique).Count -ne $expectedControlIds.Count) {
     throw 'EvidenceManifestInvalid: the shipped ExchangeOnly manifest must contain unique control identifiers.'
@@ -159,6 +165,7 @@ $binding = @(
     [pscustomobject]@{ Field = 'Tenant'; Preview = [string](Get-RecordValue $preview 'Tenant'); Evidence = [string](Get-RecordValue $evidence 'TenantId'); Compare = { param($a, $b) $a.Trim() -eq $b.Trim() } }
     [pscustomobject]@{ Field = 'DeploymentProfile'; Preview = [string](Get-RecordValue $preview 'DeploymentProfile'); Evidence = [string](Get-RecordValue $evidence 'DeploymentProfile'); Compare = { param($a, $b) $a -ceq $b } }
     [pscustomobject]@{ Field = 'ConfigurationHash'; Preview = [string](Get-RecordValue $preview 'ConfigurationHash'); Evidence = [string](Get-RecordValue $evidence 'ConfigurationHash'); Compare = { param($a, $b) (& $normalizeHash $a) -ceq (& $normalizeHash $b) } }
+    [pscustomobject]@{ Field = 'ManifestHash'; Preview = $manifestHash; Evidence = [string](Get-RecordValue $evidence 'ManifestHash'); Compare = { param($a, $b) $a.Trim() -ieq $b.Trim() } }
     [pscustomobject]@{ Field = 'CollectedAfterApply'; Preview = [string](Get-RecordValue $apply 'CompletedOn'); Evidence = [string](Get-RecordValue $evidence 'CollectedAtUtc'); Compare = {
             param($a, $b)
             $style = [Globalization.DateTimeStyles]::AssumeUniversal
@@ -189,7 +196,6 @@ if ($null -ne $prechange) {
         $preChangeMismatch += 'PreChange Entry'
     }
     else {
-        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Function ConvertTo-CanonicalJson -ErrorAction Stop
         $captureHash = [System.Convert]::ToHexString(
             [System.Security.Cryptography.SHA256]::HashData(
                 [System.Text.UTF8Encoding]::new($false).GetBytes((ConvertTo-CanonicalJson -InputObject $captureEntries))
