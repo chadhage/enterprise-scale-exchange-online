@@ -53,20 +53,37 @@ foreach ($name in @('UserPrincipalName', 'UseDeviceCode', 'ConfirmSession', 'Non
     $null = $changeParameters.Remove($name)
 }
 
-if ($Stage -in @('Preview', 'Apply', 'Rollback') -and -not $SkipConnectionCheck) {
-    Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
-    $sessionScope = @($Scope)
-    if ($Stage -ne 'Preview' -and -not [string]::IsNullOrWhiteSpace($PreviewPath) -and (Test-Path -LiteralPath $PreviewPath -PathType Leaf)) {
-        try {
-            $sessionScope = @((Get-Content -LiteralPath $PreviewPath -Raw | ConvertFrom-Json -Depth 64).Scope)
-        }
-        catch {
-            $sessionScope = @()
+if ($Stage -in @('Preview', 'Apply', 'Rollback')) {
+    if ($SkipConnectionCheck) {
+        $connectionInfoCommand = Get-Command -Name Get-ConnectionInformation -All -ListImported -ErrorAction SilentlyContinue |
+            Where-Object { $_.ModuleName -eq 'ExchangeOnlineManagement' } | Select-Object -First 1
+        if ($null -ne $connectionInfoCommand) {
+            try {
+                $connectedSessions = @(& $connectionInfoCommand -ErrorAction Stop | Where-Object { [string]$_.State -eq 'Connected' })
+            }
+            catch {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnectionCheck cannot be used because the loaded ExchangeOnlineManagement session could not be verified. Omit the switch to run the connection check.'
+            }
+            if ($connectedSessions.Count -gt 0) {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnectionCheck is for offline test doubles only and cannot be used with a connected Exchange Online session. Omit the switch to run the connection check.'
+            }
         }
     }
-    $null = Initialize-ExchangeOnlineSession -ExpectedTenantId (Get-ExchangeExpectedTenantId -ParameterPath $ParameterPath) `
-        -Scope $sessionScope -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
-        -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -InformationAction $(if ($PSBoundParameters.ContainsKey('InformationAction')) { $InformationPreference } else { 'Continue' })
+    else {
+        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        $sessionScope = @($Scope)
+        if ($Stage -ne 'Preview' -and -not [string]::IsNullOrWhiteSpace($PreviewPath) -and (Test-Path -LiteralPath $PreviewPath -PathType Leaf)) {
+            try {
+                $sessionScope = @((Get-Content -LiteralPath $PreviewPath -Raw | ConvertFrom-Json -Depth 64).Scope)
+            }
+            catch {
+                $sessionScope = @()
+            }
+        }
+        $null = Initialize-ExchangeOnlineSession -ExpectedTenantId (Get-ExchangeExpectedTenantId -ParameterPath $ParameterPath) `
+            -Scope $sessionScope -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
+            -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -InformationAction $(if ($PSBoundParameters.ContainsKey('InformationAction')) { $InformationPreference } else { 'Continue' })
+    }
 }
 
 Invoke-BaselineApprovedChange @changeParameters

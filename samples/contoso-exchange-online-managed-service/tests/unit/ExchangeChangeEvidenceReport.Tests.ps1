@@ -2,6 +2,7 @@ BeforeAll {
     $script:root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:report = Join-Path $script:root 'scripts/New-ExchangeChangeEvidenceReport.ps1'
     $script:tenant = '11111111-2222-3333-4444-555555555555'
+    $script:expectedControlIds = @((Get-Content (Join-Path $script:root 'config/exchange-only.manifest.v1.json') -Raw | ConvertFrom-Json).ControlId)
     Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Function New-BaselineChangeStateCapture -Force -DisableNameChecking
 
     function New-EvidenceFixture {
@@ -45,11 +46,11 @@ BeforeAll {
             @{
                 TenantId = $script:tenant; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = 'abc123'; ManifestHash = 'def456'
                 CollectedAtUtc = '2026-01-01T03:00:00Z'
-                Check = @(
-                    @{ ControlId = 'EXO-001'; Status = 'Pass'; Reason = '' }
-                    @{ ControlId = 'EXO-002'; Status = 'Fail'; Reason = 'SMTP AUTH still enabled on 2 mailboxes' }
-                    @{ ControlId = 'EXO-003'; Status = 'Manual'; Reason = 'Owner evidence required' }
-                )
+                Check = @($script:expectedControlIds | ForEach-Object {
+                        $status = if ($_ -eq 'EXO-002') { 'Fail' } elseif ($_ -eq 'EXO-004') { 'Manual' } else { 'Pass' }
+                        $reason = if ($_ -eq 'EXO-002') { 'SMTP AUTH still enabled on 2 mailboxes' } elseif ($_ -eq 'EXO-004') { 'Owner evidence required' } else { '' }
+                        @{ ControlId = $_; Status = $status; Reason = $reason }
+                    })
                 Exclusion = @(@{ ControlId = 'EXO-009'; Reason = 'Out of scope' })
                 ExternalReadiness = @(@{ ControlId = 'EXT-001'; Status = 'Unverified'; Owner = 'DNS team' })
             } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $directory 'evidence/exchange-online-evidence.json')
@@ -222,6 +223,27 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Not -Match 'Every check passed'
     }
 
+    It 'marks evidence with <Scenario> control coverage incomplete' -ForEach @(
+        @{ Scenario = 'missing'; Edit = { param($evidence) $evidence.Check = @($evidence.Check | Where-Object ControlId -ne 'EXO-001') } }
+        @{ Scenario = 'duplicate'; Edit = { param($evidence) $evidence.Check += $evidence.Check[0] } }
+        @{ Scenario = 'unexpected'; Edit = { param($evidence) $evidence.Check[0].ControlId = 'EXO-999' } }
+    ) {
+        # Arrange
+        $root = New-EvidenceFixture
+        $evidencePath = Join-Path $root 'evidence/exchange-online-evidence.json'
+        $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
+        & $Edit $evidence
+        $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        $result.CheckMismatch | Should -Not -BeNullOrEmpty
+        $markdown | Should -Match 'Evidence control coverage does not match the ExchangeOnly manifest'
+    }
+
     It 'reports <Status> evidence as unresolved instead of successful' -ForEach @(
         @{ Status = 'Fail' }
         @{ Status = 'Error' }
@@ -234,7 +256,8 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $root = New-EvidenceFixture
         $evidencePath = Join-Path $root 'evidence\exchange-online-evidence.json'
         $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
-        $evidence.Check = @(@{ ControlId = 'EXO-TEST'; Status = $Status; Reason = 'Test status' })
+        $evidence.Check[1].Status = $Status
+        $evidence.Check[1].Reason = 'Test status'
         $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
         # Act
         $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
@@ -250,10 +273,12 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $root = New-EvidenceFixture
         $evidencePath = Join-Path $root 'evidence\exchange-online-evidence.json'
         $evidence = Get-Content -LiteralPath $evidencePath -Raw | ConvertFrom-Json -AsHashtable
-        $evidence.Check = @(
-            @{ ControlId = 'EXO-EXCEPTION'; Status = 'ApprovedException'; Reason = 'Approved deviation' }
-            @{ ControlId = 'EXO-NA'; Status = 'NotApplicable'; Reason = 'Outside scope' }
-        )
+        $evidence.Check[0].Status = 'ApprovedException'
+        $evidence.Check[0].Reason = 'Approved deviation'
+        $evidence.Check[1].Status = 'NotApplicable'
+        $evidence.Check[1].Reason = 'Outside scope'
+        $evidence.Check[2].Status = 'Pass'
+        $evidence.Check[2].Reason = ''
         $evidence | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $evidencePath
         # Act
         $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
@@ -377,7 +402,7 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Match 'Scope \| Transport'
         $markdown | Should -Match 'Approved by \| approver@contoso\.example'
         $markdown | Should -Match '\| 1 \| `Set-TransportConfig` \| Default \| Succeeded \|'
-        $markdown | Should -Match '\| Pass \| 1 \|'
+        $markdown | Should -Match '\| Pass \| 23 \|'
         $markdown | Should -Match '\| EXO-002 \| Fail \| SMTP AUTH still enabled on 2 mailboxes \|'
         $markdown | Should -Not -Match '\| EXO-001 \|'
         $markdown | Should -Match 'EXT-001'

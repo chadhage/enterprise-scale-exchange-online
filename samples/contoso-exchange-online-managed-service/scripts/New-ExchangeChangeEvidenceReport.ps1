@@ -87,6 +87,11 @@ function Format-Cell {
 }
 
 $evidence = Read-JsonFile -Path $EvidencePath -Label 'Evidence'
+$manifest = Read-JsonFile -Path (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') -Label 'Evidence manifest'
+$expectedControlIds = @(Get-RecordValue $manifest 'ControlId' | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) } | ForEach-Object { [string]$_ })
+if ($expectedControlIds.Count -eq 0 -or @($expectedControlIds | Select-Object -Unique).Count -ne $expectedControlIds.Count) {
+    throw 'EvidenceManifestInvalid: the shipped ExchangeOnly manifest must contain unique control identifiers.'
+}
 
 $artifacts = foreach ($spec in $artifactSpec) {
     $path = Join-Path $ArtifactRoot $spec.Name
@@ -116,6 +121,27 @@ $postStatus = [string](Get-RecordValue $post 'Status')
 
 $checks = @(Get-RecordValue $evidence 'Check' | Where-Object { $null -ne $_ })
 $noEvidenceChecks = $checks.Count -eq 0
+$expectedControlIdSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$expectedControlIds | ForEach-Object { $null = $expectedControlIdSet.Add($_) }
+$observedControlIdSet = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$checkMismatch = @()
+foreach ($check in $checks) {
+    $controlId = [string](Get-RecordValue $check 'ControlId')
+    if ([string]::IsNullOrWhiteSpace($controlId)) {
+        $checkMismatch += 'Evidence check has no ControlId'
+    }
+    elseif (-not $expectedControlIdSet.Contains($controlId)) {
+        $checkMismatch += "Unexpected evidence control '$controlId'"
+    }
+    elseif (-not $observedControlIdSet.Add($controlId)) {
+        $checkMismatch += "Duplicate evidence control '$controlId'"
+    }
+}
+foreach ($controlId in $expectedControlIds) {
+    if (-not $observedControlIdSet.Contains($controlId)) {
+        $checkMismatch += "Missing evidence control '$controlId'"
+    }
+}
 $statusOrder = 'Pass', 'Fail', 'Error', 'Manual', 'ApprovedException', 'NotApplicable', 'NotEntitled', 'Unverified'
 $statusCount = [ordered]@{}
 foreach ($status in $statusOrder) { $statusCount[$status] = 0 }
@@ -253,7 +279,7 @@ $artifactMismatch = @(
 )
 
 $complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
-    -not $noEvidenceChecks -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and
+    -not $noEvidenceChecks -and $checkMismatch.Count -eq 0 -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and
     $preChangeMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
 $overall = if (-not $complete) { 'INCOMPLETE' }
 elseif ($needsAttention.Count -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
@@ -297,6 +323,10 @@ foreach ($row in $binding) {
 Add-Line
 if ($bindingMismatch.Count -gt 0) {
     Add-Line "The evidence does not belong to this change ($($bindingMismatch -join ', ') differ, are missing, or were collected before apply completed). Recollect evidence after apply with this change's parameter and configuration files."
+    Add-Line
+}
+if ($checkMismatch.Count -gt 0) {
+    Add-Line "Evidence control coverage does not match the ExchangeOnly manifest: $($checkMismatch -join '; '). Recollect the complete evidence set."
     Add-Line
 }
 
@@ -392,6 +422,7 @@ if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Appl
 if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
 if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
 if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
+if ($checkMismatch.Count -gt 0) { Add-Line '- Recollect evidence with exactly one result for every control in the shipped ExchangeOnly manifest.' }
 if ($needsAttention.Count -gt 0) { Add-Line "- Resolve or assign an owner to each of the $($needsAttention.Count) unresolved checks." }
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
 Add-Line '- Disconnect: `Disconnect-ExchangeOnline -Confirm:$false`.'
@@ -404,6 +435,7 @@ $color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.
 Write-Information "$($color)$($overall)$($PSStyle.Reset)"
 Write-Information "  Artifacts present: $(6 - $missing.Count) of 6$(if ($missing.Count) { " (missing: $($missing -join ', '))" })"
 if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bindingMismatch -join ', ') do not match the change record" }
+if ($checkMismatch.Count -gt 0) { Write-Information "  Evidence control coverage: $($checkMismatch.Count) manifest mismatch(es)" }
 if ($artifactMismatch.Count -gt 0) { Write-Information "  Artifact binding: $($artifactMismatch -join ', ') belong to another change or preview" }
 Write-Information "  Evidence: $(($statusCount.Keys | Where-Object { $statusCount[$_] -gt 0 } | ForEach-Object { "$($_) $($statusCount[$_])" }) -join ', ')"
 if ($noEvidenceChecks) { Write-Information '  Evidence checks: none found; collection is incomplete' }
@@ -416,6 +448,7 @@ if ($PassThru) {
         Complete        = $complete
         MissingArtifact = $missing
         BindingMismatch = $bindingMismatch
+        CheckMismatch = $checkMismatch
         ArtifactMismatch = $artifactMismatch
         OperationMismatch = $operationMismatch
         PreChangeMismatch = $preChangeMismatch

@@ -114,6 +114,25 @@ AfterAll {
         $invoke | Should -Throw '*ChangeSigningPrerequisite*'
     }
 
+    It 'refuses the connection-check bypass when ExchangeOnlineManagement has a connected session' {
+        # Arrange
+        $module = New-Module -Name ExchangeOnlineManagement -ScriptBlock {
+            function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected'; TenantID = '11111111-2222-3333-4444-555555555555' } }
+            Export-ModuleMember -Function Get-ConnectionInformation
+        }
+        Import-Module $module -Force
+        $arguments = New-WorkflowCommandFixture
+        # Act
+        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport }
+        # Assert
+        try {
+            $invoke | Should -Throw '*ExchangeConnectionCheckSkipDenied*'
+        }
+        finally {
+            Remove-Module ExchangeOnlineManagement -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'stops the deployment entrypoint clearly when signer metadata is absent' {
         # Arrange
         $arguments = New-WorkflowCommandFixture
