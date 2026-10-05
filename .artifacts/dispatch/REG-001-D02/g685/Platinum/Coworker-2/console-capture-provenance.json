@@ -1,0 +1,15 @@
+{
+  "schema": "REG-001-D02/console-recovery/v1",
+  "consoleSha256": "504c58a573ba2d9a7cf69aa8cd23a6a962f37c32c3f4e37b2f8e711f1c3cff6e",
+  "summaryCounts": {
+    "total": 6292,
+    "passed": 5459,
+    "failed": 833,
+    "skipped": 0,
+    "notRun": 0,
+    "failedContainers": 1
+  },
+  "explicitFailureRecords": 761,
+  "beforeAllDerivedIdentityPlaceholders": 72,
+  "retryOrAdditionalPesterInvocation": false
+}

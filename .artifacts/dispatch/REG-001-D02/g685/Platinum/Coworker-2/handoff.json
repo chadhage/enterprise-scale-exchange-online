@@ -1,0 +1,23 @@
+{
+  "schema": "REG-001-D02/handoff/v1",
+  "card": "REG-001-D02",
+  "generation": 685,
+  "from": "Platinum/Coworker-2",
+  "to": [
+    "Platinum-root-coordinator",
+    "Platinum/Coworker-3"
+  ],
+  "captureComplete": true,
+  "invocationCount": 1,
+  "retryCount": 0,
+  "semanticExit": 1,
+  "blocker": "Affected suite has captured failures; remediation was not attempted.",
+  "evidence": [
+    "affected.junit.xml",
+    "affected-failures.sanitized.json",
+    "results.json",
+    "failure-classification.json",
+    "diff-check.txt",
+    "artifacts.sha256"
+  ]
+}

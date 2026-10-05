@@ -1,0 +1,7 @@
+{
+  "schema": "REG-001-D02/diff-check/v1",
+  "statusSnapshotsEqual": true,
+  "affectedInputsEqual": true,
+  "trackedMutationCount": 0,
+  "exit": 0
+}

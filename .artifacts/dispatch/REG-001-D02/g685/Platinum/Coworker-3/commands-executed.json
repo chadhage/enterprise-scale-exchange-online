@@ -1,0 +1,18 @@
+{
+  "schema": "REG-001-D02/independent-verification-commands/v1",
+  "pesterInvoked": false,
+  "networkUsed": false,
+  "commands": [
+    "python .artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-3/verify_reg001_d02.py",
+    "python -m json.tool .artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-3/verification-results.json"
+  ],
+  "mechanicalOperations": [
+    "SHA-256 hashing of C1/C2 files and manifest targets",
+    "JSON parsing",
+    "ElementTree XML parsing without recovery",
+    "count and identity reconciliation",
+    "sanitization-pattern scans",
+    "deterministic family recomputation",
+    "read-only git rev-parse, diff --name-only, and status --short"
+  ]
+}

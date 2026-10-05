@@ -1,0 +1,190 @@
+{
+  "schema": "REG-001-D02/capture-contract/v1",
+  "card": "REG-001-D02",
+  "generation": 685,
+  "canonicalCommand": {
+    "file": "exact-command.txt",
+    "sha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493",
+    "invocationOwner": "Platinum/Coworker-2",
+    "invocationCount": 1,
+    "retryCount": 0,
+    "pesterPath": "samples/contoso-exchange-online-managed-service/tests",
+    "outputVerbosity": "Detailed",
+    "pesterPassThru": true,
+    "pesterRunExit": false,
+    "nunitOutput": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/affected.junit.xml",
+    "jsonOutput": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/affected-failures.sanitized.json"
+  },
+  "frozenEnvironment": {
+    "head": "5b06a85a7319ef0e3a8501ea9f5f80d69380a828",
+    "pwsh": "7.6.6",
+    "pester": "5.7.1",
+    "trackedAffectedInputManifest": "inputs.sha256",
+    "allTrackedStateManifest": "tracked-state-before.sha256",
+    "statusSnapshot": "status-before.txt"
+  },
+  "requiredCaptureArtifacts": [
+    "affected.junit.xml",
+    "affected-failures.sanitized.json",
+    "results.json",
+    "status-before.txt",
+    "status-after.txt",
+    "diff-check.txt",
+    "inputs-before.sha256",
+    "inputs-after.sha256",
+    "artifacts.sha256"
+  ],
+  "affectedJson": {
+    "schema": "REG-001-D02/v1",
+    "requiredTopLevel": [
+      "schema",
+      "generation",
+      "retryCount",
+      "startedUtc",
+      "endedUtc",
+      "total",
+      "passed",
+      "failed",
+      "skipped",
+      "notRun",
+      "failedContainers",
+      "result",
+      "failures"
+    ],
+    "constants": {
+      "generation": 685,
+      "retryCount": 0
+    },
+    "time": {
+      "startedUtc": "nonempty ISO-8601 UTC with Z designator",
+      "endedUtc": "nonempty ISO-8601 UTC with Z designator",
+      "ordering": "endedUtc >= startedUtc"
+    },
+    "integerFields": [
+      "total",
+      "passed",
+      "failed",
+      "skipped",
+      "notRun",
+      "failedContainers",
+      "retryCount"
+    ],
+    "conservation": [
+      "total = passed + failed + skipped + notRun",
+      "failures.Count = failed",
+      "failedContainers equals Pester FailedContainers.Count",
+      "failed equals NUnit failed test-case count",
+      "total equals NUnit total test-case count under the same Pester invocation"
+    ],
+    "failedTestRequiredFields": [
+      "identity",
+      "name",
+      "file",
+      "line",
+      "message",
+      "position"
+    ],
+    "failedTestAssertions": [
+      "exactly one JSON entry exists for every Pester failed test",
+      "identity is nonempty and unique within failures",
+      "name is nonempty",
+      "file is repo-relative or begins with <REPO> and contains no absolute repository path",
+      "line is a positive integer when available, otherwise a JSON null is explicit",
+      "message and position keys always exist; available detail is nonempty",
+      "identity/name/file/line/message/position map one-to-one to the corresponding failed NUnit/Pester test"
+    ]
+  },
+  "nunitXml": {
+    "format": "NUnitXml",
+    "parseable": true,
+    "requiredAssertions": [
+      "XML parser loads without recovery or parse error",
+      "test-case totals and outcomes reconcile to JSON total/passed/failed/skipped/notRun",
+      "failed test-case count equals JSON failed and JSON failures.Count",
+      "failed-container count is retained separately in JSON and results.json",
+      "each failed test-case has one corresponding JSON identity/detail record"
+    ]
+  },
+  "resultsJson": {
+    "requiredFields": [
+      "schema",
+      "card",
+      "generation",
+      "commands",
+      "toolVersions",
+      "startedUtc",
+      "endedUtc",
+      "retryCount",
+      "invocationCount",
+      "counts",
+      "nativeExit",
+      "semanticExit",
+      "pesterResult",
+      "sourceHashes",
+      "outputHashes",
+      "trackedMutationCount",
+      "diffCheckExit"
+    ],
+    "countsRequired": [
+      "total",
+      "passed",
+      "failed",
+      "skipped",
+      "notRun",
+      "failedContainers"
+    ],
+    "exitContract": {
+      "nativeExit": "integer process exit from the sole pwsh capture process",
+      "semanticExit": "integer derived from Pester result/counts; 0 only when no failed tests or failed containers, otherwise nonzero",
+      "pesterResult": "exact string from Pester Run result",
+      "note": "Run.Exit=false means nativeExit and semanticExit are distinct and both are mandatory"
+    },
+    "toolVersionsRequired": [
+      "pwsh",
+      "Pester"
+    ],
+    "sourceHashes": "Must byte-match C1 inputs.sha256 before and after capture."
+  },
+  "sanitization": {
+    "appliesTo": [
+      "affected.junit.xml",
+      "affected-failures.sanitized.json",
+      "results.json",
+      "status-before.txt",
+      "status-after.txt",
+      "diff-check.txt"
+    ],
+    "forbidden": [
+      "absolute repository root or any case/slash variant",
+      "credentials, passwords, client secrets, bearer values, private keys, or connection strings",
+      "allocation token literal or captured authentication/session token",
+      "tenant IDs or tenant-identifying domains such as *.onmicrosoft.com",
+      "unsanitized live output"
+    ],
+    "allowedPathForms": [
+      "repository-relative path",
+      "<REPO>-prefixed sanitized path"
+    ],
+    "responseToDetection": "Stop handling; quarantine outside canonical evidence pending sanitization; do not publish contaminated bytes."
+  },
+  "immutability": {
+    "beforeAfterTrackedHashesEqual": true,
+    "inputsBeforeAfterEqual": true,
+    "trackedMutationCount": 0,
+    "noNewTrackedMutation": true,
+    "diffCheckExit": 0,
+    "preservePreExistingWorkingTreeState": true
+  },
+  "acceptanceAssertions": [
+    "exact command SHA-256 equals frozen canonicalCommand.sha256",
+    "one and only one Pester invocation by C2; retryCount=0",
+    "both XML and JSON parse successfully",
+    "total=passed+failed+skipped+notRun",
+    "failures.Count=failed=NUnit failed test-case count",
+    "failedContainers is present and reconciles to the Pester result",
+    "each failure preserves identity/name/file/line/message/position with sanitization",
+    "start/end UTC, tool versions, native exit, semantic exit, source hashes, and output hashes are retained",
+    "no secrets, tenant identifiers, allocation/auth tokens, or absolute repository paths occur",
+    "all tracked hashes remain stable and there are zero new tracked mutations"
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "schema": "REG-001-D02/claim/v1",
+  "card": "REG-001-D02",
+  "generation": 685,
+  "cohort": "Platinum",
+  "role": "Coworker-1",
+  "responsibility": "diagnostic assertion/capture-contract owner",
+  "phase": 1,
+  "run": "Platinum-20261002T135932Z-g684-resume",
+  "ack": "Platinum-root-coordinator/Kanban/g685/add-claim-REG-001-D02-retry-zero-capture",
+  "tokenSha256": "fdcdbabd876d6eb8b76dd30ff9819e1eeea9009903c984e8ff8ae8922574c3bc",
+  "repositoryHead": "5b06a85a7319ef0e3a8501ea9f5f80d69380a828",
+  "branchObservedReadOnly": "main",
+  "writableRoot": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/",
+  "captureOwner": "Platinum/Coworker-2",
+  "verifier": "Platinum/Coworker-3",
+  "invocationAllowance": {
+    "pesterInvocations": 1,
+    "retryCount": 0,
+    "owner": "Platinum/Coworker-2"
+  },
+  "trackedPathsWritable": [],
+  "prohibitions": [
+    "C1 must not invoke Pester",
+    "No tracked mutation",
+    "No board, registry, governance, product, documentation, or test edit",
+    "No live, network, credential, provisioning, destructive, remediation, branch, worktree, commit, or push action"
+  ],
+  "canonicalCommandSha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493"
+}
