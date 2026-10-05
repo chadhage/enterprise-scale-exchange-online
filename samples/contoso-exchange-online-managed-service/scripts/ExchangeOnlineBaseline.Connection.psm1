@@ -256,7 +256,7 @@ function Assert-ExchangeOnlineSession {
             "  Disconnect-ExchangeOnline -Confirm:`$false`n" +
             'then rerun this script and sign in with an administrator account from the parameter-file tenant.')
     }
-    if ([string]$Session.ConnectionUri -notmatch '^https://outlook\.office365\.com') {
+    if ([string]$Session.ConnectionUri -notmatch '^https://outlook\.office365\.com(?:/|$)') {
         throw "ExchangeSessionEndpointUnsupported: the session uses $($Session.ConnectionUri). Only Worldwide (O365Default) tenants are supported; stop here for sovereign clouds."
     }
     $missing = @($RequiredCommand | Where-Object { -not (Get-Command -Name $_ -ErrorAction SilentlyContinue) } | Select-Object -Unique)
