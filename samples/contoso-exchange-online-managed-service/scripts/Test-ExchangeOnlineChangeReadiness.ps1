@@ -128,7 +128,7 @@ $requiredFiles = @(
     'scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1'
     'config/exchange-only.v1.json'
     'config/exchange-only.schema.v1.json'
-)
+    'config/exchange-only.manifest.v1.json'
 $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $kitRoot $_) -PathType Leaf) })
 Add-ReadinessResult -Area Workstation -Check 'Kit files present' -Passed ($missing.Count -eq 0) `
     -Detail $(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "$($requiredFiles.Count) required files found" }) `
