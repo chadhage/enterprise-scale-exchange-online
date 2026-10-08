@@ -193,9 +193,9 @@ $expectedReady = @(
 )
 $claimedDiscovery = @()
 $expectedUnclaimedReady = @($expectedReady | Where-Object { $_ -cnotin $claimedDiscovery })
-Assert-Board ($eligible.Count -eq 16) "Generation-685 capture claim must preserve exactly 16 unclaimed READY cards, found $($eligible.Count)."
+Assert-Board ($eligible.Count -eq 16) "Generation-687 capture claim must preserve exactly 16 unclaimed READY cards, found $($eligible.Count)."
 Assert-Board (@($expectedUnclaimedReady | Where-Object { $_ -cnotin $eligible.Id }).Count -eq 0) 'The sixteen unclaimed EXR-012 documentation children must remain in the READY bank.'
-Assert-Board ($inProgress.Count -eq 0) 'No active claim may remain after the REG-001-D02 NACK.'
+Assert-Board ($inProgress.Count -eq 0) 'No active claim may remain after the generation-691 release.'
 foreach ($parentId in 'EXR-012-A01', 'EXR-012-A02', 'EXR-012-A03', 'EXR-012-A04') {
     $parent = @($cards | Where-Object Id -ceq $parentId)
     Assert-Board ($parent.Count -eq 1 -and $parent[0].IsSummary) "$parentId must be an excluded aggregate summary."
@@ -234,7 +234,27 @@ for ($left = 0; $left -lt $reservations.Count; $left++) {
 Assert-Board ($conflicts.Count -eq 0) "eligible reservation conflicts: $($conflicts -join '; ')."
 
 $generationPattern = [regex]::Escape([string]$backlogGeneration)
-Assert-Board ($backlogGeneration -eq 686) 'REG-001-D02 NACK/release generation must be 686.'
+Assert-Board ($backlogGeneration -eq 691) 'REG-001-D02 final release generation must be 691.'
+Assert-Board ($backlog -match 'Generation 691 Platinum REG-001-D02 final NACK, release and requeue') 'Generation-691 backlog release is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 691 Platinum REG-001-D02 Final NACK, Release And Requeue\r?$') 'Generation-691 registry release is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g691/nack-release-requeue-REG-001-D02-unsafe-output') 'Generation-691 ACK is missing.'
+Assert-Board ($cohorts -match 'd9ddf9373fd798b8e8f94b107e5b0b3c6482a0851d4b7d8f4588b8eec8a29214') 'Generation-691 disposition hash is missing.'
+Assert-Board ($backlog -match 'Generation 690 Platinum REG-001-D02 C2 capture NACK and C3 verification grant') 'Generation-690 backlog grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 690 Platinum REG-001-D02 C2 NACK And C3 Grant\r?$') 'Generation-690 registry grant is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g690/nack-C2-and-grant-C3-no-rerun-disposition') 'Generation-690 ACK is missing.'
+Assert-Board ($cohorts -match '0b661d23552971bc8005da220aad91192a8efd4b94e02163d8fa78775631021f') 'Generation-690 unsafe marker hash is missing.'
+Assert-Board ($backlog -match 'Generation 689 Platinum REG-001-D02 C1 acceptance and C2 one-shot grant') 'Generation-689 backlog grant is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 689 Platinum REG-001-D02 C1 Acceptance And C2 Grant\r?$') 'Generation-689 registry grant is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g689/accept-C1-and-grant-C2-one-shot-v5') 'Generation-689 ACK is missing.'
+Assert-Board ($cohorts -match 'ce7de2e36c59543bd57f239b9304f7ae2dcb53193cea92d6df6f359869a12673') 'Generation-689 accepted script hash is missing.'
+Assert-Board ($backlog -match 'Generation 688 Platinum REG-001-D02 C1 contract NACK and bounded correction') 'Generation-688 backlog correction is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 688 Platinum REG-001-D02 C1 Contract NACK And Correction\r?$') 'Generation-688 registry correction is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g688/nack-C1-and-grant-bounded-contract-correction') 'Generation-688 ACK is missing.'
+Assert-Board ($backlog -match 'Generation 687 Platinum REG-001-D02 XML-safe recapture claim') 'Generation-687 backlog claim is missing.'
+Assert-Board ($cohorts -match '(?m)^### Generation 687 Platinum REG-001-D02 XML-Safe Recapture Claim\r?$') 'Generation-687 registry claim is missing.'
+Assert-Board ($cohorts -match 'root-canonical/Kanban/g687/claim-REG-001-D02-XML-safe-recapture') 'Generation-687 ACK is missing.'
+Assert-Board ($cohorts -match 'REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99') 'Generation-687 token is missing.'
+Assert-Board ($backlog -match 'invoke-xml-safe-capture\.ps1' -and $backlog -match 'lossless UTF-8 JSON') 'Generation-687 XML-safe command contract is missing.'
 Assert-Board ($backlog -match 'Generation 686 Platinum REG-001-D02 capture NACK and release') 'Generation-686 backlog disposition is missing.'
 Assert-Board ($cohorts -match '(?m)^### Generation 686 Platinum REG-001-D02 Capture NACK And Release\r?$') 'Generation-686 registry disposition is missing.'
 Assert-Board ($cohorts -match 'c7fba455e7d44dca2ba7db59c63c4b7604c6f85c6be3255008e0ad999c49e45a') 'Generation-686 independent verification identity is missing.'

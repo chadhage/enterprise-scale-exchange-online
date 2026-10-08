@@ -37,9 +37,46 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 686
+Allocation generation: 691
 
-Allocation readiness: **BOARD READY — generation 686**. No active claim, token, worker grant or reservation remains; sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+Allocation readiness: **BOARD READY — generation 691**. No active claim, token, worker grant or reservation remains; sixteen documentation cards remain syntactically READY and acceptance-unsafe, and zero cards are acceptance-safe.
+
+### Generation 691 Platinum REG-001-D02 Final NACK, Release And Requeue
+
+- **C3 ACCEPT disposition / NACK completion:** independent disposition `d9ddf9373fd798b8e8f94b107e5b0b3c6482a0851d4b7d8f4588b8eec8a29214`; manifest `36da8da4b059e22ce55ded7cf480aa8e32535225300585277d8737f5fa48bbb2`. C3 verified C1 identities, exact C2 membership/hashes, unsafe marker fields, absent result artifacts, exact four governance modifications, diff checks 0 and tests invoked 0.
+- **Quiescence:** C1, C2 and C3 each reported quiescent. The sole generation-689 invocation is exhausted; no retry or reuse is authorized.
+- **ACK/release:** `root-canonical/Kanban/g691/nack-release-requeue-REG-001-D02-unsafe-output` releases token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, claim, all role bindings and all evidence reservations. Preserve `.artifacts/dispatch/REG-001-D02/g687/Platinum/` read-only.
+- **Transition/readiness:** move `REG-001-D02` In Progress -> To Do/unassigned. Counts become 48 To Do / 0 In Progress / 58 Done across 106 executable cards. Sixteen documentation children remain syntactically READY but acceptance-unsafe; zero downstream cards are pull-ready under fail-closed acceptance.
+
+### Generation 690 Platinum REG-001-D02 C2 NACK And C3 Grant
+
+- **C2 terminal result:** sole authorized v5 command invoked once, retry zero. Child native exit 1; wrapper exit 1 after unsafe-output detection; raw output not retained. Pester counts/result, XML, after-state and diff evidence are absent and cannot be inferred.
+- **Preserved evidence:** `inputs-before.v5.json` 58,646 bytes / `d887e8a88dee0dbaba8728113463c405e1ad78bf565b31ff74011666e6b88322`; `tracked-before.v5.json` 92,641 / `f946556cb4e8f2a555318aecebf84f7a990b9528c6dc535365b738d765752e81`; `unsafe-output.detected.v5.json` 132 / `0b661d23552971bc8005da220aad91192a8efd4b94e02163d8fa78775631021f`.
+- **ACK/grant:** `root-canonical/Kanban/g690/nack-C2-and-grant-C3-no-rerun-disposition` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, quiesces C1/C2, and grants `Platinum/Coworker-3` only `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-3/`.
+- **C3 scope:** independently verify C1 v5 identities, exact C2 directory membership/hashes/sizes, unsafe marker semantics, absence of result/after artifacts, and one-invocation/retry-zero attestation; write one sanitized disposition record. No Pester, child process, capture, raw-output recovery, tracked/board edit, spawn, retry, remediation, commit, push, network/live/tenant/credential action, provisioning or destruction.
+
+### Generation 689 Platinum REG-001-D02 C1 Acceptance And C2 Grant
+
+- **Accepted packet:** independently reproduced v5 hashes: script `ce7de2e36c59543bd57f239b9304f7ae2dcb53193cea92d6df6f359869a12673`; contract `559a36670ec6c152b6bf332497e83ceb0f91c2676186842c2a978ebb75cd2993`; launch manifest `05043cec894a3d55db9ec4446524af5c9395dc4367f0166974fe31ee9cda5a10`; assertion `9bb9810c4b5be131d43287064cd0cfba8ecd46ca6abc4efb653aea60d64f15f8`; results `97f58659461dd6e8db8368de1d4f98af2966eb6f0112af458dd2c245d5cffa2d`; handoff `b6616611ef7fc09d7d58b1c4b679a42eb02cefd83e539a61d7e87fe451375fd3`.
+- **Static evidence:** assertion exit 0; 33/33 negatives rejected for intended reasons; 7/7 positives with exactly one per unit; parser errors zero; Pester imported/invoked false/false; tests invoked false. HEAD, selected-input manifest and non-governance tracked bytes are frozen; all 369 tracked paths/status/diff are compared immediately before/after the child.
+- **ACK/grant:** `root-canonical/Kanban/g689/accept-C1-and-grant-C2-one-shot-v5` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, quiesces C1 and grants only `Platinum/Coworker-2` its existing root plus one exact command: `pwsh -NoProfile -File .artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/invoke-xml-safe-capture.v5.ps1`.
+- **Boundaries:** exactly one child and one complete-suite Pester invocation, retry zero. No second invocation, tracked edit, remediation, attribution, board edit, agent spawn, commit, push, network/live/tenant/credential action, provisioning or destruction. C3 remains blocked until C2 quiesces and evidence is reviewed.
+
+### Generation 688 Platinum REG-001-D02 C1 Contract NACK And Correction
+
+- **Review/NACK:** Kanban inspected the generation-687 C1 packet and withheld the one-shot C2 grant. Preserve contract SHA-256 `fa51f5ded42730d31c3079bca656a9a10f9acd840b7aec091a4ab17325a9feb0` and script SHA-256 `02fe00a0663087f6f76e4815442e67371d961d5051df23a159350f2244da5829`; C1 invoked no Pester.
+- **Defects:** missing pre-invocation enforcement of exact HEAD/generation/275-input manifest and script/contract hashes; incomplete tracked-worktree immutability; blank `ExpandedName` permitted; incomplete ErrorRecord/invocation detail preservation; and no independently reproducible Pester-free static assertion artifact.
+- **ACK/grant:** `root-canonical/Kanban/g688/nack-C1-and-grant-bounded-contract-correction` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, claim and counts 47/1/58. Only `Platinum/Coworker-1` may add corrected evidence under `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/`; C2 and C3 remain waiting. No Pester invocation is authorized in this phase.
+- **Correction acceptance:** enforce all frozen identities before the child starts; compare complete tracked worktree identity/status before/after while accepting only the frozen canonical four-file pre-existing diff; require nonblank ExpandedPath and ExpandedName separately; preserve the complete accepted available ErrorRecord and InvocationInfo schema with reversible encoding; and retain executable Pester-free negative/positive static assertions, parser exits, hashes and exact results.
+
+### Generation 687 Platinum REG-001-D02 XML-Safe Recapture Claim
+
+- **Writer/run:** sole canonical writer `root-canonical/Kanban`; run `Platinum-20261007T194216Z-g686`; observed clean synchronized HEAD `9315f42fd0f9233718b39d4ae74aff7865488d15` and generation 686 with no active claim. Historical Platinum workers and generation-685 roots remain quiescent/read-only.
+- **ACK/token/transition:** ACK `root-canonical/Kanban/g687/claim-REG-001-D02-XML-safe-recapture`; token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`; move `REG-001-D02` To Do -> In Progress. ACK time `2026-10-07T19:44:25.2801605Z`; heartbeat due `2026-10-07T20:14:25.2801605Z`; stale-review boundary `2026-10-07T21:44:25.2801605Z`. Time alone never releases authority.
+- **Atomic allocation:** Platinum is the only active cohort. It has one In Progress card and no queue affinity or additional reservation; all other cards remain unassigned. Counts are 47 To Do / 1 In Progress / 58 Done across 106 executable cards.
+- **Exact roles/phases:** `Platinum/Coworker-1` is the test author and initially owns only XML-safe capture-contract derivation/freeze; `Platinum/Coworker-2` is the implementation/capture owner and waits for accepted red/contract evidence; `Platinum/Coworker-3` is the independent verifier and waits for C2 quiescence. Workers may not spawn agents or edit canonical board files.
+- **Exclusive evidence reservations:** C1 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/`; C2 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-2/`; C3 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-3/`. All tracked source, product, documentation, tests, governance and generation-685 evidence are read-only. No branch/worktree or tracked-file reservation is granted because the card is evidence-only.
+- **Phase gates:** C1 must freeze the exact script/contract and tracked-input identities without invoking Pester. The canonical writer reviews C1 before granting C2 exactly one retry-zero invocation. After C2 quiesces, the writer grants C3 no-rerun independent verification. Required preservation, process-exit provenance, one-to-one identities/details, full counts, sanitization and immutability remain fail-closed; no waiver, narrowing, baseline subtraction, second invocation, causal assignment, remediation, commit, push, live/network/tenant/credential action, provisioning or destruction.
 
 ### Generation 686 Platinum REG-001-D02 Capture NACK And Release
 
