@@ -4334,6 +4334,10 @@ function Test-BaselineChangeApproval {
         [string]$RequestedBy,
 
         [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$AuthorizedSigner = @(),
+
+        [AllowNull()]
         [object]$AsOf
     )
 
@@ -4368,7 +4372,7 @@ function Test-BaselineChangeApproval {
         }
 
         $approvedChangeId = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ChangeId')
-        if ($approvedChangeId -ne $changeId) {
+        if ($approvedChangeId -cne $changeId) {
             $finding.Add("ChangeApprovalChangeMismatch: the approval names change '$approvedChangeId' and the preview plans change '$changeId'.")
         }
 
@@ -4447,14 +4451,105 @@ function Test-BaselineChangeApproval {
             $finding.Add("ChangeApprovalSignatureModelNotApproved: the approval is signed under '$signatureModel' and only $($selectedModel -join ', ') is selected; a signature model nobody selected is a signature nobody can verify.")
         }
 
+        $signedApproval = [ordered]@{}
+        foreach ($member in (Get-BaselineRecordMemberName -Node $approval.Document)) {
+            if ($member -cne 'Signature') {
+                $signedApproval[$member] = Get-BaselineRecordMember -Node $approval.Document -Name $member
+            }
+        }
+        $canonicalApproval = [System.Text.UTF8Encoding]::new($false).GetBytes(
+            (ConvertTo-CanonicalJson -InputObject $signedApproval)
+        )
+        $signatureVerification = Test-BaselineDetachedCmsSignature -CanonicalBytes $canonicalApproval `
+            -Signature $signature -VerificationScript {
+            param($ContentBytes, $DetachedSignatureBytes)
+
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+                [Security.Cryptography.Pkcs.ContentInfo]::new($ContentBytes), $true
+            )
+            $cms.Decode($DetachedSignatureBytes)
+            $cms.CheckSignature($true)
+            if ($cms.SignerInfos.Count -ne 1) {
+                throw 'Exactly one authorized approver is required.'
+            }
+            $certificate = $cms.SignerInfos[0].Certificate
+            $attributes = @($cms.SignerInfos[0].SignedAttributes |
+                Where-Object { $_.Oid.Value -eq '1.2.840.113549.1.9.5' })
+            if ($attributes.Count -ne 1 -or $attributes[0].Values.Count -ne 1) {
+                throw 'One authenticated CMS signing time is required.'
+            }
+            $signingTime = [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new(
+                $attributes[0].Values[0].RawData
+            ).SigningTime.ToUniversalTime()
+            $chainEvidence = Test-BaselineEvidenceCertificateChain -Certificate $certificate `
+                -CertificateCollection $cms.Certificates
+            @{
+                ContentMatched = $true
+                SignatureValid = $true
+                SignerSubject = $certificate.Subject
+                SigningTimeUtc = $signingTime.ToString('o')
+                CertificateNotBeforeUtc = $certificate.NotBefore.ToUniversalTime().ToString('o')
+                CertificateNotAfterUtc = $certificate.NotAfter.ToUniversalTime().ToString('o')
+                ChainTrusted = [bool]$chainEvidence.ChainTrusted
+                RevocationStatus = [string]$chainEvidence.RevocationStatus
+            }
+        }
+        if (-not $signatureVerification.Verified) {
+            $finding.Add("ChangeApprovalSignatureUnverified: detached CMS verification failed ($($signatureVerification.Reason)); an approval without a valid signature over its canonical fields grants nothing.")
+        }
+
         $approvalAuthority = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalAuthority')
         if ($approvalAuthority -ne $script:BaselineChangeApprovalAuthority) {
             $finding.Add("ChangeApprovalAuthorityNotApproved: the approval was granted under '$approvalAuthority' and only $($script:BaselineChangeApprovalAuthority) admits a change; an approval from somebody who does not hold the role is not an approval.")
         }
 
-        $approvalIdentity = [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')
-        if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and $approvalIdentity -eq [string]$RequestedBy) {
+        $approvalIdentity = ([string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalIdentity')).Trim()
+        $requesterIdentity = ([string]$RequestedBy).Trim()
+        if (-not [string]::IsNullOrWhiteSpace($approvalIdentity) -and
+            [string]::Equals($approvalIdentity, $requesterIdentity, [System.StringComparison]::OrdinalIgnoreCase)) {
             $finding.Add("ChangeApprovalSelfApproved: '$approvalIdentity' both requested and approved this change, which removes the review entirely.")
+        }
+
+        $approvalTime = [datetimeoffset]::MinValue
+        $approvalTimeParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $approval.Document -Name 'ApprovalTimeUtc'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$approvalTime
+        )
+        $previewGeneratedOn = [datetimeoffset]::MinValue
+        $previewGeneratedParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $preview.Document -Name 'GeneratedOn'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$previewGeneratedOn
+        )
+        $signingTime = [datetimeoffset]::MinValue
+        $signingTimeParsed = [datetimeoffset]::TryParse(
+            [string](Get-BaselineRecordMember -Node $signatureVerification -Name 'SigningTimeUtc'),
+            [System.Globalization.CultureInfo]::InvariantCulture,
+            [System.Globalization.DateTimeStyles]::RoundtripKind,
+            [ref]$signingTime
+        )
+        if (-not $approvalTimeParsed -or -not $previewGeneratedParsed -or
+            $approvalTime -gt [datetimeoffset]$decisionInstant -or
+            $approvalTime -lt $previewGeneratedOn -or
+            ($expiryParsed -and $approvalTime.UtcDateTime -ge $expiryInstant) -or
+            ($signatureVerification.Verified -and (
+                -not $signingTimeParsed -or
+                [math]::Abs(($approvalTime - $signingTime).TotalSeconds) -gt 1
+            ))) {
+            $finding.Add('ChangeApprovalTimeInvalid: the signed approval time is missing, future-dated, outside the preview validity window, or does not match the authenticated CMS signing time.')
+        }
+
+        if ($signatureVerification.Verified) {
+            $signerDecision = Test-BaselineExternalEvidenceSigner -SignatureVerification $signatureVerification `
+                -DeclaredSignerIdentity $approvalIdentity -DeclaredAuthority $approvalAuthority `
+                -AuthorizedSigner $AuthorizedSigner -DecisionTimeUtc ([datetimeoffset]$decisionInstant)
+            if (-not $signerDecision.Authorized) {
+                $signerReason = [string]$signerDecision.Reason
+                $finding.Add("ChangeApproval$($signerReason -replace '^ExternalEvidence', '')`: the CMS signer is not authorized for this approval ($signerReason).")
+            }
         }
     }
 
@@ -17777,6 +17872,205 @@ function Test-IncidentExerciseControl {
 
 . (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.ApprovedAdapters.ps1')
 
+function Get-BaselineRollbackAttemptHistory {
+    param(
+        [Parameter(Mandatory)][string]$ArtifactRoot,
+        [Parameter(Mandatory)][string]$ChangeId,
+        [Parameter(Mandatory)][string]$Tenant,
+        [Parameter(Mandatory)][string]$PreviewHash,
+        [Parameter(Mandatory)][string]$ConfigurationHash,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$ApplyReceiptHash,
+        [Parameter(Mandatory)][ValidateSet('ApplyReceipt','PreChangeCapture')][string]$RecoverySource,
+        [Parameter(Mandatory)][ValidatePattern('^[0-9a-f]{64}$')][string]$RecoverySourceHash,
+        [Parameter(Mandatory)][object[]]$Approved,
+        [System.IO.FileStream]$LockStream
+    )
+
+    $indexPath = Join-Path $ArtifactRoot "rollback-$ChangeId.lock"
+    $history = @()
+    if ($null -ne $LockStream) {
+        $LockStream.Position = 0
+        if ($LockStream.Length -gt 0) {
+            $bytes = [byte[]]::new([int]$LockStream.Length)
+            $null = $LockStream.Read($bytes, 0, $bytes.Length)
+            try {
+                $parsed = ConvertFrom-Json -InputObject ([Text.Encoding]::UTF8.GetString($bytes)) -AsHashtable -NoEnumerate
+                if ($parsed -is [System.Collections.IDictionary]) { $history = @($parsed) }
+                elseif ($parsed -is [array]) { $history = $parsed }
+                else { throw 'Index root must be a JSON array.' }
+            }
+            catch { throw "ChangeRollbackReceiptMismatch: rollback attempt index '$indexPath' is unreadable." }
+        }
+    } elseif (Test-Path -LiteralPath $indexPath -PathType Leaf) {
+        if ((Get-Item -LiteralPath $indexPath).Length -gt 0) {
+            try {
+                $parsed = Get-Content -LiteralPath $indexPath -Raw | ConvertFrom-Json -AsHashtable -NoEnumerate
+                if ($parsed -is [System.Collections.IDictionary]) { $history = @($parsed) }
+                elseif ($parsed -is [array]) { $history = $parsed }
+                else { throw 'Index root must be a JSON array.' }
+            } catch { throw "ChangeRollbackReceiptMismatch: rollback attempt index '$indexPath' is unreadable." }
+        }
+    }
+    if ($history.Count -gt 0 -and @($history | Where-Object { $_ -isnot [System.Collections.IDictionary] }).Count) {
+        throw "ChangeRollbackReceiptMismatch: rollback attempt index '$indexPath' contains an invalid entry."
+    }
+
+    $applyPath = Join-Path $ArtifactRoot "apply-$ChangeId.json"
+    $expectedNames = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    $attempts = [Collections.Generic.List[object]]::new()
+    $previousHash = ''
+    for ($index = 0; $index -lt $history.Count; $index++) {
+        $record = $history[$index]
+        $name = [string](Get-BaselineRecordMember -Node $record -Name 'Name')
+        $indexedHash = [string](Get-BaselineRecordMember -Node $record -Name 'Hash')
+        if ($name -notmatch "^rollback-attempt-$([regex]::Escape($ChangeId))-[0-9a-f]{32}\.json$" -or
+            $indexedHash -notmatch '^[0-9a-f]{64}$' -or -not $expectedNames.Add($name)) {
+            throw "ChangeRollbackReceiptMismatch: rollback attempt index '$indexPath' has an invalid or duplicate entry."
+        }
+        $attemptPath = Join-Path $ArtifactRoot $name
+        if (-not (Test-Path -LiteralPath $attemptPath -PathType Leaf)) {
+            throw "ChangeRollbackReceiptMismatch: indexed rollback attempt '$name' is missing."
+        }
+        $attemptBytes = [IO.File]::ReadAllBytes($attemptPath)
+        $actualHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($attemptBytes)).ToLowerInvariant()
+        if ($actualHash -cne $indexedHash) {
+            throw "ChangeRollbackReceiptMismatch: indexed rollback attempt '$name' has changed."
+        }
+        try {
+            $attempt = ConvertFrom-Json -InputObject ([Text.Encoding]::UTF8.GetString($attemptBytes)) -AsHashtable -Depth 100 -DateKind String
+        } catch { throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' is unreadable." }
+
+        $started = [datetimeoffset]::MinValue
+        $completed = [datetimeoffset]::MinValue
+        if ([string](Get-BaselineRecordMember $attempt Stage) -cne 'Rollback' -or
+            [int](Get-BaselineRecordMember $attempt RecoveryVersion) -ne 1 -or
+            [string](Get-BaselineRecordMember $attempt ChangeId) -cne $ChangeId -or
+            [string](Get-BaselineRecordMember $attempt Tenant) -cne $Tenant -or
+            [string](Get-BaselineRecordMember $attempt DeploymentProfile) -cne 'ExchangeOnly' -or
+            [string](Get-BaselineRecordMember $attempt PreviewHash) -cne $PreviewHash -or
+            [string](Get-BaselineRecordMember $attempt ConfigurationHash) -cne $ConfigurationHash -or
+            [string](Get-BaselineRecordMember $attempt ApplyReceiptHash) -cne $ApplyReceiptHash -or
+            [string](Get-BaselineRecordMember $attempt RecoverySource) -cne $RecoverySource -or
+            [string](Get-BaselineRecordMember $attempt RecoverySourceHash) -cne $RecoverySourceHash -or
+            [string](Get-BaselineRecordMember $attempt PreviousAttemptHash) -cne $previousHash -or
+            [int](Get-BaselineRecordMember $attempt AttemptSequence) -ne ($index + 1) -or
+            [string](Get-BaselineRecordMember $attempt Status) -cne 'Failed' -or
+            [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $attempt Fault)) -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $attempt StartedOn), [ref]$started) -or
+            -not [datetimeoffset]::TryParse([string](Get-BaselineRecordMember $attempt CompletedOn), [ref]$completed) -or
+            $completed -lt $started -or $completed -gt [datetimeoffset]::UtcNow.AddMinutes(5)) {
+            throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' does not match this approved recovery history."
+        }
+        $sourcePath = if ($RecoverySource -ceq 'ApplyReceipt') { $applyPath } else { Join-Path $ArtifactRoot "prechange-$ChangeId.json" }
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf) -or
+            (Get-FileHash -LiteralPath $sourcePath -Algorithm SHA256).Hash.ToLowerInvariant() -cne $RecoverySourceHash) {
+            throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' is not bound to its immutable recovery source."
+        }
+
+        $operationRecords = @(Get-BaselineRecordMember $attempt Operation)
+        $observations = @(Get-BaselineRecordMember $attempt Observed)
+        if ($operationRecords.Count -gt $Approved.Count -or $observations.Count -gt $Approved.Count) {
+            throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' has excessive operation evidence."
+        }
+        $seenOperations = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+        foreach ($operationRecord in $operationRecords) {
+            $operationId = [string](Get-BaselineRecordMember $operationRecord OperationId)
+            $approvedOperation = @($Approved | Where-Object { [string]$_.OperationId -ceq $operationId })
+            $state = [string](Get-BaselineRecordMember $operationRecord State)
+            $progress = [string](Get-BaselineRecordMember $operationRecord Progress)
+            if ($approvedOperation.Count -ne 1 -or -not $seenOperations.Add($operationId) -or
+                [string](Get-BaselineRecordMember $operationRecord Command) -cne [string]$approvedOperation[0].Command -or
+                [string](Get-BaselineRecordMember $operationRecord Identity) -cne [string]$approvedOperation[0].Identity -or
+                [int](Get-BaselineRecordMember $operationRecord Sequence) -ne [int]$approvedOperation[0].Sequence -or
+                $state -cnotin @('Succeeded','Unchanged','Failed') -or
+                $progress -cnotin @('','Removed','Created')) {
+                throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' contains an invalid operation journal."
+            }
+        }
+
+        foreach ($observation in $observations) {
+            $operationId = [string](Get-BaselineRecordMember $observation OperationId)
+            $approvedOperation = @($Approved | Where-Object { [string]$_.OperationId -ceq $operationId })
+            if ($approvedOperation.Count -ne 1) {
+                throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' contains an unknown observed operation."
+            }
+            $observedDependencies = @((Get-BaselineRecordMember $observation DependsOn))
+            $approvedDependencies = @((Get-BaselineRecordMember $approvedOperation[0] DependsOn))
+            if ([string](Get-BaselineRecordMember $observation Identity) -cne [string]$approvedOperation[0].Identity -or
+                [string](Get-BaselineRecordMember $observation Command) -cne [string]$approvedOperation[0].Command -or
+                [int](Get-BaselineRecordMember $observation Sequence) -ne [int]$approvedOperation[0].Sequence -or
+                (ConvertTo-CanonicalJson $observedDependencies) -cne (ConvertTo-CanonicalJson $approvedDependencies) -or
+                (ConvertTo-CanonicalJson (Get-BaselineRecordMember $observation After)) -cne
+                    (ConvertTo-CanonicalJson (Get-BaselineRecordMember $approvedOperation[0] Before))) {
+                throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' contains mismatched observed operation data."
+            }
+            $observedBefore = Get-BaselineRecordMember $observation Before
+            $approvedBefore = ConvertTo-BaselineHashableNode $approvedOperation[0].Before
+            $approvedAfter = ConvertTo-BaselineHashableNode $approvedOperation[0].After
+            $beforeMatches = (ConvertTo-CanonicalJson $observedBefore) -ceq (ConvertTo-CanonicalJson $approvedBefore) -or
+                (ConvertTo-CanonicalJson $observedBefore) -ceq (ConvertTo-CanonicalJson $approvedAfter)
+            if (-not $beforeMatches) {
+                $attemptOperation = @($operationRecords | Where-Object {
+                        [string](Get-BaselineRecordMember $_ OperationId) -ceq $operationId
+                    })
+                $attemptBeforeExists = Get-BaselineRecordMember (Get-BaselineRecordMember $observation Before) Exists
+                $beforeMatches = $attemptOperation.Count -eq 1 -and
+                    [string](Get-BaselineRecordMember $attemptOperation[0] State) -ceq 'Failed' -and
+                    [string](Get-BaselineRecordMember $attemptOperation[0] Progress) -ceq 'Removed' -and
+                    $attemptBeforeExists -is [bool] -and -not $attemptBeforeExists -and
+                    (ConvertTo-CanonicalJson (Get-BaselineRecordMember $observation After)) -ceq
+                        (ConvertTo-CanonicalJson $approvedBefore)
+            }
+            if (-not $beforeMatches -and $attempts.Count -gt 0) {
+                $previousRecord = @((Get-BaselineRecordMember $attempts[$attempts.Count - 1].Document Operation) |
+                    Where-Object { [string](Get-BaselineRecordMember $_ OperationId) -ceq $operationId })
+                $attemptBeforeExists = Get-BaselineRecordMember (Get-BaselineRecordMember $observation Before) Exists
+                $beforeMatches = $previousRecord.Count -eq 1 -and
+                    [string](Get-BaselineRecordMember $previousRecord[0] State) -ceq 'Failed' -and
+                    [string](Get-BaselineRecordMember $previousRecord[0] Progress) -ceq 'Removed' -and
+                    $attemptBeforeExists -is [bool] -and -not $attemptBeforeExists -and
+                    [bool](Get-BaselineRecordMember $approvedBefore Exists)
+            }
+        }
+        $attempts.Add([pscustomobject]@{ Name = $name; Hash = $actualHash; Document = $attempt })
+        $previousHash = $actualHash
+    }
+
+    $attemptFiles = @(Get-ChildItem -LiteralPath $ArtifactRoot -File -Filter "rollback-attempt-$ChangeId-*.json" -ErrorAction SilentlyContinue)
+    if (@($attemptFiles | Where-Object { -not $expectedNames.Contains($_.Name) }).Count -gt 0) {
+        throw "ChangeRollbackReceiptMismatch: an unindexed rollback attempt exists for '$ChangeId'."
+    }
+    return $attempts.ToArray()
+}
+
+function Write-BaselineRollbackFailureReceipt {
+    param(
+        [Parameter(Mandatory)][string]$ArtifactRoot,
+        [Parameter(Mandatory)][string]$ChangeId,
+        [Parameter(Mandatory)][System.IO.FileStream]$LockStream,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$History,
+        [Parameter(Mandatory)][System.Collections.IDictionary]$Receipt
+    )
+
+    $name = "rollback-attempt-$ChangeId-$([guid]::NewGuid().ToString('N')).json"
+    $path = Join-Path $ArtifactRoot $name
+    $encoding = [Text.UTF8Encoding]::new($false)
+    $bytes = $encoding.GetBytes((ConvertTo-Json -InputObject $Receipt -Depth 100))
+    $file = [IO.File]::Open($path, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $file.Write($bytes, 0, $bytes.Length)
+        $file.Flush($true)
+    } finally { $file.Dispose() }
+    $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+    $updated = @($History) + @(@{ Name = $name; Hash = $hash })
+    $indexBytes = $encoding.GetBytes((ConvertTo-Json -InputObject $updated -Depth 40))
+    $LockStream.Position = 0
+    $LockStream.SetLength(0)
+    $LockStream.Write($indexBytes, 0, $indexBytes.Length)
+    $LockStream.Flush($true)
+    [pscustomobject]@{ Name = $name; Hash = $hash }
+}
+
 function Invoke-BaselineApprovedChange {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
@@ -17854,6 +18148,7 @@ function Invoke-BaselineApprovedChange {
             [string]::IsNullOrWhiteSpace($ApprovalIdentity)) {
             throw 'ChangeSigningPrerequisite: an independent approver and signing certificate are required.'
         }
+        $approvalTime = [datetimeoffset]::UtcNow
         $approval = [ordered]@{
             SchemaVersion = '1.0.0'
             ChangeId = $ChangeId
@@ -17862,13 +18157,16 @@ function Invoke-BaselineApprovedChange {
             PreviewHash = $previewRecord.Hash
             ApprovalIdentity = $ApprovalIdentity
             ApprovalAuthority = 'ExchangeOnlineChangeApproval'
-            ApprovalTimeUtc = [datetimeoffset]::UtcNow.ToString('o')
+            ApprovalTimeUtc = $approvalTime.ToString('o')
         }
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
             [Security.Cryptography.Pkcs.ContentInfo]::new(
                 [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson $approval))), $true)
         $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
         $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+        $null = $signer.SignedAttributes.Add(
+            [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new($approvalTime.UtcDateTime)
+        )
         $cms.ComputeSignature($signer, $true)
         $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
         if ($PSCmdlet.ShouldProcess($ChangeId, 'Emit independently signed approval')) {
@@ -17877,8 +18175,30 @@ function Invoke-BaselineApprovedChange {
         return
     }
 
+    if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
+        -not (Test-Path -LiteralPath $AuthorizedSignerPath -PathType Leaf)) {
+        throw 'ChangeSigningPrerequisite: authorized signer metadata is required to verify an approval.'
+    }
+    try {
+        $authorizedSigner = Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
+            ConvertFrom-Json -AsHashtable -Depth 20 -DateKind String -NoEnumerate
+    }
+    catch {
+        throw "AuthorizedSignerMetadataUnreadable: '$AuthorizedSignerPath' is not readable JSON."
+    }
+    if ($authorizedSigner -isnot [array] -or $authorizedSigner.Count -eq 0 -or
+        @($authorizedSigner | Where-Object {
+                $_ -isnot [System.Collections.IDictionary] -or
+                [string]::IsNullOrWhiteSpace([string]$_.Identity) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Subject) -or
+                [string]::IsNullOrWhiteSpace([string]$_.Authority)
+            }).Count -gt 0) {
+        throw "AuthorizedSignerMetadataInvalid: '$AuthorizedSignerPath' must contain a nonempty array of Identity, Subject and Authority entries."
+    }
+
     $decision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath -Tenant $tenant `
-        -DeploymentProfile ExchangeOnly -ConfigurationHash $configurationHash -RequestedBy $RequestedBy
+        -DeploymentProfile ExchangeOnly -ConfigurationHash $configurationHash -RequestedBy $RequestedBy `
+        -AuthorizedSigner $authorizedSigner
     if (-not $decision.Permitted) { throw ('ApplyRefused: ' + ($decision.Finding -join '; ')) }
     $frozenParameterHash = Get-BaselineRecordMember -Node $preview -Name 'ParameterHash'
     if ([string](Get-BaselineRecordMember -Node $frozenParameterHash -Name 'Algorithm') -cne [string]$parameterHash.Algorithm -or
@@ -17886,6 +18206,16 @@ function Invoke-BaselineApprovedChange {
         throw 'ChangePreviewBindingMismatch: administrator parameters differ from the frozen preview.'
     }
     if ($Stage -eq 'Validate') { return $decision }
+
+    $connectedTenant = @()
+    if (Get-Command -Name Get-ConnectionInformation -ErrorAction SilentlyContinue) {
+        $connectedTenant = @(Get-ConnectionInformation -ErrorAction SilentlyContinue |
+            Where-Object { [string]$_.State -eq 'Connected' } |
+            ForEach-Object { [string]$_.TenantID })
+    }
+    if ($connectedTenant.Count -eq 0 -or @($connectedTenant | Where-Object { $_ -ne $tenant }).Count -gt 0) {
+        throw "ChangeSessionTenantMismatch: $Stage requires every connected Exchange Online session to be tenant '$tenant'; found '$($connectedTenant -join "', '")'."
+    }
 
     $approved = @($preview.Operation)
     $definitions = @(Get-ApprovedAdapterDefinitions -Context $context -Scope $Scope -Approved $approved -DesiredOnly)
@@ -17903,79 +18233,434 @@ function Invoke-BaselineApprovedChange {
     $journal = [Collections.Generic.List[object]]::new()
     $ordered = if ($Stage -eq 'Rollback') { @($approved | Sort-Object Sequence -Descending) } else { $approved }
     $rollbackCurrentById = @{}
-    if ($Stage -eq 'Rollback') {
-        foreach ($operation in $ordered) {
-            $definition = $definitionById[[string]$operation.OperationId]
-            if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
-            $current = Read-ApprovedAdapterState $definition
-            $allowed = ConvertTo-BaselineHashableNode $operation.After
-            $desired = ConvertTo-BaselineHashableNode $operation.Before
-            if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
-                (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
-                throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
-            }
-            $rollbackCurrentById[[string]$operation.OperationId] = $current
-        }
+    $preApplyById = @{}
+    $rollbackAttemptHistory = @()
+    $applyReceiptHash = ''
+    $recoverySource = ''
+    $recoverySourceHash = ''
+    $notChangedByApply = @{}
+    $recoveryCaptureById = @{}
+    $applyReceipt = $null
+    $partialApplyRemovalIds = @{}
+    $stateKey = {
+        param($Node)
+        ConvertTo-CanonicalJson ([ordered]@{
+                Exists = [bool](Get-BaselineRecordMember -Node $Node -Name 'Exists')
+                Value  = ConvertTo-BaselineHashableNode (Get-BaselineRecordMember -Node $Node -Name 'Value')
+            })
     }
+    if ($Stage -eq 'Rollback') {
+        $applyPath = Join-Path $ArtifactRoot "apply-$ChangeId.json"
+        if (Test-Path -LiteralPath $applyPath -PathType Leaf) {
+            $applyReceiptHash = (Get-FileHash -LiteralPath $applyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $recoverySource = 'ApplyReceipt'
+            $recoverySourceHash = $applyReceiptHash
+            try {
+                $applyReceipt = Get-Content -LiteralPath $applyPath -Raw |
+                    ConvertFrom-Json -AsHashtable -Depth 100 -DateKind String
+            } catch { throw "ChangeApplyReceiptMismatch: apply receipt '$applyPath' is unreadable." }
+        } else {
+            if (-not (Test-Path -LiteralPath $paths['PreChange'] -PathType Leaf)) {
+                throw "ChangeRecoveryCaptureMissing: '$($paths['PreChange'])' is missing. Apply writes it before its first change; without it rollback cannot tell which targets this change moved."
+            }
+            $recoverySource = 'PreChangeCapture'
+            $recoverySourceHash = (Get-FileHash -LiteralPath $paths['PreChange'] -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+        if (-not (Test-Path -LiteralPath $paths['PreChange'] -PathType Leaf)) {
+            throw "ChangeRecoveryCaptureMissing: '$($paths['PreChange'])' is missing. Apply writes it before its first change; without it rollback cannot tell which targets this change moved."
+        }
+        $prechange = Get-Content -LiteralPath $paths['PreChange'] -Raw |
+            ConvertFrom-Json -AsHashtable -Depth 100 -DateKind String
+        $captureChangeId = [string](Get-BaselineRecordMember -Node $prechange -Name 'ChangeId')
+        $captureTenant = ([string](Get-BaselineRecordMember -Node $prechange -Name 'Tenant')).Trim()
+        if ($captureChangeId -cne $ChangeId -or [string]::IsNullOrEmpty($captureTenant) -or $captureTenant -ne ([string]$tenant).Trim()) {
+            throw "ChangeRecoveryCaptureMismatch: '$($paths['PreChange'])' was captured for change '$captureChangeId' in tenant '$captureTenant', not '$ChangeId' in '$tenant'."
+        }
+        $sealedCaptureHash = [string](Get-BaselineRecordMember -Node $prechange -Name 'Hash')
+        if (-not (Test-BaselineNodeMember -Node $prechange -Name 'Hash') -or [string]::IsNullOrWhiteSpace($sealedCaptureHash)) {
+            throw "ChangeRecoveryCaptureNotSealed: '$($paths['PreChange'])' carries no hash and cannot be trusted to identify the captured prior state."
+        }
+        $recomputedCaptureHash = [System.Convert]::ToHexString(
+            [System.Security.Cryptography.SHA256]::HashData(
+                [System.Text.UTF8Encoding]::new($false).GetBytes(
+                    (ConvertTo-CanonicalJson -InputObject (Get-BaselineRecordMember -Node $prechange -Name 'Entry'))))).ToLowerInvariant()
+        if ($sealedCaptureHash -cne $recomputedCaptureHash) {
+            throw "ChangeRecoveryCaptureNotSealed: '$($paths['PreChange'])' is sealed as $sealedCaptureHash and now hashes to $recomputedCaptureHash; its entries were changed after capture."
+        }
+        $captureEntries = @(Get-BaselineRecordMember -Node $prechange -Name 'Entry')
+        if ($captureEntries.Count -ne $approved.Count) {
+            throw "ChangeRecoveryCaptureMismatch: '$($paths['PreChange'])' carries '$($captureEntries.Count)' entries for '$($approved.Count)' approved operations."
+        }
+        foreach ($captured in $captureEntries) {
+            $operationId = [string](Get-BaselineRecordMember -Node $captured -Name 'OperationId')
+            $operationMatches = @($approved | Where-Object { [string]$_.OperationId -ceq $operationId })
+            if ($operationMatches.Count -ne 1 -or
+                [string](Get-BaselineRecordMember -Node $captured -Name 'Command') -cne [string]$operationMatches[0].Command -or
+                [string](Get-BaselineRecordMember -Node $captured -Name 'Identity') -cne [string]$operationMatches[0].Identity -or
+                [int](Get-BaselineRecordMember -Node $captured -Name 'Sequence') -ne [int]$operationMatches[0].Sequence) {
+                throw "ChangeRecoveryCaptureMismatch: '$($paths['PreChange'])' contains an entry that does not match its approved operation."
+            }
+            $captureState = [ordered]@{
+                Exists = [bool](Get-BaselineRecordMember -Node $captured -Name 'Exists')
+                Value = ConvertTo-BaselineHashableNode (Get-BaselineRecordMember -Node $captured -Name 'Value')
+            }
+            $recoveryCaptureById[$operationId] = $captureState
+            if ((& $stateKey $captureState) -ceq (& $stateKey $operationMatches[0].After)) {
+                $notChangedByApply[$operationId] = $true
+            }
+        }
+        if ($null -ne $applyReceipt) {
+            if ([string](Get-BaselineRecordMember -Node $applyReceipt -Name 'ChangeId') -cne $ChangeId -or
+                [string](Get-BaselineRecordMember -Node $applyReceipt -Name 'Tenant') -cne $tenant -or
+                [string](Get-BaselineRecordMember -Node $applyReceipt -Name 'DeploymentProfile') -cne 'ExchangeOnly' -or
+                [string](Get-BaselineRecordMember -Node $applyReceipt -Name 'PreviewHash') -cne [string]$previewRecord.Hash -or
+                [string](Get-BaselineRecordMember -Node $applyReceipt -Name 'ConfigurationHash') -cne $configurationHash -or
+                [string](Get-BaselineRecordMember -Node $applyReceipt -Name 'Status') -cnotin @('Succeeded','Failed')) {
+                throw "ChangeApplyReceiptMismatch: apply receipt '$applyPath' does not match this approved change."
+            }
+            $applyJournalIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+            foreach ($applyOperation in @(Get-BaselineRecordMember -Node $applyReceipt -Name 'Operation')) {
+                $operationId = [string](Get-BaselineRecordMember -Node $applyOperation -Name 'OperationId')
+                $operationMatches = @($approved | Where-Object { [string]$_.OperationId -ceq $operationId })
+                $applyState = [string](Get-BaselineRecordMember -Node $applyOperation -Name 'State')
+                $applyProgress = [string](Get-BaselineRecordMember -Node $applyOperation -Name 'Progress')
+                if ($operationMatches.Count -ne 1 -or -not $applyJournalIds.Add($operationId) -or
+                    [string](Get-BaselineRecordMember -Node $applyOperation -Name 'Command') -cne [string]$operationMatches[0].Command -or
+                    [string](Get-BaselineRecordMember -Node $applyOperation -Name 'Identity') -cne [string]$operationMatches[0].Identity -or
+                    [int](Get-BaselineRecordMember -Node $applyOperation -Name 'Sequence') -ne [int]$operationMatches[0].Sequence -or
+                    $applyState -cnotin @('Succeeded','Unchanged','Failed') -or
+                    $applyProgress -cnotin @('','Removed','Created') -or
+                    ($applyState -ceq 'Failed' -and [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $applyOperation -Name 'Fault')))) {
+                    throw "ChangeApplyReceiptMismatch: apply receipt '$applyPath' contains an invalid operation journal."
+                }
+                if ($applyState -ceq 'Failed' -and $applyProgress -ceq 'Removed' -and
+                    $definitionById[$operationId].Adapter -ceq 'TenantAllowBlockList' -and
+                    -not (Test-Path -LiteralPath (Join-Path $ArtifactRoot "rollback-result-$ChangeId.json") -PathType Leaf) -and
+                    [bool](Get-BaselineRecordMember -Node $recoveryCaptureById[$operationId] -Name 'Exists') -and
+                    ((& $stateKey $recoveryCaptureById[$operationId]) -ceq (& $stateKey $operationMatches[0].Before))) {
+                    $partialApplyRemovalIds[$operationId] = $true
+                }
+            }
+            if ([string](Get-BaselineRecordMember -Node $applyReceipt -Name 'Status') -ceq 'Succeeded' -and
+                $applyJournalIds.Count -ne $approved.Count) {
+                throw "ChangeApplyReceiptMismatch: successful apply receipt '$applyPath' does not cover every approved operation."
+            }
+            if ([string](Get-BaselineRecordMember -Node $applyReceipt -Name 'Status') -ceq 'Failed') {
+                if ([string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember -Node $applyReceipt -Name 'Fault'))) {
+                    throw "ChangeApplyReceiptMismatch: failed apply receipt '$applyPath' carries no fault."
+                }
+                foreach ($operation in $approved) {
+                    if (-not $applyJournalIds.Contains([string]$operation.OperationId)) {
+                        $notChangedByApply[[string]$operation.OperationId] = $true
+                    }
+                }
+            }
+        } else {
+            foreach ($operation in $approved) {
+                if ($definitionById[[string]$operation.OperationId].Adapter -ceq 'TenantAllowBlockList' -and
+                    -not (Test-Path -LiteralPath (Join-Path $ArtifactRoot "rollback-result-$ChangeId.json") -PathType Leaf) -and
+                    [bool](Get-BaselineRecordMember -Node $recoveryCaptureById[[string]$operation.OperationId] -Name 'Exists') -and
+                    ((& $stateKey $recoveryCaptureById[[string]$operation.OperationId]) -ceq (& $stateKey $operation.Before))) {
+                    $partialApplyRemovalIds[[string]$operation.OperationId] = $true
+                }
+            }
+        }
+        $rollbackAttemptHistory = @(Get-BaselineRollbackAttemptHistory -ArtifactRoot $ArtifactRoot -ChangeId $ChangeId `
+            -Tenant $tenant -PreviewHash ([string]$previewRecord.Hash) -ConfigurationHash $configurationHash `
+            -ApplyReceiptHash $applyReceiptHash -RecoverySource $recoverySource -RecoverySourceHash $recoverySourceHash `
+            -Approved $approved)
+    }
+    # Every target is read and drift-checked before WhatIf/Confirm and before any artifact or write,
+    # so a rehearsal reports drift exactly as the real run would.
     foreach ($operation in $ordered) {
         $definition = $definitionById[[string]$operation.OperationId]
         if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
-        $current = if ($Stage -eq 'Rollback') {
-            $rollbackCurrentById[[string]$operation.OperationId]
-        } else {
-            Read-ApprovedAdapterState $definition
+        if ($Stage -eq 'Rollback' -and $notChangedByApply.ContainsKey([string]$operation.OperationId)) {
+            $rollbackCurrentById[[string]$operation.OperationId] = $recoveryCaptureById[[string]$operation.OperationId]
+            continue
         }
-        $allowed = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.After } else { $operation.Before })
-        $desired = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.Before } else { $operation.After })
+        $current = Read-ApprovedAdapterState $definition
+        $allowed = ConvertTo-BaselineHashableNode $operation.After
+        $desired = ConvertTo-BaselineHashableNode $operation.Before
+        $intermediateRemoval = $Stage -eq 'Rollback' -and
+            -not [bool](Get-BaselineRecordMember -Node $current -Name 'Exists') -and
+            $partialApplyRemovalIds.ContainsKey([string]$operation.OperationId)
+        if ($Stage -eq 'Rollback' -and -not $current.Exists -and $rollbackAttemptHistory.Count -gt 0 -and
+            -not (Test-Path -LiteralPath (Join-Path $ArtifactRoot "rollback-result-$ChangeId.json") -PathType Leaf)) {
+            $latestAttempt = $rollbackAttemptHistory[-1].Document
+            $priorOperation = @((Get-BaselineRecordMember $latestAttempt Operation) |
+                Where-Object { [string](Get-BaselineRecordMember $_ OperationId) -ceq [string]$operation.OperationId })
+            $priorObservation = @((Get-BaselineRecordMember $latestAttempt Observed) |
+                Where-Object { [string](Get-BaselineRecordMember $_ OperationId) -ceq [string]$operation.OperationId })
+            if ($priorOperation.Count -eq 1 -and $priorObservation.Count -eq 1) {
+                $observedExists = Get-BaselineRecordMember (Get-BaselineRecordMember $priorObservation[0] Before) Exists
+                $priorRemoval = [string](Get-BaselineRecordMember $priorOperation[0] State) -ceq 'Failed' -and
+                    [string](Get-BaselineRecordMember $priorOperation[0] Progress) -ceq 'Removed' -and
+                    -not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $priorOperation[0] Fault)) -and
+                    $observedExists -is [bool] -and -not $observedExists -and
+                    (ConvertTo-CanonicalJson (Get-BaselineRecordMember $priorObservation[0] After)) -ceq
+                        (ConvertTo-CanonicalJson $operation.Before) -and
+                    [bool](Get-BaselineRecordMember $operation.Before Exists)
+                if ($observedExists -is [bool] -and $observedExists) { $intermediateRemoval = $false }
+                elseif ($observedExists -is [bool] -and -not $observedExists) { $intermediateRemoval = $intermediateRemoval -or $priorRemoval }
+            }
+        }
         if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
-            (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+            (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired) -and
+            -not $intermediateRemoval) {
             if ($Stage -eq 'Apply' -and $definition.Adapter -ceq 'MailboxSafeSender') {
                 throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
             }
             throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
         }
-        $entry = @{ OperationId = [string]$operation.OperationId; State = 'Unchanged'; Fault = '' }
-        if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
-            Invoke-BaselineConcreteOperation -Definition $definition -Current $current -Desired $desired -Journal $entry
-            $entry.State = 'Succeeded'
-        }
-        $journal.Add($entry)
-        $observed = Read-ApprovedAdapterState $definition
-        if ((ConvertTo-CanonicalJson $observed) -cne (ConvertTo-CanonicalJson $desired)) {
-            if ($definition.Adapter -ceq 'MailboxSafeSender') {
-                throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
+        if ($Stage -eq 'Rollback') { $rollbackCurrentById[[string]$operation.OperationId] = $current }
+        else { $preApplyById[[string]$operation.OperationId] = $current }
+    }
+    if (-not $PSCmdlet.ShouldProcess("$ChangeId in tenant $tenant", "$Stage $($approved.Count) approved Exchange operation(s)")) {
+        return
+    }
+    $rollbackLock = $null
+    if ($Stage -eq 'Rollback') {
+        $lockPath = Join-Path $ArtifactRoot "rollback-$ChangeId.lock"
+        try {
+            $rollbackLock = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+            $lockedHistory = @(Get-BaselineRollbackAttemptHistory -ArtifactRoot $ArtifactRoot -ChangeId $ChangeId `
+                -Tenant $tenant -PreviewHash ([string]$previewRecord.Hash) -ConfigurationHash $configurationHash `
+                -ApplyReceiptHash $applyReceiptHash -RecoverySource $recoverySource `
+                -RecoverySourceHash $recoverySourceHash -Approved $approved -LockStream $rollbackLock)
+            if ((ConvertTo-CanonicalJson @($lockedHistory | ForEach-Object { @{ Name = $_.Name; Hash = $_.Hash } })) -cne
+                (ConvertTo-CanonicalJson @($rollbackAttemptHistory | ForEach-Object { @{ Name = $_.Name; Hash = $_.Hash } }))) {
+                throw 'ChangeRollbackReceiptMismatch: rollback attempt history changed during preflight.'
             }
-            throw 'ChangePostStateMismatch: independent readback did not confirm the approved state.'
+            foreach ($operation in $ordered) {
+                if ($notChangedByApply.ContainsKey([string]$operation.OperationId)) { continue }
+                $definition = $definitionById[[string]$operation.OperationId]
+                $current = Read-ApprovedAdapterState $definition
+                if ((ConvertTo-CanonicalJson $current) -cne
+                    (ConvertTo-CanonicalJson $rollbackCurrentById[[string]$operation.OperationId])) {
+                    throw 'ChangeStateDrift: Exchange state changed after rollback preflight.'
+                }
+            }
+            $rollbackAttemptHistory = $lockedHistory
+        } catch {
+            if ($null -ne $rollbackLock) { $rollbackLock.Dispose(); $rollbackLock = $null }
+            throw
         }
-    }
-
-    $receipt = [ordered]@{
-        ChangeId = $ChangeId
-        Tenant = $tenant
-        DeploymentProfile = 'ExchangeOnly'
-        PreviewHash = $previewRecord.Hash
-        ConfigurationHash = $configurationHash
-        Status = 'Succeeded'
-        Fault = ''
-        Operation = @($journal)
-        CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
-    }
-    if ('SendAs' -cin $Scope) {
-        $receipt.Operations = @(Get-ApprovedSendAsOperationEvidence -Context $context)
-    }
-    if ('SendOnBehalf' -cin $Scope) {
-        $receipt.Operations = @($receipt['Operations']) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
     }
     if ($Stage -eq 'Apply') {
-        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation $approved
+        # Recovery artifacts are persisted before the first write so a partial apply can always be rolled back.
+        # The capture records what each target actually held now, not the preview's Before, so rollback
+        # can tell which targets this apply moved.
+        $captureOperation = foreach ($operation in $approved) {
+            [ordered]@{
+                OperationId = [string]$operation.OperationId
+                Command     = $operation.Command
+                Identity    = $operation.Identity
+                Before      = $preApplyById[[string]$operation.OperationId]
+            }
+        }
+        $capture = New-BaselineChangeStateCapture -ChangeId $ChangeId -Tenant $tenant -Operation @($captureOperation)
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PreChange -Root $ArtifactRoot -Content $capture
-        $rollback = "#requires -Version 7.5`n# Invoke the approved Rollback stage for change $ChangeId.`n"
+        $toLiteral = { param($Value) "'" + ([string]$Value).Replace("'", "''") + "'" }
+        $toFullPath = { param($Value) & $toLiteral ($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath([string]$Value)) }
+        $rollback = @(
+            '#requires -Version 7.5'
+            "# Recovery for approved change $ChangeId. Runs the approved Rollback stage, which re-verifies the"
+            '# approval, the signed-in tenant and current state before restoring only what this change touched.'
+            "[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]"
+            'param([switch]$Apply, [string]$UserPrincipalName, [switch]$UseDeviceCode, [bool]$ConfirmSession = $true, [switch]$NonInteractive)'
+            '$change = @{'
+            "    ParameterPath        = $(& $toFullPath $ParameterPath)"
+            "    ConfigurationPath    = $(& $toFullPath $ConfigurationPath)"
+            "    ArtifactRoot         = $(& $toFullPath $ArtifactRoot)"
+            "    ChangeId             = $(& $toLiteral $ChangeId)"
+            "    RequestedBy          = $(& $toLiteral $RequestedBy)"
+            "    AuthorizedSignerPath = $(& $toFullPath $AuthorizedSignerPath)"
+            "    PreviewPath          = $(& $toFullPath $PreviewPath)"
+            "    ApprovalPath         = $(& $toFullPath $ApprovalPath)"
+            '}'
+            '$forward = @{} + $PSBoundParameters'
+            "& $(& $toLiteral (Join-Path $PSScriptRoot 'Invoke-ExchangeOnlineChange.ps1')) -Stage Rollback @change @forward"
+        ) -join "`n"
         $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Rollback -Root $ArtifactRoot -Content $rollback
-        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
-        $post = @{}
-        foreach ($key in $receipt.Keys) { $post[$key] = $receipt[$key] }
-        $post.Operation = @($approved)
-        $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PostChange -Root $ArtifactRoot -Content $post
+    }
+    try {
+        foreach ($operation in $ordered) {
+            $definition = $definitionById[[string]$operation.OperationId]
+            if ($null -eq $definition) { throw "ChangeOperationMismatch: no adapter exists for '$($operation.OperationId)'." }
+            if ($notChangedByApply.ContainsKey([string]$operation.OperationId)) {
+                $journal.Add(@{ OperationId = [string]$operation.OperationId; State = 'NotChangedByApply'; Fault = '' })
+                continue
+            }
+            $current = if ($Stage -eq 'Rollback') {
+                $rollbackCurrentById[[string]$operation.OperationId]
+            } else {
+                $preApplyById[[string]$operation.OperationId]
+            }
+            $allowed = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.After } else { $operation.Before })
+            $desired = ConvertTo-BaselineHashableNode $(if ($Stage -eq 'Rollback') { $operation.Before } else { $operation.After })
+            $intermediateRemoval = -not [bool](Get-BaselineRecordMember -Node $current -Name 'Exists') -and
+                $partialApplyRemovalIds.ContainsKey([string]$operation.OperationId)
+            if ($Stage -eq 'Rollback' -and -not $current.Exists -and $rollbackAttemptHistory.Count -gt 0 -and
+                -not (Test-Path -LiteralPath (Join-Path $ArtifactRoot "rollback-result-$ChangeId.json") -PathType Leaf)) {
+                $latestAttempt = $rollbackAttemptHistory[-1].Document
+                $priorOperation = @((Get-BaselineRecordMember $latestAttempt Operation) |
+                    Where-Object { [string](Get-BaselineRecordMember $_ OperationId) -ceq [string]$operation.OperationId })
+                $priorObservation = @((Get-BaselineRecordMember $latestAttempt Observed) |
+                    Where-Object { [string](Get-BaselineRecordMember $_ OperationId) -ceq [string]$operation.OperationId })
+                if ($priorOperation.Count -eq 1 -and $priorObservation.Count -eq 1) {
+                    $observedExists = Get-BaselineRecordMember (Get-BaselineRecordMember $priorObservation[0] Before) Exists
+                    $priorRemoval = [string](Get-BaselineRecordMember $priorOperation[0] State) -ceq 'Failed' -and
+                        [string](Get-BaselineRecordMember $priorOperation[0] Progress) -ceq 'Removed' -and
+                        -not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $priorOperation[0] Fault)) -and
+                        $observedExists -is [bool] -and -not $observedExists -and
+                        (ConvertTo-CanonicalJson (Get-BaselineRecordMember $priorObservation[0] After)) -ceq
+                            (ConvertTo-CanonicalJson $operation.Before) -and
+                        [bool](Get-BaselineRecordMember $operation.Before Exists)
+                    if ($observedExists -is [bool] -and $observedExists) { $intermediateRemoval = $false }
+                    elseif ($observedExists -is [bool] -and -not $observedExists) { $intermediateRemoval = $intermediateRemoval -or $priorRemoval }
+                }
+            }
+            if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $allowed) -and
+                (ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired) -and
+                -not $intermediateRemoval) {
+                if ($Stage -eq 'Apply' -and $definition.Adapter -ceq 'MailboxSafeSender') {
+                    throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
+                }
+                throw 'ChangeStateDrift: current Exchange values differ from the reviewed lifecycle state.'
+            }
+            $entry = @{
+                OperationId = [string]$operation.OperationId
+                Command = [string]$operation.Command
+                Identity = [string]$operation.Identity
+                Sequence = [int]$operation.Sequence
+                State = 'Unchanged'
+                Fault = ''
+                Progress = $(if ($intermediateRemoval) { 'Removed' } else { '' })
+            }
+            try {
+                if ((ConvertTo-CanonicalJson $current) -cne (ConvertTo-CanonicalJson $desired)) {
+                    Invoke-BaselineConcreteOperation -Definition $definition -Current $current -Desired $desired -Journal $entry
+                    $entry.State = 'Succeeded'
+                }
+                $journal.Add($entry)
+                $observed = Read-ApprovedAdapterState $definition
+                if ((ConvertTo-CanonicalJson $observed) -cne (ConvertTo-CanonicalJson $desired)) {
+                    if ($definition.Adapter -ceq 'MailboxSafeSender') {
+                        throw "ChangeReadbackMismatch: MailboxSafeSender independent readback differed for $($definition.Target.Identity)."
+                    }
+                    throw 'ChangePostStateMismatch: independent readback did not confirm the approved state.'
+                }
+            } catch {
+                $entry.State = 'Failed'
+                $entry.Fault = $_.Exception.Message
+                if (-not $journal.Contains($entry)) { $journal.Add($entry) }
+                throw
+            }
+        }
+
+        $receipt = [ordered]@{
+            ChangeId = $ChangeId
+            Tenant = $tenant
+            DeploymentProfile = 'ExchangeOnly'
+            PreviewHash = $previewRecord.Hash
+            ConfigurationHash = $configurationHash
+            Status = 'Succeeded'
+            Fault = ''
+            Operation = @($journal)
+            CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
+        }
+        if ('SendAs' -cin $Scope) {
+            $receipt.Operations = @(Get-ApprovedSendAsOperationEvidence -Context $context)
+        }
+        if ('SendOnBehalf' -cin $Scope) {
+            $receipt.Operations = @($receipt['Operations']) + @(Get-ApprovedSendOnBehalfOperationEvidence -Context $context)
+        }
+        if ($Stage -eq 'Apply') {
+            $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $receipt
+            $post = @{}
+            foreach ($key in $receipt.Keys) { $post[$key] = $receipt[$key] }
+            $post.Operation = @($approved)
+            $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact PostChange -Root $ArtifactRoot -Content $post
+        } elseif ($Stage -eq 'Rollback') {
+            $resultPath = Join-Path $ArtifactRoot "rollback-result-$ChangeId.json"
+            if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
+                $encoding = [Text.UTF8Encoding]::new($false)
+                $bytes = $encoding.GetBytes((ConvertTo-Json -InputObject $receipt -Depth 100))
+                $file = [IO.File]::Open($resultPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+                try { $file.Write($bytes, 0, $bytes.Length); $file.Flush($true) } finally { $file.Dispose() }
+            }
+        }
+    } catch {
+        if ($Stage -eq 'Rollback' -and $null -ne $rollbackLock -and $journal.Count -gt 0) {
+            $fault = $_.Exception.Message
+            $startedOn = [datetimeoffset]::UtcNow
+            $failureObservations = @(
+                foreach ($operation in $approved | Where-Object {
+                    -not $notChangedByApply.ContainsKey([string]$_.OperationId)
+                }) {
+                    $definition = $definitionById[[string]$operation.OperationId]
+                    @{
+                        OperationId = [string]$operation.OperationId
+                        Identity = [string]$operation.Identity
+                        Command = [string]$operation.Command
+                        Sequence = [int]$operation.Sequence
+                        DependsOn = @($operation.DependsOn)
+                        Before = Read-ApprovedAdapterState $definition
+                        After = ConvertTo-BaselineHashableNode $operation.Before
+                    }
+                }
+            )
+            $attemptReceipt = [ordered]@{
+                RecoveryVersion = 1
+                ChangeId = $ChangeId
+                Tenant = $tenant
+                DeploymentProfile = 'ExchangeOnly'
+                PreviewHash = [string]$previewRecord.Hash
+                ConfigurationHash = $configurationHash
+                ApplyReceiptHash = $applyReceiptHash
+                RecoverySource = $recoverySource
+                RecoverySourceHash = $recoverySourceHash
+                PreviousAttemptHash = if ($rollbackAttemptHistory.Count) { $rollbackAttemptHistory[-1].Hash } else { '' }
+                AttemptSequence = $rollbackAttemptHistory.Count + 1
+                Stage = 'Rollback'
+                Status = 'Failed'
+                Fault = $fault
+                StartedOn = $startedOn.ToString('o')
+                CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
+                Operation = @($journal)
+                Observed = $failureObservations
+            }
+            try {
+                $null = Write-BaselineRollbackFailureReceipt -ArtifactRoot $ArtifactRoot -ChangeId $ChangeId `
+                    -LockStream $rollbackLock -History $rollbackAttemptHistory -Receipt $attemptReceipt
+            } catch {
+                throw "ChangeRollbackReceiptWriteFailed: rollback failed with '$fault', and its failure receipt could not be sealed: $($_.Exception.Message)"
+            }
+            throw "ChangeExecutionFailed: rollback attempt failed: $fault"
+        } elseif ($Stage -eq 'Apply' -and $journal.Count -gt 0 -and
+            -not (Test-Path -LiteralPath (Join-Path $ArtifactRoot "apply-$ChangeId.json") -PathType Leaf)) {
+            $fault = $_.Exception.Message
+            $failedApplyReceipt = [ordered]@{
+                ChangeId = $ChangeId
+                Tenant = $tenant
+                DeploymentProfile = 'ExchangeOnly'
+                PreviewHash = [string]$previewRecord.Hash
+                ConfigurationHash = $configurationHash
+                Status = 'Failed'
+                Fault = $fault
+                Operation = @($journal)
+                CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
+            }
+            try {
+                $null = Write-BaselineChangeArtifact -ChangeId $ChangeId -Artifact Apply -Root $ArtifactRoot -Content $failedApplyReceipt
+            } catch {
+                throw "ChangeApplyReceiptWriteFailed: apply failed with '$fault', and its failure receipt could not be sealed: $($_.Exception.Message)"
+            }
+        }
+        throw
+    } finally {
+        if ($null -ne $rollbackLock) { $rollbackLock.Dispose() }
     }
     [pscustomobject]$receipt
 }
