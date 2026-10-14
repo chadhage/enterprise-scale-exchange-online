@@ -172,6 +172,27 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         $result.Results.Where({ $_.Check -eq 'Session tenant matches parameters' }).Fix | Should -Match 'Connect-ExchangeOnline'
     }
 
+    It 'refuses a foreign Security and Compliance session even when the Exchange session matches' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $global:readinessConnections += [pscustomobject]@{
+            TenantID = '99999999-2222-3333-4444-555555555555'
+            State = 'Connected'
+            UserPrincipalName = 'admin@other.example'
+            ConnectionUri = 'https://ps.compliance.protection.outlook.com'
+            IsEopSession = $true
+        }
+
+        # Act
+        $result = & $script:readiness @arguments
+
+        # Assert
+        $check = $result.Results.Where({ $_.Check -eq 'Session tenant matches parameters' })
+        $check.Status | Should -Be 'FAIL'
+        $check.Detail | Should -Match 'ExchangeSessionTenantMismatch'
+        $check.Detail | Should -Match '99999999-2222-3333-4444-555555555555'
+    }
+
     It 'refuses when no Exchange Online session is connected' {
         # Arrange
         $arguments = Get-ReadinessArgument

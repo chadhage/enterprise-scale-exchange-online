@@ -269,6 +269,25 @@ function Assert-ExchangeOnlineSession {
     $Session
 }
 
+function Assert-ExchangeOnlineConnectedSessionsTenant {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$ExpectedTenantId)
+    if ([string]::IsNullOrWhiteSpace($ExpectedTenantId)) { return }
+    try {
+        $connected = @(Get-ConnectionInformation -ErrorAction Stop |
+            Where-Object { $_.State -eq 'Connected' })
+    }
+    catch {
+        throw "ExchangeSessionTenantCheckFailed: could not verify every connected Exchange session: $($_.Exception.Message)"
+    }
+    $foreign = @($connected | Where-Object { [string]$_.TenantID -ne $ExpectedTenantId })
+    if ($foreign.Count -gt 0) {
+        throw ("ExchangeSessionTenantMismatch: another connected session is in tenant $(($foreign | ForEach-Object { [string]$_.TenantID } | Select-Object -Unique) -join ', '), but the parameter file is for tenant $($ExpectedTenantId). Run:`n" +
+            "  Disconnect-ExchangeOnline -Confirm:`$false`n" +
+            'then rerun this script and sign in only to the parameter-file tenant.')
+    }
+}
+
 function Initialize-ExchangeOnlineSession {
     <#
     .SYNOPSIS
@@ -289,20 +308,12 @@ function Initialize-ExchangeOnlineSession {
         -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion $MinimumModuleVersion
     $commands = @(@($RequiredCommand) + @(Get-ExchangeScopeReadCommand -Scope $Scope) | Where-Object { $_ } | Select-Object -Unique)
     $null = Assert-ExchangeOnlineSession -Session $session -ExpectedTenantId $ExpectedTenantId -RequiredCommand $commands
-    if (-not [string]::IsNullOrWhiteSpace($ExpectedTenantId)) {
-        # Apply/Rollback refuse if any connected session (including Security & Compliance) is another tenant; fail here first.
-        $foreign = @(Get-ConnectionInformation -ErrorAction SilentlyContinue |
-                Where-Object { $_.State -eq 'Connected' -and [string]$_.TenantID -ne $ExpectedTenantId })
-        if ($foreign.Count -gt 0) {
-            throw ("ExchangeSessionTenantMismatch: another connected session is in tenant $(($foreign | ForEach-Object { [string]$_.TenantID } | Select-Object -Unique) -join ', '), but the parameter file is for tenant $($ExpectedTenantId). Run:`n" +
-                "  Disconnect-ExchangeOnline -Confirm:`$false`n" +
-                'then rerun this script and sign in only to the parameter-file tenant.')
-        }
-    }
+    Assert-ExchangeOnlineConnectedSessionsTenant -ExpectedTenantId $ExpectedTenantId
     Write-Information "Exchange Online session ready: $($session.UserPrincipalName), tenant $($session.TenantID)$(if ($commands.Count) { ", $($commands.Count) required cmdlet(s) available" })."
     $session
 }
 
 Export-ModuleMember -Function Get-ExchangeScopeReadCommand, Get-ExchangeExpectedTenantId, Test-ExchangeInteractiveHost,
     Read-ExchangeSessionConfirmation, Assert-ExchangeOnlineModule, Connect-ExchangeOnlineSession,
-    Assert-ExchangeOnlineSession, Initialize-ExchangeOnlineSession
+    Assert-ExchangeOnlineSession, Assert-ExchangeOnlineConnectedSessionsTenant,
+    Initialize-ExchangeOnlineSession

@@ -355,9 +355,18 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
 
             if ($null -ne $connection) {
                 $connectFix = "Disconnect-ExchangeOnline -Confirm:`$false`nThen rerun this script and sign in with an administrator account from the parameter-file tenant (it runs Connect-ExchangeOnline for you; add -UserPrincipalName to choose the account)."
+                $allSessionsMatch = $true
+                $allSessionsDetail = "session $($connection.TenantID) as $($connection.UserPrincipalName)"
+                try {
+                    Assert-ExchangeOnlineConnectedSessionsTenant -ExpectedTenantId $tenant
+                }
+                catch {
+                    $allSessionsMatch = $false
+                    $allSessionsDetail = $_.Exception.Message
+                }
                 Add-ReadinessResult -Area Tenant -Check 'Session tenant matches parameters' `
-                    -Passed ($tenantOk -and [string]$connection.TenantID -eq $tenant) `
-                    -Detail "session $($connection.TenantID) as $($connection.UserPrincipalName)" -Fix $connectFix
+                    -Passed ($allSessionsMatch -and $tenantOk -and [string]$connection.TenantID -eq $tenant) `
+                    -Detail $allSessionsDetail -Fix $connectFix
                 Add-ReadinessResult -Area Tenant -Check 'Worldwide endpoint' `
                     -Passed ([string]$connection.ConnectionUri -match '^https://outlook\.office365\.com') `
                     -Detail ([string]$connection.ConnectionUri) -Fix 'Only Worldwide (O365Default) tenants are supported. Stop for sovereign clouds.'

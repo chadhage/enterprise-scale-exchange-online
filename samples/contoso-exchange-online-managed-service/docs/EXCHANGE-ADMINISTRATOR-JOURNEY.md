@@ -223,11 +223,11 @@ $certificate = Get-Item -LiteralPath "Cert:\CurrentUser\My\$($journey.Certificat
 
 ## 10. Approved Apply And Readback
 
-The authorized Exchange operator resumes with the same `$change`, after the approved window begins. `-SkipConnection` consumes the one checked session, not synthetic evidence. The real apply performs pre/post readback and stores immutable receipts. Review `postchange-<ChangeId>.json` for Succeeded. On drift, expiry, partial mutation or readback failure, stop and use APPROVED-CHANGE recovery; the generated rollback covers only these signed attempted operations, not foundational objects or external DNS. Do not replay by deleting locks. The command below is documentation, not authorization to apply to a tenant during offline engineering.
+The authorized Exchange operator resumes with the same `$change`, after the approved window begins. The real apply reuses the checked session for the parameter-file tenant; do not pass `-SkipConnection`, which is reserved for offline test doubles and is rejected when a live Exchange session is connected. The apply performs pre/post readback and stores immutable receipts. Review `postchange-<ChangeId>.json` for Succeeded. On drift, expiry, partial mutation or readback failure, stop and use APPROVED-CHANGE recovery; the generated rollback covers only these signed attempted operations, not foundational objects or external DNS. Do not replay by deleting locks. The command below is documentation, not authorization to apply to a tenant during offline engineering.
 
 <!-- journey:apply -->
 ```powershell
-./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -Confirm:$false
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -Confirm:$false
 $postchange = Get-Content -LiteralPath (Join-Path $journey.ArtifactRoot "postchange-$($journey.ChangeId).json") -Raw | ConvertFrom-Json
 if ($postchange.Status -ne 'Succeeded') { throw 'JourneyApplyFailed: inspect immutable receipts and approved rollback' }
 ```
@@ -239,7 +239,7 @@ Complete the three independently signed operational artifacts and all retained e
 <!-- journey:frozen -->
 ```powershell
 $runDirectory = Join-Path $journey.ArtifactRoot 'evidence'
-./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath -OutputPath $runDirectory -SkipConnection
+./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath -OutputPath $runDirectory
 if ($LASTEXITCODE -ne 0) { throw "JourneyCollectionRefused:$LASTEXITCODE inspect findings; do not sign replacements" }
 $evidencePath = Join-Path $runDirectory 'frozen-exchange-evidence.json'
 if (Test-Path -LiteralPath $evidencePath) { throw 'JourneyFrozenPathExists: use a new reviewed run' }
