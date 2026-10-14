@@ -175,6 +175,7 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
     It 'refuses a foreign Security and Compliance session even when the Exchange session matches' {
         # Arrange
         $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('EopPresets', 'AtpPresets')
         $global:readinessConnections += [pscustomobject]@{
             TenantID = '99999999-2222-3333-4444-555555555555'
             State = 'Connected'
@@ -182,15 +183,90 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
             ConnectionUri = 'https://ps.compliance.protection.outlook.com'
             IsEopSession = $true
         }
+        $global:readinessPresetCalls = @{ Eop = 0; Atp = 0 }
+        function global:Get-EOPProtectionPolicyRule { $global:readinessPresetCalls.Eop++; @() }
+        function global:Get-ATPProtectionPolicyRule { $global:readinessPresetCalls.Atp++; @() }
 
         # Act
-        $result = & $script:readiness @arguments
+        $presetCalls = $null
+        try {
+            $result = & $script:readiness @arguments
+            $presetCalls = $global:readinessPresetCalls.Clone()
+        }
+        finally {
+            Remove-Item Function:\Get-EOPProtectionPolicyRule, Function:\Get-ATPProtectionPolicyRule -ErrorAction SilentlyContinue
+            Remove-Variable readinessPresetCalls -Scope Global -ErrorAction SilentlyContinue
+        }
 
         # Assert
         $check = $result.Results.Where({ $_.Check -eq 'Session tenant matches parameters' })
         $check.Status | Should -Be 'FAIL'
         $check.Detail | Should -Match 'ExchangeSessionTenantMismatch'
         $check.Detail | Should -Match '99999999-2222-3333-4444-555555555555'
+        $result.Results.Where({ $_.Check -in @('EopPresets rules initialized', 'AtpPresets rules initialized') }).Status |
+            Should -Be @('FAIL', 'FAIL')
+        $presetCalls.Eop | Should -Be 0
+        $presetCalls.Atp | Should -Be 0
+    }
+
+    It 'requires exactly one Standard and Strict preset rule' -ForEach @(
+        @{
+            Scenario = 'missing Strict'
+            Rules = @(@{ Identity = 'Standard Preset Security Policy' })
+            ExpectedDetail = 'Standard=1, Strict=0'
+        }
+        @{
+            Scenario = 'a duplicate case-variant Standard rule'
+            Rules = @(
+                @{ Identity = 'Standard Preset Security Policy' }
+                @{ Identity = 'standard preset security policy' }
+                @{ Identity = 'Strict Preset Security Policy' }
+            )
+            ExpectedDetail = 'Standard=2, Strict=1'
+        }
+    ) {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('EopPresets')
+        $global:readinessPresetRules = @($Rules)
+        function global:Get-EOPProtectionPolicyRule { @($global:readinessPresetRules) }
+
+        # Act
+        try {
+            $result = & $script:readiness @arguments
+        }
+        finally {
+            Remove-Item Function:\Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue
+            Remove-Variable readinessPresetRules -Scope Global -ErrorAction SilentlyContinue
+        }
+
+        # Assert
+        $check = $result.Results.Where({ $_.Check -eq 'EopPresets rules initialized' })
+        $check.Status | Should -Be 'FAIL'
+        $check.Detail | Should -Match ([regex]::Escape($ExpectedDetail))
+    }
+
+    It 'accepts exactly one Standard and Strict preset rule' {
+        # Arrange
+        $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('EopPresets')
+        $global:readinessPresetRules = @(
+            @{ Identity = 'Standard Preset Security Policy' }
+            @{ Identity = 'Strict Preset Security Policy' }
+        )
+        function global:Get-EOPProtectionPolicyRule { @($global:readinessPresetRules) }
+
+        # Act
+        try {
+            $result = & $script:readiness @arguments
+        }
+        finally {
+            Remove-Item Function:\Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue
+            Remove-Variable readinessPresetRules -Scope Global -ErrorAction SilentlyContinue
+        }
+
+        # Assert
+        $result.Results.Where({ $_.Check -eq 'EopPresets rules initialized' }).Status | Should -Be 'PASS'
     }
 
     It 'refuses when no Exchange Online session is connected' {

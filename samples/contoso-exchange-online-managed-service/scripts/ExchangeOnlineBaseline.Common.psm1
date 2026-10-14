@@ -17978,11 +17978,13 @@ function Get-BaselineRollbackAttemptHistory {
             $approvedOperation = @($Approved | Where-Object { [string]$_.OperationId -ceq $operationId })
             $state = [string](Get-BaselineRecordMember $operationRecord State)
             $progress = [string](Get-BaselineRecordMember $operationRecord Progress)
+            $notChangedByApply = $state -ceq 'NotChangedByApply'
             if ($approvedOperation.Count -ne 1 -or -not $seenOperations.Add($operationId) -or
-                [string](Get-BaselineRecordMember $operationRecord Command) -cne [string]$approvedOperation[0].Command -or
-                [string](Get-BaselineRecordMember $operationRecord Identity) -cne [string]$approvedOperation[0].Identity -or
-                [int](Get-BaselineRecordMember $operationRecord Sequence) -ne [int]$approvedOperation[0].Sequence -or
-                $state -cnotin @('Succeeded','Unchanged','Failed') -or
+                (-not $notChangedByApply -and (
+                    [string](Get-BaselineRecordMember $operationRecord Command) -cne [string]$approvedOperation[0].Command -or
+                    [string](Get-BaselineRecordMember $operationRecord Identity) -cne [string]$approvedOperation[0].Identity -or
+                    [int](Get-BaselineRecordMember $operationRecord Sequence) -ne [int]$approvedOperation[0].Sequence)) -or
+                $state -cnotin @('Succeeded','Unchanged','Failed','NotChangedByApply') -or
                 $progress -cnotin @('','Removed','Created')) {
                 throw "ChangeRollbackReceiptMismatch: rollback attempt '$name' contains an invalid operation journal."
             }
@@ -18041,6 +18043,49 @@ function Get-BaselineRollbackAttemptHistory {
         throw "ChangeRollbackReceiptMismatch: an unindexed rollback attempt exists for '$ChangeId'."
     }
     return $attempts.ToArray()
+}
+
+function Get-BaselineRollbackRecoveryState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ArtifactRoot,
+        [Parameter(Mandatory)][string]$ChangeId,
+        [Parameter(Mandatory)][string]$Tenant,
+        [Parameter(Mandatory)][string]$PreviewHash,
+        [Parameter(Mandatory)][string]$ConfigurationHash,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Approved
+    )
+
+    $indexPath = Join-Path $ArtifactRoot "rollback-$ChangeId.lock"
+    $attemptFiles = @(Get-ChildItem -LiteralPath $ArtifactRoot -File -Filter "rollback-attempt-$ChangeId-*.json" -ErrorAction SilentlyContinue)
+    $index = Get-Item -LiteralPath $indexPath -ErrorAction SilentlyContinue
+    $hasAttemptHistory = ($null -ne $index -and $index.Length -gt 0) -or $attemptFiles.Count -gt 0
+    $attempts = @()
+    if ($hasAttemptHistory) {
+        if ($Approved.Count -eq 0) {
+            throw "ChangeRollbackReceiptMismatch: rollback history for '$ChangeId' cannot be checked against an empty preview."
+        }
+        $applyPath = Join-Path $ArtifactRoot "apply-$ChangeId.json"
+        $preChangePath = Join-Path $ArtifactRoot "prechange-$ChangeId.json"
+        if (Test-Path -LiteralPath $applyPath -PathType Leaf) {
+            $applyReceiptHash = (Get-FileHash -LiteralPath $applyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            $recoverySource = 'ApplyReceipt'
+            $recoverySourceHash = $applyReceiptHash
+        }
+        else {
+            if (-not (Test-Path -LiteralPath $preChangePath -PathType Leaf)) {
+                throw "ChangeRollbackReceiptMismatch: rollback history for '$ChangeId' has no recovery source."
+            }
+            $applyReceiptHash = ''
+            $recoverySource = 'PreChangeCapture'
+            $recoverySourceHash = (Get-FileHash -LiteralPath $preChangePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        }
+        $attempts = @(Get-BaselineRollbackAttemptHistory -ArtifactRoot $ArtifactRoot -ChangeId $ChangeId `
+            -Tenant $Tenant -PreviewHash $PreviewHash -ConfigurationHash $ConfigurationHash `
+            -ApplyReceiptHash $applyReceiptHash -RecoverySource $recoverySource `
+            -RecoverySourceHash $recoverySourceHash -Approved $Approved)
+    }
+    [pscustomobject]@{ Attempts = @($attempts); AttemptCount = $attempts.Count }
 }
 
 function Write-BaselineRollbackFailureReceipt {
@@ -23051,6 +23096,7 @@ Export-ModuleMember -Function @(
     'New-BaselineChangePreview'
     'Test-BaselineChangeApproval'
     'New-BaselineChangeStateCapture'
+    'Get-BaselineRollbackRecoveryState'
     'New-BaselineRollbackScript'
     'Get-BaselineMutationGuardContract'
     'Get-BaselineMutationGuardReport'

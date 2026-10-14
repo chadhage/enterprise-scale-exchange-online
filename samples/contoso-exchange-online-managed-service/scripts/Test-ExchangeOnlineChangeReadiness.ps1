@@ -129,6 +129,7 @@ $requiredFiles = @(
     'config/exchange-only.v1.json'
     'config/exchange-only.schema.v1.json'
     'config/exchange-only.manifest.v1.json'
+)
 $missing = @($requiredFiles | Where-Object { -not (Test-Path -LiteralPath (Join-Path $kitRoot $_) -PathType Leaf) })
 Add-ReadinessResult -Area Workstation -Check 'Kit files present' -Passed ($missing.Count -eq 0) `
     -Detail $(if ($missing.Count) { "missing: $($missing -join ', ')" } else { "$($requiredFiles.Count) required files found" }) `
@@ -364,11 +365,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                     $allSessionsMatch = $false
                     $allSessionsDetail = $_.Exception.Message
                 }
+                $sessionTenantMatches = $allSessionsMatch -and $tenantOk -and [string]$connection.TenantID -eq $tenant
+                $endpointMatches = [string]$connection.ConnectionUri -match '^https://outlook\.office365\.com'
+                $tenantSessionValidated = $sessionTenantMatches -and $endpointMatches
                 Add-ReadinessResult -Area Tenant -Check 'Session tenant matches parameters' `
-                    -Passed ($allSessionsMatch -and $tenantOk -and [string]$connection.TenantID -eq $tenant) `
+                    -Passed $sessionTenantMatches `
                     -Detail $allSessionsDetail -Fix $connectFix
                 Add-ReadinessResult -Area Tenant -Check 'Worldwide endpoint' `
-                    -Passed ([string]$connection.ConnectionUri -match '^https://outlook\.office365\.com') `
+                    -Passed $endpointMatches `
                     -Detail ([string]$connection.ConnectionUri) -Fix 'Only Worldwide (O365Default) tenants are supported. Stop for sovereign clouds.'
 
                 $scopeCmdlets = Get-ExchangeScopeReadCommand
@@ -383,7 +387,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                 }
 
                 foreach ($preset in @(@{ Scope = 'EopPresets'; Cmdlet = 'Get-EOPProtectionPolicyRule' }, @{ Scope = 'AtpPresets'; Cmdlet = 'Get-ATPProtectionPolicyRule' })) {
-                    if ($preset.Scope -notin $Scope -or -not (Get-Command -Name $preset.Cmdlet -ErrorAction SilentlyContinue)) { continue }
+                    if ($preset.Scope -notin $Scope) { continue }
+                    if (-not $tenantSessionValidated) {
+                        Add-ReadinessResult -Area Tenant -Check "$($preset.Scope) rules initialized" -Passed $false `
+                            -Detail 'not checked because the parameter tenant, connected sessions, or Worldwide endpoint was not validated' `
+                            -Fix $connectFix
+                        continue
+                    }
+                    if (-not (Get-Command -Name $preset.Cmdlet -ErrorAction SilentlyContinue)) { continue }
                     try {
                         $rules = @(& $preset.Cmdlet -ErrorAction Stop)
                     }
@@ -394,8 +405,11 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                         continue
                     }
                     $names = @($rules | ForEach-Object { [string]$_.Identity })
-                    Add-ReadinessResult -Area Tenant -Check "$($preset.Scope) rules initialized" -Passed ($rules.Count -gt 0) `
-                        -Detail $(if ($names.Count) { $names -join '; ' } else { 'no Standard or Strict rule found' }) `
+                    $standardCount = @($rules | Where-Object { [string]$_.Identity -ieq 'Standard Preset Security Policy' }).Count
+                    $strictCount = @($rules | Where-Object { [string]$_.Identity -ieq 'Strict Preset Security Policy' }).Count
+                    $presetsInitialized = $standardCount -eq 1 -and $strictCount -eq 1
+                    Add-ReadinessResult -Area Tenant -Check "$($preset.Scope) rules initialized" -Passed $presetsInitialized `
+                        -Detail $(if ($presetsInitialized) { 'exactly one Standard and one Strict rule found' } else { "expected exactly one Standard and one Strict rule; found Standard=$standardCount, Strict=$strictCount" }) `
                         -Fix 'Turn on Standard/Strict once in the Defender portal (Email and collaboration, Policies, Preset security policies). This workflow does not create them.'
                 }
             }

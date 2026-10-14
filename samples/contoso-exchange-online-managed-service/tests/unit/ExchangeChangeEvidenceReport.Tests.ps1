@@ -58,6 +58,62 @@ BeforeAll {
         }
         $directory
     }
+
+    function Set-RollbackResult {
+        param(
+            [Parameter(Mandatory)][string]$ArtifactRoot,
+            [object[]]$Operation = @(@{
+                    OperationId = 'Transport-01'; State = 'Succeeded'; Fault = ''
+                    Command = 'Set-TransportConfig'; Identity = 'Default'; Sequence = 1
+                }),
+            [string]$CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
+        )
+        $previewPath = Join-Path $ArtifactRoot 'preview-CHG-1001.json'
+        @{
+            ChangeId = 'CHG-1001'
+            Tenant = $script:tenant
+            DeploymentProfile = 'ExchangeOnly'
+            PreviewHash = (Get-FileHash -LiteralPath $previewPath -Algorithm SHA256).Hash.ToLowerInvariant()
+            ConfigurationHash = 'abc123'
+            Status = 'Succeeded'
+            Fault = ''
+            CompletedOn = $CompletedOn
+            Operation = $Operation
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $ArtifactRoot 'rollback-result-CHG-1001.json')
+    }
+
+    function Add-RollbackAttemptFixture {
+        param([Parameter(Mandatory)][string]$ArtifactRoot)
+        $applyPath = Join-Path $ArtifactRoot 'apply-CHG-1001.json'
+        $applyHash = (Get-FileHash -LiteralPath $applyPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        $now = [datetimeoffset]::UtcNow
+        $attempt = @{
+            Stage = 'Rollback'
+            RecoveryVersion = 1
+            ChangeId = 'CHG-1001'
+            Tenant = $script:tenant
+            DeploymentProfile = 'ExchangeOnly'
+            PreviewHash = (Get-FileHash -LiteralPath (Join-Path $ArtifactRoot 'preview-CHG-1001.json') -Algorithm SHA256).Hash.ToLowerInvariant()
+            ConfigurationHash = 'abc123'
+            ApplyReceiptHash = $applyHash
+            RecoverySource = 'ApplyReceipt'
+            RecoverySourceHash = $applyHash
+            PreviousAttemptHash = ''
+            AttemptSequence = 1
+            Status = 'Failed'
+            Fault = 'Transient rollback command failure'
+            StartedOn = $now.AddMinutes(-10).ToString('o')
+            CompletedOn = $now.AddMinutes(-9).ToString('o')
+            Operation = @()
+            Observed = @()
+        }
+        $name = "rollback-attempt-CHG-1001-$([guid]::NewGuid().ToString('N')).json"
+        $path = Join-Path $ArtifactRoot $name
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($attempt | ConvertTo-Json -Depth 10))
+        [IO.File]::WriteAllBytes($path, $bytes)
+        $hash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
+        @(@{ Name = $name; Hash = $hash }) | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $ArtifactRoot 'rollback-CHG-1001.lock')
+    }
 }
 
 Describe 'New-ExchangeChangeEvidenceReport.ps1' {
@@ -429,5 +485,98 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $result.Outcome | Should -BeExactly 'INCOMPLETE'
         $result.BindingMismatch | Should -Contain 'ManifestHash'
         $markdown | Should -Match '\| ManifestHash \| [^|]+ \| - \| \*\*No\*\* \|'
+    }
+
+    It 'reports a validated successful rollback without using pre-rollback evidence as current state' {
+        # Arrange
+        $root = New-EvidenceFixture
+        Set-RollbackResult -ArtifactRoot $root
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeTrue
+        $result.Outcome | Should -BeExactly 'ROLLED BACK'
+        $result.RollbackStatus | Should -BeExactly 'Succeeded'
+        $markdown | Should -Match 'Evidence outcomes are retained for audit; they are not a current-state assessment after rollback'
+        $markdown | Should -Match 'The rollback receipt confirms restoration'
+        $markdown | Should -Not -Match 'Outcome: APPLIED'
+    }
+
+    It 'accepts a partial-apply rollback journal with NotChangedByApply when PostChange is missing' {
+        # Arrange
+        $root = New-EvidenceFixture -ApplyStatus 'Failed' -Omit 'PostChange'
+        $applyPath = Join-Path $root 'apply-CHG-1001.json'
+        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
+        $apply.Operation[0].State = 'Failed'
+        $apply.Fault = 'Mutation stopped before completion'
+        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+        Set-RollbackResult -ArtifactRoot $root -Operation @(@{
+                OperationId = 'Transport-01'; State = 'NotChangedByApply'; Fault = ''
+            })
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Complete | Should -BeFalse
+        $result.MissingArtifact | Should -Contain 'PostChange'
+        $result.Outcome | Should -BeExactly 'ROLLED BACK'
+        $result.RollbackMismatch | Should -BeNullOrEmpty
+        $markdown | Should -Match 'The rollback receipt confirms restoration'
+    }
+
+    It 'reports validated failed rollback attempts as incomplete recovery with their fault' {
+        # Arrange
+        $root = New-EvidenceFixture -ApplyStatus 'Failed'
+        Add-RollbackAttemptFixture -ArtifactRoot $root
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackStatus | Should -BeExactly 'Failed attempts'
+        $result.RollbackAttemptCount | Should -Be 1
+        $markdown | Should -Match 'Transient rollback command failure'
+        $markdown | Should -Match 'Stop and verify the tenant state'
+    }
+
+    It 'refuses a rollback receipt with a mismatched preview binding' {
+        # Arrange
+        $root = New-EvidenceFixture
+        Set-RollbackResult -ArtifactRoot $root
+        $resultPath = Join-Path $root 'rollback-result-CHG-1001.json'
+        $receipt = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json -AsHashtable
+        $receipt.PreviewHash = '0' * 64
+        $receipt | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $resultPath
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        $markdown = Get-Content -LiteralPath $result.Path -Raw
+        # Assert
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackStatus | Should -BeExactly 'Invalid or incomplete'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: PreviewHash'
+        $markdown | Should -Match 'Do not treat the change as applied or restored'
+    }
+
+    It 'refuses to validate a rollback receipt when the preview has no operations' {
+        # Arrange
+        $root = New-EvidenceFixture
+        $previewPath = Join-Path $root 'preview-CHG-1001.json'
+        $preview = Get-Content -LiteralPath $previewPath -Raw | ConvertFrom-Json -AsHashtable
+        $preview.Operation = @()
+        $preview | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $previewPath
+        $previewHash = (Get-FileHash -LiteralPath $previewPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        foreach ($name in 'approval', 'apply', 'postchange') {
+            $path = Join-Path $root "$name-CHG-1001.json"
+            $document = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
+            $document.PreviewHash = $previewHash
+            $document | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path
+        }
+        Set-RollbackResult -ArtifactRoot $root -Operation @()
+        # Act
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+        # Assert
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: Operation coverage'
     }
 }

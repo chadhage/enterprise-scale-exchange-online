@@ -174,6 +174,7 @@
         'New-BaselineChangePreview'
         'Test-BaselineChangeApproval'
         'New-BaselineChangeStateCapture'
+        'Get-BaselineRollbackRecoveryState'
         'New-BaselineRollbackScript'
         'Get-BaselineMutationGuardContract'
         'Get-BaselineMutationGuardReport'

@@ -45,13 +45,31 @@ $artifactSpec = @(
     @{ Artifact = 'Rollback'; Name = "rollback-$($ChangeId).ps1" }
     @{ Artifact = 'PostChange'; Name = "postchange-$($ChangeId).json" }
 )
+$rollbackResultName = "rollback-result-$ChangeId.json"
+$rollbackResultPath = Join-Path $ArtifactRoot $rollbackResultName
+$rollbackIndexName = "rollback-$ChangeId.lock"
+$rollbackIndexPath = Join-Path $ArtifactRoot $rollbackIndexName
+$rollbackResultPresent = Test-Path -LiteralPath $rollbackResultPath -PathType Leaf
+$rollbackIndexPresent = Test-Path -LiteralPath $rollbackIndexPath -PathType Leaf
+$rollbackAttemptFiles = @(Get-ChildItem -LiteralPath $ArtifactRoot -File -Filter "rollback-attempt-$ChangeId-*.json" -ErrorAction SilentlyContinue)
+$optionalRollbackSpec = @()
+if ($rollbackResultPresent) {
+    $optionalRollbackSpec += @{ Artifact = 'RollbackResult'; Name = $rollbackResultName }
+}
+if ($rollbackIndexPresent) {
+    $optionalRollbackSpec += @{ Artifact = 'RollbackAttemptIndex'; Name = $rollbackIndexName }
+}
+foreach ($attemptFile in $rollbackAttemptFiles) {
+    $optionalRollbackSpec += @{ Artifact = 'RollbackAttempt'; Name = $attemptFile.Name }
+}
 $outputFullPath = [IO.Path]::GetFullPath($OutputPath)
 $pathComparison = if ([IO.Path]::DirectorySeparatorChar -eq '\') {
     [StringComparison]::OrdinalIgnoreCase
 } else {
     [StringComparison]::Ordinal
 }
-$protectedPaths = @($EvidencePath) + @($artifactSpec | ForEach-Object { Join-Path $ArtifactRoot $_.Name })
+$protectedPaths = @($EvidencePath) + @($artifactSpec | ForEach-Object { Join-Path $ArtifactRoot $_.Name }) +
+    @($rollbackResultPath, $rollbackIndexPath) + @($rollbackAttemptFiles | ForEach-Object FullName)
 foreach ($protectedPath in $protectedPaths) {
     if ([string]::Equals($outputFullPath, [IO.Path]::GetFullPath($protectedPath), $pathComparison)) {
         throw "EvidenceReportOutputPathCollision: OutputPath '$outputFullPath' resolves to a change artifact or evidence input '$protectedPath'; choose a separate report path."
@@ -76,7 +94,12 @@ function Read-JsonFile {
 
 function Get-RecordValue {
     param([object]$Node, [string]$Name)
-    if ($null -ne $Node -and $Node.PSObject.Properties[$Name]) { $Node.$Name } else { $null }
+    if ($Node -is [System.Collections.IDictionary]) {
+        if ($Node.Contains($Name)) { $Node[$Name] }
+    }
+    elseif ($null -ne $Node -and $Node.PSObject.Properties[$Name]) {
+        $Node.$Name
+    }
 }
 
 function Format-Cell {
@@ -88,7 +111,8 @@ function Format-Cell {
 
 $evidence = Read-JsonFile -Path $EvidencePath -Label 'Evidence'
 $manifest = Read-JsonFile -Path (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') -Label 'Evidence manifest'
-Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') -Function ConvertTo-CanonicalJson -ErrorAction Stop
+Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') `
+    -Function @('ConvertTo-CanonicalJson', 'Get-BaselineRollbackRecoveryState') -ErrorAction Stop
 $manifestHash = [Convert]::ToHexString(
     [Security.Cryptography.SHA256]::HashData(
         [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $manifest))
@@ -111,11 +135,34 @@ $artifacts = foreach ($spec in $artifactSpec) {
         Modified  = $(if ($present) { (Get-Item -LiteralPath $path).LastWriteTimeUtc.ToString('u') } else { '' })
     }
 }
+$artifacts = @($artifacts)
+foreach ($spec in $optionalRollbackSpec) {
+    $path = Join-Path $ArtifactRoot $spec.Name
+    $artifacts += [pscustomobject]@{
+        Artifact = $spec.Artifact
+        Name = $spec.Name
+        Path = $path
+        Present = $true
+        Sha256 = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash.ToLowerInvariant()
+        Modified = (Get-Item -LiteralPath $path).LastWriteTimeUtc.ToString('u')
+    }
+}
+$requiredArtifactNames = @($artifactSpec | ForEach-Object Artifact)
 $documents = @{}
-foreach ($artifact in $artifacts | Where-Object { $_.Present -and $_.Name.EndsWith('.json') }) {
+foreach ($artifact in $artifacts | Where-Object { $_.Present -and $_.Artifact -in @('Preview', 'Approval', 'PreChange', 'Apply', 'PostChange') }) {
     $documents[$artifact.Artifact] = Read-JsonFile -Path $artifact.Path -Label $artifact.Artifact
 }
-$missing = @($artifacts | Where-Object { -not $_.Present } | ForEach-Object Artifact)
+$missing = @($artifacts | Where-Object { -not $_.Present -and $_.Artifact -in $requiredArtifactNames } | ForEach-Object Artifact)
+$rollbackResult = $null
+$rollbackReadError = ''
+if ($rollbackResultPresent) {
+    try {
+        $rollbackResult = Read-JsonFile -Path $rollbackResultPath -Label 'RollbackResult'
+    }
+    catch {
+        $rollbackReadError = $_.Exception.Message
+    }
+}
 
 $preview = $documents['Preview']
 $approval = $documents['Approval']
@@ -185,6 +232,120 @@ $previewSha256 = [string]($artifacts | Where-Object Artifact -EQ 'Preview' | For
 $previewTenant = ([string](Get-RecordValue $preview 'Tenant')).Trim()
 $previewConfiguration = & $normalizeHash (Get-RecordValue $preview 'ConfigurationHash')
 $operations = @(Get-RecordValue $preview 'Operation' | Where-Object { $null -ne $_ })
+$rollbackErrors = [Collections.Generic.List[string]]::new()
+if (-not [string]::IsNullOrWhiteSpace($rollbackReadError)) { $rollbackErrors.Add($rollbackReadError) }
+$rollbackAttempts = @()
+if ($rollbackIndexPresent -or $rollbackAttemptFiles.Count -gt 0) {
+    try {
+        $rollbackRecovery = Get-BaselineRollbackRecoveryState -ArtifactRoot $ArtifactRoot -ChangeId $ChangeId `
+            -Tenant $previewTenant -PreviewHash $previewSha256 `
+            -ConfigurationHash ([string](Get-RecordValue $preview 'ConfigurationHash')) -Approved $operations
+        $rollbackAttempts = @($rollbackRecovery.Attempts)
+    }
+    catch {
+        $rollbackErrors.Add($_.Exception.Message)
+    }
+}
+$rollbackReceiptValid = $false
+$rollbackCompleted = [datetimeoffset]::MinValue
+if ($rollbackResultPresent -and $null -eq $rollbackResult -and [string]::IsNullOrWhiteSpace($rollbackReadError)) {
+    $rollbackErrors.Add('RollbackResultInvalid: the rollback result root must be a JSON object.')
+}
+elseif ($null -ne $rollbackResult) {
+    $rollbackResultMismatch = @()
+    if ([string](Get-RecordValue $rollbackResult 'ChangeId') -cne $ChangeId) { $rollbackResultMismatch += 'ChangeId' }
+    $rollbackTenant = ([string](Get-RecordValue $rollbackResult 'Tenant')).Trim()
+    if ([string]::IsNullOrWhiteSpace($rollbackTenant) -or $rollbackTenant -cne $previewTenant) { $rollbackResultMismatch += 'Tenant' }
+    if ([string](Get-RecordValue $rollbackResult 'DeploymentProfile') -cne 'ExchangeOnly') { $rollbackResultMismatch += 'DeploymentProfile' }
+    if ($previewSha256 -notmatch '^[0-9a-f]{64}$' -or [string](Get-RecordValue $rollbackResult 'PreviewHash') -cne $previewSha256) { $rollbackResultMismatch += 'PreviewHash' }
+    $rollbackConfiguration = & $normalizeHash (Get-RecordValue $rollbackResult 'ConfigurationHash')
+    if ([string]::IsNullOrWhiteSpace($rollbackConfiguration) -or $rollbackConfiguration -cne $previewConfiguration) { $rollbackResultMismatch += 'ConfigurationHash' }
+    if ([string](Get-RecordValue $rollbackResult 'Status') -cne 'Succeeded') { $rollbackResultMismatch += 'Status' }
+    if (-not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $rollbackResult 'Fault'))) { $rollbackResultMismatch += 'Fault' }
+    $dateStyles = [Globalization.DateTimeStyles]::AssumeUniversal
+    if (-not [datetimeoffset]::TryParse(
+            [string](Get-RecordValue $rollbackResult 'CompletedOn'),
+            [Globalization.CultureInfo]::InvariantCulture,
+            $dateStyles,
+            [ref]$rollbackCompleted
+        )) {
+        $rollbackResultMismatch += 'CompletedOn'
+    }
+    $rollbackOperations = @(Get-RecordValue $rollbackResult 'Operation' | Where-Object { $null -ne $_ })
+    $rollbackOperationIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+    if ($operations.Count -eq 0) { $rollbackResultMismatch += 'Operation coverage' }
+    foreach ($rollbackOperation in $rollbackOperations) {
+        $operationId = [string](Get-RecordValue $rollbackOperation 'OperationId')
+        $approvedOperation = @($operations | Where-Object { [string](Get-RecordValue $_ 'OperationId') -ceq $operationId })
+        if ([string]::IsNullOrWhiteSpace($operationId) -or $approvedOperation.Count -ne 1 -or
+            -not $rollbackOperationIds.Add($operationId)) {
+            $rollbackResultMismatch += 'Operation coverage'
+            continue
+        }
+        $operationState = [string](Get-RecordValue $rollbackOperation 'State')
+        if ($operationState -ceq 'NotChangedByApply') {
+            if (-not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $rollbackOperation 'Fault'))) {
+                $rollbackResultMismatch += "Operation '$operationId' Fault"
+            }
+            continue
+        }
+        if ($operationState -cnotin @('Succeeded', 'Unchanged') -or
+            [string](Get-RecordValue $rollbackOperation 'Command') -cne [string](Get-RecordValue $approvedOperation[0] 'Command') -or
+            [string](Get-RecordValue $rollbackOperation 'Identity') -cne [string](Get-RecordValue $approvedOperation[0] 'Identity') -or
+            [int](Get-RecordValue $rollbackOperation 'Sequence') -ne [int](Get-RecordValue $approvedOperation[0] 'Sequence') -or
+            -not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $rollbackOperation 'Fault'))) {
+            $rollbackResultMismatch += "Operation '$operationId' journal"
+        }
+    }
+    foreach ($operation in $operations) {
+        $operationId = [string](Get-RecordValue $operation 'OperationId')
+        if ([string]::IsNullOrWhiteSpace($operationId) -or -not $rollbackOperationIds.Contains($operationId)) {
+            $rollbackResultMismatch += 'Operation coverage'
+        }
+    }
+    if ($rollbackResultMismatch.Count -gt 0) {
+        foreach ($mismatch in @($rollbackResultMismatch | Select-Object -Unique)) {
+            $rollbackErrors.Add("RollbackResultMismatch: $mismatch")
+        }
+    }
+    else {
+        $rollbackReceiptValid = $true
+    }
+}
+if ($rollbackReceiptValid -and $null -ne $apply) {
+    $applyCompleted = [datetimeoffset]::MinValue
+    if ([datetimeoffset]::TryParse(
+            [string](Get-RecordValue $apply 'CompletedOn'),
+            [Globalization.CultureInfo]::InvariantCulture,
+            $dateStyles,
+            [ref]$applyCompleted
+        ) -and $rollbackCompleted -lt $applyCompleted) {
+        $rollbackErrors.Add('RollbackResultMismatch: CompletedOn predates the Apply receipt.')
+    }
+}
+if ($rollbackReceiptValid) {
+    foreach ($attempt in $rollbackAttempts) {
+        $attemptCompleted = [datetimeoffset]::MinValue
+        if (-not [datetimeoffset]::TryParse(
+                [string](Get-RecordValue $attempt.Document 'CompletedOn'),
+                [Globalization.CultureInfo]::InvariantCulture,
+                $dateStyles,
+                [ref]$attemptCompleted
+            ) -or $attemptCompleted -ge $rollbackCompleted) {
+            $rollbackErrors.Add('ChangeRollbackReceiptMismatch: a failed rollback attempt completed at or after the successful rollback result.')
+            break
+        }
+    }
+}
+$rollbackMismatch = @($rollbackErrors.ToArray())
+$rollbackStatus = if ($rollbackMismatch.Count -gt 0) { 'Invalid or incomplete' }
+elseif ($rollbackReceiptValid) { 'Succeeded' }
+elseif ($rollbackAttempts.Count -gt 0) { 'Failed attempts' }
+else { 'Not performed' }
+$rollbackOutcome = if ($rollbackMismatch.Count -gt 0) { 'RECOVERY INCOMPLETE' }
+elseif ($rollbackReceiptValid) { 'ROLLED BACK' }
+elseif ($rollbackAttempts.Count -gt 0) { 'RECOVERY INCOMPLETE' }
+else { '' }
 $preChangeMismatch = @()
 if ($null -ne $prechange) {
     if ([string](Get-RecordValue $prechange 'ChangeId') -cne $ChangeId) { $preChangeMismatch += 'PreChange ChangeId' }
@@ -287,7 +448,8 @@ $artifactMismatch = @(
 $complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
     -not $noEvidenceChecks -and $checkMismatch.Count -eq 0 -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and
     $preChangeMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
-$overall = if (-not $complete) { 'INCOMPLETE' }
+$overall = if ($rollbackOutcome) { $rollbackOutcome }
+elseif (-not $complete) { 'INCOMPLETE' }
 elseif ($needsAttention.Count -gt 0) { 'APPLIED - CONTROLS NEED ATTENTION' }
 else { 'APPLIED - EVIDENCE COLLECTED' }
 
@@ -313,11 +475,38 @@ Add-Line "| Approved at | $(Format-Cell (Get-RecordValue $approval 'ApprovalTime
 Add-Line "| Apply status | $(Format-Cell $applyStatus) |"
 Add-Line "| Apply completed | $(Format-Cell (Get-RecordValue $apply 'CompletedOn')) |"
 Add-Line "| Post-change status | $(Format-Cell $postStatus) |"
+Add-Line "| Rollback status | $(Format-Cell $rollbackStatus) |"
+Add-Line "| Failed rollback attempts | $(Format-Cell $rollbackAttempts.Count) |"
+Add-Line "| Rollback completed | $(Format-Cell (Get-RecordValue $rollbackResult 'CompletedOn')) |"
 Add-Line "| Evidence collected | $(Format-Cell (Get-RecordValue $evidence 'CollectedAtUtc')) |"
 Add-Line "| Configuration hash | $(Format-Cell (Get-RecordValue $preview 'ConfigurationHash')) |"
 Add-Line "| Manifest hash | $(Format-Cell (Get-RecordValue $evidence 'ManifestHash')) |"
 Add-Line "| Report written | $([datetimeoffset]::UtcNow.ToString('u')) |"
 Add-Line
+
+if ($rollbackMismatch.Count -gt 0) {
+    Add-Line '## Recovery'
+    Add-Line
+    Add-Line 'Rollback was attempted but could not be confirmed. Do not treat the change as applied or restored.'
+    foreach ($mismatch in $rollbackMismatch) { Add-Line "- $($mismatch)" }
+    Add-Line
+}
+elseif ($rollbackOutcome -eq 'ROLLED BACK') {
+    Add-Line '## Recovery'
+    Add-Line
+    Add-Line "A successful rollback receipt was validated at $(Format-Cell (Get-RecordValue $rollbackResult 'CompletedOn')); $($rollbackAttempts.Count) earlier failed attempt(s) were validated."
+    Add-Line 'The evidence records below are retained for audit and do not establish the current tenant state after rollback.'
+    Add-Line
+}
+elseif ($rollbackAttempts.Count -gt 0) {
+    Add-Line '## Recovery'
+    Add-Line
+    Add-Line "Validated $($rollbackAttempts.Count) failed rollback attempt(s), but no successful rollback result exists."
+    foreach ($attempt in $rollbackAttempts) {
+        Add-Line "- $($attempt.Name): $([string](Get-RecordValue $attempt.Document 'Fault'))"
+    }
+    Add-Line
+}
 
 Add-Line '## Evidence binding'
 Add-Line
@@ -363,7 +552,7 @@ if ($operationMismatch.Count -gt 0) {
     Add-Line
 }
 
-Add-Line '## Operations'
+Add-Line '## Apply operations'
 Add-Line
 if ($operations.Count -eq 0) {
     Add-Line 'No preview operations were found.'
@@ -381,6 +570,10 @@ Add-Line
 
 Add-Line '## Evidence results'
 Add-Line
+if ($rollbackOutcome -eq 'ROLLED BACK') {
+    Add-Line 'Evidence outcomes are retained for audit; they are not a current-state assessment after rollback.'
+    Add-Line
+}
 Add-Line '| Status | Count |'
 Add-Line '| --- | --- |'
 foreach ($status in $statusCount.Keys) { Add-Line "| $($status) | $($statusCount[$status]) |" }
@@ -421,15 +614,23 @@ foreach ($section in @(
 
 Add-Line '## Next actions'
 Add-Line
-if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
-if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
-if ($preChangeMismatch.Count -gt 0) { Add-Line '- Restore the original sealed PreChange capture from this Apply; do not edit or substitute it.' }
-if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Apply receipt so it contains exactly one successful result for every preview operation.' }
-if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
-if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
-if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
-if ($checkMismatch.Count -gt 0) { Add-Line '- Recollect evidence with exactly one result for every control in the shipped ExchangeOnly manifest.' }
-if ($needsAttention.Count -gt 0) { Add-Line "- Resolve or assign an owner to each of the $($needsAttention.Count) unresolved checks." }
+if ($rollbackOutcome -eq 'ROLLED BACK') {
+    Add-Line '- The rollback receipt confirms restoration; do not use pre-rollback evidence to describe current tenant state.'
+}
+elseif ($rollbackOutcome -eq 'RECOVERY INCOMPLETE') {
+    Add-Line '- Stop and verify the tenant state with the recovery owner; do not mark the change applied or restored.'
+}
+else {
+    if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
+    if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
+    if ($preChangeMismatch.Count -gt 0) { Add-Line '- Restore the original sealed PreChange capture from this Apply; do not edit or substitute it.' }
+    if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Apply receipt so it contains exactly one successful result for every preview operation.' }
+    if ($bindingMismatch.Count -gt 0) { Add-Line "- Recollect evidence after apply for this change; $($bindingMismatch -join ', ') do not match the change record." }
+    if ($applyStatus -ne 'Succeeded' -or $postStatus -ne 'Succeeded') { Add-Line '- Apply or post-change did not report Succeeded. Follow your recovery decision before closing.' }
+    if ($noEvidenceChecks) { Add-Line '- Recollect evidence that includes the expected control check records; an empty check collection is not a passing result.' }
+    if ($checkMismatch.Count -gt 0) { Add-Line '- Recollect evidence with exactly one result for every control in the shipped ExchangeOnly manifest.' }
+    if ($needsAttention.Count -gt 0) { Add-Line "- Resolve or assign an owner to each of the $($needsAttention.Count) unresolved checks." }
+}
 Add-Line '- Attach this report and the whole artifact folder to the change ticket.'
 Add-Line '- Disconnect: `Disconnect-ExchangeOnline -Confirm:$false`.'
 
@@ -437,9 +638,13 @@ $outputDirectory = Split-Path -Parent $outputFullPath
 $null = New-Item -ItemType Directory -Path $outputDirectory -Force
 [IO.File]::WriteAllText($outputFullPath, $md.ToString(), [Text.UTF8Encoding]::new($false))
 
-$color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.Green } elseif ($complete) { $PSStyle.Foreground.Yellow } else { $PSStyle.Foreground.Red }
+$color = if ($overall -eq 'APPLIED - EVIDENCE COLLECTED') { $PSStyle.Foreground.Green }
+elseif ($overall -eq 'ROLLED BACK' -or ($complete -and $overall -ne 'RECOVERY INCOMPLETE')) { $PSStyle.Foreground.Yellow }
+else { $PSStyle.Foreground.Red }
 Write-Information "$($color)$($overall)$($PSStyle.Reset)"
 Write-Information "  Artifacts present: $(6 - $missing.Count) of 6$(if ($missing.Count) { " (missing: $($missing -join ', '))" })"
+Write-Information "  Rollback: $rollbackStatus; failed attempts: $($rollbackAttempts.Count)"
+if ($rollbackMismatch.Count -gt 0) { Write-Information "  Recovery findings: $($rollbackMismatch -join '; ')" }
 if ($bindingMismatch.Count -gt 0) { Write-Information "  Evidence binding: $($bindingMismatch -join ', ') do not match the change record" }
 if ($checkMismatch.Count -gt 0) { Write-Information "  Evidence control coverage: $($checkMismatch.Count) manifest mismatch(es)" }
 if ($artifactMismatch.Count -gt 0) { Write-Information "  Artifact binding: $($artifactMismatch -join ', ') belong to another change or preview" }
@@ -452,6 +657,10 @@ if ($PassThru) {
         Path            = $outputFullPath
         Outcome         = $overall
         Complete        = $complete
+        RollbackStatus  = $rollbackStatus
+        RollbackAttemptCount = $rollbackAttempts.Count
+        RollbackMismatch = $rollbackMismatch
+        RollbackCompletedOn = Get-RecordValue $rollbackResult 'CompletedOn'
         MissingArtifact = $missing
         BindingMismatch = $bindingMismatch
         CheckMismatch = $checkMismatch
