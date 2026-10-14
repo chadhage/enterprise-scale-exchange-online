@@ -148,11 +148,24 @@ if ($IsWindows) {
         -Fix 'Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned'
 }
 
+$minimumRequiredModuleVersion = [version]'3.10.0'
+if ($MinimumModuleVersion -gt $minimumRequiredModuleVersion) { $minimumRequiredModuleVersion = $MinimumModuleVersion }
 $module = Get-Module -ListAvailable -Name ExchangeOnlineManagement | Sort-Object Version -Descending | Select-Object -First 1
+$loadedModule = Get-Module -Name ExchangeOnlineManagement | Select-Object -First 1
+$installedModuleIsCurrent = $null -ne $module -and [version]$module.Version -ge $minimumRequiredModuleVersion
+$loadedModuleIsCurrent = $null -eq $loadedModule -or [version]$loadedModule.Version -ge $minimumRequiredModuleVersion
+$moduleReady = $installedModuleIsCurrent -and $loadedModuleIsCurrent
+$moduleDetail = if ($null -eq $module) { 'not installed' }
+elseif ($null -eq $loadedModule) { "installed $($module.Version); no version loaded; minimum $minimumRequiredModuleVersion" }
+else { "installed $($module.Version); loaded $($loadedModule.Version); minimum $minimumRequiredModuleVersion" }
+$moduleFix = if (-not $installedModuleIsCurrent) {
+    "Install-Module ExchangeOnlineManagement -MinimumVersion $($minimumRequiredModuleVersion) -Scope CurrentUser"
+}
+else {
+    'Open a new PowerShell 7 terminal so the required ExchangeOnlineManagement version loads, then rerun this check.'
+}
 Add-ReadinessResult -Area Workstation -Check 'ExchangeOnlineManagement module' `
-    -Passed ($null -ne $module -and $module.Version -ge $MinimumModuleVersion) `
-    -Detail $(if ($module) { "installed $($module.Version); minimum $($MinimumModuleVersion)" } else { 'not installed' }) `
-    -Fix "Install-Module ExchangeOnlineManagement -MinimumVersion $($MinimumModuleVersion) -Scope CurrentUser"
+    -Passed $moduleReady -Detail $moduleDetail -Fix $moduleFix
 
 $changeBlock = $null
 $previewCommand = $null
@@ -337,14 +350,14 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
         Add-ReadinessResult -Area Inputs -Check 'Authorized signer metadata' -Passed $signerOk -Detail $signerDetail `
             -Fix "Ask the approval authority owner for the protected signer file (absolute path, outside the kit). Format:`n[ { `"Identity`": `"approver@contoso.com`", `"Subject`": `"CN=Approver`", `"Authority`": `"ExchangeOnlineChangeApproval`" } ]"
 
-        if (-not $SkipTenantConnection) {
+        if (-not $SkipTenantConnection -and $moduleReady) {
             Write-Information ''
             Write-Information "$($PSStyle.Bold)3. Exchange Online session (read-only)$($PSStyle.Reset)"
             Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
             $connection = $null
             try {
                 $connection = Connect-ExchangeOnlineSession -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
-                    -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -SkipModuleCheck
+                    -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion $minimumRequiredModuleVersion
                 Add-ReadinessResult -Area Tenant -Check 'Exactly one Exchange Online session' -Passed $true `
                     -Detail "$($connection.UserPrincipalName) in tenant $($connection.TenantID)"
             }
@@ -366,7 +379,9 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                     $allSessionsDetail = $_.Exception.Message
                 }
                 $sessionTenantMatches = $allSessionsMatch -and $tenantOk -and [string]$connection.TenantID -eq $tenant
-                $endpointMatches = [string]$connection.ConnectionUri -match '^https://outlook\.office365\.com'
+                $endpointMatches = $true
+                try { $null = Assert-ExchangeOnlineSession -Session $connection }
+                catch { $endpointMatches = $false }
                 $tenantSessionValidated = $sessionTenantMatches -and $endpointMatches
                 Add-ReadinessResult -Area Tenant -Check 'Session tenant matches parameters' `
                     -Passed $sessionTenantMatches `

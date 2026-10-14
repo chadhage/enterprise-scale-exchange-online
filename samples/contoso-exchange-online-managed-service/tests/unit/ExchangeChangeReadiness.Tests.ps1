@@ -1,9 +1,12 @@
 BeforeAll {
     $script:root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:readiness = Join-Path $script:root 'scripts/Test-ExchangeOnlineChangeReadiness.ps1'
+    $script:connectionModule = Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Connection.psm1'
+    Import-Module $script:connectionModule -Force
     $script:tenant = '11111111-2222-3333-4444-555555555555'
 
     function global:Get-ConnectionInformation { @($global:readinessConnections) }
+    function global:Connect-ExchangeOnline { $global:readinessConnectCalls++ }
     function global:Get-TransportConfig { [pscustomobject]@{ SmtpClientAuthenticationDisabled = $true } }
 
     function Get-ReadinessArgument {
@@ -49,11 +52,24 @@ BeforeAll {
 Describe 'Test-ExchangeOnlineChangeReadiness' {
     BeforeEach {
         Mock Get-Module -ParameterFilter { $ListAvailable } -MockWith { [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.10.0' } }
+        Mock Get-Module -ParameterFilter { -not $ListAvailable -and $Name -eq 'ExchangeOnlineManagement' } -MockWith {
+            if ($global:readinessLoadedModule) { $global:readinessLoadedModule } else { @() }
+        }
+        Mock -ModuleName ExchangeOnlineBaseline.Connection Assert-ExchangeOnlineModule { }
+        Mock -ModuleName ExchangeOnlineBaseline.Connection Get-Module -ParameterFilter { $ListAvailable } -MockWith {
+            [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.10.0' }
+        }
+        Mock -ModuleName ExchangeOnlineBaseline.Connection Get-Module -ParameterFilter { -not $ListAvailable } -MockWith {
+            if ($global:readinessLoadedModule) { $global:readinessLoadedModule } else { @() }
+        }
+        $global:readinessLoadedModule = $null
+        $global:readinessConnectCalls = 0
         $global:readinessConnections = @([pscustomobject]@{ TenantID = $script:tenant; State = 'Connected'; UserPrincipalName = 'admin@contoso.example'; ConnectionUri = 'https://outlook.office365.com' })
     }
 
     AfterAll {
-        Remove-Item Function:\Get-ConnectionInformation, Function:\Get-TransportConfig, Variable:\readinessConnections -ErrorAction SilentlyContinue
+        Remove-Module ExchangeOnlineBaseline.Connection -ErrorAction Ignore
+        Remove-Item Function:\Get-ConnectionInformation, Function:\Get-TransportConfig, Function:\Connect-ExchangeOnline, Variable:\readinessConnections, Variable:\readinessLoadedModule, Variable:\readinessConnectCalls -ErrorAction SilentlyContinue
     }
 
     It 'refuses the unmodified synthetic sample with tenant and licensing fixes' {
@@ -95,6 +111,22 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
         $runtimeCheck = $result.Results.Where({ $_.Check -eq 'PowerShell 7 (pwsh)' })
         $runtimeCheck.Detail | Should -Match 'minimum 7\.5'
         $runtimeCheck.Status | Should -Be 'PASS'
+    }
+
+    It 'requires the current session to load the minimum supported Exchange module version' {
+        $arguments = Get-ReadinessArgument
+        $arguments.MinimumModuleVersion = '3.0.0'
+        $global:readinessLoadedModule = [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.4.0' }
+        $global:readinessConnections = @()
+
+        $result = & $script:readiness @arguments
+
+        $moduleCheck = $result.Results.Where({ $_.Check -eq 'ExchangeOnlineManagement module' })
+        $moduleCheck.Status | Should -Be 'FAIL'
+        $moduleCheck.Detail | Should -Match 'installed 3\.10\.0; loaded 3\.4\.0; minimum 3\.10\.0'
+        $moduleCheck.Fix | Should -Match 'Open a new PowerShell 7 terminal'
+        $result.Results.Where({ $_.Check -eq 'Exactly one Exchange Online session' }) | Should -BeNullOrEmpty
+        $global:readinessConnectCalls | Should -Be 0
     }
 
     It 'refuses when the requester is the only authorized signer' {
@@ -207,6 +239,27 @@ Describe 'Test-ExchangeOnlineChangeReadiness' {
             Should -Be @('FAIL', 'FAIL')
         $presetCalls.Eop | Should -Be 0
         $presetCalls.Atp | Should -Be 0
+    }
+
+    It 'rejects a lookalike Worldwide hostname before reading preset rules' {
+        $arguments = Get-ReadinessArgument
+        $arguments.Scope = @('EopPresets')
+        $global:readinessConnections[0].ConnectionUri = 'https://outlook.office365.com.attacker.example'
+        $global:readinessPresetCalls = 0
+        function global:Get-EOPProtectionPolicyRule { $global:readinessPresetCalls++; @() }
+        $presetCalls = $null
+        try {
+            $result = & $script:readiness @arguments
+            $presetCalls = $global:readinessPresetCalls
+        }
+        finally {
+            Remove-Item Function:\Get-EOPProtectionPolicyRule -ErrorAction SilentlyContinue
+            Remove-Variable readinessPresetCalls -Scope Global -ErrorAction SilentlyContinue
+        }
+
+        $result.Results.Where({ $_.Check -eq 'Worldwide endpoint' }).Status | Should -Be 'FAIL'
+        $result.Results.Where({ $_.Check -eq 'EopPresets rules initialized' }).Status | Should -Be 'FAIL'
+        $presetCalls | Should -Be 0
     }
 
     It 'requires exactly one Standard and Strict preset rule' -ForEach @(

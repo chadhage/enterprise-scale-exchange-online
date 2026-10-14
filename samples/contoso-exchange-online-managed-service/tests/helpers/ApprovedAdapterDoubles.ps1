@@ -87,7 +87,7 @@ function Initialize-AdapterDoubles {
         param([string]$Identity, [string]$Mailbox, [string]$ResultSize)
         Invoke-OfflineAdapterCommand 'Get' 'Mailbox' $PSBoundParameters
     }
-    function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = '00000000-0000-0000-0000-000000000000'; State = 'Connected' } }
+    function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = '11111111-2222-3333-4444-555555555555'; State = 'Connected' } }
 }
 
 function global:Invoke-OfflineAdapterCommand {
@@ -135,6 +135,9 @@ function New-StatefulAdapterFixture {
     $directory = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
     $null = New-Item -ItemType Directory $directory
     $parameters = Get-Content (Join-Path $script:adapterRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $parameters.MICROSOFT_ENTRA_TENANT_GUID = '11111111-2222-3333-4444-555555555555'
+    $parameters.domainInventory.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
+    $parameters.entitlement.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
     $parameters.entitlement.verified = $true
     $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
     $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE')

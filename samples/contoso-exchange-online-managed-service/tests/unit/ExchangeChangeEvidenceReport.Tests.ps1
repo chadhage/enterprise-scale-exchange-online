@@ -7,27 +7,38 @@ BeforeAll {
     $script:manifestHash = (Get-BaselineExchangeManifest).Hash
 
     function New-EvidenceFixture {
-        param([string[]]$Omit = @(), [string]$ApplyStatus = 'Succeeded')
+        param([string[]]$Omit = @(), [string]$ApplyStatus = 'Succeeded', [int]$OperationCount = 1)
         $directory = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
         $null = New-Item -ItemType Directory -Path (Join-Path $directory 'evidence') -Force
         $id = 'CHG-1001'
+        $operations = @(1..$OperationCount | ForEach-Object {
+                $index = $_
+                @{
+                    Sequence = $index
+                    OperationId = "Transport-$('{0:D2}' -f $index)"
+                    Command = 'Set-TransportConfig'
+                    Identity = "Default-$index"
+                    Before = @{ Exists = $true; Value = @{ SmtpClientAuthenticationDisabled = $false } }
+                    After = @{ Exists = $true; Value = @{ SmtpClientAuthenticationDisabled = $true } }
+                }
+            })
         $prechangeCapture = New-BaselineChangeStateCapture -ChangeId $id -Tenant $script:tenant -Operation @(
-            @{
-                OperationId = 'Transport-01'
-                Command     = 'Set-TransportConfig'
-                Identity    = 'Default'
-                Before      = @{ Exists = $true; Value = @{ SmtpClientAuthenticationDisabled = $false } }
+            $operations | ForEach-Object {
+                @{ OperationId = $_.OperationId; Command = $_.Command; Identity = $_.Identity; Before = $_.Before }
             }
         )
+        $applyOperations = @($operations | ForEach-Object {
+                @{ OperationId = $_.OperationId; Command = $_.Command; Identity = $_.Identity; Sequence = $_.Sequence; State = 'Succeeded'; Fault = ''; Progress = '' }
+            })
         $files = [ordered]@{
             Preview    = @{ Name = "preview-$($id).json"; Content = @{
                     ChangeId = $id; Tenant = $script:tenant; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = 'abc123'
                     Scope = @('Transport'); GeneratedOn = '2026-01-01T00:00:00Z'; ExpiresOn = '2026-01-02T00:00:00Z'
-                    Operation = @(@{ Sequence = 1; OperationId = 'Transport-01'; Command = 'Set-TransportConfig'; Identity = 'Default'; Before = @{ SmtpClientAuthenticationDisabled = $false }; After = @{ SmtpClientAuthenticationDisabled = $true } })
+                    Operation = $operations
                 } }
             Approval   = @{ Name = "approval-$($id).json"; Content = @{ ChangeId = $id; ApprovalIdentity = 'approver@contoso.example'; ApprovalTimeUtc = '2026-01-01T01:00:00Z' } }
             PreChange  = @{ Name = "prechange-$($id).json"; Content = $prechangeCapture }
-            Apply      = @{ Name = "apply-$($id).json"; Content = @{ ChangeId = $id; Status = $ApplyStatus; Fault = ''; CompletedOn = '2026-01-01T02:00:00Z'; Operation = @(@{ OperationId = 'Transport-01'; State = 'Succeeded'; Fault = '' }) } }
+            Apply      = @{ Name = "apply-$($id).json"; Content = @{ ChangeId = $id; Status = $ApplyStatus; Fault = ''; CompletedOn = '2026-01-01T02:00:00Z'; Operation = $applyOperations } }
             Rollback   = @{ Name = "rollback-$($id).ps1"; Content = $null }
             PostChange = @{ Name = "postchange-$($id).json"; Content = @{ ChangeId = $id; Status = $ApplyStatus } }
         }
@@ -62,13 +73,16 @@ BeforeAll {
     function Set-RollbackResult {
         param(
             [Parameter(Mandatory)][string]$ArtifactRoot,
-            [object[]]$Operation = @(@{
-                    OperationId = 'Transport-01'; State = 'Succeeded'; Fault = ''
-                    Command = 'Set-TransportConfig'; Identity = 'Default'; Sequence = 1
-                }),
+            [object[]]$Operation,
             [string]$CompletedOn = [datetimeoffset]::UtcNow.ToString('o')
         )
         $previewPath = Join-Path $ArtifactRoot 'preview-CHG-1001.json'
+        if (-not $PSBoundParameters.ContainsKey('Operation')) {
+            $preview = Get-Content -LiteralPath $previewPath -Raw | ConvertFrom-Json -AsHashtable
+            $Operation = @($preview.Operation | ForEach-Object {
+                    @{ OperationId = $_.OperationId; State = 'Succeeded'; Fault = ''; Command = $_.Command; Identity = $_.Identity; Sequence = $_.Sequence }
+                })
+        }
         @{
             ChangeId = 'CHG-1001'
             Tenant = $script:tenant
@@ -145,14 +159,27 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $message | Should -Not -BeLike '*SkipConnection*'
     }
 
-    It 'refuses unreadable evidence JSON' {
-        # Arrange
+    It 'reports unreadable evidence JSON as incomplete' {
         $root = New-EvidenceFixture
         Set-Content -LiteralPath (Join-Path $root 'evidence/exchange-online-evidence.json') -Value '{ not json'
-        # Act
-        $act = { & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -InformationAction Ignore }
-        # Assert
-        $act | Should -Throw '*EvidenceUnreadable*'
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        ($result.DocumentMismatch -join ';') | Should -Match 'EvidenceUnreadable'
+    }
+
+    It 'rejects case-variant duplicate JSON properties' {
+        $root = New-EvidenceFixture
+        $approvalPath = Join-Path $root 'approval-CHG-1001.json'
+        Set-Content -LiteralPath $approvalPath -Value '{"ChangeId":"CHG-1001","changeid":"CHG-1001"}'
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Complete | Should -BeFalse
+        $result.Outcome | Should -BeExactly 'INCOMPLETE'
+        ($result.DocumentMismatch -join ';') | Should -Match 'ApprovalUnreadable.*duplicate property'
     }
 
     It 'refuses an output path that would overwrite the <Source> input' -ForEach @(
@@ -459,7 +486,7 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Match "Tenant \| $($script:tenant)"
         $markdown | Should -Match 'Scope \| Transport'
         $markdown | Should -Match 'Approved by \| approver@contoso\.example'
-        $markdown | Should -Match '\| 1 \| `Set-TransportConfig` \| Default \| Succeeded \|'
+        $markdown | Should -Match '\| 1 \| `Set-TransportConfig` \| Default-1 \| Succeeded \|'
         $markdown | Should -Match '\| Pass \| 23 \|'
         $markdown | Should -Match '\| EXO-002 \| Fail \| SMTP AUTH still enabled on 2 mailboxes \|'
         $markdown | Should -Not -Match '\| EXO-001 \|'
@@ -503,17 +530,139 @@ Describe 'New-ExchangeChangeEvidenceReport.ps1' {
         $markdown | Should -Not -Match 'Outcome: APPLIED'
     }
 
-    It 'accepts a partial-apply rollback journal with NotChangedByApply when PostChange is missing' {
-        # Arrange
-        $root = New-EvidenceFixture -ApplyStatus 'Failed' -Omit 'PostChange'
-        $applyPath = Join-Path $root 'apply-CHG-1001.json'
-        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
-        $apply.Operation[0].State = 'Failed'
-        $apply.Fault = 'Mutation stopped before completion'
-        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+    It 'compares rollback state using only the approved Exists and Value fields' {
+        $root = New-EvidenceFixture
+        $previewPath = Join-Path $root 'preview-CHG-1001.json'
+        $preview = Get-Content -LiteralPath $previewPath -Raw | ConvertFrom-Json -AsHashtable
+        $preview.Operation[0].After['ReviewNote'] = 'not part of the state'
+        $preview | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $previewPath
+        $previewHash = (Get-FileHash -LiteralPath $previewPath -Algorithm SHA256).Hash.ToLowerInvariant()
+        foreach ($name in 'approval', 'apply', 'postchange') {
+            $path = Join-Path $root "$name-CHG-1001.json"
+            $document = Get-Content -LiteralPath $path -Raw | ConvertFrom-Json -AsHashtable
+            $document.PreviewHash = $previewHash
+            $document | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path
+        }
+        Set-RollbackResult -ArtifactRoot $root
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'ROLLED BACK'
+        $result.RollbackMismatch | Should -BeNullOrEmpty
+    }
+
+    It 'does not report rollback success when the PreChange seal is invalid' {
+        $root = New-EvidenceFixture
+        $capturePath = Join-Path $root 'prechange-CHG-1001.json'
+        $capture = Get-Content -LiteralPath $capturePath -Raw | ConvertFrom-Json -AsHashtable
+        $capture.Hash = '0' * 64
+        $capture | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $capturePath
+        Set-RollbackResult -ArtifactRoot $root
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.PreChangeMismatch | Should -Contain 'PreChange Hash'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: the sealed PreChange capture is invalid for this approved change.'
+    }
+
+    It 'rejects present JSON documents without an object root' {
+        $invalidJson = @('null', '[]', '[{}]', '42', '   ')
+        foreach ($documentName in @('Preview', 'Approval', 'PreChange', 'Apply', 'PostChange', 'Evidence')) {
+            foreach ($content in $invalidJson) {
+                $root = New-EvidenceFixture
+                $path = if ($documentName -eq 'Evidence') {
+                    Join-Path $root 'evidence/exchange-online-evidence.json'
+                }
+                else {
+                    $fileName = switch ($documentName) {
+                        'Preview' { 'preview-CHG-1001.json' }
+                        'Approval' { 'approval-CHG-1001.json' }
+                        'PreChange' { 'prechange-CHG-1001.json' }
+                        'Apply' { 'apply-CHG-1001.json' }
+                        'PostChange' { 'postchange-CHG-1001.json' }
+                    }
+                    Join-Path $root $fileName
+                }
+                Set-Content -LiteralPath $path -Value $content -NoNewline
+
+                $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+                $result.Complete | Should -BeFalse -Because "$documentName with root '$content' must not be treated as valid"
+                $result.Outcome | Should -BeExactly 'INCOMPLETE'
+                ($result.DocumentMismatch -join ';') | Should -Match $documentName
+            }
+        }
+    }
+
+    It 'rejects NotChangedByApply when it contradicts the Apply receipt and PreChange capture' {
+        $root = New-EvidenceFixture
         Set-RollbackResult -ArtifactRoot $root -Operation @(@{
                 OperationId = 'Transport-01'; State = 'NotChangedByApply'; Fault = ''
             })
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: Operation ''Transport-01'' NotChangedByApply contradicts the PreChange capture and Apply receipt'
+    }
+
+    It 'rejects a successful rollback state when PreChange already equals the approved After state' {
+        $root = New-EvidenceFixture
+        $preview = Get-Content -LiteralPath (Join-Path $root 'preview-CHG-1001.json') -Raw | ConvertFrom-Json -AsHashtable
+        $capture = New-BaselineChangeStateCapture -ChangeId 'CHG-1001' -Tenant $script:tenant -Operation @(
+            @{ OperationId = 'Transport-01'; Command = 'Set-TransportConfig'; Identity = 'Default-1'; Before = $preview.Operation[0].After }
+        )
+        $capture | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath (Join-Path $root 'prechange-CHG-1001.json')
+        Set-RollbackResult -ArtifactRoot $root
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: Operation ''Transport-01'' reports restoration although PreChange already matched the approved After state'
+    }
+
+    It 'refuses a rollback result whose JSON root is not an object' {
+        $root = New-EvidenceFixture
+        Set-Content -LiteralPath (Join-Path $root 'rollback-result-CHG-1001.json') -Value '[]'
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultInvalid: the rollback result root must be a JSON object.'
+    }
+
+    It 'rejects rollback success for an operation omitted by a bound failed Apply receipt' {
+        $root = New-EvidenceFixture -ApplyStatus 'Failed' -OperationCount 2
+        $applyPath = Join-Path $root 'apply-CHG-1001.json'
+        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
+        $apply.Operation = @($apply.Operation[0])
+        $apply.Operation[0].State = 'Failed'
+        $apply.Operation[0].Fault = 'Mutation stopped before completion'
+        $apply.Fault = 'Mutation stopped before completion'
+        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+        Set-RollbackResult -ArtifactRoot $root
+
+        $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
+
+        $result.Outcome | Should -BeExactly 'RECOVERY INCOMPLETE'
+        $result.RollbackMismatch | Should -Contain 'RollbackResultMismatch: Operation ''Transport-02'' reports restoration although the bound failed Apply receipt omits it'
+    }
+
+    It 'accepts a partial-apply rollback journal with NotChangedByApply when PostChange is missing' {
+        # Arrange
+        $root = New-EvidenceFixture -ApplyStatus 'Failed' -OperationCount 2 -Omit 'PostChange'
+        $applyPath = Join-Path $root 'apply-CHG-1001.json'
+        $apply = Get-Content -LiteralPath $applyPath -Raw | ConvertFrom-Json -AsHashtable
+        $apply.Operation = @($apply.Operation[0])
+        $apply.Operation[0].State = 'Failed'
+        $apply.Operation[0].Fault = 'Mutation stopped before completion'
+        $apply.Fault = 'Mutation stopped before completion'
+        $apply | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $applyPath
+        Set-RollbackResult -ArtifactRoot $root -Operation @(
+            @{ OperationId = 'Transport-01'; State = 'Succeeded'; Fault = ''; Command = 'Set-TransportConfig'; Identity = 'Default-1'; Sequence = 1 }
+            @{ OperationId = 'Transport-02'; State = 'NotChangedByApply'; Fault = '' }
+        )
         # Act
         $result = & $script:report -ArtifactRoot $root -ChangeId 'CHG-1001' -PassThru -InformationAction Ignore
         $markdown = Get-Content -LiteralPath $result.Path -Raw

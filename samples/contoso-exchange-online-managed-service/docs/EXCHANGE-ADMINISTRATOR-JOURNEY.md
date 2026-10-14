@@ -60,16 +60,16 @@ if ($journey.ApprovalIdentity -eq $journey.Operator) { throw 'JourneyIndependent
 
 ## 2. Module, Access And Tenant Session
 
-Have the workstation owner supply PowerShell 7.5+ and ExchangeOnlineManagement 3.7+ (including `Get-MessageTraceV2`). No module installation occurs here. The access owner must authorize the specific commands, parameters and recipient/configuration scopes, including recipient creation/group membership, accepted domains, transport/organization/client policies and preset assignments. Typical Exchange roles include Mail Recipients, Distribution Groups, Remote and Accepted Domains, Transport Hygiene and the appropriate organization configuration roles; names alone do not prove effective scope. The owner uses the supported [cmdlet permission discovery procedure](https://learn.microsoft.com/powershell/exchange/find-exchange-cmdlet-permissions). Do not grant Organization Management or Global Administrator as a workaround. Group membership below uses approved Exchange administrator rights, not a claim that the operator owns every group.
+Have the workstation owner supply PowerShell 7.5+ and ExchangeOnlineManagement 3.10.0+ (including `Get-MessageTraceV2`). No module installation occurs here. The access owner must authorize the specific commands, parameters and recipient/configuration scopes, including recipient creation/group membership, accepted domains, transport/organization/client policies and preset assignments. Typical Exchange roles include Mail Recipients, Distribution Groups, Remote and Accepted Domains, Transport Hygiene and the appropriate organization configuration roles; names alone do not prove effective scope. The owner uses the supported [cmdlet permission discovery procedure](https://learn.microsoft.com/powershell/exchange/find-exchange-cmdlet-permissions). Do not grant Organization Management or Global Administrator as a workaround. Group membership below uses approved Exchange administrator rights, not a claim that the operator owns every group.
 
 Start without other Exchange sessions. Authenticate interactively through the already approved mechanism; never put credentials in this guide. Inspect identity, tenant and connected state. Any denied parameter/scope or collection failure stops; do not catch it and assume the object is absent.
 
 <!-- journey:session -->
 ```powershell
 if ($PSVersionTable.PSVersion -lt [version]'7.5') { throw 'JourneyPowerShellRequired: workstation owner' }
-$module = @(Get-Module -ListAvailable ExchangeOnlineManagement | Where-Object Version -GE ([version]'3.7.0'))
-if (-not $module.Count) { throw 'JourneyModuleRequired: ExchangeOnlineManagement 3.7+; workstation owner' }
-Import-Module ExchangeOnlineManagement -MinimumVersion 3.7.0
+$module = @(Get-Module -ListAvailable ExchangeOnlineManagement | Where-Object Version -GE ([version]'3.10.0'))
+if (-not $module.Count) { throw 'JourneyModuleRequired: ExchangeOnlineManagement 3.10.0+; workstation owner' }
+Import-Module ExchangeOnlineManagement -MinimumVersion 3.10.0
 Connect-ExchangeOnline -UserPrincipalName $journey.Operator -ExchangeEnvironmentName $journey.Cloud -ShowBanner:$false
 $sessions = @(Get-ConnectionInformation | Where-Object State -EQ Connected)
 if ($sessions.Count -ne 1 -or $sessions[0].TenantID -ne $journey.TenantId -or $sessions[0].UserPrincipalName -ne $journey.Operator) { throw 'JourneySessionMismatch: disconnect wrong sessions; RAID-D02' }

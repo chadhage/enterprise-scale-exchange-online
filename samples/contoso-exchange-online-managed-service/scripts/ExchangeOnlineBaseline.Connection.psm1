@@ -240,6 +240,21 @@ function Connect-ExchangeOnlineSession {
     $sessions[0]
 }
 
+function Test-ExchangeOnlineWorldwideEndpoint {
+    [CmdletBinding()]
+    param([AllowNull()][string]$ConnectionUri)
+
+    if ([string]::IsNullOrWhiteSpace($ConnectionUri) -or
+        $ConnectionUri -cne $ConnectionUri.Trim() -or
+        $ConnectionUri.Contains("`r") -or $ConnectionUri.Contains("`n")) {
+        return $false
+    }
+    $uri = $null
+    if (-not [uri]::TryCreate($ConnectionUri, [UriKind]::Absolute, [ref]$uri)) { return $false }
+    $uri.Scheme -ieq 'https' -and $uri.Host -ieq 'outlook.office365.com' -and
+        [string]::IsNullOrEmpty($uri.UserInfo) -and $uri.Port -eq 443
+}
+
 function Assert-ExchangeOnlineSession {
     <#
     .SYNOPSIS
@@ -256,7 +271,7 @@ function Assert-ExchangeOnlineSession {
             "  Disconnect-ExchangeOnline -Confirm:`$false`n" +
             'then rerun this script and sign in with an administrator account from the parameter-file tenant.')
     }
-    if ([string]$Session.ConnectionUri -notmatch '^https://outlook\.office365\.com(?:/|$)') {
+    if (-not (Test-ExchangeOnlineWorldwideEndpoint -ConnectionUri ([string]$Session.ConnectionUri))) {
         throw "ExchangeSessionEndpointUnsupported: the session uses $($Session.ConnectionUri). Only Worldwide (O365Default) tenants are supported; stop here for sovereign clouds."
     }
     $missing = @($RequiredCommand | Where-Object { -not (Get-Command -Name $_ -ErrorAction SilentlyContinue) } | Select-Object -Unique)

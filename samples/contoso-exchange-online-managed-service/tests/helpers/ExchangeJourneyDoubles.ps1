@@ -213,7 +213,7 @@ function global:Invoke-JourneyDouble {
         'Get-Module' {
             if ($Bound.Name -eq 'ExchangeOnlineManagement') {
                 if ($state.Fault -eq 'ModuleMissing') { return }
-                [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]$(if ($state.Fault -eq 'ModuleOld') { '3.0.0' } else { '3.7.0' }) }; return
+                [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]$(if ($state.Fault -eq 'ModuleOld') { '3.0.0' } else { '3.10.0' }) }; return
             }
             Microsoft.PowerShell.Core\Get-Module @Bound; return
         }

@@ -82,14 +82,59 @@ if (-not (Test-Path -LiteralPath $EvidencePath -PathType Leaf)) {
         'The collector confirms the signed-in account and tenant before it reads anything.')
 }
 
+function Assert-UniqueJsonPropertyNames {
+    param([Parameter(Mandatory)][System.Text.Json.JsonElement]$Element)
+    if ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Object) {
+        $names = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+        foreach ($property in $Element.EnumerateObject()) {
+            if (-not $names.Add($property.Name)) {
+                throw "JSON object contains duplicate property '$($property.Name)' (case-insensitive)."
+            }
+            Assert-UniqueJsonPropertyNames -Element $property.Value
+        }
+    }
+    elseif ($Element.ValueKind -eq [System.Text.Json.JsonValueKind]::Array) {
+        foreach ($item in $Element.EnumerateArray()) {
+            Assert-UniqueJsonPropertyNames -Element $item
+        }
+    }
+}
+
 function Read-JsonFile {
     param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Label)
     try {
-        Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -Depth 100 -DateKind String
+        $raw = Get-Content -LiteralPath $Path -Raw
+        $options = [System.Text.Json.JsonDocumentOptions]::new()
+        $options.MaxDepth = 100
+        $jsonDocument = [System.Text.Json.JsonDocument]::Parse($raw, $options)
+        try {
+            Assert-UniqueJsonPropertyNames -Element $jsonDocument.RootElement
+        }
+        finally {
+            $jsonDocument.Dispose()
+        }
+        $raw | ConvertFrom-Json -AsHashtable -NoEnumerate -Depth 100 -DateKind String
     }
     catch {
         throw "$($Label)Unreadable: '$($Path)' is not readable JSON ($($_.Exception.Message)). Do not edit change artifacts by hand; rerun the stage that wrote it."
     }
+}
+
+$script:documentMismatch = [Collections.Generic.List[string]]::new()
+function Read-JsonDocument {
+    param([Parameter(Mandatory)][string]$Path, [Parameter(Mandatory)][string]$Label)
+    try {
+        $document = Read-JsonFile -Path $Path -Label $Label
+    }
+    catch {
+        $script:documentMismatch.Add($_.Exception.Message)
+        return $null
+    }
+    if ($document -isnot [System.Collections.IDictionary]) {
+        $script:documentMismatch.Add("$($Label)Invalid: JSON root must be an object.")
+        return $null
+    }
+    $document
 }
 
 function Get-RecordValue {
@@ -102,6 +147,13 @@ function Get-RecordValue {
     }
 }
 
+function Get-TrimmedRecordValue {
+    param([object]$Node, [string]$Name)
+    $value = Get-RecordValue $Node $Name
+    if ($null -eq $value) { return '' }
+    ([string]$value).Trim()
+}
+
 function Format-Cell {
     param([object]$Value)
     $text = if ($null -eq $Value) { '' } elseif ($Value -is [array]) { ($Value | ForEach-Object { [string]$_ }) -join ', ' } else { [string]$Value }
@@ -109,8 +161,9 @@ function Format-Cell {
     if ([string]::IsNullOrEmpty($text)) { '-' } else { $text }
 }
 
-$evidence = Read-JsonFile -Path $EvidencePath -Label 'Evidence'
+$evidence = Read-JsonDocument -Path $EvidencePath -Label 'Evidence'
 $manifest = Read-JsonFile -Path (Join-Path $PSScriptRoot '../config/exchange-only.manifest.v1.json') -Label 'Evidence manifest'
+if ($manifest -isnot [System.Collections.IDictionary]) { throw 'EvidenceManifestInvalid: the shipped manifest root must be a JSON object.' }
 Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Common.psm1') `
     -Function @('ConvertTo-CanonicalJson', 'Get-BaselineRollbackRecoveryState') -ErrorAction Stop
 $manifestHash = [Convert]::ToHexString(
@@ -150,7 +203,8 @@ foreach ($spec in $optionalRollbackSpec) {
 $requiredArtifactNames = @($artifactSpec | ForEach-Object Artifact)
 $documents = @{}
 foreach ($artifact in $artifacts | Where-Object { $_.Present -and $_.Artifact -in @('Preview', 'Approval', 'PreChange', 'Apply', 'PostChange') }) {
-    $documents[$artifact.Artifact] = Read-JsonFile -Path $artifact.Path -Label $artifact.Artifact
+    $document = Read-JsonDocument -Path $artifact.Path -Label $artifact.Artifact
+    if ($null -ne $document) { $documents[$artifact.Artifact] = $document }
 }
 $missing = @($artifacts | Where-Object { -not $_.Present -and $_.Artifact -in $requiredArtifactNames } | ForEach-Object Artifact)
 $rollbackResult = $null
@@ -229,10 +283,51 @@ $bindingMismatch = @($binding | Where-Object { -not $_.Match } | ForEach-Object 
 
 # Approval, apply and post-change only count when they were written for this change and this frozen preview.
 $previewSha256 = [string]($artifacts | Where-Object Artifact -EQ 'Preview' | ForEach-Object Sha256)
-$previewTenant = ([string](Get-RecordValue $preview 'Tenant')).Trim()
+$previewTenantValue = Get-RecordValue $preview 'Tenant'
+$previewTenant = if ($null -eq $previewTenantValue) { '' } else { ([string]$previewTenantValue).Trim() }
 $previewConfiguration = & $normalizeHash (Get-RecordValue $preview 'ConfigurationHash')
 $operations = @(Get-RecordValue $preview 'Operation' | Where-Object { $null -ne $_ })
+$captureById = @{}
+foreach ($entry in @(Get-RecordValue $prechange 'Entry' | Where-Object { $null -ne $_ })) {
+    $operationId = [string](Get-RecordValue $entry 'OperationId')
+    $exists = Get-RecordValue $entry 'Exists'
+    if (-not [string]::IsNullOrWhiteSpace($operationId) -and -not $captureById.ContainsKey($operationId) -and $exists -is [bool]) {
+        $captureById[$operationId] = [ordered]@{
+            Exists = $exists
+            Value = Get-RecordValue $entry 'Value'
+        }
+    }
+}
 $rollbackErrors = [Collections.Generic.List[string]]::new()
+$applyConfiguration = & $normalizeHash (Get-RecordValue $apply 'ConfigurationHash')
+$applyJournalIds = [Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+$applyJournalValid = $null -ne $apply
+foreach ($applyOperation in @(Get-RecordValue $apply 'Operation' | Where-Object { $null -ne $_ })) {
+    $operationId = [string](Get-RecordValue $applyOperation 'OperationId')
+    $approvedOperation = @($operations | Where-Object { [string](Get-RecordValue $_ 'OperationId') -ceq $operationId })
+    $operationState = [string](Get-RecordValue $applyOperation 'State')
+    $operationProgress = [string](Get-RecordValue $applyOperation 'Progress')
+    if ([string]::IsNullOrWhiteSpace($operationId) -or $approvedOperation.Count -ne 1 -or
+        -not $applyJournalIds.Add($operationId) -or
+        [string](Get-RecordValue $applyOperation 'Command') -cne [string](Get-RecordValue $approvedOperation[0] 'Command') -or
+        [string](Get-RecordValue $applyOperation 'Identity') -cne [string](Get-RecordValue $approvedOperation[0] 'Identity') -or
+        [int](Get-RecordValue $applyOperation 'Sequence') -ne [int](Get-RecordValue $approvedOperation[0] 'Sequence') -or
+        $operationState -cnotin @('Succeeded', 'Unchanged', 'Failed') -or
+        $operationProgress -cnotin @('', 'Removed', 'Created') -or
+        ($operationState -ceq 'Failed' -and [string]::IsNullOrWhiteSpace([string](Get-RecordValue $applyOperation 'Fault')))) {
+        $applyJournalValid = $false
+    }
+}
+if ($applyStatus -ceq 'Succeeded' -and $applyJournalIds.Count -ne $operations.Count) { $applyJournalValid = $false }
+$applyReceiptBound = $null -ne $apply -and $applyJournalValid -and
+    $applyStatus -cin @('Succeeded', 'Failed') -and
+    ($applyStatus -cne 'Failed' -or -not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $apply 'Fault'))) -and
+    [string](Get-RecordValue $apply 'ChangeId') -ceq $ChangeId -and
+    [string](Get-RecordValue $apply 'Tenant') -ceq $previewTenant -and
+    [string](Get-RecordValue $apply 'DeploymentProfile') -ceq 'ExchangeOnly' -and
+    [string](Get-RecordValue $apply 'PreviewHash') -ceq $previewSha256 -and
+    -not [string]::IsNullOrWhiteSpace($previewSha256) -and
+    $applyConfiguration -ceq $previewConfiguration
 if (-not [string]::IsNullOrWhiteSpace($rollbackReadError)) { $rollbackErrors.Add($rollbackReadError) }
 $rollbackAttempts = @()
 if ($rollbackIndexPresent -or $rollbackAttemptFiles.Count -gt 0) {
@@ -248,13 +343,13 @@ if ($rollbackIndexPresent -or $rollbackAttemptFiles.Count -gt 0) {
 }
 $rollbackReceiptValid = $false
 $rollbackCompleted = [datetimeoffset]::MinValue
-if ($rollbackResultPresent -and $null -eq $rollbackResult -and [string]::IsNullOrWhiteSpace($rollbackReadError)) {
+if ($rollbackResultPresent -and $rollbackResult -isnot [System.Collections.IDictionary] -and [string]::IsNullOrWhiteSpace($rollbackReadError)) {
     $rollbackErrors.Add('RollbackResultInvalid: the rollback result root must be a JSON object.')
 }
 elseif ($null -ne $rollbackResult) {
     $rollbackResultMismatch = @()
     if ([string](Get-RecordValue $rollbackResult 'ChangeId') -cne $ChangeId) { $rollbackResultMismatch += 'ChangeId' }
-    $rollbackTenant = ([string](Get-RecordValue $rollbackResult 'Tenant')).Trim()
+    $rollbackTenant = Get-TrimmedRecordValue $rollbackResult 'Tenant'
     if ([string]::IsNullOrWhiteSpace($rollbackTenant) -or $rollbackTenant -cne $previewTenant) { $rollbackResultMismatch += 'Tenant' }
     if ([string](Get-RecordValue $rollbackResult 'DeploymentProfile') -cne 'ExchangeOnly') { $rollbackResultMismatch += 'DeploymentProfile' }
     if ($previewSha256 -notmatch '^[0-9a-f]{64}$' -or [string](Get-RecordValue $rollbackResult 'PreviewHash') -cne $previewSha256) { $rollbackResultMismatch += 'PreviewHash' }
@@ -283,9 +378,31 @@ elseif ($null -ne $rollbackResult) {
             continue
         }
         $operationState = [string](Get-RecordValue $rollbackOperation 'State')
+        $captureState = $captureById[$operationId]
+        $afterState = Get-RecordValue $approvedOperation[0] 'After'
+        $afterExists = Get-RecordValue $afterState 'Exists'
+        $captureMatchesAfter = $false
+        if ($null -eq $captureState -or $afterExists -isnot [bool]) {
+            $rollbackResultMismatch += "Operation '$operationId' recovery state"
+        }
+        else {
+            $approvedAfterState = [ordered]@{
+                Exists = $afterExists
+                Value = Get-RecordValue $afterState 'Value'
+            }
+            $captureMatchesAfter = (ConvertTo-CanonicalJson -InputObject $captureState) -ceq
+                (ConvertTo-CanonicalJson -InputObject $approvedAfterState)
+        }
+        $applyJournalMatch = @((Get-RecordValue $apply 'Operation') | Where-Object {
+                [string](Get-RecordValue $_ 'OperationId') -ceq $operationId
+            })
+        $applyOmittedAfterFailure = $applyReceiptBound -and $applyStatus -ceq 'Failed' -and $applyJournalMatch.Count -eq 0
         if ($operationState -ceq 'NotChangedByApply') {
             if (-not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $rollbackOperation 'Fault'))) {
                 $rollbackResultMismatch += "Operation '$operationId' Fault"
+            }
+            if (-not $captureMatchesAfter -and -not $applyOmittedAfterFailure) {
+                $rollbackResultMismatch += "Operation '$operationId' NotChangedByApply contradicts the PreChange capture and Apply receipt"
             }
             continue
         }
@@ -295,6 +412,12 @@ elseif ($null -ne $rollbackResult) {
             [int](Get-RecordValue $rollbackOperation 'Sequence') -ne [int](Get-RecordValue $approvedOperation[0] 'Sequence') -or
             -not [string]::IsNullOrWhiteSpace([string](Get-RecordValue $rollbackOperation 'Fault'))) {
             $rollbackResultMismatch += "Operation '$operationId' journal"
+        }
+        if ($operationState -cin @('Succeeded', 'Unchanged') -and $captureMatchesAfter) {
+            $rollbackResultMismatch += "Operation '$operationId' reports restoration although PreChange already matched the approved After state"
+        }
+        elseif ($operationState -cin @('Succeeded', 'Unchanged') -and $applyOmittedAfterFailure) {
+            $rollbackResultMismatch += "Operation '$operationId' reports restoration although the bound failed Apply receipt omits it"
         }
     }
     foreach ($operation in $operations) {
@@ -349,7 +472,7 @@ else { '' }
 $preChangeMismatch = @()
 if ($null -ne $prechange) {
     if ([string](Get-RecordValue $prechange 'ChangeId') -cne $ChangeId) { $preChangeMismatch += 'PreChange ChangeId' }
-    $captureTenant = ([string](Get-RecordValue $prechange 'Tenant')).Trim()
+    $captureTenant = Get-TrimmedRecordValue $prechange 'Tenant'
     if ([string]::IsNullOrEmpty($captureTenant) -or $captureTenant -cne $previewTenant) { $preChangeMismatch += 'PreChange Tenant' }
     if ([string](Get-RecordValue $prechange 'Algorithm') -cne 'SHA256') { $preChangeMismatch += 'PreChange Algorithm' }
     $captureEntries = @(Get-RecordValue $prechange 'Entry' | Where-Object { $null -ne $_ })
@@ -383,6 +506,12 @@ if ($null -ne $prechange) {
             $preChangeMismatch += 'PreChange Operations'
         }
     }
+}
+if ($rollbackReceiptValid -and $preChangeMismatch.Count -gt 0) {
+    $rollbackErrors.Add('RollbackResultMismatch: the sealed PreChange capture is invalid for this approved change.')
+    $rollbackMismatch = @($rollbackErrors.ToArray())
+    $rollbackStatus = 'Invalid or incomplete'
+    $rollbackOutcome = 'RECOVERY INCOMPLETE'
 }
 $applyOperations = @(Get-RecordValue $apply 'Operation' | Where-Object { $null -ne $_ })
 $previewOperationIds = [System.Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
@@ -435,7 +564,7 @@ $artifactMismatch = @(
         $document = $documents[$name]
         if ($null -eq $document -or $null -eq $preview) { continue }
         if ([string](Get-RecordValue $document 'ChangeId') -cne $ChangeId) { "$($name) ChangeId" }
-        $documentTenant = ([string](Get-RecordValue $document 'Tenant')).Trim()
+        $documentTenant = Get-TrimmedRecordValue $document 'Tenant'
         if ([string]::IsNullOrEmpty($documentTenant) -or $documentTenant -ne $previewTenant) { "$($name) Tenant" }
         if ([string](Get-RecordValue $document 'PreviewHash') -cne $previewSha256) { "$($name) PreviewHash" }
         if ($name -ne 'Approval') {
@@ -445,7 +574,7 @@ $artifactMismatch = @(
     }
 )
 
-$complete = $missing.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
+$complete = $missing.Count -eq 0 -and $documentMismatch.Count -eq 0 -and $applyStatus -eq 'Succeeded' -and $postStatus -eq 'Succeeded' -and
     -not $noEvidenceChecks -and $checkMismatch.Count -eq 0 -and $bindingMismatch.Count -eq 0 -and $artifactMismatch.Count -eq 0 -and
     $preChangeMismatch.Count -eq 0 -and $operationMismatch.Count -eq 0
 $overall = if ($rollbackOutcome) { $rollbackOutcome }
@@ -539,6 +668,10 @@ if ($missing.Count -gt 0) {
     Add-Line "Missing artifacts: $($missing -join ', '). Every change leaves all six; find them before closing the ticket."
     Add-Line
 }
+if ($documentMismatch.Count -gt 0) {
+    Add-Line "These JSON documents are unreadable or do not have an object root: $($documentMismatch -join '; '). Rerun the stage that wrote each document; do not edit change artifacts by hand."
+    Add-Line
+}
 if ($artifactMismatch.Count -gt 0) {
     Add-Line "These artifact fields do not belong to this change: $($artifactMismatch -join ', '). Each file must name this change and tenant and carry this preview's SHA-256. Do not rename or edit change artifacts; use the files the stages wrote for this change."
     Add-Line
@@ -603,7 +736,9 @@ foreach ($section in @(
     if ($items.Count -eq 0) { continue }
     Add-Line "## $($section.Title)"
     Add-Line
-    $columns = @($items | ForEach-Object { $_.PSObject.Properties.Name } | Where-Object { $_ -notin 'Evidence', 'Detail' } | Select-Object -Unique)
+    $columns = @($items | ForEach-Object {
+            if ($_ -is [System.Collections.IDictionary]) { $_.Keys } else { $_.PSObject.Properties.Name }
+        } | Where-Object { $_ -notin 'Evidence', 'Detail' } | Select-Object -Unique)
     Add-Line "| $($columns -join ' | ') |"
     Add-Line "| $(($columns | ForEach-Object { '---' }) -join ' | ') |"
     foreach ($item in $items) {
@@ -622,6 +757,7 @@ elseif ($rollbackOutcome -eq 'RECOVERY INCOMPLETE') {
 }
 else {
     if ($missing.Count -gt 0) { Add-Line "- Locate or regenerate the missing artifacts: $($missing -join ', ')." }
+    if ($documentMismatch.Count -gt 0) { Add-Line '- Rerun the stages that wrote unreadable or non-object JSON documents; do not edit artifacts by hand.' }
     if ($artifactMismatch.Count -gt 0) { Add-Line "- Replace the artifacts that belong to another change or preview: $($artifactMismatch -join ', ')." }
     if ($preChangeMismatch.Count -gt 0) { Add-Line '- Restore the original sealed PreChange capture from this Apply; do not edit or substitute it.' }
     if ($operationMismatch.Count -gt 0) { Add-Line '- Regenerate or correct the Apply receipt so it contains exactly one successful result for every preview operation.' }
@@ -665,6 +801,7 @@ if ($PassThru) {
         BindingMismatch = $bindingMismatch
         CheckMismatch = $checkMismatch
         ArtifactMismatch = $artifactMismatch
+        DocumentMismatch = $documentMismatch.ToArray()
         OperationMismatch = $operationMismatch
         PreChangeMismatch = $preChangeMismatch
         EvidenceCheckCount = $checks.Count

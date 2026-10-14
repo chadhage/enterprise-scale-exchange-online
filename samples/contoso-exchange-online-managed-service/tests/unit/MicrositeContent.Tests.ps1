@@ -238,7 +238,7 @@ Describe 'Microsite supported content boundary' {
     }
 
     It 'pins current runtime prerequisites and least-privilege guidance' {
-        $script:index | Should -Match 'PowerShell 7\.6 or later'
+        $script:index | Should -Match 'PowerShell 7\.5 or later'
         $script:index | Should -Match 'ExchangeOnlineManagement 3\.10\.0 or later'
         $script:index | Should -Match 'Organization Management or Security Administrator'
         $script:index | Should -Match 'Global Administrator is highly privileged'

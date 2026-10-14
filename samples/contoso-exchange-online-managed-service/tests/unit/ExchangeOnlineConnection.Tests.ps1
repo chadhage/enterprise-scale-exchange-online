@@ -61,6 +61,15 @@ Describe 'ExchangeOnlineBaseline.Connection' {
             # Assert
             $act | Should -Throw '*ExchangeModuleOutdated*3.4.0*Update-Module ExchangeOnlineManagement*'
         }
+
+        It 'refuses an older module version already loaded in this session' {
+            Mock -ModuleName ExchangeOnlineBaseline.Connection Get-Module { [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.10.0' } } -ParameterFilter { $ListAvailable }
+            Mock -ModuleName ExchangeOnlineBaseline.Connection Get-Module { [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]'3.4.0' } } -ParameterFilter { -not $ListAvailable }
+
+            $act = { Assert-ExchangeOnlineModule -MinimumVersion '3.10.0' }
+
+            $act | Should -Throw '*ExchangeModuleOutdated*this terminal already loaded ExchangeOnlineManagement 3.4.0*'
+        }
     }
 
     Context 'parameter tenant validation' {
@@ -217,6 +226,27 @@ Describe 'ExchangeOnlineBaseline.Connection' {
             $act = { Assert-ExchangeOnlineSession -Session $session -ExpectedTenantId $script:tenant }
             # Assert
             $act | Should -Throw '*ExchangeSessionEndpointUnsupported*'
+        }
+
+        It 'rejects Worldwide endpoint lookalikes, userinfo, and embedded newlines' {
+            foreach ($uri in @(
+                    'https://outlook.office365.com.attacker.example',
+                    'https://outlook.office365.com@evil.example',
+                    "https://outlook.office365.com`n.attacker.example",
+                    'https://outlook.office365.us'
+                )) {
+                $session = New-TestSession -Uri $uri
+                $act = { Assert-ExchangeOnlineSession -Session $session -ExpectedTenantId $script:tenant }
+                $act | Should -Throw '*ExchangeSessionEndpointUnsupported*' -Because $uri
+            }
+        }
+
+        It 'accepts the exact Worldwide host, including its explicit HTTPS port' {
+            foreach ($uri in @('https://outlook.office365.com', 'https://outlook.office365.com:443/')) {
+                $session = New-TestSession -Uri $uri
+                (Assert-ExchangeOnlineSession -Session $session -ExpectedTenantId $script:tenant).TenantID |
+                    Should -Be $script:tenant
+            }
         }
 
         It 'names the cmdlets the signed-in role cannot run' {
