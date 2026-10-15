@@ -9,6 +9,7 @@ function Initialize-JourneyDoubles {
         Forbidden = [Collections.Generic.List[string]]::new(); Functions = [Collections.Generic.List[string]]::new()
         Tenant = $InputData.TenantId; Operator = $InputData.Operator; InputData = $InputData
         Members = @(); Shared = $null; Group = $null; Collecting = $false; Collections = 0; PortalInitialized = $false
+        SessionConfirmations = 0; ConnectionModuleFunctions = $null
     }
     $global:journeyState.Functions.AddRange([string[]]$global:adapterCommands)
     $global:journeyState.Functions.Add('Get-ConnectionInformation')
@@ -38,6 +39,10 @@ function Initialize-JourneyDoubles {
         @{ address = $pilot; defender = $true; level = 'Strict'; expectedPolicy = 'Strict Preset Security Policy' }
         @{ address = $shared; defender = $true; level = 'Standard'; expectedPolicy = 'Standard Preset Security Policy' }
     )
+    $governance.Configuration.controls['MDO-001'].excludedGroups = @($InputData.PriorityGroup)
+    $governance.Configuration.controls['MDO-001'].excludedSecOpsMailbox = @($shared)
+    $governance.Configuration.controls['MDO-001'].sentToDomains = @($InputData.Domain)
+    $governance.Configuration.controls['MDO-002'].scopeGroup = $InputData.PriorityGroup
     $parameters.entitlement.recipients = @($pilot,$shared | ForEach-Object { @{ address = $_; servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE') } })
     $strictOutbound = (Get-ProtectionReferenceValues Strict).HostedOutboundSpamFilter.Clone()
     $strictOutbound.Identity = 'Strict outbound'; $strictOutbound.Name = 'Strict outbound'; $strictOutbound.IsDefault = $false
@@ -138,11 +143,11 @@ function Initialize-JourneyDoubles {
         ClientFailed { $InputData.Validation[4].Passed = $false }
     }
     $signatures = @{
-        'Get-Module' = '[string]$Name,[switch]$ListAvailable'
+        'Get-Module' = '[string]$Name,[switch]$ListAvailable,[switch]$All'
         'Import-Module' = '[Parameter(Position=0)]$Name,[switch]$Force,[switch]$DisableNameChecking,[version]$MinimumVersion'
         'Connect-ExchangeOnline' = '[Parameter(Mandatory)][string]$UserPrincipalName,[Parameter(Mandatory)][ValidateSet("O365Default")][string]$ExchangeEnvironmentName,[bool]$ShowBanner'
         'Get-ConnectionInformation' = ''
-        'Get-Command' = '[Parameter(Position=0)][string]$Name'
+        'Get-Command' = '[Parameter(Position=0)][string]$Name,[System.Management.Automation.CommandTypes]$CommandType'
         'Get-AcceptedDomain' = '[string]$Identity,[string]$ResultSize'
         'Get-RemoteDomain' = '[string]$Identity,[string]$ResultSize'
         'Set-AcceptedDomain' = '[Parameter(Mandatory)][string]$Identity,[Parameter(Mandatory)][ValidateSet("Authoritative")][string]$DomainType'
@@ -198,6 +203,12 @@ function Clear-JourneyDoubles {
                 foreach ($name in $originalFunctions.Keys) { Set-Item "Function:script:$name" $originalFunctions[$name] }
             } $global:journeyState.ModuleFunctions
         }
+        if ($global:journeyState.ConnectionModuleFunctions) {
+            & (Microsoft.PowerShell.Core\Get-Module ExchangeOnlineBaseline.Connection) {
+                param($originalFunctions)
+                foreach ($name in $originalFunctions.Keys) { Set-Item "Function:script:$($name)" $originalFunctions[$name] }
+            } $global:journeyState.ConnectionModuleFunctions
+        }
         if ($global:journeyState.Certificate) { $global:journeyState.Certificate.Dispose(); $global:journeyState.Key.Dispose() }
         Remove-Item Function:\Invoke-OfflineAdapterCommand -ErrorAction SilentlyContinue
         Get-Variable -Name 'adapter*' -Scope Global -ErrorAction SilentlyContinue | Remove-Variable -Scope Global
@@ -211,7 +222,7 @@ function global:Invoke-JourneyDouble {
     $state.Calls.Add($Name)
     switch ($Name) {
         'Get-Module' {
-            if ($Bound.Name -eq 'ExchangeOnlineManagement') {
+            if ($Bound['Name'] -eq 'ExchangeOnlineManagement') {
                 if ($state.Fault -eq 'ModuleMissing') { return }
                 [pscustomobject]@{ Name = 'ExchangeOnlineManagement'; Version = [version]$(if ($state.Fault -eq 'ModuleOld') { '3.0.0' } else { '3.10.0' }) }; return
             }
@@ -219,6 +230,20 @@ function global:Invoke-JourneyDouble {
         }
         'Import-Module' {
             if ($Bound.Name -eq 'ExchangeOnlineManagement') { return }
+            if ([string]$Bound.Name -like '*ExchangeOnlineBaseline.Connection.psm1') {
+                Microsoft.PowerShell.Core\Import-Module @Bound
+                & (Microsoft.PowerShell.Core\Get-Module ExchangeOnlineBaseline.Connection) {
+                    if (-not $global:journeyState.ConnectionModuleFunctions) {
+                        $global:journeyState.ConnectionModuleFunctions = @{
+                            'Test-ExchangeInteractiveHost' = (Microsoft.PowerShell.Management\Get-Item Function:\Test-ExchangeInteractiveHost).ScriptBlock
+                        }
+                    }
+                    function script:Test-ExchangeInteractiveHost {
+                        Invoke-JourneyDouble 'Test-ExchangeInteractiveHost' @{}
+                    }
+                }
+                return
+            }
             if ([string]$Bound.Name -notlike '*ExchangeOnlineBaseline.Common.ps*') { $state.Forbidden.Add('Import:' + $Bound.Name); throw 'Unexpected module' }
             Microsoft.PowerShell.Core\Import-Module @Bound
             & (Microsoft.PowerShell.Core\Get-Module ExchangeOnlineBaseline.Common) {
@@ -247,6 +272,7 @@ function global:Invoke-JourneyDouble {
         }
         'Get-Command' {
             if ($state.Fault -eq 'RoleMissing' -and $Bound.Name -eq 'New-Mailbox') { return }
+            if ($state.ConnectionModuleFunctions -and $state.Fault -eq 'PreflightRoleMissing' -and $Bound.Name -eq 'Get-TransportConfig') { return }
             if ($state.Fault -eq 'RoleParameterMissing' -and $Bound.Name -eq 'New-Mailbox') {
                 $command = Microsoft.PowerShell.Core\Get-Command @Bound
                 $parameters = @{}
@@ -258,8 +284,13 @@ function global:Invoke-JourneyDouble {
             Microsoft.PowerShell.Core\Get-Command @Bound; return
         }
         'Connect-ExchangeOnline' { if ($Bound.UserPrincipalName -ne $state.Operator) { throw 'Offline operator mismatch' }; return }
+        'Test-ExchangeInteractiveHost' { return $state.Fault -ne 'PreflightNonInteractive' }
         'Get-ConnectionInformation' {
-            $row = [pscustomobject]@{ TenantID = $(if ($state.Fault -eq 'WrongTenant') { 'other-tenant' } else { $state.Tenant }); State = 'Connected'; UserPrincipalName = $state.Operator }
+            $row = [pscustomobject]@{
+                TenantID = $(if ($state.Fault -eq 'WrongTenant' -or ($state.ConnectionModuleFunctions -and $state.Fault -eq 'PreflightWrongTenant')) { 'other-tenant' } else { $state.Tenant })
+                State = 'Connected'; UserPrincipalName = $state.Operator; IsEopSession = $false
+                ConnectionUri = $(if ($state.Fault -eq 'PreflightWrongEndpoint') { 'https://outlook.office365.us' } else { 'https://outlook.office365.com' })
+            }
             $row
             if ($state.Fault -eq 'MultipleSessions') { $row }
             return
@@ -345,7 +376,13 @@ function global:Invoke-JourneyDouble {
             }
             Microsoft.PowerShell.Management\Get-Item @Bound; return
         }
-        'Read-Host' { return 'Offline independent reviewer event' }
+        'Read-Host' {
+            if ($Bound.Prompt -like 'Use this session?*') {
+                $state.SessionConfirmations++
+                return 'Y'
+            }
+            return 'Offline independent reviewer event'
+        }
         'Get-MessageTraceV2' {
             if ($state.Fault -eq 'TraceMissing') { return }
             $record = @($state.InputData.Validation | Where-Object MessageId -EQ $Bound.MessageId)
