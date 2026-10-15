@@ -114,7 +114,7 @@ Write-Information "$($PSStyle.Bold)1. Workstation and kit$($PSStyle.Reset)"
 $edition = $PSVersionTable.PSEdition
 $version = $PSVersionTable.PSVersion
 Add-ReadinessResult -Area Workstation -Check 'PowerShell 7 (pwsh)' `
-    -Passed ($edition -eq 'Core' -and [version]"$($version.Major).$($version.Minor)" -ge $MinimumPowerShellVersion) `
+    -Passed ($edition -eq 'Core' -and [version]"$($version.Major).$($version.Minor).$($version.Patch)" -ge $MinimumPowerShellVersion) `
     -Detail "$($edition) $($version); minimum $($MinimumPowerShellVersion)" `
     -Fix "winget install --id Microsoft.PowerShell --source winget`nThen open a new 'PowerShell 7' terminal (pwsh), not Windows PowerShell 5.1."
 
