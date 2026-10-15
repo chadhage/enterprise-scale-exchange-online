@@ -273,7 +273,7 @@ Describe 'EXR-008 executable Exchange administrator journey' {
         # Act
         $null = Invoke-JourneyExample -InputData $inputData -Through apply
         # Assert
-        $global:journeyState.SessionConfirmations | Should -Be 1
+        $global:journeyState.SessionConfirmations | Should -Be 2
         $global:journeyState.Forbidden.Count | Should -Be 0
         (Get-Content (Join-Path $inputData.ArtifactRoot 'postchange-CHG008.json') -Raw | ConvertFrom-Json).Status | Should -BeExactly Succeeded
     }
