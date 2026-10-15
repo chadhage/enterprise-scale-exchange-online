@@ -302,7 +302,13 @@ if ($PSCmdlet.ParameterSetName -eq 'Change') {
                 $artifactDetail = "a preview already exists for $($ChangeId)"
             }
             elseif (-not (Test-Path -LiteralPath $ArtifactRoot -PathType Container)) {
-                $artifactDetail = "$($ArtifactRoot) (will be created at Preview)"
+                if (Test-Path -LiteralPath $ArtifactRoot) {
+                    $artifactOk = $false
+                    $artifactDetail = "$($ArtifactRoot) exists but is not a folder"
+                }
+                else {
+                    $artifactDetail = "$($ArtifactRoot) (will be created at Preview)"
+                }
             }
         }
         Add-ReadinessResult -Area Inputs -Check 'Artifact folder' -Passed $artifactOk -Detail $artifactDetail `
