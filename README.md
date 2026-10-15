@@ -15,7 +15,7 @@ This repository contains an evidence-oriented Exchange Online security baseline 
 
 4. For an actual tenant, use a protected, change-controlled parameter file outside the repository. The checked-in sample inputs are synthetic and intentionally incomplete; follow the documented approvals and preview gates before any authorized changes.
 
-The public scripts default to the versioned **Exchange-only** profile. Historical Microsoft-native and third-party gateway profiles are not the active workflow; historical execution requires explicit opt-in. The deprecated custom-policy implementation under [`deprecated`](deprecated/) is not supported and must not be used to deploy a baseline.
+The supported workflow uses the versioned **Exchange-only** profile; pass `-ConfigurationPath ./config/exchange-only.v1.json` explicitly to `Deploy-ExchangeOnlineBaseline.ps1`. Historical Microsoft-native and third-party gateway profiles are not the active workflow; historical execution requires explicit opt-in. The deprecated custom-policy implementation under [`deprecated`](deprecated/) is not supported and must not be used to deploy a baseline.
 
 ## Where to go next
 
