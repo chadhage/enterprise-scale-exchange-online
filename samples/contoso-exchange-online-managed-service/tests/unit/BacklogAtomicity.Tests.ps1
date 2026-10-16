@@ -411,7 +411,7 @@ Describe 'EXR-018-A02 canonical backlog atomicity validator' {
             $validationError.Exception.Message |
                 Should -BeLike 'MissingFieldInventoryUnresolved:*' -Because 'successful production discovery must remain distinct from expected unresolved completeness'
             "$($validationError.Exception.Data['ExecutableCount']):$($validationError.Exception.Data['SummaryCount'])" |
-                Should -Be '90:24' -Because 'all production-format executable cards and explicit summaries must be discovered before completeness is evaluated'
+                Should -Be '103:28' -Because 'all production-format executable cards and explicit summaries must be discovered before completeness is evaluated'
             "$($validationError.Exception.Data['ToDoCount']):$($validationError.Exception.Data['InProgressCount']):$($validationError.Exception.Data['DoneCount'])" |
                 Should -Be $expectedBuckets -Because 'discovered executable statuses must reconcile to the canonical header buckets'
             $validationError.Exception.Data['DiscoverySucceeded'] |

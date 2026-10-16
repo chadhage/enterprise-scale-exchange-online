@@ -240,7 +240,7 @@ Describe 'GOV-003 through GOV-005 Purview retention, hold and IRM governance' {
             $result = Invoke-GovernanceFixture -Fixture $fixture
 
             # Assert
-            (Get-GovernanceFold $result) | Should -BeLike 'GOV-003:Error:MailboxRetentionEvidenceIncomplete:*'
+            (Get-GovernanceFold $result) | Should -BeLike 'GOV-003:Error:EvidenceCollectionFailed:*MailboxRetentionDiagnosticFallbackRefused:*'
         }
 
         It 'fails a missing declared retention policy' {
@@ -262,7 +262,7 @@ Describe 'GOV-003 through GOV-005 Purview retention, hold and IRM governance' {
             $result = Invoke-GovernanceFixture -Fixture $fixture
 
             # Assert
-            (Get-GovernanceFold $result) | Should -BeLike 'GOV-003:Fail:MailboxRetentionDistributionFailed:*Pending*'
+            (Get-GovernanceFold $result) | Should -BeLike 'GOV-003:Error:EvidenceCollectionFailed:*MailboxRetentionDiagnosticFallbackRefused:*'
         }
 
         It 'fails one mailbox drifting from the declared retention policy' {

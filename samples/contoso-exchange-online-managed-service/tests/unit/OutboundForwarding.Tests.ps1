@@ -93,7 +93,7 @@ BeforeAll {
             [object[]]$InboxRule
         )
 
-        return Get-OutboundForwardingEvidence `
+        return Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } `
             -OutboundSpamPolicyCollection { $Policy }.GetNewClosure() `
             -MailboxCollection { $Mailbox }.GetNewClosure() `
             -InboxRuleCollection { $InboxRule }.GetNewClosure()
@@ -128,8 +128,9 @@ BeforeAll {
             [object]$Payload
         )
 
+        $Payload.OutboundSpamFilterRule = @()
         return New-BaselineEvidence -ControlId 'EXO-004' -Source 'ExchangeOnline' `
-            -Command 'Get-HostedOutboundSpamFilterPolicy; Get-Mailbox; Get-InboxRule' -Value $Payload
+            -Command 'Get-HostedOutboundSpamFilterPolicy; Get-HostedOutboundSpamFilterRule; Get-Mailbox; Get-InboxRule' -Value $Payload
     }
 
     function Get-VerdictFold {
@@ -190,7 +191,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
 
             # Act
             $act = {
-                Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection $policies `
+                Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection $policies `
                     -MailboxCollection { @() } -InboxRuleCollection { @() }
             }
 
@@ -204,7 +205,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
 
             # Act
             $act = {
-                Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection { @() } `
+                Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection { @() } `
                     -MailboxCollection $mailboxes -InboxRuleCollection { @() }
             }
 
@@ -218,7 +219,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
 
             # Act
             $act = {
-                Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection { @() } `
+                Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection { @() } `
                     -MailboxCollection { @() } -InboxRuleCollection $rules
             }
 
@@ -234,7 +235,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
             $refusing = { throw 'The term Get-HostedOutboundSpamFilterPolicy is not recognized in this session.' }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection $refusing `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection $refusing `
                 -MailboxCollection { @() } -InboxRuleCollection { @() }
 
             # Assert
@@ -248,7 +249,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
             $refusing = { throw 'The remote session was disconnected part way through Get-Mailbox.' }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection { @() } `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection { @() } `
                 -MailboxCollection $refusing -InboxRuleCollection { @() }
 
             # Assert
@@ -262,7 +263,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
             $refusing = { throw 'The operation was throttled and could not be completed.' }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection { @() } `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection { @() } `
                 -MailboxCollection { @() } -InboxRuleCollection $refusing
 
             # Assert
@@ -279,7 +280,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
             $empty = { }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection $empty `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection $empty `
                 -MailboxCollection $empty -InboxRuleCollection $empty
 
             # Assert
@@ -322,7 +323,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
                 (New-InboxRuleRecord -Identity 'Archive old mail' -Enabled $true),
                 (New-InboxRuleRecord -Identity 'Copy to personal' -Enabled $true -RedirectTo @('outside@fabrikam.example'))
             )
-            $expected = 'EXO-004|ExchangeOnline|Get-HostedOutboundSpamFilterPolicy; Get-Mailbox; Get-InboxRule|collected=True|failure=|' +
+            $expected = 'EXO-004|ExchangeOnline|Get-HostedOutboundSpamFilterPolicy; Get-HostedOutboundSpamFilterRule; Get-Mailbox; Get-InboxRule|collected=True|failure=|' +
             '{"InboxRule":' +
             '[{"Enabled":true,"ForwardAsAttachmentTo":[],"ForwardTo":[],"Identity":"Archive old mail","RedirectTo":[]},' +
             '{"Enabled":true,"ForwardAsAttachmentTo":[],"ForwardTo":[],"Identity":"Copy to personal","RedirectTo":["outside@fabrikam.example"]}],' +
@@ -330,7 +331,7 @@ Describe 'EXO-004-A1 outbound-forwarding collector' {
             '[{"ForwardingAddress":null,"ForwardingSmtpAddress":null,"PrimarySmtpAddress":"clean@contoso.com"},' +
             '{"ForwardingAddress":null,"ForwardingSmtpAddress":"smtp:outside@fabrikam.example","PrimarySmtpAddress":"leak@contoso.com"}],' +
             '"OutboundSpamFilterPolicy":' +
-            '[{"AutoForwardingMode":"Off","Name":"Default"},{"AutoForwardingMode":"On","Name":"Marketing"}]}' +
+            '[{"AutoForwardingMode":"Off","Name":"Default"},{"AutoForwardingMode":"On","Name":"Marketing"}],"OutboundSpamFilterRule":[]}' +
             '|members=Collected,CollectedAtUtc,Command,ControlId,FailureReason,Source,Value'
 
             # Act
@@ -402,7 +403,7 @@ Describe 'EXO-004-A2 outbound-forwarding evaluator' {
 
         It 'decides an uncollected record as an error rather than a verdict' {
             # Arrange
-            $refused = Get-OutboundForwardingEvidence -OutboundSpamPolicyCollection { throw 'The operation was throttled and could not be completed.' } -MailboxCollection { @() } -InboxRuleCollection { @() }
+            $refused = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } -OutboundSpamPolicyCollection { throw 'The operation was throttled and could not be completed.' } -MailboxCollection { @() } -InboxRuleCollection { @() }
 
             # Act
             $result = Test-OutboundForwardingControl -Evidence $refused -AcceptedDomain $script:AcceptedDomain
@@ -599,7 +600,7 @@ Describe 'EXO-004-A2 outbound-forwarding evaluator' {
                 (New-InboxRuleRecord -Identity 'Old offsite copy' -Enabled $false -RedirectTo @('outside@fabrikam.example')),
                 (New-InboxRuleRecord -Identity 'File into folder' -Enabled $true)
             )
-            $expected = 'EXO-004|Pass|normalized=True|golive=True|reason=|evidence=Get-HostedOutboundSpamFilterPolicy; Get-Mailbox; Get-InboxRule:EXO-004'
+            $expected = 'EXO-004|Pass|normalized=True|golive=True|reason=|evidence=Get-HostedOutboundSpamFilterPolicy; Get-HostedOutboundSpamFilterRule; Get-Mailbox; Get-InboxRule:EXO-004'
 
             # Act
             $result = Test-OutboundForwardingControl -Evidence $evidence -AcceptedDomain @(' Contoso.COM. ')

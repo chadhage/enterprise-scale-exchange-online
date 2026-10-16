@@ -2,6 +2,7 @@ BeforeAll {
     $script:root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:command = Join-Path $script:root 'scripts/Invoke-ExchangeOnlineChange.ps1'
     Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Common.psm1') -Force -DisableNameChecking
+    . (Join-Path $PSScriptRoot '../helpers/ApprovedAdapterDoubles.ps1')
     function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = $global:workflowTenant; State = 'Connected' } }
     function global:Get-TransportConfig {
         [CmdletBinding()]param()
@@ -21,20 +22,21 @@ BeforeAll {
         $directory = Join-Path $TestDrive ([guid]::NewGuid().ToString('N'))
         $null = New-Item -ItemType Directory $directory
         $parameters = Get-Content (Join-Path $script:root 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable
+        $parameters.MICROSOFT_ENTRA_TENANT_GUID = '11111111-2222-3333-4444-555555555555'
+        $parameters.domainInventory.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
+        $parameters.entitlement.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
         $parameters.entitlement.verified = $true
         $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
         $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE')
+        $parameters.entitlement.recipients = @(@{ address = 'user@contoso.example'; servicePlans = @($parameters.entitlement.servicePlans) })
         $parameterPath = Join-Path $directory 'parameters.json'
         $parameters | ConvertTo-Json -Depth 20 | Set-Content $parameterPath
         $configurationPath = Join-Path $script:root 'config/exchange-only.v1.json'
         $context = Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath
-        $operations = @(@{ OperationId = 'Transport'; Command = 'Set-TransportConfig'; Identity = 'Transport'; Before = @{ Exists = $true; Value = $global:workflowState.Clone() }; After = @{ Exists = $true; Value = @{ SmtpClientAuthenticationDisabled = $true; ExternalPostmasterAddress = 'postmaster@contoso.example' } } })
-        $preview = New-BaselineChangePreview -ChangeId CHG004 -Tenant $parameters.MICROSOFT_ENTRA_TENANT_GUID -Context @{ DeploymentProfile = 'ExchangeOnly'; Algorithm = 'SHA256'; Hash = $context.Hash } -Operation $operations -GeneratedOn ([datetime]::UtcNow.AddMinutes(-10))
-        $document = $preview | ConvertTo-Json -Depth 30 | ConvertFrom-Json -AsHashtable -DateKind String
-        $document.Scope = @('Transport')
-        $document.WorkflowVersion = '1.0.0'
-        $previewFile = Write-BaselineChangeArtifact -ChangeId CHG004 -Artifact Preview -Root $directory -Content $document
-        $approval = @{ SchemaVersion = '1.0.0'; ChangeId = 'CHG004'; Tenant = $parameters.MICROSOFT_ENTRA_TENANT_GUID; DeploymentProfile = 'ExchangeOnly'; PreviewHash = $previewFile.Hash; ApprovalIdentity = 'reviewer@example.test'; ApprovalAuthority = 'ExchangeOnlineChangeApproval'; ApprovalTimeUtc = [datetime]::UtcNow.AddMinutes(-5).ToString('o'); Signature = @{ Model = 'DetachedCms'; Value = 'b2ZmbGluZQ==' } }
+        $previewFile = Invoke-BaselineApprovedChange -Stage Preview -ParameterPath $parameterPath -ConfigurationPath $configurationPath `
+            -ArtifactRoot $directory -ChangeId CHG004 -RequestedBy 'operator@example.test' -Scope Transport -Confirm:$false
+        $global:workflowApprovalTime = [datetimeoffset]::UtcNow
+        $approval = @{ SchemaVersion = '1.0.0'; ChangeId = 'CHG004'; Tenant = $parameters.MICROSOFT_ENTRA_TENANT_GUID; DeploymentProfile = 'ExchangeOnly'; PreviewHash = $previewFile.Hash; ApprovalIdentity = 'reviewer@example.test'; ApprovalAuthority = 'ExchangeOnlineChangeApproval'; ApprovalTimeUtc = $global:workflowApprovalTime.ToString('o'); Signature = @{ Model = 'DetachedCms'; Value = 'b2ZmbGluZQ==' } }
         $approvalFile = Write-BaselineChangeArtifact -ChangeId CHG004 -Artifact Approval -Root $directory -Content $approval
         $signerPath = Join-Path $directory 'authority.json'
         @(@{ Identity = 'reviewer@example.test'; Subject = 'CN=Offline'; Authority = 'ExchangeOnlineChangeApproval' }) | ConvertTo-Json -AsArray | Set-Content $signerPath
@@ -44,13 +46,14 @@ BeforeAll {
 
 Describe 'EXR-004 public approved workflow refusals' {
 BeforeEach {
-    $global:workflowTenant = '00000000-0000-0000-0000-000000000000'
+    function global:Get-ConnectionInformation { [pscustomobject]@{ TenantID = $global:workflowTenant; State = 'Connected' } }
+    $global:workflowTenant = '11111111-2222-3333-4444-555555555555'
     $global:workflowState = @{ SmtpClientAuthenticationDisabled = $false; ExternalPostmasterAddress = 'old@contoso.example' }
     $global:workflowWrites = 0
     $global:workflowWriteFailure = $false
     $global:workflowReadFailure = $false
     Mock Test-BaselineDetachedCmsSignature -ModuleName ExchangeOnlineBaseline.Common {
-        @{ Verified = $true; SignerSubject = 'CN=Offline'; SigningTimeUtc = [datetimeoffset]::UtcNow.AddMinutes(-5); CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
+        @{ Verified = $true; SignerSubject = 'CN=Offline'; SigningTimeUtc = $global:workflowApprovalTime; CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
     }
 }
 
@@ -61,7 +64,7 @@ AfterAll {
 
     It 'refuses <Fault> before any mutation' -ForEach @(
         @{ Fault = 'MissingApproval'; Reason = 'ChangeApprovalNotFound' }
-        @{ Fault = 'ChangeMismatch'; Reason = 'ApplyChangeMismatch' }
+        @{ Fault = 'ChangeMismatch'; Reason = 'ChangePreviewBindingMismatch' }
         @{ Fault = 'TamperedBytes'; Reason = 'ChangeApprovalPreviewTampered' }
         @{ Fault = 'Expired'; Reason = 'ChangeApprovalPreviewExpired' }
         @{ Fault = 'MissingAuthority'; Reason = 'ChangeSigningPrerequisite' }
@@ -123,7 +126,7 @@ AfterAll {
         Import-Module $module -Force
         $arguments = New-WorkflowCommandFixture
         # Act
-        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport }
+        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport -Confirm:$false }
         # Assert
         try {
             $invoke | Should -Throw '*ExchangeConnectionCheckSkipDenied*'
@@ -169,7 +172,7 @@ AfterAll {
         # Arrange
         $arguments = New-WorkflowCommandFixture
         # Act
-        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport }
+        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport -Confirm:$false }
         # Assert
         $invoke | Should -Throw '*ChangeArtifactAlreadyEmitted*'
         $global:workflowWrites | Should -Be 0
@@ -223,7 +226,8 @@ AfterAll {
         # Act
         $invoke = { & $script:command -Stage Apply @arguments -Apply -Confirm:$false }
         # Assert
-        $invoke | Should -Throw '*ChangeExecutionFailed*'
+        $reason = if ($Failure -eq 'Write') { 'Offline simulated Exchange failure' } else { 'Offline readback failure' }
+        $invoke | Should -Throw "*$reason*"
         foreach ($name in 'apply','postchange') {
             $receipt = Get-Content (Join-Path $arguments.ArtifactRoot "$name-CHG004.json") -Raw | ConvertFrom-Json
             $receipt.Status | Should -BeExactly 'Failed'
@@ -274,7 +278,7 @@ AfterAll {
             $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($CanonicalBytes), $true)
             $cms.Decode([Convert]::FromBase64String($Signature.Value))
             $cms.CheckSignature($true)
-            @{ Verified = $true; SignerSubject = $cms.SignerInfos[0].Certificate.Subject; SigningTimeUtc = [datetimeoffset]::UtcNow; CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
+            @{ Verified = $true; SignerSubject = $cms.SignerInfos[0].Certificate.Subject; SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms); CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
         }
         $guide = Get-Content (Join-Path $script:root 'docs/APPROVED-CHANGE.md') -Raw
         Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking

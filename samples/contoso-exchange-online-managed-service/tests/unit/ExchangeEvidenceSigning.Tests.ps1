@@ -36,11 +36,13 @@ BeforeAll {
         $document = @{ ControlId = $controlId; TenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = $context.Hash; ManifestHash = $context.Manifest.Hash; GeneratedAtUtc = $generated; Payload = $payloads[$controlId] }
         $content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $document))
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($content), $true)
-        $cms.ComputeSignature([Security.Cryptography.Pkcs.CmsSigner]::new($operationalCertificate))
+        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($operationalCertificate)
+        $null = $signer.SignedAttributes.Add([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow))
+        $cms.ComputeSignature($signer)
         $document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
         $artifactPath = Join-Path $TestDrive "$controlId.json"
         $document | ConvertTo-Json -Depth 50 | Set-Content $artifactPath
-        $parameters.operationalEvidence[$controlId] = @{ path = $artifactPath; signerIdentity = 'offline-owner'; authorizedSigner = @(@{ Identity = 'offline-owner'; Subject = $operationalCertificate.Subject; Authority = 'ExchangeOnlineChangeApproval' }); trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash $rootPath).Hash } }
+        $parameters.operationalEvidence[$controlId] = @{ path = $artifactPath; signerIdentity = 'offline-owner'; authorizedSigner = @(@{ Identity = 'offline-owner'; Subject = $operationalCertificate.Subject; Thumbprint = $operationalCertificate.Thumbprint; Authority = 'ExchangeOnlineChangeApproval' }); trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash $rootPath).Hash } }
     }
     $operationalCertificate.Dispose()
     $operationalKey.Dispose()

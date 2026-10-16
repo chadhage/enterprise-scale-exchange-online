@@ -124,7 +124,7 @@ Describe 'EXR-011-A02 approved Exchange DKIM lifecycle' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true

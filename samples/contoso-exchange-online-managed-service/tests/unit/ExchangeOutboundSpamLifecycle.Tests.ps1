@@ -184,7 +184,7 @@ Describe 'EXR-010-A05 approved outbound spam lifecycle' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true
@@ -195,10 +195,13 @@ Describe 'EXR-010-A05 approved outbound spam lifecycle' {
 
     It 'refuses an unapproved outbound policy identity before writes' {
         # Arrange
-        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -PolicyIdentity Default -Approved
+        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -PolicyIdentity Default
 
         # Act
-        $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        $invoke = {
+            & $script:changeCommand -Stage Preview @arguments -Scope OutboundSpam -Confirm:$false | Out-Null
+            & $script:changeCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false
+        }
 
         # Assert
         $invoke | Should -Throw '*OutboundSpamIdentityUnapproved*'
@@ -208,10 +211,13 @@ Describe 'EXR-010-A05 approved outbound spam lifecycle' {
 
     It 'refuses incomplete outbound limits and actions before writes' {
         # Arrange
-        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -IncompleteSettings -Approved
+        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -IncompleteSettings
 
         # Act
-        $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        $invoke = {
+            & $script:changeCommand -Stage Preview @arguments -Scope OutboundSpam -Confirm:$false | Out-Null
+            & $script:changeCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false
+        }
 
         # Assert
         $invoke | Should -Throw '*OutboundSpamSettingsIncomplete*'
@@ -221,10 +227,13 @@ Describe 'EXR-010-A05 approved outbound spam lifecycle' {
 
     It 'refuses mismatched outbound sender scope before writes' {
         # Arrange
-        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -MismatchedScope -Approved
+        $arguments = New-OutboundSpamFixture -TestDrive $TestDrive -MismatchedScope
 
         # Act
-        $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        $invoke = {
+            & $script:changeCommand -Stage Preview @arguments -Scope OutboundSpam -Confirm:$false | Out-Null
+            & $script:changeCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false
+        }
 
         # Assert
         $invoke | Should -Throw '*OutboundSpamSenderScopeMismatch*'

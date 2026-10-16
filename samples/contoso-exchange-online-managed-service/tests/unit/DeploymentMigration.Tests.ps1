@@ -184,7 +184,10 @@ BeforeAll {
         }
 
         $content = Get-Content -LiteralPath $DeploymentScriptPath -Raw
-        if ($content -notmatch ('Import-Module[^\r\n]*{0}' -f [regex]::Escape($script:SharedModuleName))) {
+        $literalImport = $content -match ('Import-Module[^\r\n]*{0}' -f [regex]::Escape($script:SharedModuleName))
+        $resolvedImport = $content -match ('(?s)\$commonModulePath\s*=\s*\(Resolve-Path.*?Join-Path\s+\$PSScriptRoot\s+''{0}''' -f [regex]::Escape($script:SharedModuleName)) -and
+            $content -match '(?m)^\s*Import-Module\s+\$commonModulePath\b'
+        if (-not ($literalImport -or $resolvedImport)) {
             $result.Reason = 'SharedModuleNotImported'
             return [pscustomobject]$result
         }

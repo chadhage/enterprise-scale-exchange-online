@@ -45,7 +45,7 @@ Describe 'EXR-001 Exchange-only manifest boundary' {
         $configurationPath = Join-Path $sampleRoot 'config/exchange-only.v1.json'
         $parameterPath = Join-Path $sampleRoot 'config/parameters.exchange-only.sample.json'
         # Act
-        $invoke = { Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath }
+        $invoke = { Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath -ForActionPlanning }
         # Assert
         $invoke | Should -Throw '*ExchangeEntitlementUnverified*'
     }

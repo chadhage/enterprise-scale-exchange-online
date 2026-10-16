@@ -92,7 +92,7 @@ throw "ExcludedGuardDidNotStop:$operation"
         Test-Path (Join-Path $outputPath 'exchange-online-evidence.json') | Should -BeFalse
     }
 
-    It 'never connects to or collects an excluded service in an entitled default run' {
+    It 'never connects to or collects an excluded service with supplied tenant-level entitlement hints' {
         # Arrange
         $outputPath = Join-Path $TestDrive 'no-excluded'
         $calls = Join-Path $TestDrive 'no-excluded.calls'
@@ -117,7 +117,7 @@ throw "ExcludedGuardDidNotStop:$operation"
         $envelope = Get-Content $path -Raw | ConvertFrom-Json
         @($envelope.Check).Count | Should -Be 25
         @($envelope.Check | Where-Object Status -EQ Pass).Count | Should -Be 0
-        @($envelope.Check | Where-Object Status -EQ Error).Count | Should -Be 25
+        @($envelope.Check | Where-Object Status -NotIn @('Error', 'NotEntitled')).Count | Should -Be 0
     }
 
     It 'completes the entire scoped registry through the actual default public command' {
@@ -149,13 +149,16 @@ throw "ExcludedGuardDidNotStop:$operation"
         foreach ($controlId in @('MON-003','OPS-001','OPS-002')) {
             $result = $envelope.Check | Where-Object ControlId -EQ $controlId
             $result.Status | Should -BeExactly 'Error'
-            $result.Reason | Should -Match 'ExchangeOperationalEvidenceRequired'
+            $result.Reason | Should -Match 'ExchangeOperationalArtifactMissing'
         }
         $observed = Get-Content $calls
         $observed | Should -Contain 'Get-RoleGroup'
         $observed | Should -Contain 'Get-RetentionPolicy'
         $observed | Should -Contain 'Get-DkimSigningConfig'
-        $observed | Should -Contain 'Get-AntiPhishPolicy'
+        $observed | Should -Not -Contain 'Get-AntiPhishPolicy'
+        $impersonation = $envelope.Check | Where-Object ControlId -EQ 'MDO-009'
+        $impersonation.Status | Should -BeExactly NotEntitled
+        $impersonation.Reason | Should -Match 'ScopeMissing'
         @($observed | Where-Object { $_ -like 'EXCLUDED:*' }).Count | Should -Be 0
     }
 }

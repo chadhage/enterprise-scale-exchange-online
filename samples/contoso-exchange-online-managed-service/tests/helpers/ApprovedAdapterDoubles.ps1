@@ -1,3 +1,12 @@
+function global:Get-OfflineCmsSigningTime {
+    param([Parameter(Mandatory)][Security.Cryptography.Pkcs.SignedCms]$Cms)
+    $attributes = @($Cms.SignerInfos[0].SignedAttributes | Where-Object { $_.Oid.Value -eq '1.2.840.113549.1.9.5' })
+    if ($attributes.Count -ne 1 -or $attributes[0].Values.Count -ne 1) {
+        throw 'OfflineFixtureSigningTimeMissing: supply one authenticated CMS signing time.'
+    }
+    [datetimeoffset]([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new($attributes[0].Values[0].RawData).SigningTime)
+}
+
 function Initialize-AdapterDoubles {
     $global:adapterCalls = [Collections.Generic.List[object]]::new()
     $global:adapterReadFault = ''

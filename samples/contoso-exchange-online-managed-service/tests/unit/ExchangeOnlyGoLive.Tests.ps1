@@ -48,6 +48,37 @@ AfterAll {
 }
 
 Describe 'EXR-001 scoped go-live denominator' {
+    It 'rejects <Shape> signed evidence rather than accepting a successful check denominator' -ForEach @(
+        @{ Shape = 'duplicated'; Code = 'EvidenceControlDuplicated' }
+        @{ Shape = 'unknown'; Code = 'EvidenceControlUnknown' }
+    ) {
+        $case = New-ScopedGateCase
+        if ($Shape -eq 'duplicated') { $case.Envelope.Evidence += $case.Envelope.Evidence[0] }
+        else {
+            $case.Envelope.Evidence += New-BaselineEvidence -ControlId 'EXO-999' `
+                -Source ExchangeOnline -Command OfflineGateFixture -Value @{ observed = $true }
+        }
+        Set-ScopedGateSignature -Case $case
+
+        $decision = Test-BaselineGoLive @case
+
+        $decision.Admitted | Should -BeFalse
+        $decision.Finding -join ' ' | Should -Match $Code
+    }
+
+    It 'retains approved deviations in both the admitted status and the exception inventory' {
+        $case = New-ScopedGateCase
+        $case.Envelope.Check[0].Status = 'ApprovedException'
+        Set-ScopedGateSignature -Case $case
+
+        $decision = Test-BaselineGoLive @case
+
+        $decision.Admitted | Should -BeTrue
+        $decision.Result.Status | Should -BeExactly ApprovedException
+        @($decision.Exception | Where-Object Status -EQ ApprovedException).Count | Should -Be 1
+        $decision.ExternalReadiness.Status | Should -BeExactly Unverified
+    }
+
     It 'refuses a caller-reduced catalog that omits a retained control' {
         # Arrange
         $case = New-ScopedGateCase

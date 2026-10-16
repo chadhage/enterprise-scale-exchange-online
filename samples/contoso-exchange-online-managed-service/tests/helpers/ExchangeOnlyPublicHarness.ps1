@@ -1,6 +1,7 @@
 param([string]$CommandPath, [string]$ParameterPath, [string]$OutputPath, [string]$CallPath, [switch]$RawExchange, [string]$ConfigurationPath, [switch]$Deployment)
 $ErrorActionPreference = 'Stop'
 $global:ExchangeOnlyCallPath = $CallPath
+. (Join-Path $PSScriptRoot 'ExchangeSessionDoubles.ps1') -ParameterPath $ParameterPath
 function global:Import-Module {
     param([Parameter(Position=0)]$Name, [switch]$Force, [switch]$DisableNameChecking, $MinimumVersion)
     if ($Name -eq 'ExchangeOnlineManagement') { return }
@@ -27,6 +28,9 @@ if ($RawExchange) {
     }
 }
 $arguments = @{ ParameterPath = $ParameterPath }
+if ($Deployment -or (Split-Path $CommandPath -Leaf) -eq 'Test-ExchangeOnlineBaseline.ps1') {
+    $arguments.ConfirmSession = $false
+}
 if (-not $Deployment) { $arguments.OutputPath = $OutputPath }
 if ($ConfigurationPath) { $arguments.ConfigurationPath = $ConfigurationPath }
 if ($Deployment) { & $CommandPath @arguments | ConvertTo-Json -Depth 30 }

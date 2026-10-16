@@ -4,14 +4,18 @@ Exchange action planning and evidence evaluation consume a supplied licensing-ow
 handoff must be current, tenant-bound, domain-bound, and recipient-bound, and must explicitly name
 `EXCHANGE_S_ENTERPRISE` for Exchange Online plus `ATP_ENTERPRISE` wherever Defender email
 capabilities are requested. The offline gate does not assign licenses, query Graph, or connect to
-Exchange Online to repair missing evidence.
+Exchange Online to repair missing evidence. This supplied licensing-owner handoff
+does not authorize the Exchange workflow to query Graph or grant consent.
 
 The current projection is deliberately narrow and does not yet model every Exchange plan or infer
 entitlement from suite labels such as `SPE_E5`. P2 priority-account capabilities, AIR, and similar
 optional features require separate, exact recipient-scoped capability attestations. Those
 attestations establish licensing only; operational readiness remains independently evidenced.
 
-Every control in the [control catalog](CONTROL-CATALOG.md) carries a **Tier**: the minimum licence that entitles you to configure it. Declare your tier once in the baseline configuration and the tooling branches accordingly.
+Every control in the [control catalog](CONTROL-CATALOG.md) carries a **Tier** for planning.
+The labels below are historical planning metadata, never proof of entitlement.
+The default ExchangeOnly commands require the supplied handoff and recipient service plans.
+Historical Native/Gateway commands require an explicit configuration and `-AllowHistoricalProfile`.
 
 ```json
 "licensing": {
@@ -31,15 +35,19 @@ Every control in the [control catalog](CONTROL-CATALOG.md) carries a **Tier**: t
 | --- | --- | --- |
 | `Applied` / `Planned` | The control was configured, or would be under `-WhatIf` | — |
 | `Pass` / `Fail` | Evidence collection confirmed or contradicted the required state | `Fail` exits non-zero |
-| `NotEntitled` | The control is above the declared licence tier and was skipped | No |
+| `NotEntitled` | The required capability is not confirmed for the exact recipient scope | Refuses scoped go-live |
 | `NotApplicable` | The control belongs to the other deployment profile | No |
-| `Manual` | The control is owned by DNS, Entra, Purview, or the SIEM and cannot be set from the Exchange Online session | No |
+| `Manual` | The retained control lacks independently admitted evidence | Refuses go-live |
 
-`NotEntitled` is deliberately not a failure. A tenant that has only Exchange Online Protection is not non-compliant for lacking Safe Documents — it is unlicensed. What **is** a failure is declaring a tier you do not hold, which surfaces as a cmdlet error the first time the tooling touches the capability.
+`NotEntitled` is not a claim that a tenant violated a licensed setting, but it is not a
+successful retained-control verdict. The gate cannot certify missing entitlement.
+External workloads remain excluded rather than being configured to repair a licensing gap.
 
 ## Microsoft Graph Permissions
 
-The tier you declare is a planning expectation. Entitlement itself is read from Microsoft Graph, so the gate needs directory read access. It needs four scopes and nothing else. Every one is read-only, and every one is attributable to the collector that consumes it.
+**Historical collector reference only.** Opt-in historical adapters can read directory
+licensing evidence using the four read-only scopes below. These scopes are not requested
+by the active ExchangeOnly gate, which consumes the supplied licensing-owner handoff.
 
 | Permission | Type | Read by | Least privilege |
 | --- | --- | --- | --- |
@@ -54,20 +62,14 @@ Nothing in the licensing gate writes to the directory. If a reviewer sees a writ
 
 All four scopes are admin-consent-only. A Global Administrator or Privileged Role Administrator grants tenant-wide administrator consent once, on the app registration the tooling authenticates as; a user consenting for themselves cannot grant them, and a run that assumes user consent fails on the first read.
 
-Grant the scopes interactively for a one-off assessment:
-
-```powershell
-Connect-MgGraph -Scopes 'Organization.Read.All','User.Read.All','GroupMember.Read.All','LicenseAssignment.Read.All'
-```
-
-For the unattended managed-service run, add the same four as **application** permissions on the app registration, grant administrator consent in Entra, and authenticate with a certificate. Record the consent grant — who granted it, when, and against which application ID — alongside the deployment evidence, because the grant is the standing privilege a reviewer audits, not the run.
+Historical opt-in: a separate identity owner records the consent grant and its approved
+application, read-only scopes, approver and review date. This is an external handoff, not
+an Exchange setup step. The active workflow does not grant consent or request directory access.
 
 ## Identify your tier
 
-```powershell
-Connect-MgGraph -Scopes 'Organization.Read.All'
-Get-MgSubscribedSku | Select-Object SkuPartNumber, ConsumedUnits, @{n='Enabled';e={$_.PrepaidUnits.Enabled}}
-```
+The licensing owner supplies tenant and recipient service-plan evidence. Suite labels in
+the historical mapping below are planning hints only and do not replace that evidence.
 
 | If `SkuPartNumber` includes | Set `messagingTier` to |
 | --- | --- |

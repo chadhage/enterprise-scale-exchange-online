@@ -13,7 +13,9 @@ param(
     [ValidateScript({ Test-Path $_ -PathType Leaf })]
     [string]$ParameterPath,
 
-    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.json'),
+    [string]$ConfigurationPath = (Join-Path $PSScriptRoot '..\config\exchange-only.v1.json'),
+
+    [switch]$AllowHistoricalProfile,
 
     [string]$SchemaPath = (Join-Path $PSScriptRoot '..\config\exchange-online-secure-baseline.schema.json'),
 
@@ -862,10 +864,34 @@ function Get-BaselineMdoPostChangeEvidence {
 
 function Set-OrganizationControls {
     [CmdletBinding(SupportsShouldProcess)]
-    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight)
+    param([object]$Configuration, [bool]$UseWhatIf, [object]$Entitlement, [object]$SafeDocumentsPreflight, [switch]$ExchangeOnly)
 
     $state = $Configuration.desiredState
     $verb = if ($UseWhatIf) { 'Planned' } else { 'Applied' }
+    $protocols = $state.exchangeOnline.protocolRestriction
+    $ewsPolicy = Resolve-BaselineEwsPolicy -DesiredState $protocols
+    if ($ewsPolicy.EwsEnabled) {
+        $ewsAdmission = Test-BaselineEwsState -DesiredState $protocols -ObservedState @{
+            OrganizationConfig = $ewsPolicy
+            CasMailbox = @(Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop)
+        }
+        if ($ewsAdmission.Status -ne 'Pass') { throw $ewsAdmission.Reason }
+    }
+    $remote = $state.exchangeOnline.remoteDomainDefault
+    $oofType = Resolve-BaselineRemoteDomainOofType -DesiredState $remote
+    $remoteDomains = @(Get-RemoteDomain -ErrorAction Stop)
+    if (@($remoteDomains | Where-Object { $_.Identity -ieq 'Default' -and $_.DomainName -eq '*' }).Count -ne 1) {
+        throw 'RemoteDomainDefaultMissing: exactly one wildcard Default remote domain must be observed before mutation.'
+    }
+    foreach ($remoteDomain in $remoteDomains) {
+        if ([string]::IsNullOrWhiteSpace([string]$remoteDomain.Identity) -or
+            [string]::IsNullOrWhiteSpace([string]$remoteDomain.DomainName)) {
+            throw 'RemoteDomainEvidenceMalformed: every enumerated remote domain requires identity and domain name.'
+        }
+        if ($remoteDomain.Identity -ine 'Default' -and $remoteDomain.AllowedOOFType -ine $oofType) {
+            throw "RemoteDomainOverrideConflict: '$($remoteDomain.Identity)' has an unapproved OOF override."
+        }
+    }
 
     if ($null -ne (Get-Command -Name Set-BaselineAcceptedDomainState -ErrorAction SilentlyContinue)) {
         Set-BaselineAcceptedDomainState -Configuration $Configuration -UseWhatIf $UseWhatIf
@@ -908,19 +934,18 @@ function Set-OrganizationControls {
     Add-Outcome -Control 'EXO-007' -Status $verb -Detail 'External sender identification enabled' `
         -Operation @('exo-external-in-outlook')
 
-    $remote = $state.exchangeOnline.remoteDomainDefault
     if ($PSCmdlet.ShouldProcess('Default remote domain', 'Harden forwarding, auto-reply, and reporting')) {
         Set-RemoteDomain -Identity Default -AutoForwardEnabled $remote.autoForwardEnabled `
-            -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $remote.allowedOOFType `
+            -AutoReplyEnabled $remote.autoReplyEnabled -AllowedOOFType $oofType `
             -DeliveryReportEnabled $remote.deliveryReportEnabled -NDREnabled $remote.nonDeliveryReportEnabled `
             -WhatIf:$UseWhatIf
     }
     Add-Outcome -Control 'EXO-008' -Status $verb -Detail 'Default remote domain hardened' `
         -Operation @('exo-remote-domain')
 
-    $protocols = $state.exchangeOnline.protocolRestriction
     if ($PSCmdlet.ShouldProcess('Organization configuration', 'Restrict Exchange Web Services')) {
-        Set-OrganizationConfig -EwsEnabled $protocols.ewsEnabled -EwsAllowList $protocols.ewsAllowList -WhatIf:$UseWhatIf
+        Set-OrganizationConfig -EwsEnabled $ewsPolicy.EwsEnabled -EwsApplicationAccessPolicy $ewsPolicy.EwsApplicationAccessPolicy `
+            -EwsAllowList $ewsPolicy.EwsAllowList -EwsAllowedAppIDs $ewsPolicy.EwsAllowedAppIDs -WhatIf:$UseWhatIf
     }
     if ($PSCmdlet.ShouldProcess('Every CAS mailbox plan', 'Disable POP and IMAP for new mailboxes')) {
         Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {
@@ -961,7 +986,7 @@ function Set-OrganizationControls {
             -Operation @('mdo-quarantine-policy-set')
     }
 
-    if ($Entitlement.SafeAttachmentsSpo) {
+    if (-not $ExchangeOnly -and $Entitlement.SafeAttachmentsSpo) {
         $atpParameters = @{
             EnableATPForSPOTeamsODB = $state.defenderForOffice365.safeAttachmentsForSharePointOneDriveTeams
             WhatIf                  = $UseWhatIf
@@ -1390,22 +1415,13 @@ $MutationPlan = @(
     [ordered]@{ OperationId = 'auth-dkim-enable'; Command = 'Set-DkimSigningConfig'; Identity = 'Primary domain DKIM signing configuration'; Read = { (Get-DkimSigningConfig -Identity $configuration.administratorInputs.primaryDomain -ErrorAction SilentlyContinue).Enabled } }
 )
 
-$declaredDeploymentProfile = $null
-try {
-    $configurationProbe = Get-Content -LiteralPath $ConfigurationPath -Raw |
-        ConvertFrom-Json -AsHashtable -DateKind String -ErrorAction Stop
-    if ($configurationProbe -is [System.Collections.IDictionary] -and
-        $configurationProbe.Contains('metadata') -and
-        $configurationProbe.metadata -is [System.Collections.IDictionary]) {
-        $declaredDeploymentProfile = [string]$configurationProbe.metadata.deploymentProfile
-    }
-}
-catch {
-    $declaredDeploymentProfile = $null
-}
+$declaredDeploymentProfile = Get-BaselineDeploymentProfile -ConfigurationPath $ConfigurationPath -AllowHistoricalProfile:$AllowHistoricalProfile
 
 if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
     $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
+    if (-not [string]::IsNullOrWhiteSpace($exchangeContext.DomainInventoryValidationError)) {
+        throw $exchangeContext.DomainInventoryValidationError
+    }
     if ([string]$exchangeContext.DeploymentProfile -cne 'ExchangeOnly' -or
         [string]::IsNullOrWhiteSpace([string]$exchangeContext.Hash) -or
         $null -eq $exchangeContext.Configuration -or
@@ -1415,9 +1431,24 @@ if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
     }
 
     if (-not $Apply) {
-        return $exchangeContext
+        $exchangePlan = @($MutationPlan | Where-Object { $_.OperationId -notlike 'pp-*' -and $_.OperationId -cne 'mdo-atp-policy-o365' })
+        $null = Assert-BaselineExchangeMutationPlan -Operation $exchangePlan
+        return [pscustomobject]@{
+            Kind = 'ExchangeOnlyPlan'
+            Status = 'Planned'
+            DeploymentProfile = 'ExchangeOnly'
+            ProfileVersion = $exchangeContext.Manifest.Version
+            TenantId = $exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID
+            ConfigurationHash = $exchangeContext.Hash
+            ControlId = $exchangeContext.Manifest.ControlId
+            Operation = @($exchangePlan | ForEach-Object { [pscustomobject]@{ OperationId = $_.OperationId; Command = $_.Command; Identity = $_.Identity } })
+            ExternalReadiness = $exchangeContext.Manifest.ExternalReadiness
+        }
     }
 
+    if ($EnableDkim) {
+        throw 'ChangeScopeUnsupported: freeze workflowOptions.enableDkim in the approved parameters instead of using -EnableDkim.'
+    }
     foreach ($requiredInput in @('PreviewPath', 'ApprovalPath', 'ArtifactRoot', 'ChangeId', 'RequestedBy', 'AuthorizedSignerPath')) {
         if ([string]::IsNullOrWhiteSpace([string](Get-Variable -Name $requiredInput -ValueOnly))) {
             if ($requiredInput -eq 'AuthorizedSignerPath') {
@@ -1526,6 +1557,16 @@ if (-not $SkipConnection) {
 $context = Get-BaselineContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath -SchemaPath $SchemaPath -GraphRequest $graphRequest
 $configuration = $context.Configuration
 $entitlement = $context.Entitlement
+
+$ewsDesired = $configuration.desiredState.exchangeOnline.protocolRestriction
+$ewsPolicy = Resolve-BaselineEwsPolicy -DesiredState $ewsDesired
+if ($ewsPolicy.EwsEnabled) {
+    $ewsAdmission = Test-BaselineEwsState -DesiredState $ewsDesired -ObservedState @{
+        OrganizationConfig = $ewsPolicy
+        CasMailbox = @(Get-CASMailbox -ResultSize Unlimited -ErrorAction Stop)
+    }
+    if ($ewsAdmission.Status -ne 'Pass') { throw $ewsAdmission.Reason }
+}
 
 $impersonation = $configuration.desiredState.defenderForOffice365.impersonationProtection
 $impersonationDesired = [ordered]@{

@@ -12,6 +12,10 @@ BeforeAll {
         $parameters.entitlement.verified = $true
         $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
         $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
+        $parameters.entitlement.recipients = @(
+            @{ address = 'user@contoso.example'; servicePlans = @($parameters.entitlement.servicePlans) }
+            @{ address = $parameters.SECURITY_OPERATIONS_MAILBOX; servicePlans = @($parameters.entitlement.servicePlans) }
+        )
         $parameterPath = Join-Path $directory 'parameters.json'
         $parameters | ConvertTo-Json -Depth 30 | Set-Content $parameterPath
         @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:root 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; SkipConnectionCheck = $true }
@@ -82,7 +86,11 @@ Describe 'EXR-004 concrete adapter admission' {
         # Act
         $invoke = { & $script:command -Stage Preview @arguments -Scope $Scope -Confirm:$false }
         # Assert
-        $invoke | Should -Throw '*ChangeReadIncomplete*'
+        $reason = switch ($Scope) {
+            'ReportSubmission' { 'ChangeReportingPrerequisite' }
+            default { 'ChangeReadIncomplete' }
+        }
+        $invoke | Should -Throw "*$reason*"
         $global:adapterCalls.Count | Should -Be 0
         Test-Path (Join-Path $arguments.ArtifactRoot 'preview-ADAPTER004.json') | Should -BeFalse
     }

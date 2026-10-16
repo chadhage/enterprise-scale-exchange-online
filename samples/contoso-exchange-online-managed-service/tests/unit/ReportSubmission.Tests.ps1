@@ -40,6 +40,12 @@ BeforeAll {
             EnableThirdPartyAddress       = $EnableThirdPartyAddress
             ReportJunkToCustomizedAddress = $ReportJunkToCustomizedAddress
             ReportJunkAddresses           = $ReportJunkAddresses
+            ReportNotJunkToCustomizedAddress = $true
+            ReportNotJunkAddresses = @('soc@contoso.com')
+            ReportPhishToCustomizedAddress = $true
+            ReportPhishAddresses = @('soc@contoso.com')
+            PreSubmitMessageEnabled = $true
+            PostSubmitMessageEnabled = $true
             EnableUserEmailNotification   = $EnableUserEmailNotification
         }
 
@@ -82,9 +88,39 @@ BeforeAll {
             [Parameter(Mandatory)]
             [AllowNull()]
             [AllowEmptyCollection()]
-            [object]$SecOpsOverridePolicy
+            [object]$SecOpsOverridePolicy,
+
+            [switch]$Complete
         )
 
+        if ($Complete) {
+            $approval = @{ reference = 'OFFLINE-REPORTING'; owner = 'SecOps'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+            $proof = @{
+                mailbox = 'soc@contoso.com'
+                approval = $approval
+                dlp = @{ mailbox = 'soc@contoso.com'; status = 'NotApplicable'; approval = $approval }
+                deliveries = @(foreach ($category in @('Junk', 'NotJunk', 'Phish')) {
+                    @{
+                        category = $category; recipient = 'soc@contoso.com'; reporter = 'user@contoso.com'
+                        messageId = "$($category)-message"; microsoftSubmissionId = "$($category)-submission"
+                        feedbackMessageId = "$($category)-feedback"; originalMessagePreserved = $true
+                        receivedAt = [datetimeoffset]::UtcNow.AddMinutes(-1).ToString('o')
+                    }
+                })
+            }
+            $policyIdentity = [string]@($ReportSubmissionPolicy)[0].Identity
+            return Get-ReportSubmissionEvidence `
+                -ReportSubmissionPolicyCollection { $ReportSubmissionPolicy }.GetNewClosure() `
+                -SecOpsOverridePolicyCollection { $SecOpsOverridePolicy }.GetNewClosure() `
+                -ReportSubmissionRuleCollection { [pscustomobject]@{
+                    State = 'Enabled'; ReportSubmissionPolicy = $policyIdentity; SentTo = @('soc@contoso.com')
+                } }.GetNewClosure() `
+                -ReportingMailboxCollection { [pscustomobject]@{
+                    PrimarySmtpAddress = 'soc@contoso.com'; RecipientTypeDetails = 'SharedMailbox'
+                    ForwardingAddress = $null; ForwardingSmtpAddress = $null; DeliverToMailboxAndForward = $false
+                } } `
+                -ExchangeContext @{ Parameters = @{ reportingEvidence = $proof } }
+        }
         return Get-ReportSubmissionEvidence `
             -ReportSubmissionPolicyCollection { $ReportSubmissionPolicy }.GetNewClosure() `
             -SecOpsOverridePolicyCollection { $SecOpsOverridePolicy }.GetNewClosure()
@@ -112,6 +148,9 @@ BeforeAll {
             sendCopyToSecOpsMailbox         = $SendCopyToSecOpsMailbox
             reportingDestination            = $ReportingDestination
             reportingMailbox                = $ReportingMailbox
+            approval = @{ reference = 'OFFLINE-REPORTING'; owner = 'SecOps'; expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o') }
+            preSubmitMessageEnabled = $true
+            postSubmitMessageEnabled = $true
         }
 
         foreach ($member in $Remove) { $state.Remove($member) }
@@ -130,7 +169,7 @@ BeforeAll {
         if (-not $PSBoundParameters.ContainsKey('ReportSubmissionPolicy')) { $ReportSubmissionPolicy = @(New-ReportSubmissionPolicyObject) }
         if (-not $PSBoundParameters.ContainsKey('SecOpsOverridePolicy')) { $SecOpsOverridePolicy = @(New-SecOpsOverridePolicyObject) }
 
-        return New-ReportSubmissionEvidenceRecord -ReportSubmissionPolicy $ReportSubmissionPolicy -SecOpsOverridePolicy $SecOpsOverridePolicy
+        return New-ReportSubmissionEvidenceRecord -ReportSubmissionPolicy $ReportSubmissionPolicy -SecOpsOverridePolicy $SecOpsOverridePolicy -Complete
     }
 
     function New-PartialReportSubmissionEvidence {
@@ -315,19 +354,18 @@ Describe 'MDO-008-A1 reporting and Advanced Delivery collector' {
             $defaultPolicy = New-ReportSubmissionPolicyObject -Identity ' DefaultReportSubmissionPolicy ' `
                 -EnableReportToMicrosoft $false -ReportJunkAddresses @('SOC@Contoso.com')
             $legacyPolicy = New-ReportSubmissionPolicyObject -Identity 'ContosoLegacyPolicy'
+            $secOpsPolicy = @(New-SecOpsOverridePolicyObject -SentTo @(' SOC@contoso.com '))
             $expected = 'MDO-006|ExchangeOnline|Get-ReportSubmissionPolicy; Get-SecOpsOverridePolicy|collected=True|failure=|' +
-            '{"ReportSubmissionPolicy":[{"EnableReportToMicrosoft":false,"EnableThirdPartyAddress":false,"EnableUserEmailNotification":false,' +
-            '"Identity":" DefaultReportSubmissionPolicy ","ReportJunkAddresses":["SOC@Contoso.com"],' +
-            '"ReportJunkToCustomizedAddress":true},' +
-            '{"EnableReportToMicrosoft":true,"EnableThirdPartyAddress":false,"EnableUserEmailNotification":false,"Identity":"ContosoLegacyPolicy",' +
-            '"ReportJunkAddresses":["soc@contoso.com"],"ReportJunkToCustomizedAddress":true}],' +
-            '"SecOpsOverridePolicy":[{"Identity":"SecOpsOverridePolicy","Mode":"Enforce","SentTo":[" SOC@contoso.com "]}]}' +
+            (ConvertTo-CanonicalJson -InputObject @{
+                ReportSubmissionPolicy = @($defaultPolicy, $legacyPolicy)
+                SecOpsOverridePolicy = $secOpsPolicy
+            }) +
             '|members=Collected,CollectedAtUtc,Command,ControlId,FailureReason,Source,Value'
 
             # Act
             $evidence = New-ReportSubmissionEvidenceRecord `
                 -ReportSubmissionPolicy @($defaultPolicy, $legacyPolicy) `
-                -SecOpsOverridePolicy @(New-SecOpsOverridePolicyObject -SentTo @(' SOC@contoso.com '))
+                -SecOpsOverridePolicy $secOpsPolicy
 
             # Assert
             (Get-EvidenceFold -Evidence $evidence) |
@@ -623,7 +661,7 @@ Describe 'MDO-008-A2 reporting and Advanced Delivery evaluator' {
             @{
                 Decision = 'SecOps copy'
                 Argument = @{ ReportJunkToCustomizedAddress = $false }
-                Expected = "the report submission policy sets 'ReportJunkToCustomizedAddress' to 'False' where 'True' is required; " +
+                Expected = "the Junk custom reporting route is disabled; the report submission policy sets 'ReportJunkToCustomizedAddress' to 'False' where 'True' is required; " +
                 "the report submission policy sends reported messages to 'Microsoft' where 'MicrosoftAndCustomMailbox' is required"
             }
         ) {
@@ -665,6 +703,8 @@ Describe 'MDO-008-A2 reporting and Advanced Delivery evaluator' {
             # Assert
             (Get-VerdictFold -Result $result) |
                 Should -BeExactly ("Fail|golive=False|reason=ReportSubmissionDrift: " +
+                    "the Junk custom reporting route does not include approved mailbox 'soc@contoso.com'; " +
+                    "the Junk custom reporting route includes unapproved mailbox 'helpdesk@contoso.com'; " +
                     "the report submission policy does not report to 'soc@contoso.com'; " +
                     "the report submission policy reports to unapproved 'helpdesk@contoso.com'.") `
                     -Because 'reported phishing landing in a mailbox nobody approved is a reporting channel the security team never agreed to watch, and naming only one side of the difference hides which of the two is wrong'
@@ -737,9 +777,9 @@ Describe 'MDO-008-A2 reporting and Advanced Delivery evaluator' {
             # Arrange
             $policy = New-ReportSubmissionPolicyObject -Identity ' DefaultReportSubmissionPolicy ' `
                 -ReportJunkAddresses @(' SOC@Contoso.com ', 'smtp:soc@contoso.com')
-            $override = New-SecOpsOverridePolicyObject -SentTo @('SMTP:SOC@Contoso.com', ' soc@contoso.com ')
+            $override = New-SecOpsOverridePolicyObject -SentTo @(' SOC@Contoso.com ')
             $configured = New-BaselineReportSubmissionEvidence -ReportSubmissionPolicy @($policy) -SecOpsOverridePolicy @($override)
-            $expected = 'MDO-006|Pass|normalized=True|golive=True|reason=|evidence=Get-ReportSubmissionPolicy; Get-SecOpsOverridePolicy:MDO-006'
+            $expected = 'MDO-006|Pass|normalized=True|golive=True|reason=ReportingVerified: approved Exchange mailbox, feedback and independent delivery records reconciled; not a live delivery test.|evidence=Get-ReportSubmissionPolicy; Get-SecOpsOverridePolicy:MDO-006'
 
             # Act
             $result = Test-ReportSubmissionControl -Evidence $configured -DesiredState $script:DesiredReportSubmission -SecOpsMailbox $script:DesiredSecOpsMailbox

@@ -137,7 +137,8 @@ Describe 'EXR-005 default public signed operational roundtrip' {
         }
         else { $exitCode | Should -Not -Be 0 }
         $calls = Get-Content $callPath
-        @($calls | Where-Object { $_ -eq 'Connect-ExchangeOnline' }).Count | Should -Be 1
+        @($calls | Where-Object { $_ -eq 'Connect-ExchangeOnline' }).Count | Should -Be 0
+        $calls | Should -Contain 'Get-ConnectionInformation' -Because 'the real preflight must verify and reuse the synthetic tenant-bound session'
         $calls -join ' ' | Should -Not -Match 'EXCLUDED:|Connect-MgGraph|Connect-IPPSSession'
         $envelope.ExternalReadiness.Status | Should -BeExactly Unverified
     }

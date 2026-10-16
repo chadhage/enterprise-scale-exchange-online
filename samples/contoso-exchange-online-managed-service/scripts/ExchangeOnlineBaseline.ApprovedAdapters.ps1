@@ -51,38 +51,71 @@ function Assert-ApprovedAdapterScope {
 }
 
 function Resolve-BaselineEwsPolicy {
-    param($DesiredState, [datetimeoffset]$Now = [datetimeoffset]::UtcNow)
-    if ($DesiredState.ewsEnabled -isnot [bool]) { throw 'EwsEnabledInvalid: ewsEnabled must be Boolean.' }
-    if ([string]$DesiredState.ewsApplicationAccessPolicy -cne 'EnforceAllowList') { throw 'EwsEnforcementRequired: EnforceAllowList is required.' }
-    $allowList = @($DesiredState.ewsAllowList)
-    if ($DesiredState.ewsEnabled -and
-        ($allowList.Count -eq 0 -or @($allowList | Where-Object { [string]::IsNullOrWhiteSpace($_) -or $_ -eq '*' }).Count -or
-            @($allowList | Select-Object -Unique).Count -ne $allowList.Count)) {
-        throw 'EwsAllowListInvalid: a narrow unique user-agent allow list is required.'
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object]$DesiredState,
+        [datetimeoffset]$Now = [datetimeoffset]::UtcNow
+    )
+
+    $enabled = Get-BaselineRecordMember -Node $DesiredState -Name 'ewsEnabled'
+    if ($enabled -isnot [bool]) { throw 'EwsEnabledInvalid: ewsEnabled must be an explicit Boolean.' }
+    $agents = @(Get-BaselineRecordMember -Node $DesiredState -Name 'ewsAllowList')
+    $policy = [ordered]@{ EwsEnabled = $enabled; EwsApplicationAccessPolicy = 'EnforceAllowList'; EwsAllowList = $agents }
+    if (-not $enabled) { return $policy }
+
+    if ((Get-BaselineRecordMember -Node $DesiredState -Name 'ewsApplicationAccessPolicy') -cne 'EnforceAllowList') {
+        throw 'EwsEnforcementRequired: enabled EWS requires explicit EnforceAllowList, not just user-agent entries.'
     }
-    $result = @{
-        EwsEnabled = [bool]$DesiredState.ewsEnabled
-        EwsApplicationAccessPolicy = [string]$DesiredState.ewsApplicationAccessPolicy
-        EwsAllowList = $allowList
+    if ($agents.Count -eq 0 -or @($agents | Where-Object { $_ -isnot [string] -or [string]::IsNullOrWhiteSpace($_) -or $_ -ne $_.Trim() -or $_ -match '^[*?]+$' }).Count -gt 0 -or @($agents | Sort-Object -Unique).Count -ne $agents.Count) {
+        throw 'EwsAllowListInvalid: provide a nonempty exact list of distinct, nonblank, scoped user-agent patterns.'
     }
-    $applicationIds = @(Get-BaselineRecordMember -Node $DesiredState -Name 'ewsAllowedAppIds')
-    if ($DesiredState.ewsEnabled) {
-        if ($applicationIds.Count -eq 0 -or @($applicationIds | Where-Object { $_ -notmatch '^[0-9a-fA-F-]{36}$' }).Count) {
-            throw 'EwsApplicationIdentityRequired: application IDs are required.'
-        }
-        $result.EwsAllowedAppIDs = $applicationIds -join ','
+    $appIds = @(Get-BaselineRecordMember -Node $DesiredState -Name 'ewsAllowedAppIds')
+    if ($appIds.Count -eq 0 -or @($appIds | Where-Object { $_ -isnot [string] -or $_ -notmatch '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$' -or $_ -eq [guid]::Empty.ToString() }).Count -gt 0 -or @($appIds | Sort-Object -Unique).Count -ne $appIds.Count) {
+        throw 'EwsApplicationIdentityRequired: EwsAllowedAppIDs must contain distinct application GUIDs; user-agent filters are not identities.'
     }
-    $result
+    $exception = Get-BaselineRecordMember -Node $DesiredState -Name 'ewsException'
+    if ($null -eq $exception) { throw 'EwsExceptionRequired: enabling EWS requires an externally approved, owned, time-bounded exception.' }
+    foreach ($requirement in @(
+        @{ Member = 'owner'; Reason = 'EwsExceptionOwnerRequired' },
+        @{ Member = 'approval'; Reason = 'EwsExceptionApprovalRequired' },
+        @{ Member = 'clientImpact'; Reason = 'EwsClientImpactRequired' }
+    )) {
+        $value = Get-BaselineRecordMember -Node $exception -Name $requirement.Member
+        if ($value -isnot [string] -or [string]::IsNullOrWhiteSpace($value)) { throw "$($requirement.Reason): '$($requirement.Member)' must identify the externally approved exception." }
+    }
+    if ((Get-BaselineRecordMember -Node $exception -Name 'rollback') -cne 'DisableEws') {
+        throw 'EwsRollbackRequired: the exception rollback must be DisableEws; restore the approved disabled baseline.'
+    }
+    $expiryText = Get-BaselineRecordMember -Node $exception -Name 'expiresAt'
+    $expiry = [datetimeoffset]::MinValue
+    if ($expiryText -isnot [string] -or $expiryText -notmatch '(Z|[+-]\d{2}:\d{2})$' -or -not [datetimeoffset]::TryParse($expiryText, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$expiry)) {
+        throw 'EwsExceptionExpiryInvalid: expiresAt must be an ISO-8601 timestamp with an explicit timezone.'
+    }
+    $shutdown = [datetimeoffset]'2027-04-01T00:00:00Z'
+    if ($Now -ge $shutdown -or $expiry -gt $shutdown -or (Get-BaselineRecordMember -Node $exception -Name 'cloud') -cne 'Worldwide') {
+        throw 'EwsRetirementUnsupported: this reviewed contract admits Worldwide temporary continuation only before April 2027; no post-shutdown or unverified cloud exception is offered.'
+    }
+    if ($expiry -le $Now) { throw 'EwsExceptionExpired: the EWS exception has expired; disable EWS and migrate the dependent client.' }
+    $policy['EwsAllowedAppIDs'] = $appIds -join ','
+    return $policy
 }
 
 function Resolve-BaselineRemoteDomainOofType {
-    param($DesiredState)
-    $type = [string]$DesiredState.allowedOOFType
-    if ($type -cnotin @('None','InternalLegacy','External','ExternalLegacy')) { throw 'RemoteDomainOofTypeInvalid: an explicit supported OOF type is required.' }
-    if ($type -ceq 'External' -and [string]::IsNullOrWhiteSpace([string]$DesiredState.externalOofApproval)) {
-        throw 'RemoteDomainExternalApprovalRequired: External OOF requires approval.'
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][AllowNull()][object]$DesiredState)
+
+    $type = ([string](Get-BaselineRecordMember -Node $DesiredState -Name 'allowedOOFType')).Trim()
+    if ($type -notin @('None', 'External')) {
+        throw 'RemoteDomainOofPolicyInvalid: select None to block external OOF, or External with an explicit external-reply policy approval; InternalLegacy discloses internal or undesignated legacy replies.'
     }
-    $type
+    if ($type -ieq 'External') {
+        $approval = Get-BaselineRecordMember -Node $DesiredState -Name 'externalReplyApproval'
+        if ($approval -isnot [string] -or [string]::IsNullOrWhiteSpace($approval)) {
+            throw 'RemoteDomainExternalApprovalRequired: External requires a nonblank externalReplyApproval reference to the approved external-reply policy.'
+        }
+        return 'External'
+    }
+    return 'None'
 }
 
 function Assert-ExchangeGovernanceApproval {
@@ -90,7 +123,7 @@ function Assert-ExchangeGovernanceApproval {
     if ($Approval -isnot [System.Collections.IDictionary] -or
         [string]::IsNullOrWhiteSpace([string]$Approval.reference) -or
         [string]::IsNullOrWhiteSpace([string]$Approval.owner)) {
-        throw 'ChangeApprovalRequired: an owner and approval reference are required.'
+        throw 'ApprovalMissing: an owner and approval reference are required.'
     }
     $expiresOn = [datetimeoffset]::MinValue
     if (-not [datetimeoffset]::TryParse([string]$Approval.expiresOn, [ref]$expiresOn) -or $expiresOn -le $Now) {

@@ -103,6 +103,7 @@ BeforeAll {
 
         $contractVariable = [System.Collections.Generic.List[string]]::new()
         $seamVariable = [System.Collections.Generic.List[string]]::new()
+        $frozenOutcomeVariable = [System.Collections.Generic.List[string]]::new()
 
         foreach ($assignment in @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.AssignmentStatementAst] }, $true))) {
             if ($assignment.Left -isnot [System.Management.Automation.Language.VariableExpressionAst]) { continue }
@@ -111,6 +112,8 @@ BeforeAll {
             $source = $assignment.Right.Extent.Text
             if ($source -match 'Get-BaselineExitCodeContract') { $contractVariable.Add($name) }
             if ($source -match 'Get-BaselineRunOutcome') { $seamVariable.Add($name) }
+            if ($source -match 'Invoke-BaselineExchangeEvidence') { $seamVariable.Add($name) }
+            if ($source -match 'Invoke-BaselineExchangeGoLive') { $frozenOutcomeVariable.Add($name) }
         }
 
         $exitStatement = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.ExitStatementAst] }, $true))
@@ -134,6 +137,15 @@ BeforeAll {
 
             if ($expression -is [System.Management.Automation.Language.ConstantExpressionAst]) {
                 $literal.Add($statement.Extent.Text)
+                continue
+            }
+            if ($expression -is [System.Management.Automation.Language.MemberExpressionAst] -and
+                $expression.Member.Value -ceq 'ExitCode' -and
+                $expression.Expression -is [System.Management.Automation.Language.MemberExpressionAst] -and
+                $expression.Expression.Member.Value -ceq 'Outcome' -and
+                $expression.Expression.Expression -is [System.Management.Automation.Language.VariableExpressionAst] -and
+                $expression.Expression.Expression.VariablePath.UserPath -cin $frozenOutcomeVariable) {
+                $exitedFromSeam = $true
                 continue
             }
 

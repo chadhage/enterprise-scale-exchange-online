@@ -91,7 +91,7 @@ Describe 'EXR-010-A06 effective impersonation lifecycle' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true

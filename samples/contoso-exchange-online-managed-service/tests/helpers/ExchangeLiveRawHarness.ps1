@@ -4,6 +4,7 @@ $PSStyle.OutputRendering = [System.Management.Automation.OutputRendering]::Plain
 $env:NO_COLOR = '1'
 $global:ExchangeLiveRaw = Get-Content -LiteralPath $RawPath -Raw | ConvertFrom-Json -AsHashtable
 $global:ExchangeLiveCalls = $CallPath
+. (Join-Path $PSScriptRoot 'ExchangeSessionDoubles.ps1') -ParameterPath $ParameterPath -ConnectionCallPath $CallPath
 function global:Import-Module {
     param([Parameter(Position=0)]$Name, [switch]$Force, [switch]$DisableNameChecking, $MinimumVersion)
     if ($Name -eq 'ExchangeOnlineManagement') { return }
@@ -129,7 +130,7 @@ foreach ($name in $global:ExchangeLiveRaw.Keys) {
 '@
     Set-Item "function:global:$name" ([scriptblock]::Create($body.Replace('__SIGNATURE__', $signature)))
 }
-$arguments = @{ ParameterPath = $ParameterPath; OutputPath = $OutputPath }
+$arguments = @{ ParameterPath = $ParameterPath; OutputPath = $OutputPath; ConfirmSession = $false }
 if ($ConfigurationPath) { $arguments.ConfigurationPath = $ConfigurationPath }
 & $CommandPath @arguments
 exit $LASTEXITCODE

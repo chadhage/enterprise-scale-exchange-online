@@ -463,7 +463,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly 'Fail|golive=False|reason=ImpersonationProtectionDrift: the tenant holds no enabled anti-phish policy.' `
+                Should -BeExactly 'Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: the tenant holds no enabled anti-phish policy.' `
                     -Because 'a policy that is switched off protects nobody, and a control that read the identities out of a dormant policy would report impersonation protection the tenant is not applying to a single message'
         }
     }
@@ -482,7 +482,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: no enabled policy protects 'ceo@contoso.com' from user impersonation." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: no enabled policy protects 'ceo@contoso.com' from user impersonation." `
                     -Because 'the identity is named in a policy nobody applies, and counting it would report the chief executive protected against impersonation by a policy that is switched off'
         }
 
@@ -495,7 +495,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: no enabled policy protects 'ceo@contoso.com' from user impersonation." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: no enabled policy protects 'ceo@contoso.com' from user impersonation." `
                     -Because 'the list of protected users is inert while the switch that applies it is off, and a control that read the list alone reports protection nobody is receiving'
         }
     }
@@ -511,7 +511,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: no enabled policy protects the domain 'contoso.com' from domain impersonation." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: no enabled policy protects the domain 'contoso.com' from domain impersonation." `
                     -Because 'a custom protected domain the configuration names and the tenant does not protect is exactly the drift the card requires be matched'
         }
 
@@ -524,7 +524,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: the policy 'Contoso Strict' protects unapproved domain 'fabrikam.example'." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: the policy 'Contoso Strict' protects unapproved domain 'fabrikam.example'." `
                     -Because 'the card requires the custom protected domains exactly match the configuration, and a domain nobody approved quarantines mail from a partner the tenant never decided to treat as impersonated'
         }
 
@@ -537,7 +537,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: the policy 'Contoso Strict' trusts unapproved sender 'attacker@fabrikam.example'." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: the policy 'Contoso Strict' trusts unapproved sender 'attacker@fabrikam.example'." `
                     -Because 'a trusted sender nobody approved is a standing exemption from impersonation protection, which is the one change to this control that makes the tenant weaker without touching a single protected identity'
         }
 
@@ -550,7 +550,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: the policy 'Contoso Strict' trusts unapproved domain 'fabrikam.example'." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: the policy 'Contoso Strict' trusts unapproved domain 'fabrikam.example'." `
                     -Because 'an approval for a laboratory subdomain can never approve trusting the whole domain above it, and the broad exemption is exactly the one an inexact comparison would hide'
         }
 
@@ -563,7 +563,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: no enabled policy trusts approved sender 'partner@fabrikam.example'." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: no enabled policy trusts approved sender 'partner@fabrikam.example'." `
                     -Because 'the card requires the trusted exceptions exactly match the configuration, so an approval the tenant is not applying means the register no longer describes the tenant it was approved for'
         }
 
@@ -576,7 +576,7 @@ Describe 'MDO-005-A2 Impersonation protection evaluator' {
 
             # Assert
             (Get-VerdictFold -Result $result) |
-                Should -BeExactly "Fail|golive=False|reason=ImpersonationProtectionDrift: no enabled policy trusts approved domain 'lab.fabrikam.example'." `
+                Should -BeExactly "Fail|golive=False|reason=ExchangeAntiPhishCoverageDrift: no enabled policy trusts approved domain 'lab.fabrikam.example'." `
                     -Because 'an approved exception the tenant does not hold is a register that has drifted from the tenant, which the card requires be matched in both directions'
         }
     }

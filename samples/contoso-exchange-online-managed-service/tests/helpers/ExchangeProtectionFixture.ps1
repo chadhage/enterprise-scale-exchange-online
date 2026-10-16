@@ -188,6 +188,7 @@ function New-ProtectionFixture {
     $raw['Get-DkimSigningConfig'] = @{ ByIdentity = @{
             $domain = @(@{
                     Identity = $domain
+                    Name = $domain
                     Domain = $domain
                     Enabled = $true
                     Status = 'Valid'

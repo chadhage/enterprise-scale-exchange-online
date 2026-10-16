@@ -18,6 +18,8 @@ BeforeAll {
         )
 
         $config = [ordered]@{
+            Name             = $Domain
+            Domain           = $Domain
             DomainName       = $Domain
             Enabled          = $Enabled
             Status           = $Status

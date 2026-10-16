@@ -13,10 +13,20 @@ BeforeAll {
     function New-CompleteRbacPimPayload {
         param([switch]$Drift)
 
+        $identity = if ($Drift) { 'standing.admin@contoso.com' } else { 'break.glass@contoso.com' }
+        $member = [pscustomobject]@{
+            Group = 'Organization Management'
+            Member = $identity
+            IdentitySource = 'PrimarySmtpAddress'
+            Raw = [pscustomobject]@{ PrimarySmtpAddress = $identity }
+        }
         return [ordered]@{
+            ManagementScope          = @()
+            Members                  = @($member)
             RoleGroup                = @([pscustomobject]@{
                     Name = 'Organization Management'
-                    Members = if ($Drift) { @('standing.admin@contoso.com') } else { @('break.glass@contoso.com') }
+                    Members = @($identity)
+                    MemberRecords = @($member)
                 })
             ManagementRoleAssignment = @([pscustomobject]@{
                     Role = 'Mailbox Import Export'
@@ -86,6 +96,7 @@ BeforeAll {
             ActivePimAssignmentCollection = { @((New-CompleteRbacPimPayload).ActivePimAssignment) }
             EligiblePimAssignmentCollection = { @((New-CompleteRbacPimPayload).EligiblePimAssignment) }
             AccessReviewCollection = { @((New-CompleteRbacPimPayload).AccessReview) }
+            ManagementScopeCollection = { @((New-CompleteRbacPimPayload).ManagementScope) }
         }
     }
 
@@ -116,6 +127,8 @@ Describe 'EXO-014 signed RBAC and PIM fallback orchestration' {
                 })
 
             # Act
+            $live = Get-ExchangeRoleAssignmentEvidence @liveArgument
+            $live.Collected | Should -BeTrue -Because $live.FailureReason
             $evidence = Get-ExchangeRoleAssignmentEvidence @liveArgument -FallbackEvidence $fallback
             $result = Invoke-RbacPimEvaluation -Evidence $evidence -FallbackEvidence $fallback
 
