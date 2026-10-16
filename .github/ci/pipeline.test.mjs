@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -153,6 +153,27 @@ test('parent runner rejects a successful process with no results and refuses sta
     assert.ifError(stale.error);
     assert.notEqual(stale.status, 0);
     assert.match(`${stale.stdout}\n${stale.stderr}`, /Existing container output refused/);
+  } finally {
+    rmSync(directory, { recursive: true });
+  }
+});
+
+test('tool bootstrap creates its module destination in a completely fresh checkout layout', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'exchange-bootstrap-'));
+  try {
+    const scripts = path.join(directory, '.github', 'ci');
+    mkdirSync(scripts, { recursive: true });
+    for (const name of ['Install-Tools.ps1', 'tools.psd1']) {
+      copyFileSync(path.join(root, '.github', 'ci', name), path.join(scripts, name));
+    }
+    const moduleDirectory = path.join(directory, '.artifacts', 'modules');
+    assert.equal(existsSync(moduleDirectory), false);
+    const result = spawnSync('pwsh', [
+      '-NoProfile', '-NonInteractive', '-File', path.join(scripts, 'Install-Tools.ps1'),
+    ], { cwd: root, encoding: 'utf8', timeout: 60_000 });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+    assert.equal(existsSync(moduleDirectory), true);
   } finally {
     rmSync(directory, { recursive: true });
   }

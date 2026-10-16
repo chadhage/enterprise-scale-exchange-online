@@ -7,6 +7,7 @@ if ($PSVersionTable.PSVersion -lt [version]$tools.MinimumPowerShellVersion) {
     throw "PowerShell $($tools.MinimumPowerShellVersion) or later is required."
 }
 $moduleRoot = Join-Path $PSScriptRoot '..\..\.artifacts\modules'
+$null = New-Item -ItemType Directory -Path $moduleRoot -Force
 $env:PSModulePath = $moduleRoot + [IO.Path]::PathSeparator + $env:PSModulePath
 foreach ($name in 'Pester', 'PSScriptAnalyzer') {
     if (-not (Get-Module -ListAvailable -Name $name | Where-Object Version -EQ ([version]$tools[$name]))) {
