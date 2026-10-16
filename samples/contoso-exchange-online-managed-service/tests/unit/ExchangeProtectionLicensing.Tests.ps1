@@ -995,6 +995,7 @@ Describe 'EXR-010 g22 public approved-change entitlement admission' {
         $arguments.ArtifactRoot = Split-Path $arguments.ParameterPath -Parent
         $arguments.ChangeId = 'LICENSING-G22'
         $arguments.RequestedBy = 'operator@example.test'
+        $arguments.SkipConnectionCheck = $true
         $caught = $null
 
         # Act

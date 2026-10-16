@@ -33,6 +33,14 @@ param(
 
     [switch]$EnableDkim,
 
+    [string]$UserPrincipalName,
+
+    [switch]$UseDeviceCode,
+
+    [bool]$ConfirmSession = $true,
+
+    [switch]$NonInteractive,
+
     [switch]$SkipConnection
 )
 
@@ -56,6 +64,7 @@ if ($loadedCommonModule.Count -eq 0) {
     Import-Module $commonModulePath -DisableNameChecking
 }
 
+$signerMetadata = @()
 if ($PSBoundParameters.ContainsKey('AuthorizedSignerPath')) {
     if ([string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
         -not (Test-Path -LiteralPath $AuthorizedSignerPath -PathType Leaf)) {
@@ -1411,8 +1420,36 @@ if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
 
     foreach ($requiredInput in @('PreviewPath', 'ApprovalPath', 'ArtifactRoot', 'ChangeId', 'RequestedBy', 'AuthorizedSignerPath')) {
         if ([string]::IsNullOrWhiteSpace([string](Get-Variable -Name $requiredInput -ValueOnly))) {
+            if ($requiredInput -eq 'AuthorizedSignerPath') {
+                throw 'ChangeSigningPrerequisite: -AuthorizedSignerPath is required to verify an approved ExchangeOnly change.'
+            }
             throw "ExchangeOnlyApplyInputRequired: -$requiredInput is required for an approved ExchangeOnly apply."
         }
+    }
+
+    if ($SkipConnection) {
+        $connectionInfoCommand = Get-Command -Name Get-ConnectionInformation -All -ListImported -ErrorAction SilentlyContinue |
+            Where-Object { $_.ModuleName -eq 'ExchangeOnlineManagement' } | Select-Object -First 1
+        if ($null -ne $connectionInfoCommand) {
+            try {
+                $connectedSessions = @(& $connectionInfoCommand -ErrorAction Stop | Where-Object { [string]$_.State -eq 'Connected' })
+            }
+            catch {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnection cannot be used because the loaded ExchangeOnlineManagement session could not be verified. Omit the switch to run the connection check.'
+            }
+            if ($connectedSessions.Count -gt 0) {
+                throw 'ExchangeConnectionCheckSkipDenied: -SkipConnection is for offline test doubles only and cannot be used with a connected Exchange Online session. Omit the switch to run the connection check.'
+            }
+        }
+    }
+    else {
+        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        $previewScope = @()
+        try { $previewScope = @((Get-Content -LiteralPath $PreviewPath -Raw | ConvertFrom-Json -Depth 64).Scope) }
+        catch { $previewScope = @() }
+        $null = Initialize-ExchangeOnlineSession -ExpectedTenantId ([string]$exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID) `
+            -Scope $previewScope -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
+            -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -InformationAction Continue
     }
 
     $approvedChange = @{
@@ -1426,8 +1463,11 @@ if ($declaredDeploymentProfile -ceq 'ExchangeOnly') {
         ApprovalPath = $ApprovalPath
         AuthorizedSignerPath = $AuthorizedSignerPath
         Apply = $true
-        Confirm = $false
     }
+    foreach ($preference in @('WhatIf', 'Confirm')) {
+        if ($PSBoundParameters.ContainsKey($preference)) { $approvedChange[$preference] = [bool]$PSBoundParameters[$preference] }
+    }
+    if ($WhatIfPreference) { $approvedChange.WhatIf = $true }
     $exchangeApplyResult = Invoke-BaselineApprovedChange @approvedChange
     return $exchangeApplyResult
 }
@@ -1448,7 +1488,7 @@ if ($Apply) {
     $approvalDecision = Test-BaselineChangeApproval -PreviewPath $PreviewPath -ApprovalPath $ApprovalPath `
         -Tenant $applyInputs.initialDomain -DeploymentProfile $applyResolution.DeploymentProfile `
         -ConfigurationHash (Get-BaselineConfigurationHash -Resolution $applyResolution).Hash `
-        -RequestedBy $RequestedBy
+        -RequestedBy $RequestedBy -AuthorizedSigner $signerMetadata
 
     $applyDecision = Test-BaselineApplyPrerequisite -Apply $true -PreviewPath $PreviewPath `
         -ApprovalPath $ApprovalPath -ArtifactRoot $ArtifactRoot -ApprovalDecision $approvalDecision
@@ -1471,8 +1511,9 @@ if ($Apply) {
 # and the context then reports every capability unentitled rather than trusting a declared tier.
 $graphRequest = $null
 if (-not $SkipConnection) {
-    Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-    Connect-ExchangeOnline -ShowBanner:$false
+    Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+    $null = Connect-ExchangeOnlineSession -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
+        -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion '3.0.0' -InformationAction Continue
 
     Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
     Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome

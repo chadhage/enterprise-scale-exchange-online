@@ -139,7 +139,7 @@ BeforeAll {
         & $script:changeCommand -Stage Preview @Arguments -Scope OutboundSpam -Confirm:$false | Out-Null
         & $script:changeCommand -Stage Approve @Arguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
         & $script:changeCommand -Stage Validate @Arguments | Out-Null
-        $apply = & $script:deployCommand @Arguments -Apply -SkipConnection -Confirm:$false
+        $deployArguments = @{} + $Arguments; $deployArguments.Remove('SkipConnectionCheck'); $apply = & $script:deployCommand @deployArguments -Apply -SkipConnection -Confirm:$false
         $applied = Get-AdapterSnapshot
         $writesAfterApply = $global:adapterCalls.Count
         $repeatArguments = New-OutboundSpamFixture -TestDrive $TestDrive
@@ -149,7 +149,7 @@ BeforeAll {
         & $script:changeCommand -Stage Preview @repeatArguments -Scope OutboundSpam -Confirm:$false | Out-Null
         & $script:changeCommand -Stage Approve @repeatArguments -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:signingCertificate -Confirm:$false | Out-Null
         & $script:changeCommand -Stage Validate @repeatArguments | Out-Null
-        $secondApply = & $script:deployCommand @repeatArguments -Apply -SkipConnection -Confirm:$false
+        $deployArguments = @{} + $repeatArguments; $deployArguments.Remove('SkipConnectionCheck'); $secondApply = & $script:deployCommand @deployArguments -Apply -SkipConnection -Confirm:$false
         $noOpWrites = $global:adapterCalls.Count - $writesAfterApply
         $global:adapterState.HostedOutboundSpamFilterPolicy[0].AutoForwardingMode = 'Automatic'
         $drift = $null

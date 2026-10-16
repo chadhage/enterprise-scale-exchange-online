@@ -65,7 +65,7 @@ function Resolve-BaselineEwsPolicy {
         EwsApplicationAccessPolicy = [string]$DesiredState.ewsApplicationAccessPolicy
         EwsAllowList = $allowList
     }
-    $applicationIds = @($DesiredState.ewsAllowedAppIds)
+    $applicationIds = @(Get-BaselineRecordMember -Node $DesiredState -Name 'ewsAllowedAppIds')
     if ($DesiredState.ewsEnabled) {
         if ($applicationIds.Count -eq 0 -or @($applicationIds | Where-Object { $_ -notmatch '^[0-9a-fA-F-]{36}$' }).Count) {
             throw 'EwsApplicationIdentityRequired: application IDs are required.'
@@ -122,11 +122,20 @@ function Get-ApprovedAdapterDefinitions {
     if ($options.ContainsKey('enableDkim') -and $options.enableDkim -isnot [bool]) { throw 'ChangeOptionsInvalid: enableDkim must be Boolean.' }
     $fixed = {
         param($Adapter, $Noun, $Target, $Desired, $Types, [bool]$Create = $false, $CreateTarget = @{})
-        New-ApprovedAdapterDefinition $Adapter $Noun $Target $Desired $Types -Create:$Create -CreateTarget $CreateTarget
+        $definition = New-ApprovedAdapterDefinition $Adapter $Noun $Target $Desired $Types -Create:$Create -CreateTarget $CreateTarget
+        if ($Adapter -ceq 'TenantAllowBlockList' -and $null -ne $Approved) {
+            $identity = ConvertTo-CanonicalJson $definition.Target
+            $suffix = [Convert]::ToHexString(
+                [Security.Cryptography.SHA256]::HashData([Text.Encoding]::UTF8.GetBytes($identity))
+            ).Substring(0,16).ToLowerInvariant()
+            $previous = @($Approved | Where-Object { $_.OperationId -ceq "TenantAllowBlockList-$suffix" })
+            if ($previous.Count -eq 1) { $definition.ApprovedBefore = ConvertTo-BaselineHashableNode $previous[0].Before }
+        }
+        $definition
     }
     $targets = {
         param($Adapter, $Command, $Arguments = @{}, $Required = @('Identity'))
-        if ($null -ne $Approved -and -not $DesiredOnly) {
+        if ($null -ne $Approved) {
             foreach ($operation in @($Approved | Where-Object { $_.OperationId -clike "$Adapter-*" })) {
                 $target = ConvertFrom-Json -InputObject $operation.Identity -AsHashtable
                 if (-not $target.ContainsKey('Identity') -or [string]::IsNullOrWhiteSpace([string]$target.Identity)) { throw 'ChangeOperationMismatch: target Identity is required.' }
@@ -1515,13 +1524,22 @@ function Read-ApprovedAdapterState {
             ).Substring(0,16).ToLowerInvariant()
             $operationId = "$($Definition.Adapter)-$suffix"
             $created = @($applyReceipt.Operation | Where-Object {
-                    $_.OperationId -ceq $operationId -and $_.State -ceq 'Succeeded' -and
-                    -not [string]::IsNullOrWhiteSpace([string]$_.ObjectFingerprint)
+                    [string](Get-BaselineRecordMember $_ OperationId) -ceq $operationId -and
+                    [string](Get-BaselineRecordMember $_ State) -ceq 'Succeeded' -and
+                    -not [string]::IsNullOrWhiteSpace([string](Get-BaselineRecordMember $_ ObjectFingerprint))
                 })
             if ($created.Count -eq 1) {
                 $bytes = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson (ConvertTo-BaselineHashableNode $row)))
                 $fingerprint = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
-                if ($fingerprint -cne [string]$created[0].ObjectFingerprint) {
+                $approvedBefore = Get-BaselineRecordMember -Node $Definition -Name 'ApprovedBefore'
+                $alreadyRestored = $false
+                if ($null -ne $approvedBefore -and [bool](Get-BaselineRecordMember -Node $approvedBefore -Name 'Exists')) {
+                    $approvedBeforeValue = Get-BaselineRecordMember -Node $approvedBefore -Name 'Value'
+                    if ($null -ne $approvedBeforeValue) {
+                        $alreadyRestored = (ConvertTo-CanonicalJson $value) -ceq (ConvertTo-CanonicalJson $approvedBeforeValue)
+                    }
+                }
+                if (-not $alreadyRestored -and $fingerprint -cne [string](Get-BaselineRecordMember $created[0] ObjectFingerprint)) {
                     throw 'ChangeStateDrift: a created object changed after its approved creation.'
                 }
             }

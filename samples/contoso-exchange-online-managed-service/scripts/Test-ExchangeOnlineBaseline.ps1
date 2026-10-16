@@ -55,6 +55,14 @@ param(
 
     [System.Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate,
 
+    [string]$UserPrincipalName,
+
+    [switch]$UseDeviceCode,
+
+    [bool]$ConfirmSession = $true,
+
+    [switch]$NonInteractive,
+
     [switch]$SkipConnection
 )
 
@@ -88,6 +96,19 @@ catch {
     exit $exitCode.Configuration
 }
 
+if ($SkipConnection -and (Get-Command -Name Get-ConnectionInformation -ErrorAction SilentlyContinue)) {
+    try {
+        $connectedSessions = @(Get-ConnectionInformation -ErrorAction Stop | Where-Object { $_.State -eq 'Connected' })
+        if ($connectedSessions.Count -gt 0) {
+            throw 'ExchangeConnectionBypassRefused: -SkipConnection is only allowed for offline test doubles. Run Disconnect-ExchangeOnline -Confirm:$false, then rerun without -SkipConnection.'
+        }
+    }
+    catch {
+        Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
+        exit $exitCode.Connection
+    }
+}
+
 if ($deploymentProfile -ceq 'ExchangeOnly') {
     try {
         $exchangeContext = Get-BaselineExchangeContext -ConfigurationPath $ConfigurationPath -ParameterPath $ParameterPath
@@ -99,8 +120,10 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
 
     if (-not $SkipConnection) {
         try {
-            Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-            Connect-ExchangeOnline -ShowBanner:$false
+            Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+            $null = Initialize-ExchangeOnlineSession -ExpectedTenantId ([string]$exchangeContext.Parameters.MICROSOFT_ENTRA_TENANT_GUID) `
+                -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode -ConfirmSession $ConfirmSession `
+                -NonInteractive:$NonInteractive -MinimumModuleVersion '3.0.0' -InformationAction Continue
         }
         catch {
             Write-Error "ConnectionFailed: $($_.Exception.Message)" -ErrorAction Continue
@@ -178,8 +201,9 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
 $graphRequest = $null
 if (-not $SkipConnection) {
     try {
-        Import-Module ExchangeOnlineManagement -MinimumVersion 3.0.0
-        Connect-ExchangeOnline -ShowBanner:$false
+        Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        $null = Connect-ExchangeOnlineSession -UserPrincipalName $UserPrincipalName -UseDeviceCode:$UseDeviceCode `
+            -ConfirmSession $ConfirmSession -NonInteractive:$NonInteractive -MinimumModuleVersion '3.0.0' -InformationAction Continue
 
         Import-Module Microsoft.Graph.Authentication -MinimumVersion 2.0.0
         Connect-MgGraph -Scopes 'Organization.Read.All' -NoWelcome

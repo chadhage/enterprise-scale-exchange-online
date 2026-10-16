@@ -14,7 +14,7 @@ BeforeAll {
         $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE','ATP_ENTERPRISE','THREAT_INTELLIGENCE')
         $parameterPath = Join-Path $directory 'parameters.json'
         $parameters | ConvertTo-Json -Depth 30 | Set-Content $parameterPath
-        @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:root 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test' }
+        @{ ParameterPath = $parameterPath; ConfigurationPath = (Join-Path $script:root 'config/exchange-only.v1.json'); ArtifactRoot = $directory; ChangeId = 'ADAPTER004'; RequestedBy = 'operator@example.test'; SkipConnectionCheck = $true }
     }
     $script:readCommands = @('Get-OrganizationConfig','Get-ExternalInOutlook','Get-RemoteDomain','Get-CASMailbox','Get-CASMailboxPlan','Get-HostedOutboundSpamFilterPolicy','Get-AcceptedDomain','Get-ReportSubmissionPolicy','Get-SecOpsOverridePolicy','Get-ExoSecOpsOverrideRule','Get-AntiPhishPolicy','Get-EOPProtectionPolicyRule','Get-ATPProtectionPolicyRule','Get-ATPBuiltInProtectionRule','Get-QuarantinePolicy','Get-HostedContentFilterPolicy','Get-MalwareFilterPolicy','Get-Mailbox','Get-InboxRule','Get-RoleAssignmentPolicy','Get-ManagementRoleAssignment','Get-DkimSigningConfig','Get-TenantAllowBlockListItems')
     foreach ($name in $script:readCommands) {

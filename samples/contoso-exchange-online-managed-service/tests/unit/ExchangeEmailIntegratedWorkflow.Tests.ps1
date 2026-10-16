@@ -328,7 +328,7 @@ Describe 'EXR-010-A12 integrated email workflow' {
         & $script:adapterCommand -Stage Preview @change -Scope @('Transport') -Confirm:$false | Out-Null
         & $script:adapterCommand -Stage Approve @change -ApprovalIdentity 'reviewer@example.test' -SigningCertificate $script:adapterCertificate -Confirm:$false | Out-Null
         & $script:adapterCommand -Stage Validate @change | Out-Null
-        & $script:deployCommand @change -Apply -SkipConnection -Confirm:$false | Out-Null
+        $deployChange = @{} + $change; $deployChange.Remove('SkipConnectionCheck'); & $script:deployCommand @deployChange -Apply -SkipConnection -Confirm:$false | Out-Null
         $execution = @(Invoke-ProtectionRawRegistry $fixture $script:emailModule)
         $frozen = New-FrozenEmailEvidence -Fixture $fixture -Execution $execution
         $verifyArguments = $frozen.Arguments

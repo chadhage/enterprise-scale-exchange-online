@@ -411,6 +411,20 @@ Describe 'EXR-007-A02-T01 transport bypass and external-tag lifecycle' {
             Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-TRANSPORT-T01.json') | Should -BeFalse
         }
 
+        It 'reports drift instead of a clean rehearsal when apply runs with WhatIf' {
+            # Arrange
+            $arguments = New-TransportBypassFixture -Approved
+            $global:adapterState.TransportRule[0].SenderIpRanges = @('203.0.113.11/32')
+
+            # Act
+            $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -WhatIf }
+
+            # Assert
+            $invoke | Should -Throw '*ChangeStateDrift*'
+            $global:adapterCalls.Count | Should -Be 0
+            Test-Path (Join-Path $arguments.ArtifactRoot 'prechange-TRANSPORT-T01.json') | Should -BeFalse
+        }
+
         It 'refuses external-tag drift after signed approval' {
             # Arrange
             $arguments = New-TransportBypassFixture -Approved

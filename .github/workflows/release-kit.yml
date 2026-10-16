@@ -1,0 +1,61 @@
+name: Publish Exchange change kit release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing or new release tag (for example v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Pin an existing tag to its own commit
+        run: |
+          set -euo pipefail
+          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+            git checkout --detach "refs/tags/$TAG"
+          fi
+          echo "TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+
+      - name: Package the change kit
+        run: |
+          set -euo pipefail
+          staging="$RUNNER_TEMP/exchange-online-change-kit"
+          mkdir -p "$staging"
+          cp -R samples/contoso-exchange-online-managed-service/{config,docs,scripts,README.md} "$staging/"
+          (cd "$RUNNER_TEMP" && zip -qr exchange-online-change-kit.zip exchange-online-change-kit)
+          (cd "$RUNNER_TEMP" && sha256sum exchange-online-change-kit.zip > exchange-online-change-kit.zip.sha256)
+          cat "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256"
+
+      - name: Publish release assets
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            existing_assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
+            for asset in exchange-online-change-kit.zip exchange-online-change-kit.zip.sha256; do
+              if grep -Fqx "$asset" <<< "$existing_assets"; then
+                echo "Refusing to replace existing release asset: $asset" >&2
+                exit 1
+              fi
+            done
+            gh release upload "$TAG" "$RUNNER_TEMP/exchange-online-change-kit.zip" "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256"
+          else
+            gh release create "$TAG" "$RUNNER_TEMP/exchange-online-change-kit.zip" "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256" \
+              --title "Exchange Online change kit $TAG" --generate-notes --target "$TARGET_SHA"
+          fi

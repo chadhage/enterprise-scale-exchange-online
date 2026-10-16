@@ -110,4 +110,76 @@ Describe 'EXR-004 approval admission' {
         $decision.ChangeId | Should -BeExactly 'CHG004'
         $decision.Finding.Count | Should -Be 0
     }
+
+    It 'verifies a real detached CMS approval and refuses changed signed fields' {
+        # Arrange
+        $arguments = New-WorkflowGateFixture
+        $rsa = [Security.Cryptography.RSA]::Create(2048)
+        $certificate = $null
+        try {
+            $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new(
+                'CN=Offline Approver', $rsa, [Security.Cryptography.HashAlgorithmName]::SHA256,
+                [Security.Cryptography.RSASignaturePadding]::Pkcs1
+            )
+            $certificate = $request.CreateSelfSigned(
+                [datetimeoffset]::UtcNow.AddDays(-1), [datetimeoffset]::UtcNow.AddDays(1)
+            )
+            $approvalDocument = Get-Content -LiteralPath $arguments.ApprovalPath -Raw |
+                ConvertFrom-Json -AsHashtable -DateKind String
+            $signedApproval = [ordered]@{}
+            foreach ($member in $approvalDocument.Keys) {
+                if ($member -cne 'Signature') { $signedApproval[$member] = $approvalDocument[$member] }
+            }
+            $approvalTime = [datetimeoffset]::Parse($approvalDocument.ApprovalTimeUtc)
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+                [Security.Cryptography.Pkcs.ContentInfo]::new(
+                    [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $signedApproval))
+                ), $true
+            )
+            $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($certificate)
+            $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $null = $signer.SignedAttributes.Add(
+                [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new($approvalTime.UtcDateTime)
+            )
+            $cms.ComputeSignature($signer, $true)
+            $approvalDocument.Signature = @{
+                Model = 'DetachedCms'
+                Value = [Convert]::ToBase64String($cms.Encode())
+            }
+            [IO.File]::WriteAllText(
+                $arguments.ApprovalPath,
+                ($approvalDocument | ConvertTo-Json -Depth 20),
+                [Text.UTF8Encoding]::new($false)
+            )
+            $arguments.AuthorizedSigner = @(@{
+                Identity = 'reviewer@example.test'
+                Subject = $certificate.Subject
+                Authority = 'ExchangeOnlineChangeApproval'
+            })
+            Mock Test-BaselineEvidenceCertificateChain -ModuleName ExchangeOnlineBaseline.Common {
+                @{ ChainTrusted = $true; RevocationStatus = 'Good' }
+            }
+
+            # Act
+            $decision = Test-BaselineChangeApproval @arguments
+
+            # Assert
+            $decision.Permitted | Should -BeTrue
+            $decision.Finding.Count | Should -Be 0
+
+            $approvalDocument.ApprovalIdentity = 'attacker@example.test'
+            [IO.File]::WriteAllText(
+                $arguments.ApprovalPath,
+                ($approvalDocument | ConvertTo-Json -Depth 20),
+                [Text.UTF8Encoding]::new($false)
+            )
+            $tamperedDecision = Test-BaselineChangeApproval @arguments
+            $tamperedDecision.Permitted | Should -BeFalse
+            ($tamperedDecision.Finding -join ';') | Should -Match 'ChangeApprovalSignatureUnverified'
+        }
+        finally {
+            if ($null -ne $certificate) { $certificate.Dispose() }
+            $rsa.Dispose()
+        }
+    }
 }

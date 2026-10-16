@@ -2,6 +2,9 @@
 # Throwaway, and they hardcode absolute paths, so they must never be committed.
 redproof-*
 
+# Docs bundled into the microsite by deploy-pages.yml or microsite/Start-MicrositePreview.ps1
+microsite/docs/
+
 # Test and evidence output
 test-reports/
 TestResults.xml

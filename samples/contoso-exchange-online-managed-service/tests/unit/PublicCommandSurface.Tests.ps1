@@ -63,7 +63,8 @@ Describe 'EXR-010-A12-L01-F02 bounded compatibility negatives' {
                     'Get-BaselineExchangeManifest'
                     'Get-BaselineExchangeContext'
                     'Invoke-BaselineExchangeGoLive'
-                )) {
+                'Get-BaselineRollbackRecoveryState'
+            )) {
                 foreach ($surface in @('Definition', 'ModuleExport', 'ManifestExport')) {
                     @{ CommandName = $commandName; Surface = $surface }
                 }

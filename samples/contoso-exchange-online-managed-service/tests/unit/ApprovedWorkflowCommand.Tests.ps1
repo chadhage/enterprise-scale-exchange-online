@@ -38,7 +38,7 @@ BeforeAll {
         $approvalFile = Write-BaselineChangeArtifact -ChangeId CHG004 -Artifact Approval -Root $directory -Content $approval
         $signerPath = Join-Path $directory 'authority.json'
         @(@{ Identity = 'reviewer@example.test'; Subject = 'CN=Offline'; Authority = 'ExchangeOnlineChangeApproval' }) | ConvertTo-Json -AsArray | Set-Content $signerPath
-        @{ ParameterPath = $parameterPath; ConfigurationPath = $configurationPath; PreviewPath = $previewFile.Path; ApprovalPath = $approvalFile.Path; ArtifactRoot = $directory; ChangeId = 'CHG004'; RequestedBy = 'operator@example.test'; AuthorizedSignerPath = $signerPath }
+        @{ ParameterPath = $parameterPath; ConfigurationPath = $configurationPath; PreviewPath = $previewFile.Path; ApprovalPath = $approvalFile.Path; ArtifactRoot = $directory; ChangeId = 'CHG004'; RequestedBy = 'operator@example.test'; SkipConnectionCheck = $true; AuthorizedSignerPath = $signerPath }
     }
 }
 
@@ -114,12 +114,52 @@ AfterAll {
         $invoke | Should -Throw '*ChangeSigningPrerequisite*'
     }
 
+    It 'refuses the connection-check bypass when ExchangeOnlineManagement has a connected session' {
+        # Arrange
+        $module = New-Module -Name ExchangeOnlineManagement -ScriptBlock {
+            function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected'; TenantID = '11111111-2222-3333-4444-555555555555' } }
+            Export-ModuleMember -Function Get-ConnectionInformation
+        }
+        Import-Module $module -Force
+        $arguments = New-WorkflowCommandFixture
+        # Act
+        $invoke = { & $script:command -Stage Preview @arguments -Scope Transport }
+        # Assert
+        try {
+            $invoke | Should -Throw '*ExchangeConnectionCheckSkipDenied*'
+        }
+        finally {
+            Remove-Module ExchangeOnlineManagement -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'refuses the deployment connection bypass when ExchangeOnlineManagement has a connected session' {
+        # Arrange
+        $module = New-Module -Name ExchangeOnlineManagement -ScriptBlock {
+            function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected'; TenantID = '11111111-2222-3333-4444-555555555555' } }
+            Export-ModuleMember -Function Get-ConnectionInformation
+        }
+        Import-Module $module -Force
+        $arguments = New-WorkflowCommandFixture
+        $arguments.Remove('SkipConnectionCheck')
+        # Act
+        $invoke = { & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @arguments -Apply -SkipConnection -Confirm:$false }
+        # Assert
+        try {
+            $invoke | Should -Throw '*ExchangeConnectionCheckSkipDenied*'
+            $global:workflowWrites | Should -Be 0
+        }
+        finally {
+            Remove-Module ExchangeOnlineManagement -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'stops the deployment entrypoint clearly when signer metadata is absent' {
         # Arrange
         $arguments = New-WorkflowCommandFixture
         $arguments.Remove('AuthorizedSignerPath')
         # Act
-        $invoke = { & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @arguments -Apply -SkipConnection -Confirm:$false }
+        $invoke = { $deployArguments = @{} + $arguments; $deployArguments.Remove('SkipConnectionCheck'); & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @deployArguments -Apply -SkipConnection -Confirm:$false }
         # Assert
         $invoke | Should -Throw '*ChangeSigningPrerequisite*'
         $global:workflowWrites | Should -Be 0
@@ -155,7 +195,7 @@ AfterAll {
         # Arrange
         $arguments = New-WorkflowCommandFixture
         # Act
-        $invoke = { & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @arguments -Apply -EnableDkim -SkipConnection -Confirm:$false }
+        $invoke = { $deployArguments = @{} + $arguments; $deployArguments.Remove('SkipConnectionCheck'); & (Join-Path $script:root 'scripts/Deploy-ExchangeOnlineBaseline.ps1') @deployArguments -Apply -EnableDkim -SkipConnection -Confirm:$false }
         # Assert
         $invoke | Should -Throw '*ChangeScopeUnsupported*workflowOptions.enableDkim*'
         $global:workflowWrites | Should -Be 0
@@ -237,6 +277,8 @@ AfterAll {
             @{ Verified = $true; SignerSubject = $cms.SignerInfos[0].Certificate.Subject; SigningTimeUtc = [datetimeoffset]::UtcNow; CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1); CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1); ChainTrusted = $true; RevocationStatus = 'Good' }
         }
         $guide = Get-Content (Join-Path $script:root 'docs/APPROVED-CHANGE.md') -Raw
+        Import-Module (Join-Path $script:root 'scripts/ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
+        Mock Initialize-ExchangeOnlineSession { [pscustomobject]@{ UserPrincipalName = 'operator@example.test'; TenantID = $global:workflowTenant } }
         $commands = [regex]::Match($guide, '(?s)<!-- executable-workflow -->\s*```powershell\s*(.*?)```').Groups[1].Value
         $commands | Should -Not -BeNullOrEmpty
         Push-Location $script:root
@@ -256,6 +298,7 @@ AfterAll {
             $approval.ChangeId | Should -BeExactly $changeId
             (Get-Content (Join-Path $artifactRoot "postchange-$changeId.json") -Raw | ConvertFrom-Json).Status | Should -BeExactly 'Succeeded'
             (Get-Content (Join-Path $artifactRoot "rollback-result-$changeId.json") -Raw | ConvertFrom-Json).Status | Should -BeExactly 'Succeeded'
+            Should -Invoke Initialize-ExchangeOnlineSession -Times 1
         }
         finally { Pop-Location; $certificate.Dispose(); $key.Dispose() }
     }

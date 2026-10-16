@@ -52,7 +52,7 @@ $runDirectory = Join-Path 'C:\ExchangeEvidence' ([guid]::NewGuid().ToString('N')
 if ($LASTEXITCODE -ne 0) { throw "Collection refused with exit $LASTEXITCODE; inspect the evidence and resolve the findings." }
 ```
 
-Collection connects only to Exchange Online. `-SkipConnection` is for an already established Exchange session or an offline harness; it does not synthesize evidence. All 25 retained controls are required, including MON-003, OPS-001 and OPS-002. Do not turn a licensing gap, missing operational artifact, Error or unknown status into Pass. A collection exit 0 is not a signed go-live decision.
+Collection connects only to Exchange Online and reuses an existing session only after verifying that every connected Exchange session belongs to the parameter-file tenant. `-SkipConnection` is reserved for offline test harnesses and is rejected when a live Exchange session is connected. All 25 retained controls are required, including MON-003, OPS-001 and OPS-002. Do not turn a licensing gap, missing operational artifact, Error or unknown status into Pass. A collection exit 0 is not a signed go-live decision.
 
 ## 3. Freeze And Review Exact Bytes
 

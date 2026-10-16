@@ -60,16 +60,16 @@ if ($journey.ApprovalIdentity -eq $journey.Operator) { throw 'JourneyIndependent
 
 ## 2. Module, Access And Tenant Session
 
-Have the workstation owner supply PowerShell 7.5+ and ExchangeOnlineManagement 3.7+ (including `Get-MessageTraceV2`). No module installation occurs here. The access owner must authorize the specific commands, parameters and recipient/configuration scopes, including recipient creation/group membership, accepted domains, transport/organization/client policies and preset assignments. Typical Exchange roles include Mail Recipients, Distribution Groups, Remote and Accepted Domains, Transport Hygiene and the appropriate organization configuration roles; names alone do not prove effective scope. The owner uses the supported [cmdlet permission discovery procedure](https://learn.microsoft.com/powershell/exchange/find-exchange-cmdlet-permissions). Do not grant Organization Management or Global Administrator as a workaround. Group membership below uses approved Exchange administrator rights, not a claim that the operator owns every group.
+Have the workstation owner supply PowerShell 7.5+ and ExchangeOnlineManagement 3.10.0+ (including `Get-MessageTraceV2` and the change kit's connection pre-flight). No module installation occurs here. The access owner must authorize the specific commands, parameters and recipient/configuration scopes, including recipient creation/group membership, accepted domains, transport/organization/client policies and preset assignments. Typical Exchange roles include Mail Recipients, Distribution Groups, Remote and Accepted Domains, Transport Hygiene and the appropriate organization configuration roles; names alone do not prove effective scope. The owner uses the supported [cmdlet permission discovery procedure](https://learn.microsoft.com/powershell/exchange/find-exchange-cmdlet-permissions). Do not grant Organization Management or Global Administrator as a workaround. Group membership below uses approved Exchange administrator rights, not a claim that the operator owns every group.
 
 Start without other Exchange sessions. Authenticate interactively through the already approved mechanism; never put credentials in this guide. Inspect identity, tenant and connected state. Any denied parameter/scope or collection failure stops; do not catch it and assume the object is absent.
 
 <!-- journey:session -->
 ```powershell
 if ($PSVersionTable.PSVersion -lt [version]'7.5') { throw 'JourneyPowerShellRequired: workstation owner' }
-$module = @(Get-Module -ListAvailable ExchangeOnlineManagement | Where-Object Version -GE ([version]'3.7.0'))
-if (-not $module.Count) { throw 'JourneyModuleRequired: ExchangeOnlineManagement 3.7+; workstation owner' }
-Import-Module ExchangeOnlineManagement -MinimumVersion 3.7.0
+$module = @(Get-Module -ListAvailable ExchangeOnlineManagement | Where-Object Version -GE ([version]'3.10.0'))
+if (-not $module.Count) { throw 'JourneyModuleRequired: ExchangeOnlineManagement 3.10.0+; workstation owner' }
+Import-Module ExchangeOnlineManagement -MinimumVersion 3.10.0
 Connect-ExchangeOnline -UserPrincipalName $journey.Operator -ExchangeEnvironmentName $journey.Cloud -ShowBanner:$false
 $sessions = @(Get-ConnectionInformation | Where-Object State -EQ Connected)
 if ($sessions.Count -ne 1 -or $sessions[0].TenantID -ne $journey.TenantId -or $sessions[0].UserPrincipalName -ne $journey.Operator) { throw 'JourneySessionMismatch: disconnect wrong sessions; RAID-D02' }
@@ -223,11 +223,11 @@ $certificate = Get-Item -LiteralPath "Cert:\CurrentUser\My\$($journey.Certificat
 
 ## 10. Approved Apply And Readback
 
-The authorized Exchange operator resumes with the same `$change`, after the approved window begins. `-SkipConnection` consumes the one checked session, not synthetic evidence. The real apply performs pre/post readback and stores immutable receipts. Review `postchange-<ChangeId>.json` for Succeeded. On drift, expiry, partial mutation or readback failure, stop and use APPROVED-CHANGE recovery; the generated rollback covers only these signed attempted operations, not foundational objects or external DNS. Do not replay by deleting locks. The command below is documentation, not authorization to apply to a tenant during offline engineering.
+The authorized Exchange operator resumes with the same `$change`, after the approved window begins. The real apply reuses the checked session for the parameter-file tenant; do not pass `-SkipConnection`, which is reserved for offline test doubles and is rejected when a live Exchange session is connected. The apply performs pre/post readback and stores immutable receipts. Review `postchange-<ChangeId>.json` for Succeeded. On drift, expiry, partial mutation or readback failure, stop and use APPROVED-CHANGE recovery; the generated rollback covers only these signed attempted operations, not foundational objects or external DNS. Do not replay by deleting locks. The command below is documentation, not authorization to apply to a tenant during offline engineering.
 
 <!-- journey:apply -->
 ```powershell
-./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -Confirm:$false
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -Confirm:$false
 $postchange = Get-Content -LiteralPath (Join-Path $journey.ArtifactRoot "postchange-$($journey.ChangeId).json") -Raw | ConvertFrom-Json
 if ($postchange.Status -ne 'Succeeded') { throw 'JourneyApplyFailed: inspect immutable receipts and approved rollback' }
 ```
@@ -239,7 +239,7 @@ Complete the three independently signed operational artifacts and all retained e
 <!-- journey:frozen -->
 ```powershell
 $runDirectory = Join-Path $journey.ArtifactRoot 'evidence'
-./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath -OutputPath $runDirectory -SkipConnection
+./scripts/Test-ExchangeOnlineBaseline.ps1 -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath -OutputPath $runDirectory
 if ($LASTEXITCODE -ne 0) { throw "JourneyCollectionRefused:$LASTEXITCODE inspect findings; do not sign replacements" }
 $evidencePath = Join-Path $runDirectory 'frozen-exchange-evidence.json'
 if (Test-Path -LiteralPath $evidencePath) { throw 'JourneyFrozenPathExists: use a new reviewed run' }

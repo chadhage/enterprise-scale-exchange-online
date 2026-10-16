@@ -203,6 +203,81 @@ Describe 'EXR-008 executable Exchange administrator journey' {
         @(Get-Mailbox -ResultSize Unlimited | Where-Object PrimarySmtpAddress -EQ $inputData.OperationsMailbox).Count | Should -Be 1
     }
 
+    It 'refuses <Fault> in the real Preview connection pre-flight' -ForEach @(
+        @{ Fault = 'PreflightWrongTenant'; Reason = 'ExchangeSessionTenantMismatch' }
+        @{ Fault = 'PreflightWrongEndpoint'; Reason = 'ExchangeSessionEndpointUnsupported' }
+        @{ Fault = 'PreflightRoleMissing'; Reason = 'ExchangeRoleMissing' }
+        @{ Fault = 'PreflightNonInteractive'; Reason = 'ExchangeSessionConfirmationRequired' }
+    ) {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Fault $Fault -Directory $TestDrive
+        # Act
+        $invoke = { Invoke-JourneyExample -InputData $inputData -Through preview }
+        # Assert
+        $invoke | Should -Throw "*$($Reason)*"
+        $global:journeyState.Forbidden.Count | Should -Be 0
+        $global:journeyState.Calls | Should -Contain 'Test-ExchangeInteractiveHost'
+        $global:adapterCalls.Command | Should -Not -Contain 'Set-TransportConfig'
+    }
+
+    It 'confirms the offline session through the real Preview connection pre-flight' {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Directory $TestDrive
+        # Act
+        $null = Invoke-JourneyExample -InputData $inputData -Through preview
+        # Assert
+        $global:journeyState.Calls | Should -Contain 'Test-ExchangeInteractiveHost'
+        $global:journeyState.SessionConfirmations | Should -Be 1
+        $global:journeyState.Forbidden.Count | Should -Be 0
+    }
+
+    It 'restores the interactive host check after connection pre-flight teardown' {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Directory $TestDrive
+        $null = Invoke-JourneyExample -InputData $inputData -Through preview
+        $original = $global:journeyState.ConnectionModuleFunctions['Test-ExchangeInteractiveHost'].ToString()
+        # Act
+        Clear-JourneyDoubles
+        # Assert
+        $restored = & (Microsoft.PowerShell.Core\Get-Module ExchangeOnlineBaseline.Connection) {
+            (Microsoft.PowerShell.Management\Get-Item Function:\Test-ExchangeInteractiveHost).Definition
+        }
+        $restored | Should -BeExactly $original
+    }
+
+    It 'confirms the offline session again when applying the approved Preview' {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Directory $TestDrive
+        $null = Invoke-JourneyExample -InputData $inputData -Through approve
+        # Act
+        $null = & (Join-Path $script:sampleRoot 'scripts/Invoke-ExchangeOnlineChange.ps1') -Stage Apply `
+            -ParameterPath $inputData.ParameterPath -ConfigurationPath $inputData.ConfigurationPath `
+            -ArtifactRoot $inputData.ArtifactRoot -ChangeId $inputData.ChangeId -RequestedBy $inputData.Operator `
+            -PreviewPath (Join-Path $inputData.ArtifactRoot 'preview-CHG008.json') `
+            -ApprovalPath (Join-Path $inputData.ArtifactRoot 'approval-CHG008.json') `
+            -AuthorizedSignerPath $inputData.AuthorityPath -Apply -Confirm:$false
+        # Assert
+        $global:journeyState.SessionConfirmations | Should -Be 2
+        $global:journeyState.Forbidden.Count | Should -Be 0
+        (Get-Content (Join-Path $inputData.ArtifactRoot 'postchange-CHG008.json') -Raw | ConvertFrom-Json).Status | Should -BeExactly Succeeded
+    }
+
+    It 'executes the documented journey through approved Apply with offline session confirmation' {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Directory $TestDrive
+        # Act
+        $null = Invoke-JourneyExample -InputData $inputData -Through apply
+        # Assert
+        $global:journeyState.SessionConfirmations | Should -Be 2
+        $global:journeyState.Forbidden.Count | Should -Be 0
+        (Get-Content (Join-Path $inputData.ArtifactRoot 'postchange-CHG008.json') -Raw | ConvertFrom-Json).Status | Should -BeExactly Succeeded
+    }
+
     It 'does not leak installed command doubles into subsequent test containers' {
         # Arrange
         $inputData = New-JourneyInput

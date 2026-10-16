@@ -634,7 +634,7 @@ $change = @{
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Preview @change -Scope TenantAllowBlockList -Confirm:$false
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Approve @change -ApprovalIdentity $approvalIdentity -SigningCertificate $certificate -Confirm:$false
 ./scripts/Invoke-ExchangeOnlineChange.ps1 -Stage Validate @change
-./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -SkipConnection -Confirm:$false
+./scripts/Deploy-ExchangeOnlineBaseline.ps1 @change -Apply -Confirm:$false
 ```
 
 Do not change an entry value, action, owner, ticket, justification, creation time, or expiry after approval. Any post-approval entry or governance-byte mutation requires a new preview and approval; Apply refuses it as `ChangePreviewBindingMismatch` before creating the prechange artifact or making an adapter write.
