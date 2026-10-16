@@ -134,6 +134,11 @@ Describe 'EXR-005 default public signed operational roundtrip' {
             @($envelope.Check | Where-Object Status -EQ Pass).Count | Should -Be 25
             @($envelope.Evidence | Where-Object Failed).Count | Should -Be 0
             foreach ($controlId in @('MON-003','OPS-001')) { ($envelope.Evidence | Where-Object ControlId -EQ $controlId).Value.SignatureVerified | Should -BeTrue }
+            $protocolEvidence = $envelope.Evidence | Where-Object ControlId -EQ 'EXO-009'
+            foreach ($plan in @($protocolEvidence.Value.CasMailboxPlan)) {
+                $plan.PSObject.Properties.Name | Should -Contain 'EwsEnabled'
+                $plan.PSObject.Properties.Name | Should -Contain 'EwsAllowList'
+            }
         }
         else { $exitCode | Should -Not -Be 0 }
         $calls = Get-Content $callPath

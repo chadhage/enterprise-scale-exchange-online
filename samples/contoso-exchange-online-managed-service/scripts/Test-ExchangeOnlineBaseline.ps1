@@ -248,7 +248,7 @@ try {
             Select-Object AuditDisabled, EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, EwsAllowedAppIDs
         externalInOutlook  = @(Get-ExternalInOutlook | Select-Object Enabled, AllowList)
         remoteDomain       = @(Get-RemoteDomain | Select-Object Identity, DomainName, Name, AutoForwardEnabled, AutoReplyEnabled, AllowedOOFType, DeliveryReportEnabled, NDREnabled)
-        casMailboxPlans    = @(Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, PopEnabled, ImapEnabled)
+        casMailboxPlans    = @(Get-CASMailboxPlan -ResultSize Unlimited | Select-Object Identity, EwsEnabled, EwsAllowList, PopEnabled, ImapEnabled)
         casMailboxes       = @(Get-CASMailbox -ResultSize Unlimited | Select-Object Identity, EwsEnabled, EwsApplicationAccessPolicy, EwsAllowList, PopEnabled, ImapEnabled)
         outboundSpam       = Get-HostedOutboundSpamFilterPolicy -Identity Default | Select-Object Name, AutoForwardingMode
         quarantineGlobal   = Get-QuarantinePolicy -Identity DefaultGlobalTag | Select-Object Name, EndUserSpamNotificationFrequency

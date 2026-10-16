@@ -74,6 +74,29 @@ Describe 'Microsite supported content boundary' {
         $script:index.IndexOf('Test-ExchangeOnlineChangeReadiness.ps1 `') | Should -BeLessThan $script:index.IndexOf('id="wizardTitle4"')
     }
 
+    It 'refuses superseded Pages candidates and moved or deleted release tags at publication time' {
+        $pagesDeploy = [regex]::Match($script:pagesWorkflow, '(?s)^.*?  deploy:.*?(?=^\w|\z)').Value
+        $pagesDeploy | Should -Match 'concurrency:\s*\r?\n\s+group:\s*pages-publication\r?\n\s+cancel-in-progress:\s*false'
+        $pagesDeploy | Should -Match 'steps\.find\.outputs\.commit'
+        $pagesDeploy.IndexOf('Check verified source and artifact hashes') |
+            Should -BeLessThan $pagesDeploy.IndexOf('Refuse publication of a superseded main commit')
+        $pagesDeploy.IndexOf('Refuse publication of a superseded main commit') |
+            Should -BeLessThan $pagesDeploy.IndexOf('uses: actions/deploy-pages@')
+        $pagesDeploy | Should -Match 'gh api "repos/\$GITHUB_REPOSITORY/commits/main"'
+        $pagesDeploy | Should -Match 'test "\$current_main" = "\$TARGET_SHA"'
+
+        $releaseWorkflowPath = Join-Path $script:repositoryRoot '.github\workflows\release-kit.yml'
+        $releaseWorkflow = Get-Content -LiteralPath $releaseWorkflowPath -Raw
+        $publication = [regex]::Match($releaseWorkflow, '(?s)      - name: Publish without rebuilding.*?(?=^\w|\z)').Value
+        $publication.IndexOf('git fetch --no-tags --force origin') |
+            Should -BeLessThan $publication.IndexOf('git rev-parse --verify "refs/tags/$TAG^{commit}"')
+        $publication.IndexOf('git rev-parse --verify "refs/tags/$TAG^{commit}"') |
+            Should -BeLessThan $publication.IndexOf('gh release create')
+        $publication | Should -Match 'git tag --delete "\$TAG"'
+        $publication | Should -Match 'test "\$remote_tag_commit" = "\$TARGET_SHA"'
+        $publication | Should -Not -Match 'git fetch --no-tags origin.*\|\|'
+    }
+
     It 'builds Step 2 from choices instead of asking for an unexplained profile choice' {
         $script:index | Should -Not -Match 'Use one approved Exchange-only profile'
         $script:index | Should -Not -Match 'Nothing to choose'

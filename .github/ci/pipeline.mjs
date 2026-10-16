@@ -159,7 +159,10 @@ function findCandidate(requireFull) {
   const tree = git('rev-parse', 'HEAD^{tree}');
   const found = findVerifiedArtifact(tree, requireFull, githubApi);
   if (process.env.GITHUB_OUTPUT) {
-    for (const [key, value] of Object.entries({ tree, run: found?.run ?? '', artifact: found?.artifact ?? `verified-full-${tree}` })) {
+    for (const [key, value] of Object.entries({
+      commit: git('rev-parse', 'HEAD'), tree, run: found?.run ?? '',
+      artifact: found?.artifact ?? `verified-full-${tree}`,
+    })) {
       writeFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`, { flag: 'a' });
     }
   }

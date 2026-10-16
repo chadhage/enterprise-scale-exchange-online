@@ -944,8 +944,16 @@ function Set-OrganizationControls {
         -Operation @('exo-remote-domain')
 
     if ($PSCmdlet.ShouldProcess('Organization configuration', 'Restrict Exchange Web Services')) {
-        Set-OrganizationConfig -EwsEnabled $ewsPolicy.EwsEnabled -EwsApplicationAccessPolicy $ewsPolicy.EwsApplicationAccessPolicy `
-            -EwsAllowList $ewsPolicy.EwsAllowList -EwsAllowedAppIDs $ewsPolicy.EwsAllowedAppIDs -WhatIf:$UseWhatIf
+        $ewsOrganizationParameters = @{
+            EwsEnabled = $ewsPolicy.EwsEnabled
+            EwsApplicationAccessPolicy = $ewsPolicy.EwsApplicationAccessPolicy
+            EwsAllowList = $ewsPolicy.EwsAllowList
+            WhatIf = $UseWhatIf
+        }
+        if ($ewsPolicy.Contains('EwsAllowedAppIDs')) {
+            $ewsOrganizationParameters.EwsAllowedAppIDs = $ewsPolicy.EwsAllowedAppIDs
+        }
+        Set-OrganizationConfig @ewsOrganizationParameters
     }
     if ($PSCmdlet.ShouldProcess('Every CAS mailbox plan', 'Disable POP and IMAP for new mailboxes')) {
         Get-CASMailboxPlan -ResultSize Unlimited | ForEach-Object {

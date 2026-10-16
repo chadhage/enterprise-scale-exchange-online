@@ -172,7 +172,12 @@ Describe 'TST-002 organization-control deployment' {
         Mock Write-Host {} -ModuleName DeploymentOrganizationHarness
         Mock Set-TransportConfig {} -ModuleName DeploymentOrganizationHarness
         Mock Set-HostedOutboundSpamFilterPolicy {} -ModuleName DeploymentOrganizationHarness
-        Mock Set-OrganizationConfig {} -ModuleName DeploymentOrganizationHarness
+        Mock Set-OrganizationConfig {
+            if ($PSBoundParameters.ContainsKey('EwsEnabled') -and
+                $PSBoundParameters.ContainsKey('EwsAllowedAppIDs')) {
+                throw 'UnexpectedEwsAllowedAppIdsForDisabledPolicy'
+            }
+        } -ModuleName DeploymentOrganizationHarness
         Mock Set-ExternalInOutlook {} -ModuleName DeploymentOrganizationHarness
         Mock Set-RemoteDomain {} -ModuleName DeploymentOrganizationHarness
         Mock Get-CASMailboxPlan {
@@ -278,6 +283,17 @@ Describe 'TST-002 organization-control deployment' {
     }
 
     Context 'Positive: the complete resolved organization state is applied' {
+        It 'omits EwsAllowedAppIDs when disabled policy does not define that optional value' {
+            $configuration = New-OrganizationConfiguration
+
+            Set-OrganizationControls -Configuration $configuration -UseWhatIf $false `
+                -Entitlement (New-OrganizationEntitlement -SafeAttachmentsSpo $true) `
+                -SafeDocumentsPreflight ([pscustomobject]@{ MayApply = $true; Status = 'Pass' })
+
+            Should -Invoke Set-OrganizationConfig -ModuleName DeploymentOrganizationHarness -Times 1 `
+                -ParameterFilter { $EwsEnabled -eq $false }
+        }
+
         It 'passes every resolved value to its owning Exchange Online cmdlet' {
             # Arrange
             $configuration = New-OrganizationConfiguration
