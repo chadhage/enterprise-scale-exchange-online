@@ -71,7 +71,7 @@ for ($index = 0; $index -lt $headingMatches.Count; $index++) {
     }
 
     $suffix = $heading.Groups['suffix'].Value.Trim()
-    $id = if ($suffix -match '^(EXR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$') {
+    $id = if ($suffix -match '^((?:EXR|REG)-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)$') {
         $Matches[1]
     }
     else {
@@ -225,7 +225,7 @@ else {
 }
 $inventoryRows = [regex]::Matches(
     $inventoryBody,
-    '(?im)^\|\s*(?<card>EXR-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\s*\|\s*(?<detail>[^|]+?)\s*\|\s*$'
+    '(?im)^\|\s*(?<card>(?:EXR|REG)-[A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\s*\|\s*(?<detail>[^|]+?)\s*\|\s*$'
 )
 $executableById = @{}
 foreach ($card in $executables) {
@@ -340,7 +340,7 @@ foreach ($card in $executables) {
 
 $historicalSection = [regex]::Match($content, '(?ims)^##\s+Historical\b(?<body>.*)$')
 if ($historicalSection.Success -and
-    $historicalSection.Groups['body'].Value -match 'EXR-[A-Za-z0-9-]+') {
+    $historicalSection.Groups['body'].Value -match '(?:EXR|REG)-[A-Za-z0-9-]+') {
     Throw-AtomicError -Message "HistoricalMetadataParsedAsCurrent:$($Matches[0]): historical prose cannot contribute current card metadata." -Discovery $discovery
 }
 

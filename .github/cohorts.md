@@ -4,7 +4,7 @@ This protocol applies only to an explicitly started `Cohort <name> start` sessio
 
 ## Coordination Authority
 
-- Exactly one canonical board writer may update this registry, backlog status/evidence, or the subordinate Kanban view at a time. In one orchestrating session, its designated steward is that writer and the root serializes steward invocations. Secondary stewards return proposals without editing shared state.
+- Exactly one shared root canonical writer may update this registry, backlog status/evidence, or the subordinate Kanban view at a time. The root serializes every cohort steward invocation and applies accepted proposals. Secondary stewards return proposals without editing shared state.
 - Independent sessions require an explicit acknowledged coordinator and a working request/response channel, or a host-provided exclusive coordination mechanism spanning claim read, validation and write. A plain Markdown read/edit, check-then-create, timestamp or best-effort file merge is not a lock. If these facilities are unavailable, keep other sessions read-only and serialize cohorts under the established coordinator. Do not run independently writing cohorts in the same checkout.
 - Startup with no confirmed writer is not permission for each session to elect itself. A sole session can designate its own steward only after confirming no other run is active. Ambiguous or simultaneous startup requires explicit coordination before claims. Record the session and acknowledgment, not just a friendly cohort name.
 - Every proposal carries the last observed allocation generation. The writer rereads state, rejects stale proposals, validates unique claims/dependencies/file reservations, applies the change, increments the generation and publishes an acknowledgment. No worker proceeds on a proposal alone. A generation check supplements exclusive ownership; it does not implement mutual exclusion.
@@ -15,11 +15,13 @@ This protocol applies only to an explicitly started `Cohort <name> start` sessio
 1. Read actual executable To Do cards, excluding summary parents. Dependencies must be Done with evidence and any card-specific external prerequisites satisfied; offline-authoring tasks do not need fabricated live readiness.
 2. Retain accepted In Progress ownership. For executable activation, pool unstarted executable reservations when membership changes and allocate dependency-eligible cards in force-rank order to the least-loaded active cohort, breaking ties by registration order. Executable load is the active card plus executable-reserved eligible cards; distribute remaining executable-eligible cards round-robin so feasible loads differ by at most one. Record why dependencies or file conflicts prevent balance. Do not invent effort estimates.
 3. Two reservation states are distinct. A **queue reservation/affinity** may be assigned before dependencies are eligible solely to prevent duplicate lane allocation and establish planned stewardship; it grants no card ownership, WIP slot, repository or output path lock, implementation attempt, ACK, worker grant or execution authority. An **executable reservation/active ownership** may exist only for dependency-eligible work after the sole canonical writer issues a generation-bound ACK; it controls WIP, repository/output paths, attempts and execution authority. This supersedes the former rule that dependency-ineligible cards must remain unreserved: such cards may carry queue affinity, but remain global To Do, execution-ineligible and unowned until activation rechecks force rank, dependencies, external prerequisites, WIP, quiescence and conflicts. Equal counts never override those checks. A waiting cohort can review read-only, but cannot execute an ineligible card to appear busy.
-4. Each Coworker holds at most one In Progress implementation card; a three-Coworker cohort may therefore hold up to three nonconflicting cards. When a Coworker becomes idle, allocate the highest-ranked dependency-eligible card that passes exact reservation checks without waiting for the cohort's other cards to finish. Coworkers may assist or independently review peer cards read-only, but the claimed card's writer remains exclusive. Queue affinities remain To Do and do not count as WIP or ownership. Executable-reservation or active-ownership changes require acknowledgment by affected stewards; only the canonical writer commits the plan. Never transfer active work without a quiescent handoff.
-5. Across a shared checkout, reserve whole writable files and test-output locations, not merely named functions. Overlapping module/test/config paths serialize the conflicting implementation phases. Any newly discovered file requires a new acknowledged reservation before editing. Read-only review may overlap; integrated validation waits for all writers to its inputs to quiesce. No worktree or branch is created without separate permission.
+4. A cohort swarms one In Progress card with exactly three logical Coworker roles: test author, implementation owner and independent verifier. The root may launch these exact agents when nested depth would fail, but must retain the cohort/role identities and may not substitute generic workers. Queue affinities remain To Do and do not count as WIP or ownership. Executable-reservation or active-ownership changes require acknowledgment by affected stewards; only the root canonical writer commits the plan. Never transfer writable ownership without a quiescent handoff.
+5. Cohort Start implicitly authorizes a card-specific local branch, isolated worktree and exclusive per-role evidence roots. Across a shared checkout, reserve whole writable files and test-output locations, not merely named functions. Overlapping module/test/config paths serialize the conflicting implementation phases. Any newly discovered file requires a new acknowledged reservation before editing. Read-only review may overlap; integrated validation waits for all writers to its inputs to quiesce. Commits, pushes, live tenants, credentials, provisioning and destructive actions remain separately authorized.
 6. Every completion is evaluated against the card's acceptance, including negative-first AAA coverage, one positive per behavioral unit, independently verified observed results, scoped/full regression as required, and exact working-tree identity. Existing unrelated failures stay owned and disclosed; no new unowned regression or silent discovery loss is allowed. A child need not wait for a later integration card unless its own contract requires that gate.
 7. Failed or interrupted work is never moved to Done. Return a quiesced card to To Do with remaining work and evidence when appropriate; preserve user changes. Refresh board counts, backlog status, registry and activity log together under the sole writer, then validate consistency before new assignments.
 8. After every claim, completion, requeue, dependency transition, external-gate transition or reservation change, the canonical writer recomputes eligibility and targets at least sixteen unclaimed READY cards. Promote existing atomic dependency-clear work first; split a composite only where its existing acceptance already contains independently claimable outcomes with separate validation/evidence contracts. Never override dependency, external, conflict or atomicity gates to fill the bank; record the exact deficit instead.
+9. Syntactic READY proves only manifest/dependency shape. Acceptance-safe READY additionally requires satisfied prerequisites, conflict-free frozen scope and a credible path through every focused and affected closure gate. A red shared affected suite makes downstream work acceptance-unsafe; create and prioritize foundational remediation cards for its owning failures, beginning with `REG-001` for `ExchangeEvidenceSigning.Tests.ps1`.
+10. Before any workers dispatch, the root writer allocates every active cohort's queue affinity, reservation state and executable claim in one generation. Partial multi-generation allocation is invalid. Required full-suite gates remain fail-closed with no waiver, baseline subtraction, silent narrowing or scoped-success substitution.
 
 ## Report Contract
 
@@ -35,9 +37,251 @@ Every report includes:
 
 ## Registry
 
-Allocation generation: 661
+Allocation generation: 691
 
-Allocation readiness: **BOARD READY — generation 661**. Platinum D01 is safely requeued after the affected-gate NACK. All workers are quiescent, no active claim or reservation exists, and sixteen documentation children are unclaimed READY.
+Allocation readiness: **BOARD READY — generation 691**. No active claim, token, worker grant or reservation remains; sixteen documentation cards remain syntactically READY and acceptance-unsafe, and zero cards are acceptance-safe.
+
+### Generation 691 Platinum REG-001-D02 Final NACK, Release And Requeue
+
+- **C3 ACCEPT disposition / NACK completion:** independent disposition `d9ddf9373fd798b8e8f94b107e5b0b3c6482a0851d4b7d8f4588b8eec8a29214`; manifest `36da8da4b059e22ce55ded7cf480aa8e32535225300585277d8737f5fa48bbb2`. C3 verified C1 identities, exact C2 membership/hashes, unsafe marker fields, absent result artifacts, exact four governance modifications, diff checks 0 and tests invoked 0.
+- **Quiescence:** C1, C2 and C3 each reported quiescent. The sole generation-689 invocation is exhausted; no retry or reuse is authorized.
+- **ACK/release:** `root-canonical/Kanban/g691/nack-release-requeue-REG-001-D02-unsafe-output` releases token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, claim, all role bindings and all evidence reservations. Preserve `.artifacts/dispatch/REG-001-D02/g687/Platinum/` read-only.
+- **Transition/readiness:** move `REG-001-D02` In Progress -> To Do/unassigned. Counts become 48 To Do / 0 In Progress / 58 Done across 106 executable cards. Sixteen documentation children remain syntactically READY but acceptance-unsafe; zero downstream cards are pull-ready under fail-closed acceptance.
+
+### Generation 690 Platinum REG-001-D02 C2 NACK And C3 Grant
+
+- **C2 terminal result:** sole authorized v5 command invoked once, retry zero. Child native exit 1; wrapper exit 1 after unsafe-output detection; raw output not retained. Pester counts/result, XML, after-state and diff evidence are absent and cannot be inferred.
+- **Preserved evidence:** `inputs-before.v5.json` 58,646 bytes / `d887e8a88dee0dbaba8728113463c405e1ad78bf565b31ff74011666e6b88322`; `tracked-before.v5.json` 92,641 / `f946556cb4e8f2a555318aecebf84f7a990b9528c6dc535365b738d765752e81`; `unsafe-output.detected.v5.json` 132 / `0b661d23552971bc8005da220aad91192a8efd4b94e02163d8fa78775631021f`.
+- **ACK/grant:** `root-canonical/Kanban/g690/nack-C2-and-grant-C3-no-rerun-disposition` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, quiesces C1/C2, and grants `Platinum/Coworker-3` only `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-3/`.
+- **C3 scope:** independently verify C1 v5 identities, exact C2 directory membership/hashes/sizes, unsafe marker semantics, absence of result/after artifacts, and one-invocation/retry-zero attestation; write one sanitized disposition record. No Pester, child process, capture, raw-output recovery, tracked/board edit, spawn, retry, remediation, commit, push, network/live/tenant/credential action, provisioning or destruction.
+
+### Generation 689 Platinum REG-001-D02 C1 Acceptance And C2 Grant
+
+- **Accepted packet:** independently reproduced v5 hashes: script `ce7de2e36c59543bd57f239b9304f7ae2dcb53193cea92d6df6f359869a12673`; contract `559a36670ec6c152b6bf332497e83ceb0f91c2676186842c2a978ebb75cd2993`; launch manifest `05043cec894a3d55db9ec4446524af5c9395dc4367f0166974fe31ee9cda5a10`; assertion `9bb9810c4b5be131d43287064cd0cfba8ecd46ca6abc4efb653aea60d64f15f8`; results `97f58659461dd6e8db8368de1d4f98af2966eb6f0112af458dd2c245d5cffa2d`; handoff `b6616611ef7fc09d7d58b1c4b679a42eb02cefd83e539a61d7e87fe451375fd3`.
+- **Static evidence:** assertion exit 0; 33/33 negatives rejected for intended reasons; 7/7 positives with exactly one per unit; parser errors zero; Pester imported/invoked false/false; tests invoked false. HEAD, selected-input manifest and non-governance tracked bytes are frozen; all 369 tracked paths/status/diff are compared immediately before/after the child.
+- **ACK/grant:** `root-canonical/Kanban/g689/accept-C1-and-grant-C2-one-shot-v5` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, quiesces C1 and grants only `Platinum/Coworker-2` its existing root plus one exact command: `pwsh -NoProfile -File .artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/invoke-xml-safe-capture.v5.ps1`.
+- **Boundaries:** exactly one child and one complete-suite Pester invocation, retry zero. No second invocation, tracked edit, remediation, attribution, board edit, agent spawn, commit, push, network/live/tenant/credential action, provisioning or destruction. C3 remains blocked until C2 quiesces and evidence is reviewed.
+
+### Generation 688 Platinum REG-001-D02 C1 Contract NACK And Correction
+
+- **Review/NACK:** Kanban inspected the generation-687 C1 packet and withheld the one-shot C2 grant. Preserve contract SHA-256 `fa51f5ded42730d31c3079bca656a9a10f9acd840b7aec091a4ab17325a9feb0` and script SHA-256 `02fe00a0663087f6f76e4815442e67371d961d5051df23a159350f2244da5829`; C1 invoked no Pester.
+- **Defects:** missing pre-invocation enforcement of exact HEAD/generation/275-input manifest and script/contract hashes; incomplete tracked-worktree immutability; blank `ExpandedName` permitted; incomplete ErrorRecord/invocation detail preservation; and no independently reproducible Pester-free static assertion artifact.
+- **ACK/grant:** `root-canonical/Kanban/g688/nack-C1-and-grant-bounded-contract-correction` retains token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`, claim and counts 47/1/58. Only `Platinum/Coworker-1` may add corrected evidence under `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/`; C2 and C3 remain waiting. No Pester invocation is authorized in this phase.
+- **Correction acceptance:** enforce all frozen identities before the child starts; compare complete tracked worktree identity/status before/after while accepting only the frozen canonical four-file pre-existing diff; require nonblank ExpandedPath and ExpandedName separately; preserve the complete accepted available ErrorRecord and InvocationInfo schema with reversible encoding; and retain executable Pester-free negative/positive static assertions, parser exits, hashes and exact results.
+
+### Generation 687 Platinum REG-001-D02 XML-Safe Recapture Claim
+
+- **Writer/run:** sole canonical writer `root-canonical/Kanban`; run `Platinum-20261007T194216Z-g686`; observed clean synchronized HEAD `9315f42fd0f9233718b39d4ae74aff7865488d15` and generation 686 with no active claim. Historical Platinum workers and generation-685 roots remain quiescent/read-only.
+- **ACK/token/transition:** ACK `root-canonical/Kanban/g687/claim-REG-001-D02-XML-safe-recapture`; token `REG-001-D02/Platinum/g687/2552708815ca4d9e85379295ca016e99`; move `REG-001-D02` To Do -> In Progress. ACK time `2026-10-07T19:44:25.2801605Z`; heartbeat due `2026-10-07T20:14:25.2801605Z`; stale-review boundary `2026-10-07T21:44:25.2801605Z`. Time alone never releases authority.
+- **Atomic allocation:** Platinum is the only active cohort. It has one In Progress card and no queue affinity or additional reservation; all other cards remain unassigned. Counts are 47 To Do / 1 In Progress / 58 Done across 106 executable cards.
+- **Exact roles/phases:** `Platinum/Coworker-1` is the test author and initially owns only XML-safe capture-contract derivation/freeze; `Platinum/Coworker-2` is the implementation/capture owner and waits for accepted red/contract evidence; `Platinum/Coworker-3` is the independent verifier and waits for C2 quiescence. Workers may not spawn agents or edit canonical board files.
+- **Exclusive evidence reservations:** C1 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-1/`; C2 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-2/`; C3 `.artifacts/dispatch/REG-001-D02/g687/Platinum/Coworker-3/`. All tracked source, product, documentation, tests, governance and generation-685 evidence are read-only. No branch/worktree or tracked-file reservation is granted because the card is evidence-only.
+- **Phase gates:** C1 must freeze the exact script/contract and tracked-input identities without invoking Pester. The canonical writer reviews C1 before granting C2 exactly one retry-zero invocation. After C2 quiesces, the writer grants C3 no-rerun independent verification. Required preservation, process-exit provenance, one-to-one identities/details, full counts, sanitization and immutability remain fail-closed; no waiver, narrowing, baseline subtraction, second invocation, causal assignment, remediation, commit, push, live/network/tenant/credential action, provisioning or destruction.
+
+### Generation 686 Platinum REG-001-D02 Capture NACK And Release
+
+- **Decision/evidence:** NACK completion after independent C3 verification `c7fba455e7d44dca2ba7db59c63c4b7604c6f85c6be3255008e0ad999c49e45a`. Preserve all generation-685 evidence read-only.
+- **Observed result:** exactly one retry-zero invocation reports 6,292 total, 5,459 passed, 833 failed, zero skipped/not-run and one failed container. Native NUnit truncated; 761 actual identities and 72 ordinal placeholders do not satisfy one-to-one identity/detail acceptance; reconstructed XML/JSON agreement is circular and native process-exit provenance is absent.
+- **Release:** all three Platinum workers are quiescent. Release token `REG-001-D02/Platinum/g685/7c9e2a84d5f64b1c9a37e2084f6d1b52`, claim, lease, all three evidence reservations and worker bindings. Move the card In Progress -> To Do/unassigned; no branch/worktree authority existed.
+- **Fail-closed disposition:** no twelve remediation cards are created because the packet cannot truthfully establish earliest shared causes or atomic ownership. A fresh XML-safe capture requires separate authorization; this run's one-capture authority is exhausted. Counts are 48 To Do / 0 In Progress / 58 Done across 106 executable cards.
+
+### Generation 685 Platinum REG-001-D02 Atomic Capture Claim
+
+- **Writer/run:** sole canonical writer `Platinum-root-coordinator/Kanban`; continuation `Platinum-20261002T135932Z-g684-resume`; observed generation 684, HEAD `5b06a85a7319ef0e3a8501ea9f5f80d69380a828`, historical Platinum sessions explicitly quiescent/non-owning. User-acknowledged pre-existing paths are `.github/backlog.md`, `.github/cohorts.md`, `.github/kanban.md`, `.github/validate-dispatch-board.ps1`, and `.artifacts/`.
+- **ACK/token/transition:** ACK `Platinum-root-coordinator/Kanban/g685/add-claim-REG-001-D02-retry-zero-capture`; token `REG-001-D02/Platinum/g685/7c9e2a84d5f64b1c9a37e2084f6d1b52`; move `REG-001-D02` To Do -> In Progress. ACK time `2026-10-02T14:01:18Z`; heartbeat due `2026-10-02T14:31:18Z`; stale-review boundary `2026-10-02T16:01:18Z`. Time alone never releases authority.
+- **Exact roles:** `Platinum/Coworker-1` owns assertion/capture-contract freeze only; `Platinum/Coworker-2` alone owns the one retry-zero affected-suite invocation and evidence production; `Platinum/Coworker-3` independently verifies without rerunning. Workers may not spawn agents or edit canonical boards.
+- **Exclusive evidence reservations:** C1 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/`; C2 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/`; C3 `.artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-3/`. These roots are pairwise disjoint. All repository source, product, documentation, tests and governance paths are read-only; no branch/worktree or tracked-file reservation is granted.
+- **Command/acceptance:** the exact command and full acceptance contract are canonical in backlog card `REG-001-D02`. C1 must freeze its byte identity before C2 runs it exactly once. C2 must produce `affected.junit.xml` and `affected-failures.sanitized.json` plus schema evidence. C3 verifies one-to-one failed-test identity/detail conservation, sanitized content, hashes, retry zero, tracked immutability and clean diff without invoking Pester.
+- **Boundary/state:** no capture has been performed and no worker dispatched by this allocation. Dispatch is additionally withheld until the generation-685 validator exits 0. No edit outside evidence roots, second invocation, retry, remediation, cause/owner assignment, commit, push, live/network/tenant/credential action, provisioning or destruction. Counts are 47 To Do / 1 In Progress / 58 Done across 106 executable cards; 28 summaries remain excluded and sixteen documentation children remain syntactically READY.
+
+### Generation 684 REG-001-D01 Acceptance And Release
+
+- **Independent ACCEPT:** verification `83B7FA8727A5E8433C5CDC487D9CCF82CD6A2350466D413BB1DF75629C2621CF`; independently regenerated diagnosis is byte-identical to `05F1F0BCAED573FBA2BBE65D2B99B18D8BD3E9BA2480B7F4675C577A62C55C81` / 57,775 bytes.
+- **Reconciliation:** 21 clusters; 62/62 containers exactly once; duplicate/missing/extra 0/0/0; 1,542 tests once as `Unknown/MissingFailureDetail`; stable source hashes; zero tracked changes; `git diff --check` exit 0; zero tests invoked.
+- **ACK/transition:** `root-canonical/Kanban/g684/accept-REG-001-D01-release-diagnostic-ownership` moves REG-001-D01 In Progress -> Done.
+- **Release/preservation:** quiesce all Purple roles and release token `REG-001-D01/Purple/g681/d51f80efceec4327b4b7a363ddb950e4`, lease, isolation authority, evidence roots and role bindings. Preserve the g681 worktree and all evidence read-only.
+- **Boundary/state:** completion does not complete REG-001, infer causes/owners, waive/narrow/subtract its gate, or make downstream documentation acceptance-safe. Counts are 47/0/58 across 105 executable cards.
+
+### Generation 683 REG-001-D01 C2 Acceptance And C3 Verification
+
+- **Accepted C2 artifact:** diagnosis `05F1F0BCAED573FBA2BBE65D2B99B18D8BD3E9BA2480B7F4675C577A62C55C81` / 57,775 bytes; handoff `8E0C7D408F8DE9BD44CF4C4385D42C29D766B14CB72E3EEED1CBFECB41B24968` / 1,720 bytes.
+- **Conservation:** 21 deterministic path/family clusters; 62 input/clustered/unique containers; zero duplicate/missing/extra; 1,542 tests once as `Unknown/MissingFailureDetail`; required facts/prohibitions/falsifiers/follow-ups present.
+- **ACK/grant:** `root-canonical/Kanban/g683/accept-C2-diagnosis-and-grant-C3-independent-regeneration` quiesces C1/C2 and grants C3 only `.artifacts/dispatch/REG-001-D01/g683/Purple/Coworker-3/`.
+- **C3 contract:** independently regenerate from accepted C1 inputs, compare byte identity and SHA-256, reconcile every container and arithmetic field, verify source hashes unchanged and no tracked changes, and return ACCEPT/NACK.
+- **Boundary/state:** no test invocation, tracked edit, source-evidence mutation, causal/owner inference, commit, push, tenant, credential, provisioning or destructive action. Counts remain 47/1/57.
+
+### Generation 682 REG-001-D01 Inventory Acceptance And C2 Grant
+
+- **Accepted C1 packet:** source manifest `0207C8BA7039A7A25B20D49F2BA46CCE5D73DB3E61033E3957BEB632E79571E4` / 4,114 bytes; container inventory `014348D67B8736EFB3AD2AFAF155DA2043F309EA04BC8527F2824C3EFEBEE6DD` / 10,418 bytes.
+- **Conservation:** 9 sources (4 admitted, 5 excluded), all UTF-8; containers 62 reported/extracted/normalized/unique with zero duplicate/missing/extra; failed tests 1,542 represented once as `Unknown/MissingFailureDetail`; arithmetic difference zero.
+- **ACK/grant:** `root-canonical/Kanban/g682/accept-C1-inventory-and-grant-C2-derived-diagnosis` quiesces C1 and grants C2 only `.artifacts/dispatch/REG-001-D01/g682/Purple/Coworker-2/`.
+- **C2 deliverable:** deterministic `failure-cluster-diagnosis.json` grouping all 62 containers by normalized family/path and conserving the 1,542-test aggregate, with evidence facts, prohibited inferences, falsifiers and smallest safe follow-up actions.
+- **Boundary/state:** no causal/owner attribution unsupported by evidence, test invocation, tracked edit, source-evidence mutation, commit, push, tenant, credential, provisioning or destructive action. C3 remains blocked. Counts remain 47/1/57.
+
+### Generation 681 Four-Cohort Diagnostic Allocation And Purple Claim
+
+- **Decision:** reconcile Purple/Silver/Gold/White proposals to canonical `REG-001-D01`; Purple wins the equal-load tie by registration order.
+- **ACK/token:** `root-canonical/Kanban/g681/add-and-claim-REG-001-D01-Purple`; `REG-001-D01/Purple/g681/d51f80efceec4327b4b7a363ddb950e4`.
+- **Isolation:** branch `dispatch/REG-001-D01/Purple/Coworker-1/g681`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-D01-Purple-Coworker-1-g681`.
+- **Immutable inputs:** read only `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673\.artifacts\dispatch\REG-001\g678\Purple\Coworker-3\` and generation-679 canonical disposition. Do not modify or supplement source evidence.
+- **C1:** `Purple/Coworker-1` writes only `.artifacts/dispatch/REG-001-D01/g681/Purple/Coworker-1/` to produce source manifest and exact 62-container inventory. No tests.
+- **C2 barrier:** `Purple/Coworker-2` waits for accepted C1 inventory, then may write only its role evidence root and derived diagnosis JSON.
+- **C3 barrier:** `Purple/Coworker-3` waits for quiescent C1/C2 and independently regenerates/validates without tracked writes or tests.
+- **Fail-closed scope:** preserved evidence has no individual failed-test identities. All 1,542 tests remain one `Unknown/MissingFailureDetail` aggregate; no causal/owner attribution is authorized. REG-001 stays `WAIT-SUITE` and downstream documentation remains acceptance-unsafe.
+- **Other cohorts/state:** Silver retains D02 queue affinity; Silver, Gold, White have no execution ownership. Counts are 47 To Do / 1 In Progress / 57 Done across 105 executable cards.
+
+### Generation 680 Four-Cohort Atomic No-Card Acknowledgment
+
+- **Proposals:** Purple, Silver, Gold, and White observed generation 679 and remained read-only. All identified the shared-suite foundation as the priority and refused acceptance-unsafe documentation execution.
+- **ACK:** `root-canonical/Kanban/g680/atomic-four-cohort-no-acceptance-safe-card`.
+- **Decision:** no executable allocation. REG-001 remains `WAIT-SUITE`: focused 70/70 is preserved, but affected remains 4,751/6,293 with 1,542 failures and 62 failed containers. Sixteen documentation children remain syntactically READY and acceptance-unsafe.
+- **Cohort state:** Purple, Silver, Gold, and White receive no token, lease, worktree, tracked/evidence reservation, role binding or worker authority. Silver retains D02 queue affinity only. Duplicate White-labeled proposals are non-owning observations and are superseded by this single root acknowledgment.
+- **State/boundary:** counts remain 47/0/57; all roles are quiescent. No card transition, test, worker dispatch, waiver, narrowing, baseline subtraction, commit, push, publication, live access, credential, provisioning or destructive authority.
+
+### Generation 679 Purple REG-001 Affected NACK, Release And Requeue
+
+- **Focused acceptance:** C3 independently passed 70/70 with zero other outcomes/containers, stable hashes, retry 0 and exit 0.
+- **Affected NACK:** one retry-0 complete invocation executed 6,293, passed 4,751, failed 1,542, skipped/not-run/inconclusive 0, produced 62 failed containers, and exited 1. `git diff --check` passed.
+- **Decision:** NACK completion; no waiver, narrowing, baseline subtraction or scoped-success substitution.
+- **Preservation/release:** preserve branch `dispatch/REG-001/Purple/Coworker-1/g673`, worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673`, the four-file candidate and every role evidence root read-only. Quiesce C1/C2/C3; release token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`, lease, tracked/evidence reservations and role bindings.
+- **State:** REG-001 returns In Progress -> To Do/unassigned as `WAIT-SUITE`; Silver D02 affinity remains queue-only; all cohorts are read-only. Counts are 47/0/57, with sixteen syntactic READY and zero acceptance-safe downstream cards.
+
+### Generation 678 Purple REG-001 Post-Run NACK And C3 Verification
+
+- **NACK:** preserve C2's retry-0 70/70 failed-container attempt, but reject it as final-state evidence because C2 corrected a misplaced EXO-001 conversion after that invocation by moving it exclusively into EXO-009.
+- **Frozen final state:** module `7E97F72EC3A6E87F3C84C700FFA268C788698EAB6B08032CB906BCAB8570E8EE`; entrypoint `2C94AF6F19E22FDA812C4643F7D9C3D26A0D5C1F1478B5918FFAE585D2F163C6`; test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`; fixture `56FECB60455AA2E1E238E2C253FDB8774E648C53D9BD4401A75F55DD310F3F90`.
+- **ACK/grant:** `root-canonical/Kanban/g678/preserve-g677-NACK-and-grant-C3-fresh-verification` quiesces C1/C2 and makes all tracked inputs read-only. C3 may write only `.artifacts/dispatch/REG-001/g678/Purple/Coworker-3/`.
+- **Execution:** one retry-0 focused invocation; only if it is 70/70 with zero other outcomes/containers and stable hashes, one retry-0 complete managed-service affected invocation. Record exact commands, counts, exits, timestamps, hashes and `git diff --check`.
+- **Boundary/state:** no tracked edit, retry, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 677 Purple REG-001 Accepted Red And C2 Repair
+
+- **Accepted red:** retry-0 focused executed 70, passed 67 and failed only three intended ApprovedException-vs-Pass behaviors, with zero skipped/not-run. Freeze helper `56FECB60455AA2E1E238E2C253FDB8774E648C53D9BD4401A75F55DD310F3F90`, test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`, module `077727F250E50C68B1CEC2284C7C559E2712A1B2930D0D06544AF59E5EDD1677`, and entrypoint `2C94AF6F19E22FDA812C4643F7D9C3D26A0D5C1F1478B5918FFAE585D2F163C6`.
+- **ACK/grant:** `root-canonical/Kanban/g677/accept-red-and-grant-C2-approved-exception-repair` quiesces C1 and grants C2 only the reserved Common module and public entrypoint for the smallest ApprovedException preservation/propagation repair covering collection, gate and the positive exception path.
+- **Execution:** C2 may run focused once at retry 0, record fresh g677 evidence, then quiesce. C3 remains blocked.
+- **Boundary/state:** no test/fixture/other path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 676 Purple REG-001 C2 Checkpoint And C1 Fixture Grant
+
+- **Checkpoint:** preserve C2's bounded Common-module/entrypoint repair. Collection now creates and parses the evidence file while signing remains fail-closed and ApprovedException handling is retained.
+- **Focused NACK:** retry-0 remained 70 failed of 70 with one failed container because CAS mailbox/plan EWS fixture values are disabled/empty and operational CMS fixtures lack authenticated signing-time attributes.
+- **ACK/grant:** `root-canonical/Kanban/g676/preserve-C2-repair-and-grant-C1-fixture-prerequisites` quiesces C2 and grants C1 only `tests/helpers/ExchangeGovernanceRawFixture.ps1` for the smallest CAS and authenticated-signing-time alignment, followed by one retry-0 focused run.
+- **Barrier/state:** C3 remains blocked. No test/script/other path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 675 Purple REG-001 Fixture Acceptance And C2 Repair
+
+- **C1 acceptance:** accept the fixture-only alignment at helper `E7C4C559C37B91274091C38CAD32F3730BB62E5F30E30C4FC14B5956E8AC1937` and test `F556F730374390A8BFF823E193F4F7B6644C13F2C98F4F6B2EDF3B90D650F5B7`; the retained-setting refusal is resolved. Preserve the 70/70 failed-container packet because collection did not create `collected\exchange-online-evidence.json`.
+- **ACK/grant:** `root-canonical/Kanban/g675/accept-C1-fixture-and-grant-C2-evidence-creation-repair` retains token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`, quiesces C1, and grants C2 only `scripts/ExchangeOnlineBaseline.Common.psm1` and `scripts/Test-ExchangeOnlineBaseline.ps1` for the smallest offline collection/evidence-creation repair.
+- **Execution:** C2 may run focused once at retry 0 after the repair, record fresh g675 evidence, then quiesce. C3 remains blocked.
+- **Boundary/state:** no other tracked path, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority. Counts remain 46/1/57.
+
+### Generation 674 Purple REG-001 Intended-Red NACK And Fixture Repair
+
+- **NACK:** preserve C1's added collection negative and retry-0 evidence, but reject the 70/70 result as intended-red acceptance because one failed container (`EXO-009.ewsAllowedAppIds` not retained) masked executable assertion evaluation.
+- **ACK/grant:** `root-canonical/Kanban/g674/nack-C1-container-and-grant-bounded-fixture-alignment` retains token `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`. C1 may write only `samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeGovernanceRawFixture.ps1`, then run one fresh retry-0 focused invocation and quiesce.
+- **Barrier:** C2/C3 remain blocked. No other tracked path, script edit, affected run, waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority.
+- **State:** counts remain 46/1/57; sixteen documentation cards remain syntactically READY and acceptance-unsafe.
+
+### Generation 673 Four-Cohort Atomic Allocation And Purple REG-001 Claim
+
+- **Barrier:** read-only proposals from `Purple/Kanban`, `Silver/Kanban`, `Gold/Kanban`, and `White/Kanban` all observed generation 672 and identified REG-001 as the sole conditional executable candidate. Registration order Purple, Silver, Gold, White breaks the equal-load tie.
+- **ACK/token:** `root-canonical/Kanban/g673/atomic-four-cohort-claim-REG-001-Purple`; `REG-001/Purple/g673/a03edfa70d5f48788b8e2f3a9b234afb`.
+- **Isolation:** branch `dispatch/REG-001/Purple/Coworker-1/g673`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Purple-Coworker-1-g673`.
+- **C1 grant:** `Purple/Coworker-1` exclusively owns `tests/unit/ExchangeEvidenceSigning.Tests.ps1` and `tests/helpers/ExchangeGovernanceRawFixture.ps1` under the managed-service root for negative-first authoring and one intended-red focused invocation.
+- **C2 barrier:** `Purple/Coworker-2` reserves `scripts/ExchangeOnlineBaseline.Common.psm1` and `scripts/Test-ExchangeOnlineBaseline.ps1` but receives no write authority until the root accepts C1 red evidence.
+- **C3 barrier:** `Purple/Coworker-3` has no tracked write authority and independently verifies only after all writers quiesce and a later ACK grants execution.
+- **Evidence roots:** `.artifacts/dispatch/REG-001/g673/Purple/Coworker-1/`, `.artifacts/dispatch/REG-001/g673/Purple/Coworker-2/`, and `.artifacts/dispatch/REG-001/g673/Purple/Coworker-3/`. Frozen input hashes are test `84B8052338A08FB8F78ED0793DC0B7A988623BD2BD7A315A85CA7D2C04B50A69`, fixture `FFB59E638878B26286180CE618D06C1DFE2C9361A1B56534B7853D4FCC71E9A0`, module `248797118241E828F6531D0C3C9D97511C2163F575F411178EABEFF1E6358F04`, and entrypoint `3C29657E6751995901375A3B24645F4F3A6F4C6E799565EB32E59BA31324D79A`.
+- **Other cohorts:** Silver retains D02 documentation queue affinity; Silver, Gold, and White have no token, lease, tracked/evidence reservation, worktree, or worker authority and remain read-only.
+- **Supersession:** Platinum g665 branch/worktree/evidence remain immutable read-only history. Generation 672 released all g665 ownership, leases, role bindings and reservations; no g665 artifact may be overwritten or reused as g673 evidence.
+- **State/gates:** REG-001 moves To Do -> In Progress. Counts are 46/1/57. Focused and affected each require one retry-0 run with total=passed and zero other outcomes/containers; affected runs only after focused success. No waiver, narrowing, baseline subtraction, commit, push, live access, credential, provisioning or destructive authority.
+
+### Generation 672 REG-001 Focused NACK, Release And Safe Requeue
+
+- **Decision:** NACK completion. C2's final bounded run remains 69 total, 67 passed, 2 failed, zero skipped/not-run/failed containers, exit 1, retry 0; C3 independently reported the same two ApprovedException failures. Full affected was correctly withheld.
+- **Preservation:** retain branch `dispatch/REG-001/Platinum/Coworker-1/g665`, worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`, and every C1/C2/C3 evidence root read-only. Preserve prior `.artifacts` and rejected candidates.
+- **Release:** all three roles are quiescent. Release token `REG-001/Platinum/g665/4ed34a64d8124e12910989424f1449d3`, lease, tracked paths, evidence roots and role bindings. REG-001 returns In Progress -> To Do/unassigned as `WAIT-SUITE`.
+- **State:** 47 To Do / 0 In Progress / 57 Done; 104 executable cards; sixteen syntactic READY and zero acceptance-safe downstream cards. No Done transition, waiver, narrowing, baseline subtraction, commit, push, publication or live action.
+
+### Generation 671 REG-001 Verifier NACK And ApprovedException Repair Grant
+
+- **NACK evidence:** C3 independently ran focused once: 69 total, 67 passed, 2 failed, zero skipped/not-run/failed containers, exit 1, retry 0. Full affected was not run.
+- **ACK:** `Platinum-root-coordinator/Kanban/g671/grant-REG-001-approved-exception-repair-to-Coworker-2`.
+- **Grant:** C2 may write only the reserved Common module to preserve ApprovedException and its exception inventory in the two failing public signing paths, then run focused once.
+- **State:** C1 quiescent; C3 evidence immutable/read-only; counts 46/1/57. No new path, waiver, retry, affected run, commit, push or live authority.
+
+### Generation 670 REG-001 Independent Verification Handoff
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g670/grant-REG-001-independent-focused-and-affected-to-Coworker-3`.
+- **Disposition:** C2's g669 command ran in the primary checkout and is invalid candidate evidence; preserve it, retry 0. C2 is quiescent and all tracked paths are read-only.
+- **Verifier grant:** C3 uses absolute worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`, runs focused once, then the full managed-service suite once only if focused is total=passed with zero other outcomes/containers.
+- **Evidence:** C3 writes only `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-3/`, records exact commands, identities, counts, exits, timestamps, retries and hashes, plus `git diff --check`.
+- **Gate:** any failure, skip, not-run, failed container, nonzero exit, checkout/hash drift or retry is a completion NACK. No waiver, narrowing, baseline subtraction, commit, push or live action.
+
+### Generation 669 REG-001 Five-Failure Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g669/grant-REG-001-five-contract-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 64 passed, 5 failed, zero skipped/not-run/failed containers, exit 1, retry 0.
+- **Grant:** C2 may write only the reserved Common module and public entrypoint for the five frozen required-input, forged-verification and ApprovedException failures, then run focused once.
+- **State:** C1 quiescent; C3 read-only; counts 46/1/57. No new path, affected run, waiver, commit, push or live authority.
+
+### Generation 668 REG-001 Common-Module Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g668/grant-REG-001-common-normalization-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 53 passed, 16 failed, zero skipped/not-run/failed containers, exit 1, retry 0.
+- **Grant:** C2 retains only the reserved Common module for the exact malformed-input, mixed-authority and ApprovedException defects, then runs focused once and quiesces.
+- **State:** C1 quiescent; C3 read-only; counts 46/1/57. No new path, affected run, waiver, commit, push or live authority.
+
+### Generation 667 REG-001 Entrypoint Repair Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g667/grant-REG-001-entrypoint-repair-to-Coworker-2`.
+- **Checkpoint:** focused 69 total, 3 passed, 66 failed, zero skipped/not-run/failed containers, exit 1, retry 0; full suite not run.
+- **Grant:** C2 may write the already-reserved `samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1` only to restore the rejected `EvidencePath`, `EvidenceSignaturePath`, and `EvidenceSignerIdentity` public signing contract, then run focused once.
+- **Barrier:** C1 is quiescent; C3 remains read-only. No additional path, retry, affected run, waiver, commit, push or live authority.
+
+### Generation 666 REG-001 C1-To-C2 Fixture Barrier
+
+- **ACK:** `Platinum-root-coordinator/Kanban/g666/handoff-REG-001-test-fixture-to-Coworker-2`.
+- **Evidence decision:** C1's 69-test intended-red packet is diagnostic only because retry count is 2. C2's focused checkpoint ran once with 69 total, 0 passed, 69 failed, one failed container, exit 1 and retry 0.
+- **Ownership transfer:** C1 is quiescent. Transfer writable ownership of the already-reserved `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEvidenceSigning.Tests.ps1` to C2 only for mailbox-plan/mailbox raw-fixture alignment. C2 retains `ExchangeOnlineBaseline.Common.psm1`; all other tracked paths remain read-only.
+- **Next barrier:** C2 runs focused exactly once after the fixture correction, then quiesces. C3 alone receives independent focused/full-suite validation authority in a later root ACK.
+- **State:** counts remain 46/1/57; no reservation expansion, waiver, retry, commit, push, live action or external authority. Sixteen documentation children remain syntactically READY but acceptance-unsafe while the shared suite is red. The root canonical writer atomically claims foundational `REG-001` for Platinum before dispatch.
+
+### Generation 665 Root Atomic REG-001 Allocation And Claim
+
+- **Writer/run:** shared root canonical writer `Platinum-root-coordinator/Kanban`; run `platinum-g664-reg001-20261002T092913Z`; observed published generation 664 and atomically advanced all canonical views to 665 before worker dispatch.
+- **Readiness:** sixteen documentation children remain syntactically READY. They are not acceptance-safe while their mandatory full affected suite includes the failed `ExchangeEvidenceSigning.Tests.ps1` container. `REG-001` is the highest-priority acceptance-safe foundational route.
+- **Claim ACK:** `Platinum-root-coordinator/Kanban/g665/claim-REG-001`; token `REG-001/Platinum/g665/4ed34a64d8124e12910989424f1449d3`; card In Progress; exactly one steward and roles `Platinum/Coworker-1` test author, `Platinum/Coworker-2` implementation owner, `Platinum/Coworker-3` independent verifier.
+- **Isolation:** branch `dispatch/REG-001/Platinum/Coworker-1/g665`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-REG-001-Platinum-Coworker-1-g665`; preserved evidence roots `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-1/`, `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-2/`, and `.artifacts/dispatch/REG-001/g665/Platinum/Coworker-3/`.
+- **Tracked reservation:** `samples/contoso-exchange-online-managed-service/tests/unit/ExchangeEvidenceSigning.Tests.ps1`, `samples/contoso-exchange-online-managed-service/tests/helpers/ExchangeGovernanceRawFixture.ps1`, `samples/contoso-exchange-online-managed-service/scripts/ExchangeOnlineBaseline.Common.psm1`, and `samples/contoso-exchange-online-managed-service/scripts/Test-ExchangeOnlineBaseline.ps1`. Only one role may write a reserved file at a time; newly needed paths require a new root ACK.
+- **Gates:** negative-first AAA and one positive per behavioral unit; focused `ExchangeEvidenceSigning.Tests.ps1`; then the complete managed-service test tree. Both require total=passed, failed/skipped/not-run/failed-containers=0, exit 0, stable hashes, clean `git diff --check`, and retry 0. No waiver or narrowing.
+- **State:** 46 To Do / 1 In Progress / 57 Done; 104 executable cards; 28 summaries; sixteen unclaimed syntactic READY cards and zero additional acceptance-safe executable cards.
+
+### Generation 664 Platinum Three-Card Review NACK, Release And Requeue
+
+- **D01 NACK:** focused 18/18, but the reviewer found zero genuine negative mutations across the declared 17 negative rows. Affected executed 6,310, passed 5,476, failed 834, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **D02 NACK:** focused 10/10. Affected executed 6,302, passed 5,469, failed 833, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **D03 NACK:** focused 5/5, but negative coverage was not exhaustive for extra wrong paths, undeclared hidden inputs, and arbitrary stale parameters. Affected executed 6,297, passed 5,463, failed 834, skipped/not-run 0, had one failed container, and exited 1 with retry 0.
+- **Release:** preserve every g662 branch/worktree and owner/reviewer evidence root read-only; all workers are quiescent. Release all g662 tokens, leases, tracked/evidence reservations, reviewer grants, and worker bindings. D01-D03 return In Progress -> To Do/unassigned. No merge, commit, push, publication, waiver, acceptance, or Done transition.
+- **State:** counts 46 To Do / 0 In Progress / 57 Done; READY 16. The failed-container identity is `ExchangeEvidenceSigning.Tests.ps1`; preserved packets remain the authority for exact output and hashes.
+
+### Generation 663 Platinum Independent-Review Handoff
+
+- **Accepted owner inputs:** D01 focused 18/18, D02 focused 10/10, D03 focused 5/5; each owner reported zero other outcomes, a clean scoped diff, no unauthorized tracked path, no live action, and a quiescent handoff. These are review inputs, not acceptance.
+- **D01 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D01-by-Coworker-3`; reviewer `Platinum/Coworker-3`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D01/g662/Platinum/Coworker-3/review-g663/`.
+- **D02 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D02-by-Coworker-1`; reviewer `Platinum/Coworker-1`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D02-Platinum-Coworker-2-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D02/g662/Platinum/Coworker-1/review-g663/`.
+- **D03 review ACK:** `Platinum-root-coordinator/Kanban/g663/review-EXR-012-A01-D03-by-Coworker-2`; reviewer `Platinum/Coworker-2`; read-only worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D03-Platinum-Coworker-3-g662`; exclusive evidence `.artifacts/dispatch/EXR-012-A01-D03/g662/Platinum/Coworker-2/review-g663/`.
+- **Execution/barrier:** verify exact tracked scope, frozen identities, negative-first inventory and evidence before commands. Run focused once; only on exact focused success run the full managed-service affected suite once with zero retry, then `git diff --check`. Inspect total/passed/failed/skipped/not-run and failed containers. Any mismatch is a NACK and stops completion. Reviewers may write only their evidence root and may not edit tracked files, owner evidence, governance, claims, or reservations.
+- **State:** g662 tokens, branches, worktrees, and tracked reservations remain active; owners are quiescent during review. Counts remain 43/3/57 and READY 13.
+
+### Generation 662 Platinum Atomic Three-Card Claim
+
+- **Writer/run:** sole canonical writer `Platinum-root-coordinator/Kanban`; run `Platinum-g661-20261001T194727-0400`; observed generation 661 and atomically advanced it to 662 after rereading canonical state.
+- **Eligibility/conflict decision:** `EXR-012-A01-D01`, `EXR-012-A01-D02`, and `EXR-012-A01-D03` were To Do/unassigned, dependency-complete, offline-authoring eligible, and free of active claims. Their six tracked writable paths and three evidence roots are pairwise disjoint. Preserved g644/g622 and other rejected candidates remain read-only and confer no authority.
+- **D01 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D01`; token `EXR-012-A01-D01/Platinum/g662/4ed34a64d8124e12910989424f1449d1`; owner `Platinum/Coworker-1`; operation `DOC-3W:readme-operator-entry`; branch `dispatch/EXR-012-A01-D01/Platinum/Coworker-1/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D01-Platinum-Coworker-1-g662`; paths `samples/contoso-exchange-online-managed-service/README.md` and `samples/contoso-exchange-online-managed-service/tests/unit/ReadmeOperatorEntry.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D01/g662/Platinum/Coworker-1/`; focused expected 18 negatives/positive cases total and final 18/18; affected profile zero-other-outcome gate.
+- **D02 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D02`; token `EXR-012-A01-D02/Platinum/g662/4ed34a64d8124e12910989424f1449d2`; owner `Platinum/Coworker-2`; operation `DOC-3W:solution-summary`; branch `dispatch/EXR-012-A01-D02/Platinum/Coworker-2/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D02-Platinum-Coworker-2-g662`; paths `SOLUTION_SUMMARY.md` and `samples/contoso-exchange-online-managed-service/tests/unit/SolutionSummary.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D02/g662/Platinum/Coworker-2/`; focused expected 9 negatives plus 1 positive and final 10/10; affected profile zero-other-outcome gate.
+- **D03 ACK:** `Platinum-root-coordinator/Kanban/g662/claim-EXR-012-A01-D03`; token `EXR-012-A01-D03/Platinum/g662/4ed34a64d8124e12910989424f1449d3`; owner `Platinum/Coworker-3`; operation `DOC-3W:implementation-guide`; branch `dispatch/EXR-012-A01-D03/Platinum/Coworker-3/g662`; worktree `C:\Users\chhage\repos\sony\GISC\exchange-online-protection-dispatch-EXR-012-A01-D03-Platinum-Coworker-3-g662`; paths `samples/contoso-exchange-online-managed-service/docs/IMPLEMENTATION-GUIDE.md` and `samples/contoso-exchange-online-managed-service/tests/unit/ImplementationGuideDocumentation.Tests.ps1`; evidence `.artifacts/dispatch/EXR-012-A01-D03/g662/Platinum/Coworker-3/`; focused expected 4 negatives plus 1 positive and final 5/5; affected profile zero-other-outcome gate.
+- **Lease/barriers:** ACK time 2026-10-01T19:48:07Z; heartbeat due 2026-10-01T20:18:07Z; stale-review boundary 2026-10-01T21:48:07Z. Each owner is sole writer in its worktree. Author all negatives first, capture intended-red evidence, then add exactly one positive per behavioral unit before documentation implementation. A different quiescent peer must independently verify focused then affected results. Workers may not edit governance, use live/network/tenant/credential access, or commit/push/publish.
+- **Evidence schema/counts:** canonical `.artifacts/dispatch/<card>/g662/Platinum/<coworker>/` JSON schema controls and reconciles the stale subordinate compatibility wording. Counts are 43 To Do / 3 In Progress / 57 Done; READY 13. The three-card READY deficit is recorded rather than fabricating replacements.
 
 ### Generation 661 Platinum D01 Affected NACK, Release And Requeue
 

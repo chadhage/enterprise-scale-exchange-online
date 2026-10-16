@@ -189,6 +189,30 @@ BeforeAll {
 }
 
 Describe 'EXR-018-A02 canonical backlog atomicity validator' {
+    Context 'Canonical regression card identities' {
+        It 'does not discover an unsupported card prefix as executable work' {
+            $path = New-BacklogAtomicityFixture -Name 'unknown-prefix'
+            (Get-Content $path -Raw).Replace('EXR-900-A01', 'UNKNOWN-900-A01') | Set-Content $path
+
+            { & $script:ValidatorPath -BacklogPath $path } |
+                Should -Throw 'AtomicFieldMissing:Id*'
+        }
+
+        It 'discovers the canonical regression identity <Id> without changing the denominator' -ForEach @(
+            @{ Id = 'REG-900' }
+            @{ Id = 'REG-900-D01' }
+        ) {
+            $path = New-BacklogAtomicityFixture -Name $Id
+            (Get-Content $path -Raw).Replace('EXR-900-A01', $Id) | Set-Content $path
+
+            $result = & $script:ValidatorPath -BacklogPath $path
+
+            $result.DiscoverySucceeded | Should -BeTrue
+            $result.ExecutableCount | Should -Be 1
+            $result.SummaryCount | Should -Be 1
+            $result.InventoryResolved | Should -BeTrue
+        }
+    }
 
     Context 'Negative: a required atomic-card field is absent' {
 
@@ -379,8 +403,9 @@ Describe 'EXR-018-A02 canonical backlog atomicity validator' {
             $backlogPath = $script:ActualBacklogPath
             $canonicalHeader = [regex]::Match(
                 (Get-Content -LiteralPath $backlogPath -Raw),
-                '(?im)^Canonical generation\s*:\s*\d+\..*?To Do\s+(?<todo>\d+)\s*,\s*In Progress\s+(?<inprogress>\d+)\s*,\s*Done\s+(?<done>\d+)'
+                '(?im)^Canonical generation\s*:\s*\d+\..*?Executable cards\s*:\s*(?<executable>\d+)\s*;\s*To Do\s+(?<todo>\d+)\s*,\s*In Progress\s+(?<inprogress>\d+)\s*,\s*Done\s+(?<done>\d+)\s*;\s*(?<summary>\d+)\s+summary parents excluded'
             )
+            $canonicalHeader.Success | Should -BeTrue
             $expectedBuckets = '{0}:{1}:{2}' -f
                 $canonicalHeader.Groups['todo'].Value,
                 $canonicalHeader.Groups['inprogress'].Value,
@@ -411,7 +436,7 @@ Describe 'EXR-018-A02 canonical backlog atomicity validator' {
             $validationError.Exception.Message |
                 Should -BeLike 'MissingFieldInventoryUnresolved:*' -Because 'successful production discovery must remain distinct from expected unresolved completeness'
             "$($validationError.Exception.Data['ExecutableCount']):$($validationError.Exception.Data['SummaryCount'])" |
-                Should -Be '103:28' -Because 'all production-format executable cards and explicit summaries must be discovered before completeness is evaluated'
+                Should -Be ('{0}:{1}' -f $canonicalHeader.Groups['executable'].Value, $canonicalHeader.Groups['summary'].Value) -Because 'all production-format executable cards and explicit summaries must reconcile to the canonical header before completeness is evaluated'
             "$($validationError.Exception.Data['ToDoCount']):$($validationError.Exception.Data['InProgressCount']):$($validationError.Exception.Data['DoneCount'])" |
                 Should -Be $expectedBuckets -Because 'discovered executable statuses must reconcile to the canonical header buckets'
             $validationError.Exception.Data['DiscoverySucceeded'] |

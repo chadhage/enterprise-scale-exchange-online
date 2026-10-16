@@ -1,0 +1,109 @@
+{
+  "schema": "nonreserving-read-only-claim-transaction/v1",
+  "transactionUtc": "2026-10-01T03:03:22.610Z",
+  "coordinatorSession": "Purple/2026-10-01T03:02:50Z/g632-a04",
+  "coordinatorIdentity": "Purple/Coordinator",
+  "mode": "cohort",
+  "observedGeneration": 632,
+  "publishedBase": "d1f44a4cf7af823a210c61e4c6720dc9b56fc2aa",
+  "observedHead": "d1f44a4cf7af823a210c61e4c6720dc9b56fc2aa",
+  "observedBoard": {
+    "readiness": "BOARD READY",
+    "toDo": 46,
+    "inProgress": 0,
+    "done": 57,
+    "executable": 103,
+    "unclaimedReady": 16,
+    "activeClaims": 0,
+    "activeReservations": 0
+  },
+  "decision": "NACK",
+  "decisionReason": [
+    "The canonical coordination contract requires a claim ACK and generation increment in the tracked canonical registry; tracked governance mutation was explicitly forbidden.",
+    "Three requested operation names do not exactly match the generation-632 canonical dispatch manifest.",
+    "Distinct Silver, Gold, and White session identifiers were not supplied, so exact per-cohort session binding cannot be recorded without inventing identities."
+  ],
+  "requests": [
+    {
+      "cohort": "Purple",
+      "card": "EXR-012-A04-D01",
+      "requestedOperation": "DISCOVER-FREEZE:evidence-viewer",
+      "canonicalOperation": "DISCOVER-FREEZE:evidence-viewer",
+      "runtimeIdentities": [
+        "Purple/Coworker-1",
+        "Purple/Coworker-2",
+        "Purple/Coworker-3"
+      ],
+      "requestedEvidenceSubroots": [
+        ".artifacts/kanban/EXR-012-A04-D01/g632/Purple/Coworker-1/",
+        ".artifacts/kanban/EXR-012-A04-D01/g632/Purple/Coworker-2/",
+        ".artifacts/kanban/EXR-012-A04-D01/g632/Purple/Coworker-3/"
+      ],
+      "result": "NOT_ACKNOWLEDGED"
+    },
+    {
+      "cohort": "Silver",
+      "card": "EXR-012-A04-D02",
+      "requestedOperation": "DISCOVER-FREEZE:exclusion-denominator",
+      "canonicalOperation": "DISCOVER-FREEZE:exclusions-denominator",
+      "runtimeIdentities": [
+        "Silver/Coworker-1",
+        "Silver/Coworker-2",
+        "Silver/Coworker-3"
+      ],
+      "requestedEvidenceSubroots": [
+        ".artifacts/kanban/EXR-012-A04-D02/g632/Silver/Coworker-1/",
+        ".artifacts/kanban/EXR-012-A04-D02/g632/Silver/Coworker-2/",
+        ".artifacts/kanban/EXR-012-A04-D02/g632/Silver/Coworker-3/"
+      ],
+      "result": "NOT_ACKNOWLEDGED"
+    },
+    {
+      "cohort": "Gold",
+      "card": "EXR-012-A04-D03",
+      "requestedOperation": "DISCOVER-FREEZE:exception-readiness",
+      "canonicalOperation": "DISCOVER-FREEZE:status-semantics",
+      "runtimeIdentities": [
+        "Gold/Coworker-1",
+        "Gold/Coworker-2",
+        "Gold/Coworker-3"
+      ],
+      "requestedEvidenceSubroots": [
+        ".artifacts/kanban/EXR-012-A04-D03/g632/Gold/Coworker-1/",
+        ".artifacts/kanban/EXR-012-A04-D03/g632/Gold/Coworker-2/",
+        ".artifacts/kanban/EXR-012-A04-D03/g632/Gold/Coworker-3/"
+      ],
+      "result": "NOT_ACKNOWLEDGED"
+    },
+    {
+      "cohort": "White",
+      "card": "EXR-012-A04-D04",
+      "requestedOperation": "DISCOVER-FREEZE:raid-source-authority",
+      "canonicalOperation": "DISCOVER-FREEZE:raid-source-claims",
+      "runtimeIdentities": [
+        "White/Coworker-1",
+        "White/Coworker-2",
+        "White/Coworker-3"
+      ],
+      "requestedEvidenceSubroots": [
+        ".artifacts/kanban/EXR-012-A04-D04/g632/White/Coworker-1/",
+        ".artifacts/kanban/EXR-012-A04-D04/g632/White/Coworker-2/",
+        ".artifacts/kanban/EXR-012-A04-D04/g632/White/Coworker-3/"
+      ],
+      "result": "NOT_ACKNOWLEDGED"
+    }
+  ],
+  "authority": {
+    "trackedWrites": false,
+    "evidenceRootReservations": false,
+    "cardOwnership": false,
+    "leases": false,
+    "network": false,
+    "tenantAction": false,
+    "testExecution": false,
+    "discoveryExecution": false,
+    "commit": false,
+    "push": false
+  },
+  "nextAction": "Remain quiescent. Supply exact per-cohort session IDs and either authorize the required canonical generation transaction using the canonical operation names or explicitly amend the requested operation names in canonical governance."
+}

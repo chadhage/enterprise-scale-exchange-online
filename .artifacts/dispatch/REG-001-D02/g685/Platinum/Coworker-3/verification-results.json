@@ -1,0 +1,249 @@
+{
+  "schema": "REG-001-D02/independent-verification/v1",
+  "card": "REG-001-D02",
+  "generation": 685,
+  "role": "Platinum/Coworker-3",
+  "overallVerdict": "NACK",
+  "verifiedAtUtc": "2026-10-02T15:00:45.042981Z",
+  "hashChecks": {
+    "affected.junit.xml": {
+      "expected": "d637b8fc2e8afdbb5067e62e32cd6961255230a68d6342aa38b7c2ff0fefe7a0",
+      "actual": "d637b8fc2e8afdbb5067e62e32cd6961255230a68d6342aa38b7c2ff0fefe7a0",
+      "match": true
+    },
+    "affected-failures.sanitized.json": {
+      "expected": "b446775bd05d07a211ee8dc598371d4e515b31e0849f7accfcf3551173a362cd",
+      "actual": "b446775bd05d07a211ee8dc598371d4e515b31e0849f7accfcf3551173a362cd",
+      "match": true
+    },
+    "results.json": {
+      "expected": "7aef08cde733f00d2bebba528b9ab4c4d2b79facebd7631dc4651c91497bf8af",
+      "actual": "7aef08cde733f00d2bebba528b9ab4c4d2b79facebd7631dc4651c91497bf8af",
+      "match": true
+    },
+    "failure-classification.json": {
+      "expected": "97158901238d61fe6acb82a74c5443b0959cfd5775f6bf371bf23b58954df3c4",
+      "actual": "97158901238d61fe6acb82a74c5443b0959cfd5775f6bf371bf23b58954df3c4",
+      "match": true
+    },
+    "handoff.json": {
+      "expected": "47c8e7b95704a2fadf50acf1b95135e7ef0982f85292fa13768ed3d4984389ad",
+      "actual": "47c8e7b95704a2fadf50acf1b95135e7ef0982f85292fa13768ed3d4984389ad",
+      "match": true
+    }
+  },
+  "artifactManifestChecks": [
+    {
+      "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/artifacts.sha256",
+      "entries": 9,
+      "allMatch": true,
+      "mismatches": []
+    },
+    {
+      "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/artifacts.sha256",
+      "entries": 14,
+      "allMatch": true,
+      "mismatches": []
+    }
+  ],
+  "clauses": [
+    {
+      "clause": "exact command identity",
+      "verdict": "PASS",
+      "evidence": {
+        "actualSha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493",
+        "contractSha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493",
+        "resultsSha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493"
+      }
+    },
+    {
+      "clause": "exactly one Pester invocation and retry zero",
+      "verdict": "PASS_WITH_PROVENANCE_LIMITATION",
+      "evidence": {
+        "reportedInvocationCount": 1,
+        "reportedRetryCount": 0,
+        "consoleLifecycle": {
+          "pesterVersionMarkers": 1,
+          "discoveryStartMarkers": 1,
+          "discoveryFoundMarkers": 1,
+          "runStartMarkers": 1,
+          "completionMarkers": 1,
+          "summaryMarkers": 1
+        },
+        "consolePresentOutsideCanonicalRoot": true,
+        "consoleHashMatchesProvenance": true
+      },
+      "limitation": "One complete lifecycle is evidenced in an external temporary console file; the canonical C2 root retains only its hash, not the console bytes."
+    },
+    {
+      "clause": "JSON and canonical XML parse",
+      "verdict": "PASS_WITH_RECONSTRUCTION_LIMITATION",
+      "evidence": {
+        "jsonParsed": true,
+        "canonicalXmlParsed": true,
+        "nativeWriterXmlParsed": false,
+        "nativeWriterParseError": "no element found: line 6563, column 31",
+        "canonicalXmlWasReconstructed": true
+      }
+    },
+    {
+      "clause": "count arithmetic and cardinality reconciliation",
+      "verdict": "PASS",
+      "evidence": {
+        "total": 6292,
+        "sumOutcomes": 6292,
+        "jsonFailures": 833,
+        "xmlCases": 6292,
+        "xmlFailed": 833,
+        "xmlOutcomes": {
+          "Success": 5459,
+          "Failure": 833
+        },
+        "failedContainers": 1
+      }
+    },
+    {
+      "clause": "every failed-test identity and details map one-to-one without fabrication",
+      "verdict": "NACK",
+      "evidence": {
+        "requiredRecords": 833,
+        "explicitRecoveredIdentities": 761,
+        "ordinalPlaceholderIdentities": 72,
+        "jsonXmlIdentityEquality": true,
+        "canonicalXmlDerivedFromSameRecoveredJson": true
+      },
+      "reason": "The 72 BeforeAll-derived records use invented ordinal identities/names, not corresponding Pester failed-test identities. JSON-to-XML equality is circular because the canonical XML was rebuilt from that JSON."
+    },
+    {
+      "clause": "required failed-test fields",
+      "verdict": "PASS_FOR_SHAPE_ONLY",
+      "evidence": {
+        "records": 833,
+        "missingRequiredFieldCounts": {
+          "identity": 0,
+          "name": 0,
+          "file": 0,
+          "line": 0,
+          "message": 0,
+          "position": 0
+        },
+        "uniqueIdentities": 833,
+        "positiveOrExplicitNullLines": true
+      },
+      "limitation": "Shape validity does not cure the 72 unresolved identities."
+    },
+    {
+      "clause": "timestamps, tool versions, native and semantic exits",
+      "verdict": "NACK",
+      "evidence": {
+        "startedUtc": "2026-10-02T14:10:43.0000000Z",
+        "endedUtc": "2026-10-02T14:50:31.0000000Z",
+        "ordered": true,
+        "durationSeconds": 2388.0,
+        "toolVersions": {
+          "pwsh": "7.6.6",
+          "Pester": "5.7.1"
+        },
+        "reportedNativeExit": 0,
+        "derivedSemanticExit": 1,
+        "reportedSemanticExit": 1
+      },
+      "reason": "semanticExit=1 is mechanically derivable, but nativeExit=0 is assigned later by finalize-capture.ps1 and no native process-exit record is retained."
+    },
+    {
+      "clause": "sanitization",
+      "verdict": "PASS_FOR_CONTRACT_APPLICABLE_ARTIFACTS",
+      "evidence": {
+        "filesScanned": [
+          "affected.junit.xml",
+          "affected-failures.sanitized.json",
+          "results.json",
+          "status-before.txt",
+          "status-after.txt",
+          "diff-check.txt"
+        ],
+        "forbiddenFindings": []
+      },
+      "limitation": "The external temporary console is unsanitized and is not present in the canonical C2 evidence root; generic GUIDs were not treated as tenant IDs without tenant labeling."
+    },
+    {
+      "clause": "input and tracked-state stability with diff check",
+      "verdict": "PASS",
+      "evidence": {
+        "inputsBeforeAfterByteEqual": true,
+        "statusBeforeAfterByteEqual": true,
+        "manifests": [
+          {
+            "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/inputs.sha256",
+            "entries": 294,
+            "allMatch": true,
+            "mismatches": []
+          },
+          {
+            "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-1/tracked-state-before.sha256",
+            "entries": 339,
+            "allMatch": true,
+            "mismatches": []
+          },
+          {
+            "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/inputs-before.sha256",
+            "entries": 294,
+            "allMatch": true,
+            "mismatches": []
+          },
+          {
+            "path": ".artifacts/dispatch/REG-001-D02/g685/Platinum/Coworker-2/inputs-after.sha256",
+            "entries": 294,
+            "allMatch": true,
+            "mismatches": []
+          }
+        ],
+        "diffCheck": {
+          "schema": "REG-001-D02/diff-check/v1",
+          "statusSnapshotsEqual": true,
+          "affectedInputsEqual": true,
+          "trackedMutationCount": 0,
+          "exit": 0
+        },
+        "currentHead": "5b06a85a7319ef0e3a8501ea9f5f80d69380a828",
+        "currentTrackedDiffNames": [
+          ".github/backlog.md",
+          ".github/cohorts.md",
+          ".github/kanban.md",
+          ".github/validate-dispatch-board.ps1"
+        ],
+        "currentStatus": [
+          " M .github/backlog.md",
+          " M .github/cohorts.md",
+          " M .github/kanban.md",
+          " M .github/validate-dispatch-board.ps1",
+          "?? .artifacts/"
+        ]
+      }
+    },
+    {
+      "clause": "deterministic classification and causal separation",
+      "verdict": "PASS_FOR_GROUPING_NACK_FOR_REMEDIATION_ATOMICITY",
+      "evidence": {
+        "familyCount": 251,
+        "familyMemberCount": 833,
+        "sharedCandidateCount": 62,
+        "downstreamSymptomCount": 251,
+        "mechanicalRecomputationMatches": false,
+        "earliestObserved": {
+          "identity": "<REPO>\\samples\\contoso-exchange-online-managed-service\\tests\\unit\\ApprovedAdapterRoundTrip.Tests.ps1 > EXR-004 stateful approved adapters > Concrete Organization mutation boundary > refuses an unavailable mutation command before any writes",
+          "file": "<REPO>\\samples\\contoso-exchange-online-managed-service\\tests\\unit\\ApprovedAdapterRoundTrip.Tests.ps1",
+          "line": 87,
+          "status": "earliest in captured Pester Failed ordering, not proven root cause",
+          "falsifier": "Capture-order metadata showing a different failed test occurred earlier would falsify this earliest-observed designation."
+        },
+        "causalityLimit": "Candidates are hypotheses strictly supported by repetition/order facts; causality was not tested and is not claimed."
+      },
+      "reason": "Grouping is deterministic and appropriately labels hypotheses, but it neither establishes earliest shared cause nor separates causes from symptoms sufficiently to define 12 truthful atomic remediation cards."
+    }
+  ],
+  "smallestTruthfulFollowUp": {
+    "rerunAuthorizedHere": false,
+    "required": "Under a new explicit authorization, perform one fresh capture with an XML-safe reporter or pre-sanitized reporter input and retain the native structured Pester result plus native process-exit metadata. It must preserve all 833 actual failed-test identities/details, especially the 72 BeforeAll-affected tests. Then causally inspect/reclassify the earliest shared prerequisites before creating 12 atomic remediation cards."
+  }
+}

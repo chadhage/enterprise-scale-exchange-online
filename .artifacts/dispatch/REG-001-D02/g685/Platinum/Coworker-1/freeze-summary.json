@@ -1,0 +1,13 @@
+{
+  "schema": "REG-001-D02/freeze-summary/v1",
+  "frozenAtUtc": "2026-10-02T14:09:25.9863131Z",
+  "head": "5b06a85a7319ef0e3a8501ea9f5f80d69380a828",
+  "pwsh": "7.6.6",
+  "pester": "5.7.1",
+  "affectedTrackedInputCount": 294,
+  "allTrackedFileCount": 339,
+  "exactCommandSha256": "7a3c48d570c17b0d1192096a9abec4bd019f5c55887e8d890990fb7ac2449493",
+  "pesterInvocationsByC1": 0,
+  "expectedC2PesterInvocations": 1,
+  "retryCount": 0
+}
