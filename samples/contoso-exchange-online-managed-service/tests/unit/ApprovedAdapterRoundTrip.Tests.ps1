@@ -161,9 +161,17 @@ Context 'Concrete <Scope> mutation boundary' -ForEach $adapterCases {
 Context 'Signed TABL value admission' {
     It 'refuses <Case> before any adapter write' -ForEach $tablAdmissionNegativeCases {
         # Arrange
-        $arguments = New-ApprovedTablAdmissionFixture -EntryType $EntryType -EntryValue $EntryValue
+        $arguments = New-StatefulAdapterFixture -Scope TenantAllowBlockList
+        $parameters = Get-Content $arguments.ParameterPath -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].entryType = $EntryType
+        $parameters.workflowOptions.tenantAllowBlockEntries[0].entryValue = $EntryValue
+        $parameters | ConvertTo-Json -Depth 30 | Set-Content $arguments.ParameterPath
         # Act
-        $invoke = { & $script:adapterCommand -Stage Apply @arguments -Apply -Confirm:$false }
+        $invoke = {
+            & $script:adapterCommand -Stage Preview @arguments -Scope TenantAllowBlockList -Confirm:$false | Out-Null
+            & $script:adapterCommand -Stage Approve @arguments -ApprovalIdentity 'reviewer@example.test' `
+                -SigningCertificate $script:adapterCertificate -Confirm:$false
+        }
         # Assert
         $failure = $null
         try { & $invoke } catch { $failure = $_ }

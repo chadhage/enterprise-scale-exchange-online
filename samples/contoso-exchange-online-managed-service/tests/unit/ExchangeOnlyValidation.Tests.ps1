@@ -1,6 +1,6 @@
 BeforeAll {
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-    Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force
+    $scopeModule = Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force -PassThru
 }
 
 Describe 'EXR-001 typed Exchange configuration boundary' {
@@ -16,7 +16,7 @@ Describe 'EXR-001 typed Exchange configuration boundary' {
         $configuration = Get-Content (Join-Path $sampleRoot 'config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
         $configuration.controls[$Control][$Key] = $Value
         # Act
-        $invoke = { Assert-BaselineExchangeScope -Configuration $configuration }
+        $invoke = { & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration }
         # Assert
         $invoke | Should -Throw '*ExchangeSchemaInvalid*'
     }
@@ -26,7 +26,7 @@ Describe 'EXR-001 typed Exchange configuration boundary' {
         $configuration = Get-Content (Join-Path $sampleRoot 'config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
         $configuration.controls.Remove($_)
         # Act
-        $invoke = { Assert-BaselineExchangeScope -Configuration $configuration }
+        $invoke = { & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration }
         # Assert
         $invoke | Should -Throw '*ExchangeControlMissing*'
     }
@@ -35,7 +35,7 @@ Describe 'EXR-001 typed Exchange configuration boundary' {
         # Arrange
         $configuration = Get-Content (Join-Path $sampleRoot 'config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
         # Act
-        $manifest = Assert-BaselineExchangeScope -Configuration $configuration
+        $manifest = & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration
         # Assert
         @($manifest.ControlId).Count | Should -Be 25
         @($manifest.ControlId) | Should -Contain 'MON-003'

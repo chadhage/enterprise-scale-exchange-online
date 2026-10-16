@@ -415,7 +415,7 @@ Describe 'EVD-003-A3 shipped catalog and shipped registry parity' {
 
         It 'refuses a registry that drops a catalog control' {
             # Arrange
-            $short = @(ConvertTo-ControlDefinition -Registry (Get-BaselineControlRegistry) | Where-Object { $_.ControlId -cne 'EXO-006' })
+            $short = @(ConvertTo-ControlDefinition -Registry (Get-BaselineControlRegistry -Profile Historical) | Where-Object { $_.ControlId -cne 'EXO-006' })
             $registry = New-BaselineControlRegistry -Definition $short
 
             # Act
@@ -429,7 +429,7 @@ Describe 'EVD-003-A3 shipped catalog and shipped registry parity' {
 
         It 'refuses a registry that registers a control the catalog does not declare' {
             # Arrange
-            $extended = @(ConvertTo-ControlDefinition -Registry (Get-BaselineControlRegistry)) + @(
+            $extended = @(ConvertTo-ControlDefinition -Registry (Get-BaselineControlRegistry -Profile Historical)) + @(
                 [ordered]@{
                     ControlId         = 'EXO-099'
                     Priority          = 'MUST'
@@ -457,7 +457,7 @@ Describe 'EVD-003-A3 shipped catalog and shipped registry parity' {
                 @(Get-Content -LiteralPath $script:CatalogPath) + @(New-CatalogControlRow -ControlId 'EXO-013'))
 
             # Act
-            $coverage = Test-BaselineControlCoverage -CatalogPath $extendedCatalog -Observed (Get-BaselineControlRegistry) -Subject 'registry'
+            $coverage = Test-BaselineControlCoverage -CatalogPath $extendedCatalog -Observed (Get-BaselineControlRegistry -Profile Historical) -Subject 'registry'
 
             # Assert
             (Get-CoverageFold -Coverage $coverage) |
@@ -470,7 +470,7 @@ Describe 'EVD-003-A3 shipped catalog and shipped registry parity' {
 
         It 'reports satisfied coverage of the shipped catalog by the shipped registry' {
             # Arrange
-            $registry = Get-BaselineControlRegistry
+            $registry = Get-BaselineControlRegistry -Profile Historical
 
             # Act
             $coverage = Test-BaselineControlCoverage -CatalogPath $script:CatalogPath -Observed $registry -Subject 'registry'

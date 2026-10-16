@@ -311,9 +311,8 @@ Describe 'COM-001-A module manifest and public API contract' {
         It 'keeps the Exchange-only evidence, policy and boundary contracts callable' {
             Import-Module $script:CommonManifestPath -Force -DisableNameChecking
             $requiredContracts = @(
-                'Assert-BaselineExchangeScope', 'Assert-BaselineExchangeMutationPlan',
-                'Get-BaselineDeploymentProfile', 'Read-BaselineExchangeOperationalArtifact',
-                'Invoke-BaselineExchangeRawCollection', 'Get-BaselineExchangeBoundaryEvidence',
+                'Assert-BaselineExchangeMutationPlan', 'Get-BaselineDeploymentProfile',
+                'Get-BaselineExchangeBoundaryEvidence',
                 'Test-BaselineExchangeBoundaryControl', 'Invoke-BaselineExchangeEvidence',
                 'Resolve-BaselineEwsPolicy', 'Test-BaselineEwsState', 'Test-BaselineEwsConsumerReadiness',
                 'Resolve-BaselineRemoteDomainOofType', 'Get-TransportBypassEvidence', 'Test-TransportBypassControl',

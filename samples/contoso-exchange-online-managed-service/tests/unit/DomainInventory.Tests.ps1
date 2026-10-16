@@ -100,7 +100,11 @@ BeforeAll {
         $records = @($envelope.Evidence | Where-Object ControlId -EQ 'EXO-001')
         if ($checks.Count -ne 1 -or $records.Count -ne 1) { throw 'PublicDomainRecordCardinalityInvalid' }
         $calls = @(Get-Content $callPath)
-        if (@($calls | Where-Object { ($_ -split ':', 2)[0] -notin (@($Fixture.Raw.Keys) + 'Connect-ExchangeOnline') }).Count) { throw 'UnexpectedServiceCall' }
+        $unexpectedCalls = @($calls | Where-Object {
+            ($_ -split ':', 2)[0] -notin (@($Fixture.Raw.Keys) + @('Connect-ExchangeOnline', 'Get-ConnectionInformation'))
+        })
+        if ($unexpectedCalls.Count) { throw "UnexpectedServiceCall: $($unexpectedCalls -join '; ')" }
+        if ($calls -notcontains 'Get-ConnectionInformation') { throw 'OfflineSessionPreflightNotObserved' }
         @{ Check = $checks[0]; Evidence = $records[0]; Envelope = $envelope; Calls = $calls; ExitCode = $exitCode; Output = $output }
     }
 }

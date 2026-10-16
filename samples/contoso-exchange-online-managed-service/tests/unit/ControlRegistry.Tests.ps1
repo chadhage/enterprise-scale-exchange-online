@@ -430,7 +430,7 @@ Describe 'EVD-002-A control registry' {
             ) -join [Environment]::NewLine
 
             # Act
-            $registry = Get-BaselineControlRegistry
+            $registry = Get-BaselineControlRegistry -Profile Historical
 
             # Assert
             (Get-RegistryFold -Registry $registry) |

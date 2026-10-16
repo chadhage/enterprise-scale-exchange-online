@@ -1,6 +1,6 @@
 BeforeAll {
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-    Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force
+    $operationalModule = Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force -PassThru
     $key = [Security.Cryptography.RSA]::Create(2048)
     $request = [Security.Cryptography.X509Certificates.CertificateRequest]::new('CN=Offline operational owner', $key, [Security.Cryptography.HashAlgorithmName]::SHA256, [Security.Cryptography.RSASignaturePadding]::Pkcs1)
     $request.CertificateExtensions.Add([Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]::new($true, $false, 0, $true))
@@ -76,11 +76,12 @@ Describe 'EXR-001 local operational evidence admission' {
             $document.Payload.Complete = $false
             $document | ConvertTo-Json -Depth 20 | Set-Content $artifactPath
         }
-        { Read-BaselineExchangeOperationalArtifact -ControlId MON-003 -Context $context } | Should -Throw "*$Reason*"
+        { & $operationalModule { param($Context) Read-BaselineExchangeOperationalArtifact -ControlId MON-003 -Context $Context } $context } |
+            Should -Throw "*$Reason*"
     }
     It 'returns the bound document and payload only after real CMS and pinned-root admission' {
         Save-OperationalFixture
-        $result = Read-BaselineExchangeOperationalArtifact -ControlId MON-003 -Context $context
+        $result = & $operationalModule { param($Context) Read-BaselineExchangeOperationalArtifact -ControlId MON-003 -Context $Context } $context
         $result.Payload.Complete | Should -BeTrue
         $result.SignatureVerified | Should -BeTrue
         $result.SignerThumbprint | Should -BeExactly $certificate.Thumbprint
@@ -90,7 +91,7 @@ Describe 'EXR-001 local operational evidence admission' {
         $document.GeneratedAtUtc = [datetimeoffset]::UtcNow.AddDays(-5).ToString('o')
         $context.Parameters.operationalEvidence['OPS-002'] = $context.Parameters.operationalEvidence['MON-003']
         Save-OperationalFixture
-        $result = Read-BaselineExchangeOperationalArtifact -ControlId OPS-002 -Context $context
+        $result = & $operationalModule { param($Context) Read-BaselineExchangeOperationalArtifact -ControlId OPS-002 -Context $Context } $context
         $result.Payload.Complete | Should -BeTrue
         $result.SignatureVerified | Should -BeTrue
     }

@@ -30,9 +30,10 @@ BeforeAll {
     $stubText = @'
 function Set-TransportConfig { param($SmtpClientAuthenticationDisabled, $ExternalPostmasterAddress, $WhatIf) }
 function Set-HostedOutboundSpamFilterPolicy { param($Identity, $AutoForwardingMode, $WhatIf) }
-function Set-OrganizationConfig { param($AuditDisabled, $EwsEnabled, $EwsAllowList, $WhatIf) }
+function Set-OrganizationConfig { param($AuditDisabled, $EwsEnabled, $EwsApplicationAccessPolicy, $EwsAllowList, $EwsAllowedAppIDs, $WhatIf) }
 function Set-ExternalInOutlook { param($Enabled, $AllowList, $WhatIf) }
 function Set-RemoteDomain { param($Identity, $AutoForwardEnabled, $AutoReplyEnabled, $AllowedOOFType, $DeliveryReportEnabled, $NDREnabled, $WhatIf) }
+function Get-RemoteDomain { [pscustomobject]@{ Identity = 'Default'; DomainName = '*'; AllowedOOFType = 'None' } }
 function Get-CASMailboxPlan { param($ResultSize) }
 function Set-CASMailboxPlan { param($Identity, $PopEnabled, $ImapEnabled, $WhatIf) }
 function Set-QuarantinePolicy { param($Identity, $EndUserSpamNotificationFrequency, $WhatIf) }
@@ -54,7 +55,12 @@ function Reset-DeploymentOrganizationHarness {
 function Get-DeploymentOrganizationOutcome { return @(`$script:Outcomes) }
 Export-ModuleMember -Function *
 "@
-    $script:Harness = New-Module -Name 'DeploymentOrganizationHarness' -ScriptBlock ([scriptblock]::Create($harnessText))
+    $commonModulePath = Join-Path $script:SampleRoot 'scripts' 'ExchangeOnlineBaseline.Common.psm1'
+    $script:Harness = New-Module -Name 'DeploymentOrganizationHarness' -ArgumentList $commonModulePath, $harnessText -ScriptBlock {
+        param($CommonModulePath, $HarnessText)
+        Import-Module $CommonModulePath -Force -DisableNameChecking
+        . ([scriptblock]::Create($HarnessText))
+    }
     Import-Module $script:Harness -Force -DisableNameChecking
 
     function New-OrganizationConfiguration {
@@ -73,13 +79,13 @@ Export-ModuleMember -Function *
                     remoteDomainDefault = [pscustomobject]@{
                         autoForwardEnabled = $false
                         autoReplyEnabled = $false
-                        allowedOOFType = 'ExternalLegacy'
+                        allowedOOFType = 'None'
                         deliveryReportEnabled = $false
                         nonDeliveryReportEnabled = $false
                     }
                     protocolRestriction = [pscustomobject]@{
                         ewsEnabled = $false
-                        ewsAllowList = @('ews-app')
+                        ewsAllowList = @()
                         popEnabledByDefault = $false
                         imapEnabledByDefault = $false
                     }
@@ -294,7 +300,7 @@ Describe 'TST-002 organization-control deployment' {
             }
             Should -Invoke Set-OrganizationConfig -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {
                 $null -eq $AuditDisabled -and $EwsEnabled -eq $false -and
-                @($EwsAllowList).Count -eq 1 -and $EwsAllowList[0] -eq 'ews-app' -and $WhatIf -eq $false
+                @($EwsAllowList).Count -eq 0 -and $EwsApplicationAccessPolicy -eq 'EnforceAllowList' -and $WhatIf -eq $false
             }
             Should -Invoke Set-ExternalInOutlook -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {
                 $Enabled -eq $true -and @($AllowList).Count -eq 1 -and
@@ -302,7 +308,7 @@ Describe 'TST-002 organization-control deployment' {
             }
             Should -Invoke Set-RemoteDomain -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {
                 $Identity -eq 'Default' -and $AutoForwardEnabled -eq $false -and
-                $AutoReplyEnabled -eq $false -and $AllowedOOFType -eq 'ExternalLegacy' -and
+                $AutoReplyEnabled -eq $false -and $AllowedOOFType -eq 'None' -and
                 $DeliveryReportEnabled -eq $false -and $NDREnabled -eq $false -and $WhatIf -eq $false
             }
             Should -Invoke Get-CASMailboxPlan -ModuleName DeploymentOrganizationHarness -Times 1 -ParameterFilter {
