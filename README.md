@@ -25,6 +25,7 @@ The supported workflow uses the versioned **Exchange-only** profile; pass `-Conf
 | Follow the supported onboarding procedure | [Exchange administrator journey](samples/contoso-exchange-online-managed-service/docs/EXCHANGE-ADMINISTRATOR-JOURNEY.md) |
 | Review control definitions and manual ownership | [Control catalog](samples/contoso-exchange-online-managed-service/docs/CONTROL-CATALOG.md) |
 | Find per-control procedures and verification | [Runbooks](samples/contoso-exchange-online-managed-service/docs/RUNBOOKS.md) |
+| Run offline CI and understand verified artifact publication | [CI verification and promotion](.github/ci/README.md) |
 | Understand rejected historical implementation | [Deprecated material](deprecated/README.md) |
 
 ## Repository layout

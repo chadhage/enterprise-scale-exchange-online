@@ -1,13 +1,15 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-    Tests live Exchange Online state and writes machine-readable evidence.
+    Collects Exchange Online evidence or signs and verifies an existing frozen file.
 .DESCRIPTION
     Builds the shared baseline context to learn the deployment profile and the
     entitlement the tenant service-plan inventory reports, then collects evidence
     for every control the tenant is entitled to run. Controls the tenant does not
     hold an enabled service plan for are reported as NotEntitled and do not fail
     the run. Controls owned by another system are reported as Manual.
+    ExchangeOnly -SignEvidence and -GoLive operate on -EvidencePath without
+    connecting to Exchange Online or recollecting the reviewed evidence.
 #>
 [CmdletBinding()]
 param(
@@ -41,10 +43,15 @@ param(
 
     [object[]]$RbacPimFallbackAuthorizedSigner = @(),
 
+    [Alias('EvidenceSignaturePath')]
     [string]$SignaturePath,
 
+    [string]$EvidencePath,
+
+    [Alias('EvidenceSignerSubject')]
     [string]$SignerSubject,
 
+    [Alias('EvidenceSignerIdentity')]
     [string]$SignerIdentity,
 
     [string]$AuthorizedSignerPath,
@@ -118,6 +125,32 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
         exit $exitCode.Configuration
     }
 
+    if ($GoLive -or $SignEvidence -or -not [string]::IsNullOrWhiteSpace($EvidencePath)) {
+        try {
+            if (($GoLive -and $SignEvidence) -or $RiskAcceptancePath -or (-not $GoLive -and -not $SignEvidence)) {
+                throw 'ExchangeGoLiveInputsRequired: select either -GoLive or -SignEvidence; separate risk-acceptance imports are not supported.'
+            }
+            $frozen = Invoke-BaselineExchangeGoLive -Context $exchangeContext `
+                -EvidencePath $EvidencePath -SignaturePath $SignaturePath `
+                -SignerSubject $SignerSubject -MaximumEvidenceAge $MaximumEvidenceAge `
+                -SignerIdentity $SignerIdentity -AuthorizedSignerPath $AuthorizedSignerPath `
+                -ExpectedEvidenceHash $ExpectedEvidenceHash -ExpectedConfigurationHash $ExpectedConfigurationHash `
+                -SignEvidence:$SignEvidence -SigningCertificate $SigningCertificate
+            $frozen.Decision | ConvertTo-Json -Depth 100
+            exit $frozen.Outcome.ExitCode
+        }
+        catch {
+            $message = $_.Exception.Message
+            Write-Error $message -ErrorAction Continue
+            switch -Regex ($message) {
+                '^(ExchangeGoLiveInputsRequired|GoLiveMaximumEvidenceAgeNotPositive|ExpectedConfigurationHashMismatch):' { exit $exitCode.Configuration }
+                '^(EvidenceUnreadable|GoLiveCheckRequired):' { exit $exitCode.Collection }
+                '^(EvidenceHashMismatch|ExchangeSignatureUnverified|ExternalEvidenceSigner|SigningCertificateRequired|SignatureAlreadyExists|EvidenceSigningFailed)' { exit $exitCode.Approval }
+                default { exit $exitCode.Internal }
+            }
+        }
+    }
+
     if (-not $SkipConnection) {
         try {
             Import-Module (Join-Path $PSScriptRoot 'ExchangeOnlineBaseline.Connection.psm1') -DisableNameChecking
@@ -179,20 +212,14 @@ if ($deploymentProfile -ceq 'ExchangeOnly') {
         exit $exitCode.Collection
     }
 
-    if ($GoLive) {
-        $exchangeGoLive = Invoke-BaselineExchangeGoLive -Context $exchangeContext `
-            -EvidencePath $exchangeResultPath -SignaturePath $SignaturePath `
-            -SignerSubject $SignerSubject -MaximumEvidenceAge $MaximumEvidenceAge `
-            -SignerIdentity $SignerIdentity -AuthorizedSignerPath $AuthorizedSignerPath `
-            -ExpectedEvidenceHash $ExpectedEvidenceHash `
-            -ExpectedConfigurationHash $ExpectedConfigurationHash `
-            -SignEvidence:$SignEvidence -SigningCertificate $SigningCertificate
-        exit $exchangeGoLive.Outcome.ExitCode
-    }
-
     $exchangeOutcome = Get-BaselineRunOutcome -Check @($exchangeEnvelope.Check)
     Write-Host ("Outcome: {0} ({1}) {2}" -f $exchangeOutcome.Outcome, $exchangeOutcome.ExitCode, $exchangeOutcome.Reason)
     exit $exchangeOutcome.ExitCode
+}
+
+if ($SignEvidence -or $EvidencePath) {
+    Write-Error 'Frozen evidence signing and verification require the ExchangeOnly profile.' -ErrorAction Continue
+    exit $exitCode.Configuration
 }
 
 # LIC-008: DES-003 makes the runtime tenant service-plan inventory the only entitlement authority,

@@ -9,3 +9,9 @@ microsite/docs/
 test-reports/
 TestResults.xml
 coverage.xml
+
+# Reproducible CI tooling, staged artifacts and browser diagnostics
+.artifacts/
+.github/ci/node_modules/
+.github/ci/playwright-report/
+.github/ci/test-results/

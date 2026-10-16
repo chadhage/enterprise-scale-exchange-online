@@ -142,7 +142,11 @@ Describe 'Microsite supported content boundary' {
         $catalog = [regex]::Match($script:script, 'const documentCatalog = \[(?<files>[\s\S]*?)\];').Groups['files'].Value
         $publishedDocuments = @([regex]::Matches($catalog, "'(?<file>[^']+\.md)'") | ForEach-Object { $_.Groups['file'].Value } | Sort-Object)
         ($publishedDocuments -join '|') | Should -BeExactly ($sourceDocuments -join '|')
-        $script:pagesWorkflow | Should -Match 'cp samples/contoso-exchange-online-managed-service/docs/\*\.md microsite/docs/'
+        $builder = Get-Content -LiteralPath (Join-Path $script:repositoryRoot '.github\ci\Build-Artifacts.ps1') -Raw
+        $builder | Should -Match 'samples/contoso-exchange-online-managed-service/docs/\*\.md'
+        $script:pagesWorkflow | Should -Match 'uses: \./\.github/workflows/verify\.yml'
+        $script:pagesWorkflow | Should -Match 'pipeline\.mjs validate'
+        $script:pagesWorkflow | Should -Match 'path: \.artifacts/promoted/site'
         $script:script | Should -Match 'fetch\(`docs/\$'
         $script:script | Should -Match 'function renderMarkdown'
         $script:script | Should -Match 'content\.replaceChildren\(rendered\.content\)'

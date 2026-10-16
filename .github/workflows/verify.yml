@@ -1,0 +1,184 @@
+name: Verify candidate
+
+on:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        type: string
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GIT_CONFIG_COUNT: '1'
+  GIT_CONFIG_KEY_0: core.autocrlf
+  GIT_CONFIG_VALUE_0: 'false'
+
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    outputs:
+      artifact: ${{ steps.plan.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - id: plan
+        env:
+          CI_BASE: ${{ github.event.pull_request.base.sha }}
+          CI_FULL: ${{ github.event_name != 'pull_request' }}
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/ci/pipeline.mjs plan
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: verification-plan
+          path: .artifacts/ci/plan.json
+          retention-days: 7
+
+  offline:
+    needs: plan
+    runs-on: windows-2025
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verification-plan
+          path: .artifacts/ci
+      - run: ./.github/ci/Install-Tools.ps1
+      - env:
+          CI_SHARD: ${{ matrix.shard }}
+        run: |
+          ./.github/ci/Invoke-OfflineTests.ps1 -Shard ([int]$env:CI_SHARD) -ShardCount 4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: offline-${{ matrix.shard }}
+          path: .artifacts/results/
+          if-no-files-found: error
+          retention-days: 30
+
+  artifacts:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Validate workflow definitions
+        run: |
+          set -euo pipefail
+          mkdir "$RUNNER_TEMP/actionlint"
+          curl -fsSL --retry 3 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz \
+            -o "$RUNNER_TEMP/actionlint.tar.gz"
+          echo "023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint"
+          "$RUNNER_TEMP/actionlint/actionlint" -shellcheck=
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: .github/ci/package-lock.json
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verification-plan
+          path: .artifacts/ci
+      - name: Install pinned PowerShell tools
+        shell: pwsh
+        run: ./.github/ci/Install-Tools.ps1
+      - name: Parse and analyze active PowerShell
+        shell: pwsh
+        run: ./.github/ci/Test-Source.ps1
+      - name: Build and check extracted artifacts
+        shell: pwsh
+        run: ./.github/ci/Build-Artifacts.ps1
+      - name: Install locked browser tooling
+        working-directory: .github/ci
+        run: npm ci
+      - name: Test verification gates and staged site
+        working-directory: .github/ci
+        run: |
+          set -euo pipefail
+          npm test
+          npx playwright install --with-deps chromium
+          npm run test:browser
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: candidate-bundle
+          path: .artifacts/bundle/
+          include-hidden-files: true
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: source-and-browser-results
+          path: |
+            .artifacts/analyzer.json
+            .github/ci/test-results/
+          retention-days: 30
+
+  verify:
+    name: Verify
+    if: always()
+    needs: [plan, offline, artifacts]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every verification job
+        env:
+          PLAN: ${{ needs.plan.result }}
+          OFFLINE: ${{ needs.offline.result }}
+          ARTIFACTS: ${{ needs.artifacts.result }}
+        run: |
+          test "$PLAN" = success && test "$OFFLINE" = success && test "$ARTIFACTS" = success
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: verification-plan
+          path: .artifacts/ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: offline-*
+          path: .artifacts/results
+          merge-multiple: true
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: candidate-bundle
+          path: .artifacts/bundle
+      - run: node .github/ci/pipeline.mjs finalize
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ needs.plan.outputs.artifact }}
+          path: .artifacts/bundle/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 90

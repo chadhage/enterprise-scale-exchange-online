@@ -2,50 +2,96 @@ name: Publish Exchange change kit release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing or new release tag (for example v1.0.0)'
+        description: Existing version tag on main (for example v1.0.0)
         required: true
+        type: string
 
 permissions:
-  contents: write
+  contents: read
+  actions: read
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  candidate:
+    runs-on: ubuntu-24.04
     env:
-      TAG: ${{ github.event.inputs.tag || github.ref_name }}
-      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ inputs.tag || github.ref_name }}
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      tree: ${{ steps.find.outputs.tree }}
+      run: ${{ steps.find.outputs.run }}
+      artifact: ${{ steps.find.outputs.artifact }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-
-      - name: Pin an existing tag to its own commit
+      - name: Require an existing version tag reachable from main
+        id: source
         run: |
           set -euo pipefail
-          if git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
-            git checkout --detach "refs/tags/$TAG"
-          fi
-          echo "TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          [[ "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$ ]]
+          git check-ref-format "refs/tags/$TAG"
+          target="$(git rev-parse --verify "refs/tags/$TAG^{commit}")"
+          git merge-base --is-ancestor "$target" origin/main
+          git checkout --detach "$target"
+          echo "commit=$target" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/ci/pipeline.mjs find full
 
-      - name: Package the change kit
+  verification:
+    needs: candidate
+    if: needs.candidate.outputs.run == ''
+    uses: ./.github/workflows/verify.yml
+    with:
+      ref: ${{ needs.candidate.outputs.commit }}
+
+  release:
+    needs: [candidate, verification]
+    if: >-
+      always() && needs.candidate.result == 'success' &&
+      (needs.verification.result == 'success' || needs.verification.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      actions: read
+    concurrency:
+      group: kit-release-${{ inputs.tag || github.ref_name }}
+      cancel-in-progress: false
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      TARGET_SHA: ${{ needs.candidate.outputs.commit }}
+      TREE: ${{ needs.candidate.outputs.tree }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.candidate.outputs.artifact }}
+          path: .artifacts/promoted
+          run-id: ${{ needs.candidate.outputs.run || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Require full verification and intact artifact bytes
+        run: node .github/ci/pipeline.mjs validate .artifacts/promoted "$TREE" full
+      - name: Publish without rebuilding or replacing assets
         run: |
           set -euo pipefail
-          staging="$RUNNER_TEMP/exchange-online-change-kit"
-          mkdir -p "$staging"
-          cp -R samples/contoso-exchange-online-managed-service/{config,docs,scripts,README.md} "$staging/"
-          (cd "$RUNNER_TEMP" && zip -qr exchange-online-change-kit.zip exchange-online-change-kit)
-          (cd "$RUNNER_TEMP" && sha256sum exchange-online-change-kit.zip > exchange-online-change-kit.zip.sha256)
-          cat "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256"
-
-      - name: Publish release assets
-        run: |
-          set -euo pipefail
+          test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$TARGET_SHA" || {
+            git fetch --no-tags origin "refs/tags/$TAG:refs/tags/$TAG"
+            test "$(git rev-parse "refs/tags/$TAG^{commit}")" = "$TARGET_SHA"
+          }
+          cd .artifacts/promoted
+          sha256sum --check exchange-online-change-kit.zip.sha256
           if gh release view "$TAG" > /dev/null 2>&1; then
             existing_assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
             for asset in exchange-online-change-kit.zip exchange-online-change-kit.zip.sha256; do
@@ -54,8 +100,13 @@ jobs:
                 exit 1
               fi
             done
-            gh release upload "$TAG" "$RUNNER_TEMP/exchange-online-change-kit.zip" "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256"
+            gh release upload "$TAG" exchange-online-change-kit.zip exchange-online-change-kit.zip.sha256
           else
-            gh release create "$TAG" "$RUNNER_TEMP/exchange-online-change-kit.zip" "$RUNNER_TEMP/exchange-online-change-kit.zip.sha256" \
-              --title "Exchange Online change kit $TAG" --generate-notes --target "$TARGET_SHA"
+            gh release create "$TAG" exchange-online-change-kit.zip exchange-online-change-kit.zip.sha256 \
+              --verify-tag --title "Exchange Online change kit $TAG" --generate-notes
           fi
+          mkdir ../release-smoke
+          gh release download "$TAG" --dir ../release-smoke --pattern 'exchange-online-change-kit.zip*'
+          cd ../release-smoke
+          sha256sum --check exchange-online-change-kit.zip.sha256
+          cmp exchange-online-change-kit.zip ../promoted/exchange-online-change-kit.zip

@@ -97,7 +97,7 @@ foreach ($commandName in $requiredParameters.Keys) {
 }
 if (-not (Test-Path -LiteralPath $journey.ParameterPath -PathType Leaf)) { throw 'JourneyParameterFileRequired: obtain the approved resolved parameter file' }
 Import-Module ./scripts/ExchangeOnlineBaseline.Common.psd1 -Force -DisableNameChecking
-$context = Get-BaselineExchangeContext -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath
+$context = Get-BaselineExchangeContext -ParameterPath $journey.ParameterPath -ConfigurationPath $journey.ConfigurationPath -ForActionPlanning
 if ($context.Parameters.MICROSOFT_ENTRA_TENANT_GUID -ne $journey.TenantId -or $context.Parameters.PRIMARY_SMTP_DOMAIN -ne $journey.Domain -or $context.Parameters.SECURITY_OPERATIONS_MAILBOX -ne $journey.OperationsMailbox -or $context.Parameters.MAIL_ENABLED_PRIORITY_USERS_GROUP -ne $journey.PriorityGroup) { throw 'JourneyParameterMismatch: obtain one consistent independently approved input bundle' }
 if ($context.Hash -ne $journey.ConfigurationHash) { throw 'JourneyConfigurationMismatch: stop and obtain the approved resolved digest' }
 ```
@@ -248,8 +248,8 @@ $evidenceHash = (Get-FileHash -LiteralPath $evidencePath -Algorithm SHA256).Hash
 (Get-Item -LiteralPath $evidencePath).IsReadOnly = $true
 $gateInputs = @{
     ParameterPath = $journey.ParameterPath; ConfigurationPath = $journey.ConfigurationPath
-    EvidencePath = $evidencePath; EvidenceSignaturePath = Join-Path $runDirectory 'frozen-exchange-evidence.p7s'
-    EvidenceSignerIdentity = $journey.ApprovalIdentity; AuthorizedSignerPath = $journey.AuthorityPath
+    EvidencePath = $evidencePath; SignaturePath = Join-Path $runDirectory 'frozen-exchange-evidence.p7s'
+    SignerIdentity = $journey.ApprovalIdentity; AuthorizedSignerPath = $journey.AuthorityPath
     ExpectedEvidenceHash = $evidenceHash; ExpectedConfigurationHash = $journey.ConfigurationHash
     MaximumEvidenceAge = [timespan]::FromHours(24)
 }
@@ -304,27 +304,31 @@ Retain original user/client observations and trace with the frozen evidence hash
 
 ### Offline Walkthrough
 
-Use PowerShell 7.5+ with Pester 5.7.1+ from the sample directory. No ExchangeOnlineManagement installation, tenant connection, credentials, DNS access or production certificate is needed for this test. Do not run the numbered operational blocks directly to perform the offline exercise; invoke the test harness instead:
+Use PowerShell 7.5+ with Pester 5.7.1 from the sample directory for focused journey development. No ExchangeOnlineManagement installation, tenant connection, credentials, DNS access or production certificate is needed for this test. Do not run the numbered operational blocks directly to perform the offline exercise; invoke the test harness instead:
 
 ```powershell
+Import-Module Pester -RequiredVersion 5.7.1
 $result = Invoke-Pester -Path ./tests/unit/ExchangeAdministratorJourney.Tests.ps1 -Output Detailed -PassThru
 'Total={0} Passed={1} Failed={2} Skipped={3} NotRun={4} FailedContainers={5}' -f $result.TotalCount, $result.PassedCount, $result.FailedCount, $result.SkippedCount, $result.NotRunCount, $result.FailedContainersCount
-if ($result.FailedCount -or $result.FailedContainersCount -or $result.NotRunCount -or $result.PassedCount -ne $result.TotalCount) { throw 'Offline journey verification failed or incomplete' }
+if (-not $result.TotalCount -or $result.FailedCount -or $result.FailedContainersCount -or $result.SkippedCount -or $result.NotRunCount -or $result.PassedCount -ne $result.TotalCount) { throw 'Offline journey verification failed or incomplete' }
 ```
 
 The [test](../tests/unit/ExchangeAdministratorJourney.Tests.ps1) extracts and executes the twelve marked PowerShell blocks in their documented order. Its [doubles helper](../tests/helpers/ExchangeJourneyDoubles.ps1) supplies synthetic owner attestations, a licensed pilot mailbox, an accepted domain initially requiring correction, and absent shared mailbox/group/preset rules. Creation changes the in-memory recipient inventory; preview and hardening include both the existing pilot and newly created shared mailbox. A modeled operator event initializes preset rules only after group membership exists.
 
 The repository's actual preview, approval, validation, apply, collection and frozen-evidence code runs against local command doubles and temporary files. Cryptographic operations use a disposable test-only certificate and an isolated test trust root; the approved-change signature double checks signature bytes and that root but models revocation as Good. It does not validate enterprise PKI, revocation service availability or independent human approval. Synthetic operational evidence represents supplied prerequisites, not real exercises. The portal double is not portal automation or live compatibility proof. Command doubles are removed and the original module signature/chain functions restored after each case so later tests do not inherit synthetic trust.
 
-Expected focused result: **78 passed, 0 failed**, comprising **77 negative cases and one ordered end-to-end positive case**, with no skipped or unrun tests. The positive case checks changed Exchange state, immutable preview/postchange artifacts, one evidence collection, a frozen hash and an admitted Exchange gate whose external readiness remains **Unverified**. Pester removes temporary artifacts on completion; they are not a retained live acceptance package.
+Require every discovered case to pass with no skipped or unrun tests; use the current machine-readable results rather than a historical fixed test count. The positive case checks changed Exchange state, immutable preview/postchange artifacts, one evidence collection, a frozen hash and an admitted Exchange gate whose external readiness remains **Unverified**. Pester removes temporary artifacts on completion; they are not a retained live acceptance package.
 
-Run the complete offline regression in a fresh process before accepting changes; reused interactive sessions can retain doubles from earlier test suites:
+For candidate acceptance, use the [repository CI runner](https://github.com/chadhage/enterprise-scale-exchange-online/blob/main/.github/ci/README.md) from the repository root instead of a single Pester process containing all suites. Each container runs once in a fresh process, avoiding leaked doubles. The complete runner already includes the journey; do not also run it separately as another acceptance prerequisite:
 
 ```powershell
-pwsh -NoProfile -NonInteractive -Command '$result = Invoke-Pester -Path ./tests -Output None -PassThru; "Total=$($result.TotalCount) Passed=$($result.PassedCount) Failed=$($result.FailedCount) Skipped=$($result.SkippedCount) NotRun=$($result.NotRunCount) FailedContainers=$($result.FailedContainersCount)"; if ($result.FailedCount -or $result.FailedContainersCount -or $result.NotRunCount -or $result.PassedCount -ne $result.TotalCount) { exit 1 }'
+./.github/ci/Install-Tools.ps1
+node .github/ci/pipeline.mjs plan
+if ($LASTEXITCODE -ne 0) { throw 'CI planning failed.' }
+./.github/ci/Invoke-OfflineTests.ps1
 ```
 
-EXR-008 verification: **3,747 passed, 0 failed**, baseline **3,669 + 78 journey cases**, no skipped/unrun tests or failed containers. Focused verification followed by the complete suite also passed sequentially in the same fresh process, checking journey teardown before full regression. This does not establish arbitrary interactive-session order independence. These counts describe offline repository verification, not live readiness.
+Historical EXR-008 evidence does not establish the current branch's result or arbitrary interactive-session order independence. Current candidate acceptance comes from its complete CI reports, never from the old count or a prior branch's successful run. These are offline repository checks, not live readiness.
 
 | EXR-008 acceptance | Documented steps | Executable check |
 | --- | --- | --- |

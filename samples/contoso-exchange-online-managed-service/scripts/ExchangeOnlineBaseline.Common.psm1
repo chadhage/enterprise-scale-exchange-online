@@ -2855,21 +2855,23 @@ function Invoke-BaselineExchangeGoLive {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][object]$Context,
-        [Parameter(Mandatory)][string]$EvidencePath,
-        [Parameter(Mandatory)][string]$SignaturePath,
+        [string]$EvidencePath,
+        [string]$SignaturePath,
         [string]$SignerSubject,
-        [Parameter(Mandatory)][timespan]$MaximumEvidenceAge,
-        [Parameter(Mandatory)][string]$SignerIdentity,
-        [Parameter(Mandatory)][string]$AuthorizedSignerPath,
-        [Parameter(Mandatory)][string]$ExpectedEvidenceHash,
-        [Parameter(Mandatory)][string]$ExpectedConfigurationHash,
+        [timespan]$MaximumEvidenceAge,
+        [string]$SignerIdentity,
+        [string]$AuthorizedSignerPath,
+        [string]$ExpectedEvidenceHash,
+        [string]$ExpectedConfigurationHash,
         [switch]$SignEvidence,
         [Security.Cryptography.X509Certificates.X509Certificate2]$SigningCertificate
     )
 
-    if ($ExpectedEvidenceHash -notmatch '^[a-fA-F0-9]{64}$' -or
+    if ([string]::IsNullOrWhiteSpace($EvidencePath) -or [string]::IsNullOrWhiteSpace($SignaturePath) -or
+        [string]::IsNullOrWhiteSpace($SignerIdentity) -or [string]::IsNullOrWhiteSpace($AuthorizedSignerPath) -or
+        $ExpectedEvidenceHash -notmatch '^[a-fA-F0-9]{64}$' -or
         $ExpectedConfigurationHash -notmatch '^[a-fA-F0-9]{64}$') {
-        throw 'ExchangeGoLiveInputsRequired: expected hashes must be SHA256 hexadecimal values.'
+        throw 'ExchangeGoLiveInputsRequired: supply frozen evidence/signature paths, signer identity, authority metadata and both expected SHA256 hashes.'
     }
     if ($MaximumEvidenceAge -le [timespan]::Zero) {
         throw 'GoLiveMaximumEvidenceAgeNotPositive: supply a positive MaximumEvidenceAge.'
@@ -2878,15 +2880,29 @@ function Invoke-BaselineExchangeGoLive {
         throw 'ExpectedConfigurationHashMismatch: the approved configuration digest differs from the current configuration.'
     }
 
-    $bytes = [IO.File]::ReadAllBytes($EvidencePath)
-    $envelope = [Text.Encoding]::UTF8.GetString($bytes).TrimStart([char]0xfeff) |
-        ConvertFrom-Json -Depth 100 -DateKind String -NoEnumerate
+    try {
+        $bytes = [IO.File]::ReadAllBytes($EvidencePath)
+        $envelope = [Text.Encoding]::UTF8.GetString($bytes).TrimStart([char]0xfeff) |
+            ConvertFrom-Json -Depth 100 -DateKind String -NoEnumerate
+        if ($envelope -isnot [System.Management.Automation.PSCustomObject]) {
+            throw 'Frozen evidence must be a JSON object.'
+        }
+    }
+    catch { throw "EvidenceUnreadable: $($_.Exception.Message)" }
     $evidenceHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
     if ($evidenceHash -ine $ExpectedEvidenceHash) { throw 'EvidenceHashMismatch: frozen evidence changed.' }
-    $authorizedSigner = Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
-        ConvertFrom-Json -Depth 20 -NoEnumerate
+    try {
+        $authorizedSigner = Get-Content -LiteralPath $AuthorizedSignerPath -Raw |
+            ConvertFrom-Json -Depth 20 -NoEnumerate
+    }
+    catch { throw "ExternalEvidenceSignerUnauthorized: authority metadata could not be read. $($_.Exception.Message)" }
     if ($authorizedSigner -isnot [array] -or $authorizedSigner.Count -eq 0) {
         throw 'ExternalEvidenceSignerUnauthorized: authority metadata must be a nonempty array.'
+    }
+    foreach ($entry in $authorizedSigner) {
+        if ($entry -isnot [System.Management.Automation.PSCustomObject]) {
+            throw 'ExternalEvidenceSignerUnauthorized: every authority entry must be a signer object.'
+        }
     }
 
     if ($SignEvidence) {
@@ -2896,19 +2912,24 @@ function Invoke-BaselineExchangeGoLive {
         if (Test-Path -LiteralPath $SignaturePath) {
             throw 'SignatureAlreadyExists: frozen signatures are never overwritten.'
         }
-        $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
-            [Security.Cryptography.Pkcs.ContentInfo]::new($bytes),
-            $true
-        )
-        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
-        $null = $signer.SignedAttributes.Add(
-            [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow)
-        )
-        $cms.ComputeSignature($signer)
-        $signatureBytes = $cms.Encode()
+        try {
+            $cms = [Security.Cryptography.Pkcs.SignedCms]::new(
+                [Security.Cryptography.Pkcs.ContentInfo]::new($bytes),
+                $true
+            )
+            $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($SigningCertificate)
+            $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $null = $signer.SignedAttributes.Add(
+                [Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow)
+            )
+            $cms.ComputeSignature($signer)
+            $signatureBytes = $cms.Encode()
+        }
+        catch { throw "EvidenceSigningFailed: $($_.Exception.Message)" }
     }
     else {
-        $signatureBytes = [IO.File]::ReadAllBytes($SignaturePath)
+        try { $signatureBytes = [IO.File]::ReadAllBytes($SignaturePath) }
+        catch { throw "ExchangeSignatureUnverified: $($_.Exception.Message)" }
     }
 
     $signingState = Test-BaselineExchangeEvidenceSignature -Bytes $bytes -SignatureBytes $signatureBytes `
@@ -2930,7 +2951,12 @@ function Invoke-BaselineExchangeGoLive {
         -ExpectedEntitlement $Context.Entitlement
     $outcome = Get-BaselineRunOutcome -Check @($envelope.Check) -GoLive $decision
     if ($SignEvidence -and $decision.Admitted) {
-        [IO.File]::WriteAllBytes($SignaturePath, $signatureBytes)
+        try {
+            $stream = [IO.File]::Open($SignaturePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+            try { $stream.Write($signatureBytes, 0, $signatureBytes.Length) }
+            finally { $stream.Dispose() }
+        }
+        catch { throw "EvidenceSigningFailed: $($_.Exception.Message)" }
     }
     $report = [ordered]@{}
     foreach ($key in $decision.Keys) { $report[$key] = $decision[$key] }
