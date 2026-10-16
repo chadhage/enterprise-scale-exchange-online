@@ -555,11 +555,15 @@ Describe 'EXR-010-A12-L01-F02 bounded compatibility negatives' {
 
         It 'ignores drift in a broad-registry control excluded from the 25-control manifest' {
             # Arrange
-            @($script:projectionRegistry | Where-Object ControlId -CEQ 'EXO-003')[0].Collector =
+            $script:broadRegistry = @(
+                (& $script:commonModule { Get-BaselineControlRegistry -Profile Historical }) |
+                    ConvertTo-Json -Depth 30 | ConvertFrom-Json
+            )
+            @($script:broadRegistry | Where-Object ControlId -CEQ 'EXO-003')[0].Collector =
                 'Get-DataLossPreventionEvidence'
             Mock Get-BaselineControlRegistry -ModuleName ExchangeOnlineBaseline.Common {
-                ,$script:projectionRegistry
-            }
+                ,$script:broadRegistry
+            } -ParameterFilter { $Profile -ceq 'Historical' }
 
             # Act
             $execution = @(Invoke-ProtectionRawRegistry -Fixture $script:projectionFixture -Module $script:commonModule)
@@ -567,6 +571,8 @@ Describe 'EXR-010-A12-L01-F02 bounded compatibility negatives' {
             # Assert
             $execution.Count | Should -Be 25
             @($execution.ControlId) | Should -Be $script:exchangeControlId
+            Should -Invoke Get-BaselineControlRegistry -ModuleName ExchangeOnlineBaseline.Common `
+                -ParameterFilter { $Profile -ceq 'Historical' } -Times 0 -Exactly
         }
 
         It 'refuses <Case> retained-registry drift before collection' -ForEach @(

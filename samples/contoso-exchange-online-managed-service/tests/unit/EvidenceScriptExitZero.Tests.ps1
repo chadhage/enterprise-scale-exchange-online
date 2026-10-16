@@ -2,18 +2,26 @@
 
 # GATE-005-A: what exit `0` from the shipped command is allowed to mean. Every case below runs
 # `Test-ExchangeOnlineBaseline.ps1` for real in a child process against stubbed Exchange Online
-# commands. Nothing here connects to a tenant, reads a credential, or imports
-# ExchangeOnlineManagement or Microsoft.Graph: the command is run with `-SkipConnection`, and the
-# observations it would have collected are supplied as ordinary functions the run resolves instead.
+# outcomes. Only registry observations are doubled; the current public command, context,
+# evidence writer and exit resolver execute unchanged. Collection behavior has its own raw-contract
+# tests. Nothing here connects to a tenant or imports ExchangeOnlineManagement or Microsoft.Graph.
 
 BeforeAll {
     $script:SampleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     $script:CommonModulePath = Join-Path $script:SampleRoot 'scripts' 'ExchangeOnlineBaseline.Common.psm1'
     $script:CommonManifestPath = Join-Path $script:SampleRoot 'scripts' 'ExchangeOnlineBaseline.Common.psd1'
     $script:EvidenceScriptPath = Join-Path $script:SampleRoot 'scripts' 'Test-ExchangeOnlineBaseline.ps1'
-    $script:ConfigurationPath = Join-Path $script:SampleRoot 'config' 'exchange-online-secure-baseline.microsoft-native.json'
+    $script:ConfigurationPath = Join-Path $script:SampleRoot 'config' 'exchange-only.v1.json'
     $script:SchemaPath = Join-Path $script:SampleRoot 'config' 'exchange-online-secure-baseline.schema.json'
-    $script:ParameterPath = Join-Path $script:SampleRoot 'tests' 'fixtures' 'com007' 'parameters.native.complete.json'
+    $script:ParameterPath = Join-Path $TestDrive 'exit-contract.parameters.json'
+    $parameters = Get-Content (Join-Path $script:SampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $parameters.MICROSOFT_ENTRA_TENANT_GUID = '11111111-2222-3333-4444-555555555555'
+    $parameters.domainInventory.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
+    $parameters.entitlement.tenantId = $parameters.MICROSOFT_ENTRA_TENANT_GUID
+    $parameters.entitlement.verified = $true
+    $parameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
+    $parameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE', 'ATP_ENTERPRISE')
+    $parameters | ConvertTo-Json -Depth 40 | Set-Content $script:ParameterPath
 
     Import-Module -Name $script:CommonModulePath -Force -DisableNameChecking -ErrorAction Stop
 
@@ -21,19 +29,38 @@ BeforeAll {
     # control that does not pass fails for the reason the case declares rather than for a member
     # the stub forgot.
     $script:TenantObservation = @'
-function Get-AcceptedDomain { param([string]$Identity) __ACCEPTED_DOMAIN__ }
-function Get-TransportConfig { [pscustomobject]@{ SmtpClientAuthenticationDisabled = __SMTP_AUTH_DISABLED__; ExternalPostmasterAddress = 'postmaster@contoso.example' } }
-function Get-OrganizationConfig { [pscustomobject]@{ AuditDisabled = $false; EwsEnabled = $false; EwsAllowList = @() } }
-function Get-ExternalInOutlook { [pscustomobject]@{ Enabled = $true; AllowList = @() } }
-function Get-RemoteDomain { param([string]$Identity) [pscustomobject]@{ Name = 'Default'; AutoForwardEnabled = $false; AutoReplyEnabled = $false; AllowedOOFType = 'None'; DeliveryReportEnabled = $false; NDREnabled = $false } }
-function Get-CASMailboxPlan { param($ResultSize) [pscustomobject]@{ Identity = 'ExchangeOnlineEnterprise'; PopEnabled = $false; ImapEnabled = $false } }
-function Get-HostedOutboundSpamFilterPolicy { param([string]$Identity) [pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'Off' } }
-function Get-QuarantinePolicy { param([string]$Identity) [pscustomobject]@{ Name = 'DefaultGlobalTag'; EndUserSpamNotificationFrequency = '1.00:00:00'; EndUserQuarantinePermissionsValue = 0; ESNEnabled = $true } }
-function Get-DkimSigningConfig { param([string]$Identity) [pscustomobject]@{ Name = 'contoso.example'; Enabled = $true; Status = 'Valid'; Selector1CNAME = 'selector1-cname'; Selector2CNAME = 'selector2-cname'; Selector1KeySize = 2048; Selector2KeySize = 2048 } }
-function Get-EOPProtectionPolicyRule { param([string]$Identity) [pscustomobject]@{ Name = $Identity; State = 'Enabled'; RecipientDomainIs = @('contoso.example'); ExceptIfSentTo = @(); ExceptIfSentToMemberOf = @(); SentToMemberOf = @('priority-users@contoso.example') } }
-function Get-RoleGroup { param($ResultSize) @() }
-function Get-TransportRule { @() }
-function Get-InboundConnector { param([string]$Identity) @() }
+$global:ExitContractTenant = '__TENANT__'
+function global:Import-Module {
+    [CmdletBinding()]
+    param([Parameter(Position = 0)]$Name, [switch]$Force, [switch]$DisableNameChecking)
+    if ((Split-Path $Name -Leaf) -ne 'ExchangeOnlineBaseline.Common.psm1') {
+        throw "OfflineImportUnexpected: $Name"
+    }
+    $module = Microsoft.PowerShell.Core\Import-Module @PSBoundParameters -PassThru
+    & $module {
+        function script:Invoke-BaselineExchangeRegistry {
+            param($Context)
+            if ($global:ExitContractTenant -eq 'AcceptedDomainUnreadable') { throw 'Offline registry collection refused.' }
+            foreach ($controlId in $Context.Manifest.ControlId) {
+                $status = switch ($controlId) {
+                    'EXO-010' { 'Manual' }
+                    'MDO-008' { 'NotEntitled' }
+                    'AUTH-001' { 'Error' }
+                    'EXO-002' { if ($global:ExitContractTenant -eq 'SmtpAuthEnabled') { 'Fail' } else { 'Pass' } }
+                    default { 'Pass' }
+                }
+                $evidence = New-BaselineEvidence -ControlId $controlId -Source 'OfflineExitContract' `
+                    -Command 'OfflineOutcomeFixture' -Value @{ Fixture = 'ExitContractOnly' }
+                [pscustomobject]@{
+                    ControlId = $controlId
+                    Evidence = $evidence
+                    Result = New-ControlResult -ControlId $controlId -Status $status -Evidence $evidence `
+                        -Reason 'Synthetic exit-contract observation; not tenant evidence.'
+                }
+            }
+        }
+    }
+}
 '@
 
     function New-TenantHarness {
@@ -44,13 +71,6 @@ function Get-InboundConnector { param([string]$Identity) @() }
             [switch]$ConnectedSession
         )
 
-        $acceptedDomain = switch ($Tenant) {
-            'AcceptedDomainUnreadable' { "throw 'ServerBusy: the accepted domain could not be read.'" }
-            default { "[pscustomobject]@{ Name = 'contoso.example'; DomainName = 'contoso.example'; DomainType = 'Authoritative' }" }
-        }
-
-        $smtpAuthDisabled = if ($Tenant -eq 'SmtpAuthEnabled') { '$false' } else { '$true' }
-
         $connectionInformation = if ($ConnectedSession) {
             "function Get-ConnectionInformation { [pscustomobject]@{ State = 'Connected' } }"
         }
@@ -59,8 +79,7 @@ function Get-InboundConnector { param([string]$Identity) @() }
         }
 
         $observation = ($script:TenantObservation + [Environment]::NewLine + $connectionInformation).
-        Replace('__ACCEPTED_DOMAIN__', $acceptedDomain).
-        Replace('__SMTP_AUTH_DISABLED__', $smtpAuthDisabled)
+        Replace('__TENANT__', $Tenant)
 
         $invocation = @'
 & $args[0] -ParameterPath $args[1] -ConfigurationPath $args[2] -SchemaPath $args[3] -OutputPath $args[4] -SkipConnection
@@ -84,51 +103,52 @@ exit $LASTEXITCODE
 
         $text = Get-Content -LiteralPath $script:EvidenceScriptPath -Raw
         $original = $text
+        $moduleText = Get-Content -LiteralPath $script:CommonModulePath -Raw
+        $originalModule = $moduleText
 
         switch ($Perturbation) {
             'InternalFault' {
-                $text = $text.Replace(
-                    '$outcome = Get-BaselineRunOutcome -Check @($verdict) -GoLive $goLiveDecision',
-                    '$faultInjected.Never()')
+                $text = [regex]::Replace($text,
+                    '(?m)^    try \{\r?\n(?=        \$exchangeOutcome = Invoke-BaselineExchangeEvidence)',
+                    '    $faultInjected.Never()' + [Environment]::NewLine + '    try {' + [Environment]::NewLine)
             }
             'LegacyFailureExit' {
                 $text = $text.Replace(
-                    'exit $outcome.ExitCode',
-                    'if ($failed.Count -gt 0) { exit 1 }' + [Environment]::NewLine + 'exit 0')
+                    'exit $exchangeOutcome.ExitCode',
+                    'exit $exitCode.Success')
             }
             'UndecidableVerdictDropped' {
-                $text = $text.Replace(
-                    '-Check @($verdict) -GoLive $goLiveDecision',
-                    "-Check @(`$verdict | Where-Object { [string]`$_['Status'] -cnotin @('Error', 'Manual', 'NotEntitled') }) -GoLive `$goLiveDecision")
+                $moduleText = $moduleText.Replace(
+                    'Get-BaselineRunOutcome -Check @($envelope.Check)',
+                    'Get-BaselineRunOutcome -Check @($envelope.Check | Where-Object Status -CNotIn @(''Error'', ''Manual'', ''NotEntitled''))')
             }
             'AlwaysSuccessExit' {
-                $text = $text.Replace('exit $outcome.ExitCode', 'exit $exitCode.Success')
+                $text = $text.Replace('exit $exchangeOutcome.ExitCode', 'exit $exitCode.Success')
             }
             'ApprovalExit' {
-                $text = $text.Replace('exit $outcome.ExitCode', 'exit $exitCode.Approval')
+                $text = $text.Replace('exit $exchangeOutcome.ExitCode', 'exit $exitCode.Approval')
             }
             'CollectionFaultSwallowed' {
-                $text = $text.Replace(
-                    '    Write-Error "CollectionFailed: $($_.Exception.Message)" -ErrorAction Continue' + [Environment]::NewLine + '    exit $exitCode.Collection',
-                    '    exit $exitCode.Success')
+                $text = $text.Replace('exit $exitCode.Collection', 'exit $exitCode.Success')
             }
             'AdmittedVerdictsRefused' {
-                $text = $text.Replace(
-                    "    -Check @(`$verdict)",
-                    "    -Check @(`$verdict | Where-Object { [bool]`$_['GoLiveSuccess'] })").
-                Replace('exit $outcome.ExitCode', 'exit $exitCode.Compliance')
+                $moduleText = $moduleText.Replace(
+                    '$execution = @(Invoke-BaselineExchangeRegistry -Context $Context)',
+                    '$execution = @(Invoke-BaselineExchangeRegistry -Context $Context); foreach ($entry in $execution) { $entry.Result = New-ControlResult -ControlId $entry.ControlId -Status Pass }')
+                $text = $text.Replace('exit $exchangeOutcome.ExitCode', 'exit $exitCode.Compliance')
             }
             default { throw "UnknownPerturbation: '$Perturbation' is not a way this test perturbs the shipped command." }
         }
 
-        if ($text -ceq $original) {
+        if ($text -ceq $original -and $moduleText -ceq $originalModule) {
             throw "PerturbationNotApplied: '$Perturbation' matched nothing in the shipped command, so the fixture would be the shipped command."
         }
 
         $path = Join-Path $Directory 'Test-ExchangeOnlineBaseline.ps1'
         Set-Content -LiteralPath $path -Value $text -Encoding utf8
-        Copy-Item -LiteralPath $script:CommonModulePath -Destination (Join-Path $Directory 'ExchangeOnlineBaseline.Common.psm1')
+        Set-Content -LiteralPath (Join-Path $Directory 'ExchangeOnlineBaseline.Common.psm1') -Value $moduleText -Encoding utf8
         Copy-Item -LiteralPath $script:CommonManifestPath -Destination (Join-Path $Directory 'ExchangeOnlineBaseline.Common.psd1')
+        Copy-Item -LiteralPath (Join-Path $script:SampleRoot 'scripts/ExchangeOnlineBaseline.ApprovedAdapters.ps1') -Destination $Directory
         return $path
     }
 
@@ -274,6 +294,7 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
     BeforeAll {
         $script:FixtureRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('evidence-exit-zero-' + [guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $script:FixtureRoot -Force | Out-Null
+        Copy-Item -LiteralPath (Join-Path $script:SampleRoot 'config') -Destination (Join-Path $script:FixtureRoot 'config') -Recurse
 
         function New-PerturbedRunDirectory {
             [CmdletBinding()]
@@ -375,8 +396,8 @@ Describe 'GATE-005-A exit zero from the shipped command means every applicable c
             $result = Get-EvidenceCommandExitZeroResult -ScriptPath $scriptPath
 
             # Assert
-            $result.Violations | Should -Contain 'EXO-003:Manual'
-            $result.Violations | Should -Contain 'MDO-003:NotEntitled'
+            $result.Violations | Should -Contain 'EXO-010:Manual'
+            $result.Violations | Should -Contain 'MDO-008:NotEntitled'
             $result.Reason | Should -BeExactly 'ExitZeroWithUnverifiedControl'
         }
 

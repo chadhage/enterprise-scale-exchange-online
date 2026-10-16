@@ -2,48 +2,91 @@ name: Deploy Microsite to GitHub Pages
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths-ignore:
+      - 'deprecated/**'
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  actions: read
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  candidate:
+    runs-on: ubuntu-24.04
+    outputs:
+      commit: ${{ steps.find.outputs.commit }}
+      tree: ${{ steps.find.outputs.tree }}
+      run: ${{ steps.find.outputs.run }}
+      artifact: ${{ steps.find.outputs.artifact }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
+      - name: Restrict production Pages publication to main
+        run: test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          enablement: true
+          node-version: '22'
+      - id: find
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node .github/ci/pipeline.mjs find
 
-      - name: Bundle repository guides for the in-site reader
-        run: |
-          mkdir -p microsite/docs
-          cp samples/contoso-exchange-online-managed-service/docs/*.md microsite/docs/
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'microsite'
+  verification:
+    needs: candidate
+    if: needs.candidate.outputs.run == ''
+    uses: ./.github/workflows/verify.yml
 
   deploy:
-    needs: build
+    needs: [candidate, verification]
+    if: >-
+      always() && needs.candidate.result == 'success' &&
+      (needs.verification.result == 'success' || needs.verification.result == 'skipped')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      actions: read
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages-publication
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ${{ needs.candidate.outputs.artifact }}
+          path: .artifacts/promoted
+          run-id: ${{ needs.candidate.outputs.run || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Check verified source and artifact hashes
+        env:
+          TREE: ${{ needs.candidate.outputs.tree }}
+        run: node .github/ci/pipeline.mjs validate .artifacts/promoted "$TREE"
+      - uses: actions/configure-pages@1f0c5cde4bc74cd7e1254d0cb4de8d49e9068c7d # v4
+      - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: .artifacts/promoted/site
+      - name: Refuse publication of a superseded main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.candidate.outputs.commit }}
+        run: |
+          set -euo pipefail
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)"
+          test "$current_main" = "$TARGET_SHA" || {
+            echo "Refusing superseded Pages candidate $TARGET_SHA; current main is $current_main" >&2
+            exit 1
+          }
+      - id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+      - name: Smoke-check the published version and resources
+        env:
+          URL: ${{ steps.deployment.outputs.page_url }}
+          TREE: ${{ needs.candidate.outputs.tree }}
+        run: node .github/ci/pipeline.mjs smoke "$URL" "$TREE"

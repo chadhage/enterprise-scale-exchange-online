@@ -250,7 +250,7 @@ Describe 'EXR-007-A02-T01 transport bypass and external-tag lifecycle' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true
@@ -530,7 +530,9 @@ Describe 'EXR-007-A02-T01 transport bypass and external-tag lifecycle' {
             $result.RepeatedRollback.Status | Should -BeExactly 'Succeeded'
             $result.RepeatedRollbackWrites | Should -Be 0
             $global:adapterState.TransportRule[0].SetSCL | Should -BeOfType [int]
-            $global:adapterState.TransportRule[0].SenderDomainIs | Should -BeOfType [object[]]
+            ($global:adapterState.TransportRule[0].SenderDomainIs -is [System.Collections.IEnumerable] -and
+                $global:adapterState.TransportRule[0].SenderDomainIs -isnot [string]) |
+                Should -BeTrue -Because "transport domains must remain a collection, not $($global:adapterState.TransportRule[0].SenderDomainIs.GetType().FullName)"
             @($global:adapterCalls | Where-Object Command -Match 'TenantAllowBlockList').Count | Should -Be 0
         }
     }

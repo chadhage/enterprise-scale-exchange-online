@@ -21,7 +21,7 @@ $parseErrors = $null
 $moduleAst = [System.Management.Automation.Language.Parser]::ParseInput($moduleText, [ref]$tokens, [ref]$parseErrors)
 $functionNames = @($moduleAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true) | ForEach-Object { $_.Name })
 $commandNames = @($moduleAst.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true) | ForEach-Object { $_.GetCommandName() })
-$rawCommandNames = @([regex]::Matches($moduleText, '-Command\s+([A-Za-z]+-[A-Za-z0-9]+)') | ForEach-Object { $_.Groups[1].Value })
+$rawCommandNames = @([regex]::Matches($moduleText, '-Command\s+[''"]?([A-Za-z]+-[A-Za-z0-9]+)') | ForEach-Object { $_.Groups[1].Value })
 $familyNames = @($moduleAst.FindAll({
     param($node)
     $node -is [System.Management.Automation.Language.AssignmentStatementAst] -and

@@ -9,11 +9,12 @@ $RoleAssignmentSeam = @(
     @{ Parameter = 'ActivePimAssignmentCollection'; Prefix = 'ActivePimAssignmentCollectionRequired' }
     @{ Parameter = 'EligiblePimAssignmentCollection'; Prefix = 'EligiblePimAssignmentCollectionRequired' }
     @{ Parameter = 'AccessReviewCollection'; Prefix = 'AccessReviewCollectionRequired' }
+    @{ Parameter = 'ManagementScopeCollection'; Prefix = 'ManagementScopeCollectionRequired' }
 )
 
 # The five observations the record carries, and the desired-state arguments whose absence the
 # evaluator refuses. Both are read during discovery, so both are declared outside `BeforeAll`.
-$RoleAssignmentObservation = @('RoleGroup', 'ManagementRoleAssignment', 'ActivePimAssignment', 'EligiblePimAssignment', 'AccessReview')
+$RoleAssignmentObservation = @('RoleGroup', 'ManagementRoleAssignment', 'ActivePimAssignment', 'EligiblePimAssignment', 'AccessReview', 'ManagementScope')
 
 $RoleAssignmentDesiredState = @(
     @{ Argument = 'PrivilegedRoleGroup'; Prefix = 'PrivilegedRoleGroupRequired'; Absent = @() }
@@ -36,7 +37,7 @@ BeforeAll {
 
     # The registry is returned as one read-only collection deliberately protected from pipeline
     # unrolling, so the entry is read by index rather than by piping the collection.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:RoleAssignmentRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'EXO-010') { $entry }
         })[0]
@@ -47,6 +48,7 @@ BeforeAll {
         'ActivePimAssignmentCollection'
         'EligiblePimAssignmentCollection'
         'AccessReviewCollection'
+        'ManagementScopeCollection'
     )
 
     # The discovery-time copy of this list is not in scope while a test runs, and a list that read
@@ -110,8 +112,8 @@ BeforeAll {
         )
 
         $argument = @{
-            PrivilegedRoleGroup = @('Organization Management')
-            ApprovedMember      = @($script:ApprovedPrincipal)
+            PrivilegedRoleGroup = @('Organization Management', 'Help Desk')
+            ApprovedMember      = @($script:ApprovedPrincipal, 'service.desk@contoso.com')
             GovernedRole        = @($script:GovernedRoleId)
             MaximumReviewAgeDay = 90
             AsAtUtc             = $script:AsAtUtc
@@ -132,7 +134,21 @@ BeforeAll {
             [object]$Members = @('break.glass@contoso.com')
         )
 
-        return [pscustomobject]@{ Name = $Name; Members = $Members; WhenChangedUTC = '2026-02-11T08:00:00Z' }
+        return [pscustomobject]@{
+            Name = $Name
+            Members = $Members
+            MemberRecords = @(
+                foreach ($member in @($Members)) {
+                    [pscustomobject]@{
+                        Group = $Name
+                        Member = [string]$member
+                        IdentitySource = 'PrimarySmtpAddress'
+                        Raw = [pscustomobject]@{ PrimarySmtpAddress = [string]$member }
+                    }
+                }
+            )
+            WhenChangedUTC = '2026-02-11T08:00:00Z'
+        }
     }
 
     function New-ManagementRoleAssignment {
@@ -200,6 +216,7 @@ BeforeAll {
         )
 
         $observed = @{
+            ManagementScope          = @()
             RoleGroup                = @((New-RoleGroup), (New-RoleGroup -Name 'Help Desk' -Members @('service.desk@contoso.com')))
             ManagementRoleAssignment = @(New-ManagementRoleAssignment)
             ActivePimAssignment      = @(New-ActivePimAssignment)
@@ -231,6 +248,9 @@ BeforeAll {
             [object]$Payload
         )
 
+        if ($Payload -is [System.Collections.IDictionary] -and -not $Payload.Contains('Members')) {
+            $Payload.Members = @()
+        }
         return New-BaselineEvidence -ControlId 'EXO-010' -Source 'ExchangeOnline,MicrosoftGraph' `
             -Command 'Get-RoleGroup; Get-ManagementRoleAssignment' -Value $Payload
     }
@@ -328,7 +348,7 @@ Describe 'EXO-010-A1 RBAC and PIM collector' {
 
             # Assert
             ('collected={0}|failure={1}|{2}' -f $evidence.Collected, $evidence.FailureReason, (ConvertTo-CanonicalJson -InputObject $evidence.Value)) |
-                Should -BeExactly 'collected=True|failure=|{"AccessReview":[],"ActivePimAssignment":[],"EligiblePimAssignment":[],"ManagementRoleAssignment":[],"RoleGroup":[]}' `
+                Should -BeExactly 'collected=True|failure=|{"AccessReview":[],"ActivePimAssignment":[],"EligiblePimAssignment":[],"ManagementRoleAssignment":[],"ManagementScope":[],"Members":[],"RoleGroup":[]}' `
                     -Because 'a tenant that has run no access review and holds no PIM assignment answers with nothing, and that is the finding EXO-010 exists to fail on rather than an infrastructure excuse to hide it behind'
         }
     }
@@ -373,12 +393,13 @@ Describe 'EXO-010-A1 RBAC and PIM collector' {
                 }
             }
             $expected = 'EXO-010|ExchangeOnline,MicrosoftGraph|' +
-            'Get-RoleGroup; Get-ManagementRoleAssignment; GET /roleManagement/directory/roleAssignmentScheduleInstances; GET /roleManagement/directory/roleEligibilityScheduleInstances; GET /identityGovernance/accessReviews/definitions' +
+            'Get-RoleGroup; Get-ManagementRoleAssignment; Get-ManagementScope; GET /roleManagement/directory/roleAssignmentScheduleInstances; GET /roleManagement/directory/roleEligibilityScheduleInstances; GET /identityGovernance/accessReviews/definitions' +
             '|collected=True|failure=|' +
             '{"AccessReview":[{"createdBy":"governance@contoso.com","displayName":"Exchange administrators quarterly review","lastCompletedDateTime":"2026-08-20T00:00:00Z","scopeRoleDefinitionId":"29232cdf-9323-42fd-ade2-1d097af3e4de"}],' +
             '"ActivePimAssignment":[{"endDateTime":"2026-09-30T00:00:00Z","memberType":"Direct","principalId":"b5d1f9a0-3c2e-4a77-9f81-6d0c4e2b8a13","roleDefinitionId":"29232cdf-9323-42fd-ade2-1d097af3e4de"}],' +
             '"EligiblePimAssignment":[{"principalId":"c7e2a418-5b9d-4f60-8a31-2f4c6d9e1b05","roleDefinitionId":"29232cdf-9323-42fd-ade2-1d097af3e4de","startDateTime":"2026-01-05T00:00:00Z"}],' +
             '"ManagementRoleAssignment":[{"RecipientWriteScope":"Organization","Role":"Mailbox Import Export","RoleAssigneeName":"Organization Management","RoleAssigneeType":"RoleGroup"}],' +
+            '"ManagementScope":[],"Members":[],' +
             '"RoleGroup":[{"Members":["standing.admin@contoso.com","break.glass@contoso.com"],"Name":"Organization Management","WhenChangedUTC":"2026-02-11T08:00:00Z"},' +
             '{"Members":["service.desk@contoso.com"],"Name":"Help Desk","WhenChangedUTC":"2025-12-03T14:30:00Z"}]}' +
             '|members=Collected,CollectedAtUtc,Command,ControlId,FailureReason,Source,Value'
@@ -457,7 +478,7 @@ Describe 'EXO-010-A2 RBAC and PIM evaluator' {
         It 'decides an uncollected record as an error rather than a verdict' {
             # Arrange
             $argument = New-RoleAssignmentDesiredState
-            $refused = Get-ExchangeRoleAssignmentEvidence -RoleGroupCollection { throw 'GraphThrottled: the request was throttled on every attempt.' } `
+            $refused = Get-ExchangeRoleAssignmentEvidence -ManagementScopeCollection { @() } -RoleGroupCollection { throw 'GraphThrottled: the request was throttled on every attempt.' } `
                 -ManagementRoleAssignmentCollection { } -ActivePimAssignmentCollection { } `
                 -EligiblePimAssignmentCollection { } -AccessReviewCollection { }
 
@@ -686,7 +707,7 @@ Describe 'EXO-010-A2 RBAC and PIM evaluator' {
             # Assert
             (Get-ResultFold -Result $result) |
                 Should -BeExactly 'EXO-010|Pass|normalized=True|golive=True|reason=|evidence=EXO-010' `
-                    -Because 'every clause of the card is satisfied at once by exactly one tenant shape, and the ungoverned Help Desk group sitting beside the governed one proves the evaluator holds the groups the baseline named to the approved list rather than every group it can see; the result carries the record it was decided from, so a reviewer can see which observation the pass rests on'
+                    -Because 'every observed group and its members must be explicitly approved; the result retains the complete observation rather than silently ignoring a second group'
         }
     }
 }

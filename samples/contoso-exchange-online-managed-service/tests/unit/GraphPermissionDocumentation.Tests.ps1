@@ -149,7 +149,7 @@ BeforeAll {
             return [pscustomobject]$verdict
         }
 
-        if ($consent -notmatch 'Connect-MgGraph') {
+        if ($consent -notmatch '(?is)historical opt-in.*separate identity owner.*consent grant') {
             $verdict.Reason = 'ConsentGrantNotDocumented'
             return [pscustomobject]$verdict
         }
@@ -230,7 +230,7 @@ BeforeAll {
 
             if (-not $OmitConsentGrant) {
                 $line.Add('```powershell')
-                $line.Add("Connect-MgGraph -Scopes 'Organization.Read.All','User.Read.All','GroupMember.Read.All','LicenseAssignment.Read.All'")
+                $line.Add('Historical opt-in: a separate identity owner records the consent grant.')
                 $line.Add('```')
             }
 
@@ -395,7 +395,7 @@ Describe 'LIC-007-A documented Graph permission contract' {
             $verdict = Get-GraphPermissionVerdict -Path $mutated
 
             # Assert
-            $verdict.Reason | Should -Be 'ConsentGrantNotDocumented' -Because 'a consent requirement with no grant leaves the operator to invent the scope list'
+            $verdict.Reason | Should -Be 'ConsentGrantNotDocumented' -Because 'historical directory consent must have a separate identity owner rather than an active Exchange grant step'
         }
     }
 

@@ -278,6 +278,48 @@ Describe 'EXR-008 executable Exchange administrator journey' {
         (Get-Content (Join-Path $inputData.ArtifactRoot 'postchange-CHG008.json') -Raw | ConvertFrom-Json).Status | Should -BeExactly Succeeded
     }
 
+    It 'refuses frozen evidence <Name> without signing in or recollecting (exit <Code>)' -ForEach @(
+        @{ Name = 'changed bytes'; Code = 14 }
+        @{ Name = 'missing file'; Code = 12 }
+        @{ Name = 'non-object JSON'; Code = 12 }
+        @{ Name = 'missing authority input'; Code = 10 }
+        @{ Name = 'nonpositive age'; Code = 10 }
+        @{ Name = 'conflicting stages'; Code = 10 }
+        @{ Name = 'invalid authority'; Code = 14 }
+        @{ Name = 'missing signature'; Code = 14 }
+    ) {
+        # Arrange
+        $inputData = New-JourneyInput
+        Initialize-JourneyDoubles -InputData $inputData -Directory $TestDrive
+        $frozenPath = Join-Path $TestDrive 'changed-frozen.json'
+        '{}' | Set-Content $frozenPath
+        $confirmations = $global:journeyState.SessionConfirmations
+        if ($Name -eq 'non-object JSON') { 'null' | Set-Content $frozenPath }
+        $arguments = @{
+            GoLive = $true
+            ParameterPath = $inputData.ParameterPath; ConfigurationPath = $inputData.ConfigurationPath
+            EvidencePath = $frozenPath; EvidenceSignaturePath = Join-Path $TestDrive 'absent.p7s'
+            EvidenceSignerIdentity = $inputData.ApprovalIdentity; AuthorizedSignerPath = $inputData.AuthorityPath
+            ExpectedEvidenceHash = (Get-FileHash $frozenPath).Hash; ExpectedConfigurationHash = $inputData.ConfigurationHash
+            MaximumEvidenceAge = [timespan]::FromHours(24)
+        }
+        switch ($Name) {
+            'changed bytes' { $arguments.ExpectedEvidenceHash = '0' * 64 }
+            'missing file' { Remove-Item -LiteralPath $frozenPath }
+            'missing authority input' { $arguments.Remove('AuthorizedSignerPath') }
+            'nonpositive age' { $arguments.MaximumEvidenceAge = [timespan]::Zero }
+            'conflicting stages' { $arguments.SignEvidence = $true }
+            'invalid authority' { '{}' | Set-Content $inputData.AuthorityPath }
+        }
+        # Act
+        $null = & (Join-Path $script:sampleRoot 'scripts/Test-ExchangeOnlineBaseline.ps1') @arguments 2>$null
+        $exitCode = $LASTEXITCODE
+        # Assert
+        $exitCode | Should -Be $Code
+        $global:journeyState.SessionConfirmations | Should -Be $confirmations
+        $global:journeyState.Collections | Should -Be 0
+    }
+
     It 'does not leak installed command doubles into subsequent test containers' {
         # Arrange
         $inputData = New-JourneyInput

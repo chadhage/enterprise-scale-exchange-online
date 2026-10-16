@@ -65,7 +65,10 @@ BeforeAll {
         )
 
         $content = Get-Content -LiteralPath $Path -Raw
-        return [bool]($content -match ('Import-Module[^\r\n]*{0}' -f [regex]::Escape($script:SharedModuleName)))
+        $literalImport = $content -match ('Import-Module[^\r\n]*{0}' -f [regex]::Escape($script:SharedModuleName))
+        $resolvedImport = $content -match ('(?s)\$commonModulePath\s*=\s*\(Resolve-Path.*?Join-Path\s+\$PSScriptRoot\s+''{0}''' -f [regex]::Escape($script:SharedModuleName)) -and
+            $content -match '(?m)^\s*Import-Module\s+\$commonModulePath\b'
+        return $literalImport -or $resolvedImport
     }
 
     function Get-ScriptBoundaryResult {

@@ -2,6 +2,24 @@
 
 `MUST` controls are onboarding gates. `SHOULD` controls require a documented risk acceptance when omitted. `AVOID` entries are known weakening patterns.
 
+The default **ExchangeOnly** execution uses the 25-control manifest and the
+[Exchange-only operator contract](EXCHANGE-ONLY.md). The 43-control catalog below also
+preserves historical Native/Gateway references; public commands require
+`-AllowHistoricalProfile` with an explicit historical configuration to use those paths.
+Exchange conformance never certifies external readiness.
+
+| Control | Ownership | ExchangeOnly disposition | Value class |
+| --- | --- | --- | --- |
+| MDO-004 | External | Excluded | MicrosoftRecommendation |
+| MDO-005 | External | Excluded | MicrosoftRecommendation |
+
+`LocalPolicy` values and `ApprovedException` decisions remain distinct from
+`MicrosoftRecommendation`; profile-specific parity must not collapse these classes.
+For EXO-001, supply a complete, tenant-bound `domainInventory` with owner/source
+provenance, all accepted and sending/parked domains, and explicit parent relationships.
+Cloud-only accepted domains are `Authoritative`; `InternalRelay` requires current
+topology approval and must agree with the configured primary-domain topology.
+
 **Columns**
 
 - **Profile** — `Both`, `Native` (Microsoft-native only), or `Gateway` (third-party SMTP gateway only).
@@ -27,8 +45,8 @@ Microsoft Configuration Analyzer is a supplemental correlation source. Its signe
 | EXO-005 | SHOULD | Both | EOP | External postmaster | Monitored business address | `Get-TransportConfig` | [R-EXO-005](RUNBOOKS.md#r-exo-005-external-postmaster-address) |
 | EXO-006 | MUST | Both | EOP | Mailbox auditing | On by default; no audit bypass associations | `Get-OrganizationConfig`, `Get-MailboxAuditBypassAssociation` | [R-EXO-006](RUNBOOKS.md#r-exo-006-mailbox-auditing) |
 | EXO-007 | MUST | Both | EOP | External sender identification | Enabled; allow list empty or ticketed | `Get-ExternalInOutlook` | [R-EXO-007](RUNBOOKS.md#r-exo-007-external-sender-identification) |
-| EXO-008 | MUST | Both | EOP | Default remote domain | Auto-forward, auto-reply, and NDR off; OOF `InternalLegacy` | `Get-RemoteDomain -Identity Default` | [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain) |
-| EXO-009 | MUST | Both | EOP | Legacy protocol surface | EWS off with explicit allow list; POP and IMAP off for new mailboxes | `Get-OrganizationConfig`, `Get-CASMailboxPlan` | [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction) |
+| EXO-008 | MUST | Both | EOP | Remote domains | Auto-forward, auto-reply, and NDR off; OOF `None`, or explicitly approved `External`; verify default and specific domains | `Get-RemoteDomain` | [R-EXO-008](RUNBOOKS.md#r-exo-008-default-remote-domain) |
+| EXO-009 | MUST | Both | EOP | Legacy protocol surface | EWS off; an enabled exception requires exact enforced user-agent/application-ID lists and current approval; POP/IMAP off for existing and new mailboxes | `Get-OrganizationConfig -RetrieveEwsOperationAccessPolicy`, `Get-CASMailboxPlan`, `Get-CASMailbox` | [R-EXO-009](RUNBOOKS.md#r-exo-009-legacy-protocol-restriction) |
 | EXO-010 | MUST | Both | EOP | Exchange RBAC hygiene | No standing Global Administrator for messaging; role groups reviewed every 90 days | `Get-RoleGroup`, `Get-ManagementRoleAssignment`, PIM export | [R-EXO-010](RUNBOOKS.md#r-exo-010-exchange-rbac-hygiene) |
 | EXO-011 | SHOULD | Both | EOP | MTA-STS and TLS-RPT | `mode: enforce` policy published; TLS reports delivered to a monitored address | DNS query plus HTTPS policy fetch | [R-EXO-011](RUNBOOKS.md#r-exo-011-mta-sts-and-tls-rpt) |
 | EXO-012 | SHOULD | Both | EOP | Outlook add-in acquisition | User-installed add-ins disabled in the default role assignment policy | `Get-RoleAssignmentPolicy`, `Get-ManagementRoleAssignment` | [R-EXO-012](RUNBOOKS.md#r-exo-012-outlook-add-in-acquisition) |
@@ -45,7 +63,7 @@ Microsoft Configuration Analyzer is a supplemental correlation source. Its signe
 | MDO-006 | MUST | Both | EOP | User submissions | Microsoft reporting enabled; SecOps receives copy | Defender portal export and functional test | [R-MDO-006](RUNBOOKS.md#r-mdo-006-user-submissions) |
 | MDO-007 | MUST | Both | EOP | Tenant allow/block entries | Investigated, scoped, owner and expiry | TABL export plus ticket | [R-MDO-007](RUNBOOKS.md#r-mdo-007-tenant-allowblock-list) |
 | MDO-008 | MUST | Both | EOP | Quarantine policies | End users get limited access; malware and high-confidence phish are admin-only; notifications daily | `Get-QuarantinePolicy` | [R-MDO-008](RUNBOOKS.md#r-mdo-008-quarantine-policies-and-notifications) |
-| MDO-009 | SHOULD | Both | MDO P2 | Priority account protection | Priority accounts tagged; premium mitigations applied | Defender portal user-tag export | [R-MDO-009](RUNBOOKS.md#r-mdo-009-priority-account-protection) |
+| MDO-009 | SHOULD | Both | MDO P1 | Email impersonation protection | Exact protected recipients/domains, effective rule and preset precedence; separately attest optional P2 features | Anti-phish policy and rule exports | [R-MDO-009](RUNBOOKS.md#r-mdo-009-priority-account-protection) |
 
 ## Mail Gateway (third-party SMTP gateway profile only)
 
@@ -82,7 +100,7 @@ Every control below is `NotApplicable` in the Microsoft-native profile. `Assert-
 | MON-002 | MUST | Both | EOP | Unified audit | Enabled and retained | Purview audit search/export | [R-MON-002](RUNBOOKS.md#r-mon-002-unified-audit-log) |
 | MON-003 | MUST | Both | EOP | Drift evidence | Scheduled collection; minimum 180-day retention | Timestamped evidence JSON | [R-MON-003](RUNBOOKS.md#r-mon-003-drift-evidence) |
 | OPS-001 | MUST | Both | EOP | Change safety | WhatIf, pilot, approval, rollback, validation | Change record | [R-OPS-001](RUNBOOKS.md#r-ops-001-change-safety) |
-| OPS-002 | SHOULD | Both | MDO P2 | Incident exercise | Quarterly phish/remediation tabletop or simulation | Exercise record and actions | [R-OPS-002](RUNBOOKS.md#r-ops-002-incident-exercise) |
+| OPS-002 | SHOULD | Both | EOP | Incident exercise | Quarterly Exchange incident-response tabletop with owners and tracked actions; licensed simulation capabilities are separate | Signed exercise record and actions | [R-OPS-002](RUNBOOKS.md#r-ops-002-incident-exercise) |
 
 ## Microsoft Purview Governance
 

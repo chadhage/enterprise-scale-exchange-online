@@ -2,6 +2,10 @@ BeforeAll {
     $script:SampleRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     Import-Module (Join-Path $script:SampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force
     $script:Now = [datetimeoffset]'2026-09-20T12:00:00Z'
+    $script:RegistryParameters = Get-Content (Join-Path $script:SampleRoot 'config/parameters.exchange-only.sample.json') -Raw | ConvertFrom-Json -AsHashtable -DateKind String
+    $script:RegistryParameters.entitlement.verified = $true
+    $script:RegistryParameters.entitlement.expiresOn = [datetimeoffset]::UtcNow.AddDays(1).ToString('o')
+    $script:RegistryParameters.entitlement.servicePlans = @('EXCHANGE_S_ENTERPRISE')
     function New-EwsDesired {
         @{
             ewsEnabled = $true
@@ -176,11 +180,11 @@ Describe 'EXR-003 EWS control dispatch' {
         # Arrange
         $desired = New-EwsDesired
         $evidence = New-EwsEvidence (New-EwsPayload)
-        InModuleScope ExchangeOnlineBaseline.Common -Parameters @{ Desired = $desired; Collected = $evidence } {
-            param($Desired, $Collected)
+        InModuleScope ExchangeOnlineBaseline.Common -Parameters @{ Desired = $desired; Collected = $evidence; RuntimeParameters = $script:RegistryParameters } {
+            param($Desired, $Collected, $RuntimeParameters)
             $configuration = Get-Content (Join-Path $ExecutionContext.SessionState.Module.ModuleBase '../config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
             foreach ($key in $Desired.Keys) { $configuration.controls['EXO-009'][$key] = $Desired[$key] }
-            $context = @{ Configuration = $configuration; Parameters = @{ PRIMARY_SMTP_DOMAIN = 'example.test' }; Entitlement = @{ servicePlans = @('EXCHANGE_S_ENTERPRISE') } }
+            $context = @{ Configuration = $configuration; Parameters = $RuntimeParameters; Entitlement = $RuntimeParameters.entitlement }
             $registry = Get-BaselineControlRegistry
             foreach ($entry in $registry) {
                 if ($entry.ControlId -eq 'EXO-009') { continue }
@@ -243,8 +247,8 @@ Describe 'EXR-003 EWS raw AppID retrieval' {
     It 'does not omit AppIDs from the scoped EXO-009 raw collector' {
         # Arrange
         $payload = New-EwsPayload
-        InModuleScope ExchangeOnlineBaseline.Common -Parameters @{ Payload = $payload } {
-            param($Payload)
+        InModuleScope ExchangeOnlineBaseline.Common -Parameters @{ Payload = $payload; RuntimeParameters = $script:RegistryParameters } {
+            param($Payload, $RuntimeParameters)
             function Get-OrganizationConfig {
                 [CmdletBinding()] param([switch]$RetrieveEwsOperationAccessPolicy)
                 $observed = $Payload.OrganizationConfig.Clone()
@@ -254,7 +258,7 @@ Describe 'EXR-003 EWS raw AppID retrieval' {
             function Get-CASMailboxPlan { [CmdletBinding()] param($ResultSize) $Payload.CasMailboxPlan }
             function Get-CASMailbox { [CmdletBinding()] param($ResultSize) $Payload.CasMailbox }
             $configuration = Get-Content (Join-Path $ExecutionContext.SessionState.Module.ModuleBase '../config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
-            $context = @{ Configuration = $configuration; Parameters = @{ PRIMARY_SMTP_DOMAIN = 'example.test' }; Entitlement = @{ servicePlans = @('EXCHANGE_S_ENTERPRISE') } }
+            $context = @{ Configuration = $configuration; Parameters = $RuntimeParameters; Entitlement = $RuntimeParameters.entitlement }
             $registry = Get-BaselineControlRegistry
             foreach ($entry in $registry) {
                 if ($entry.ControlId -eq 'EXO-009') { continue }
@@ -298,6 +302,9 @@ Describe 'EXR-003 EWS raw AppID retrieval' {
 
 Describe 'EXR-003 EWS main deployment ordering' {
     BeforeAll {
+        $ConfigurationPath = Join-Path $script:SampleRoot 'config/exchange-online-secure-baseline.microsoft-native.json'
+        $ParameterPath = Join-Path $script:SampleRoot 'tests/fixtures/com007/parameters.native.complete.json'
+        $SchemaPath = Join-Path $script:SampleRoot 'config/exchange-online-secure-baseline.schema.json'
         $tokens = $null
         $errors = $null
         $ast = [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $script:SampleRoot 'scripts/Deploy-ExchangeOnlineBaseline.ps1'), [ref]$tokens, [ref]$errors)
@@ -307,6 +314,15 @@ Describe 'EXR-003 EWS main deployment ordering' {
         $start = @($statements | Where-Object { $_ -is [System.Management.Automation.Language.AssignmentStatementAst] -and $_.Left.Extent.Text -eq '$context' })[0].Extent.StartOffset
         $end = @($statements | Where-Object { $_.Extent.Text -like 'Set-DomainAuthentication -Configuration*' })[0].Extent.EndOffset
         $script:EwsOrchestration = [scriptblock]::Create($ast.Extent.Text.Substring($start, $end - $start))
+        Mock Get-BaselineContext {
+            @{
+                Configuration = $exchangeContext.DeploymentConfiguration
+                Entitlement = $exchangeContext.DeploymentEntitlement
+                GatewayDeclared = $exchangeContext.GatewayDeclared
+                Algorithm = $exchangeContext.Algorithm
+                Hash = $exchangeContext.Hash
+            }
+        }
         $mutators = @($ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] -and $node.GetCommandName() -match '^(Set|New|Remove|Disable|Enable)-' }, $true) | ForEach-Object { $_.GetCommandName() } | Sort-Object -Unique)
         foreach ($mutator in $mutators) {
             if ($mutator -in @('Set-OrganizationControls','Set-StrictMode')) { continue }
@@ -494,8 +510,7 @@ Describe 'EXR-003 EWS documented disabled policy' {
 Describe 'EXR-003 EWS historical public readback' {
     BeforeAll {
         $commandText = Get-Content (Join-Path $script:SampleRoot 'scripts/Test-ExchangeOnlineBaseline.ps1') -Raw
-        $start = $commandText.IndexOf("Add-Result 'EXO-009 legacyProtocolsRestricted'")
-        if ($start -lt 0) { $start = $commandText.IndexOf('$clientProtocolEvidence =') }
+        $start = $commandText.IndexOf('$clientProtocolEvidence =')
         $end = $commandText.IndexOf('$rbacPimFallback =', $start)
         $script:EwsReadback = [scriptblock]::Create('param($configuration, $evidence)' + [Environment]::NewLine + $commandText.Substring($start, $end - $start))
         function Add-Result { param($Name, $Passed) [pscustomobject]@{ Status = $(if ($Passed) { 'Pass' } else { 'Fail' }); Reason = '' } }

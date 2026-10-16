@@ -1,6 +1,6 @@
 BeforeAll {
     $sampleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
-    Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force
+    $scopeModule = Import-Module (Join-Path $sampleRoot 'scripts/ExchangeOnlineBaseline.Common.psd1') -Force -PassThru
 }
 
 Describe 'EXR-001 Exchange-only manifest boundary' {
@@ -26,7 +26,7 @@ Describe 'EXR-001 Exchange-only manifest boundary' {
         # Arrange
         $configuration = @{ metadata = @{ deploymentProfile = 'ExchangeOnly'; version = '1.0.0' }; desiredState = @{ defenderForOffice365 = @{ safeDocuments = @{ enabled = $true } } } }
         # Act
-        $invoke = { Assert-BaselineExchangeScope -Configuration $configuration }
+        $invoke = { & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration }
         # Assert
         $invoke | Should -Throw '*ExchangeScopeViolation*'
     }
@@ -35,7 +35,7 @@ Describe 'EXR-001 Exchange-only manifest boundary' {
         # Arrange
         $configuration = @{ metadata = @{ deploymentProfile = 'ExchangeOnly'; version = '1.0.0' }; controls = @{} }
         # Act
-        $invoke = { Assert-BaselineExchangeScope -Configuration $configuration }
+        $invoke = { & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration }
         # Assert
         $invoke | Should -Throw '*ExchangeControlMissing*'
     }
@@ -45,7 +45,7 @@ Describe 'EXR-001 Exchange-only manifest boundary' {
         $configurationPath = Join-Path $sampleRoot 'config/exchange-only.v1.json'
         $parameterPath = Join-Path $sampleRoot 'config/parameters.exchange-only.sample.json'
         # Act
-        $invoke = { Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath }
+        $invoke = { Get-BaselineExchangeContext -ConfigurationPath $configurationPath -ParameterPath $parameterPath -ForActionPlanning }
         # Assert
         $invoke | Should -Throw '*ExchangeEntitlementUnverified*'
     }
@@ -76,7 +76,7 @@ Describe 'EXR-001 Exchange-only manifest boundary' {
         # Arrange
         $configuration = Get-Content (Join-Path $sampleRoot 'config/exchange-only.v1.json') -Raw | ConvertFrom-Json -AsHashtable
         # Act
-        $manifest = Assert-BaselineExchangeScope -Configuration $configuration
+        $manifest = & $scopeModule { param($Configuration) Assert-BaselineExchangeScope -Configuration $Configuration } $configuration
         # Assert
         $manifest.Profile | Should -BeExactly 'ExchangeOnly'
         $manifest.Version | Should -BeExactly '1.0.0'

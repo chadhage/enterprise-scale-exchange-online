@@ -12,7 +12,7 @@ BeforeAll {
 
     # The registry is returned as one read-only collection deliberately protected from pipeline
     # unrolling, so the entry is read by index rather than by piping the collection.
-    $script:ControlRegistry = @(Get-BaselineControlRegistry)[0]
+    $script:ControlRegistry = @(Get-BaselineControlRegistry -Profile Historical)[0]
     $script:ConditionalAccessRegistration = @(foreach ($entry in $script:ControlRegistry) {
             if ($entry.ControlId -ceq 'EXO-003') { $entry }
         })[0]

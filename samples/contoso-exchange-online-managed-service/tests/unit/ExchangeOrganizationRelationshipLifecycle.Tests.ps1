@@ -189,7 +189,7 @@ Describe 'EXR-007-A06 organization-relationship disclosure' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true

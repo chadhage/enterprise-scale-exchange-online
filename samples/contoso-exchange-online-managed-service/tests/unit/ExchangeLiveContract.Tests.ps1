@@ -258,7 +258,17 @@ Describe 'EXR-005 retained raw collection contract' {
         @($envelope.Check | Where-Object Status -EQ Error).Count | Should -Be 3
         $calls = Get-Content $callPath
         $calls -join ' ' | Should -Not -Match 'EXCLUDED:'
-        foreach ($cmdlet in $raw.Keys) { $calls -join ' ' | Should -Match ([regex]::Escape($cmdlet + ':')) }
+        $historicalOnly = @(
+            'Get-ActivePimAssignment', 'Get-EligiblePimAssignment', 'Get-AccessReview',
+            'Get-MailboxRetentionDistribution', 'Resolve-PriorityIdentity', 'Resolve-Custodian',
+            'Resolve-DkimSelectorDns'
+        )
+        foreach ($cmdlet in @($raw.Keys | Where-Object { $_ -notin $historicalOnly })) {
+            $calls -join ' ' | Should -Match ([regex]::Escape($cmdlet + ':'))
+        }
+        foreach ($cmdlet in $historicalOnly) {
+            $calls -join ' ' | Should -Not -Match ([regex]::Escape($cmdlet + ':'))
+        }
         $envelope.ExternalReadiness.Status | Should -BeExactly Unverified
     }
 }

@@ -37,7 +37,7 @@ function Initialize-JourneyDoubles {
     $governance.Raw['Get-Mailbox'].Items[0].DeliverToMailboxAndForward = $false
     $governance.Configuration.controls['MDO-001'].recipientMatrix = @(
         @{ address = $pilot; defender = $true; level = 'Strict'; expectedPolicy = 'Strict Preset Security Policy' }
-        @{ address = $shared; defender = $true; level = 'Standard'; expectedPolicy = 'Standard Preset Security Policy' }
+        @{ address = $shared; defender = $true; level = 'Standard'; expectedPolicy = 'Default' }
     )
     $governance.Configuration.controls['MDO-001'].excludedGroups = @($InputData.PriorityGroup)
     $governance.Configuration.controls['MDO-001'].excludedSecOpsMailbox = @($shared)
@@ -58,6 +58,11 @@ function Initialize-JourneyDoubles {
     )
     $governance.Configuration.controls['GOV-004'].custodians = @($pilot)
     $governance.Configuration.controls['GOV-004'].holds[0].mailbox = $pilot
+    $governance.Raw['Get-MailboxRetentionDistribution'].Items[0].CoveredMailboxes = @($pilot, $shared)
+    foreach ($command in 'Resolve-PriorityIdentity', 'Resolve-Custodian') {
+        $governance.Raw[$command].Items[0].Identities = @($pilot)
+        $governance.Raw[$command].ByIdentity = @{ $pilot = @($governance.Raw[$command].Items) }
+    }
     $governance.Configuration.controls['GOV-005'].messageClasses[0].recipients = @($pilot)
     $governance.Raw['Get-TransportRule'].Items[0].SentTo = @($pilot)
     $governance.RecipientFlows[0].Recipient = $pilot
@@ -89,9 +94,12 @@ function Initialize-JourneyDoubles {
     $global:adapterState.CASMailbox[0].Identity = $InputData.Mailboxes[0]
     $global:adapterState.CASMailbox[0].PrimarySmtpAddress = $InputData.Mailboxes[0]
     $global:adapterState.CASMailbox[0].SmtpClientAuthenticationDisabled = $null
-    $global:adapterState.CASMailbox[0].EwsEnabled = $null
+    $global:adapterState.CASMailbox[0].EwsEnabled = $false
     $global:adapterState.CASMailbox[0].EwsApplicationAccessPolicy = $null
     $global:adapterState.CASMailbox[0].EwsAllowList = @()
+    $global:adapterState.CASMailboxPlan[0].EwsEnabled = $false
+    $global:adapterState.CASMailboxPlan[0].EwsApplicationAccessPolicy = $null
+    $global:adapterState.CASMailboxPlan[0].EwsAllowList = @()
     $global:adapterState.EOPProtectionPolicyRule = @()
     $global:adapterState.ATPProtectionPolicyRule = @()
     $key = [Security.Cryptography.RSA]::Create(2048)
@@ -116,11 +124,13 @@ function Initialize-JourneyDoubles {
         $document = @{ ControlId = $controlId; TenantId = $InputData.TenantId; DeploymentProfile = 'ExchangeOnly'; ConfigurationHash = $context.Hash; ManifestHash = $context.Manifest.Hash; GeneratedAtUtc = $generated; Payload = $payloads[$controlId] }
         $content = [Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $document))
         $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new($content), $true)
-        $cms.ComputeSignature([Security.Cryptography.Pkcs.CmsSigner]::new($certificate))
+        $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($certificate)
+        $null = $signer.SignedAttributes.Add([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new([datetime]::UtcNow))
+        $cms.ComputeSignature($signer)
         $document.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
         $artifactPath = Join-Path $working "$controlId.json"
         $document | ConvertTo-Json -Depth 50 | Set-Content $artifactPath
-        $parameters.operationalEvidence[$controlId] = @{ path = $artifactPath; signerIdentity = $InputData.ApprovalIdentity; authorizedSigner = @(@{ Identity = $InputData.ApprovalIdentity; Subject = $certificate.Subject; Authority = 'ExchangeOnlineChangeApproval' }); trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash $rootPath).Hash } }
+        $parameters.operationalEvidence[$controlId] = @{ path = $artifactPath; signerIdentity = $InputData.ApprovalIdentity; authorizedSigner = @(@{ Identity = $InputData.ApprovalIdentity; Subject = $certificate.Subject; Thumbprint = $certificate.Thumbprint; Authority = 'ExchangeOnlineChangeApproval' }); trustedRoot = @{ path = $rootPath; sha256 = (Get-FileHash $rootPath).Hash } }
     }
     $parameters | ConvertTo-Json -Depth 60 | Set-Content $InputData.ParameterPath
     $InputData.Handoffs.Dns.CutoverApproved = $true
@@ -173,6 +183,7 @@ function Initialize-JourneyDoubles {
         if ($signatures.ContainsKey($name)) { continue }
         if ($name -in $global:adapterCommands) { continue }
         $signatures[$name] = switch ($name) {
+            { $_ -in @('Resolve-DkimSelectorDns', 'Get-MailboxRetentionDistribution', 'Resolve-PriorityIdentity', 'Resolve-Custodian') } { '$Identity,$Uri,$Partition,$Collection' }
             'Get-ExoSecOpsOverrideRule' { '[string]$Identity,[string]$Policy' }
             'Test-IRMConfiguration' { '[string]$Sender,[string]$Recipient' }
             'Get-MailboxAuditBypassAssociation' { '[string]$Identity,[string]$ResultSize' }
@@ -411,6 +422,11 @@ function global:Invoke-JourneyDouble {
         if ($Name -eq 'Get-MailboxAuditBypassAssociation' -and $state.Collecting) { $state.Collections++ }
         $response = $state.Raw[$Name]
         $rows = $response.Items
+        if ($response.ContainsKey('ByIdentity') -and $Bound.ContainsKey('Identity')) {
+            $key = @($Bound['Identity']) -join '|'
+            if (-not $response.ByIdentity.ContainsKey($key)) { throw "Offline identity not modeled: $($Name):$($key)" }
+            $rows = $response.ByIdentity[$key]
+        }
         if ($Name -eq 'Get-ManagementRoleAssignment' -and $Bound['GetEffectiveUsers']) { $rows = $response.Effective }
         if ($response.ContainsKey('ByType') -and $Bound['QuarantinePolicyType']) { $rows = $response.ByType[$Bound['QuarantinePolicyType']] }
         foreach ($row in @($rows)) { [pscustomobject]$row.Clone() }

@@ -308,6 +308,24 @@ Describe 'COM-001-A module manifest and public API contract' {
     }
 
     Context 'Positive: the manifest declares the public API' {
+        It 'keeps the Exchange-only evidence, policy and boundary contracts callable' {
+            Import-Module $script:CommonManifestPath -Force -DisableNameChecking
+            $requiredContracts = @(
+                'Assert-BaselineExchangeMutationPlan', 'Get-BaselineDeploymentProfile',
+                'Get-BaselineExchangeBoundaryEvidence',
+                'Test-BaselineExchangeBoundaryControl', 'Invoke-BaselineExchangeEvidence',
+                'Resolve-BaselineEwsPolicy', 'Test-BaselineEwsState', 'Test-BaselineEwsConsumerReadiness',
+                'Resolve-BaselineRemoteDomainOofType', 'Get-TransportBypassEvidence', 'Test-TransportBypassControl',
+                'Get-OrganizationRelationshipEvidence', 'Test-OrganizationRelationshipControl',
+                'Get-AuthenticationAlignmentEvidence', 'Test-AuthenticationAlignmentControl',
+                'Get-DnsOwnerHandoffEvidence', 'Test-DnsOwnerHandoffControl',
+                'Get-ExchangeApplicationAuthorizationEvidence', 'Test-ExchangeApplicationAuthorizationControl'
+            )
+            foreach ($name in $requiredContracts) {
+                Get-Command -Name $name -Module ExchangeOnlineBaseline.Common -CommandType Function -ErrorAction Stop |
+                    Should -Not -BeNullOrEmpty
+            }
+        }
 
         It 'declares exactly the functions the shared module exports' {
             # Arrange

@@ -405,7 +405,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             @{
                 Verified = $true
                 SignerSubject = $cms.SignerInfos[0].Certificate.Subject
-                SigningTimeUtc = [datetimeoffset]::UtcNow
+                SigningTimeUtc = (Get-OfflineCmsSigningTime -Cms $cms)
                 CertificateNotBeforeUtc = [datetimeoffset]::UtcNow.AddDays(-1)
                 CertificateNotAfterUtc = [datetimeoffset]::UtcNow.AddDays(1)
                 ChainTrusted = $true
@@ -438,6 +438,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new([Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $approval))), $true)
             $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($script:adapterCertificate)
             $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $null = $signer.SignedAttributes.Add([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new(([datetimeoffset]$approval.ApprovalTimeUtc).UtcDateTime))
             $cms.ComputeSignature($signer, $true)
             $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
             $approval | ConvertTo-Json -Depth 30 | Set-Content $arguments.ApprovalPath
@@ -460,6 +461,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             $cms = [Security.Cryptography.Pkcs.SignedCms]::new([Security.Cryptography.Pkcs.ContentInfo]::new([Text.Encoding]::UTF8.GetBytes((ConvertTo-CanonicalJson -InputObject $approval))), $true)
             $signer = [Security.Cryptography.Pkcs.CmsSigner]::new($script:adapterCertificate)
             $signer.DigestAlgorithm = [Security.Cryptography.Oid]::new('2.16.840.1.101.3.4.2.1')
+            $null = $signer.SignedAttributes.Add([Security.Cryptography.Pkcs.Pkcs9SigningTime]::new(([datetimeoffset]$approval.ApprovalTimeUtc).UtcDateTime))
             $cms.ComputeSignature($signer, $true)
             $approval.Signature = @{ Model = 'DetachedCms'; Value = [Convert]::ToBase64String($cms.Encode()) }
             $approval | ConvertTo-Json -Depth 30 | Set-Content $arguments.ApprovalPath
@@ -658,7 +660,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             $invoke = { & $script:changeCommand -Stage Apply @arguments -Apply -Confirm:$false }
 
             # Assert
-            $invoke | Should -Throw '*ApplicationAssignmentScopeApplyReadbackMismatch*'
+            $invoke | Should -Throw '*ChangePostStateMismatch*'
             @($global:adapterCalls).Count | Should -BeGreaterThan 0
         }
 
@@ -706,7 +708,7 @@ Describe 'EXR-007-A03-T02 approved application assignment and scope lifecycle' {
             $invoke = { & $script:changeCommand -Stage Rollback @arguments -Apply -Confirm:$false }
 
             # Assert
-            $invoke | Should -Throw '*ChangeRollbackFailed*Set-ManagementScope*'
+            $invoke | Should -Throw '*ChangeExecutionFailed*rollback attempt failed*Set-ManagementScope*'
             $global:adapterState.ManagementScope[0].RecipientRestrictionFilter | Should -BeExactly "CustomAttribute1 -eq 'ApprovedApp'"
         }
     }

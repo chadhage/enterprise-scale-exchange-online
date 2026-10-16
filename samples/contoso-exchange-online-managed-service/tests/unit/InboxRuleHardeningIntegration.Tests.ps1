@@ -29,7 +29,7 @@ BeforeAll {
             [scriptblock]$RuleCollection
         )
 
-        return Get-OutboundForwardingEvidence `
+        return Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } `
             -OutboundSpamPolicyCollection {
                 [pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'Off' }
             } `
@@ -71,7 +71,7 @@ Describe 'EXO-013 hardened inbox-rule integration' {
             }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } `
                 -OutboundSpamPolicyCollection { [pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'Off' } } `
                 -MailboxCollection $mailboxCollection `
                 -InboxRuleCollection $ruleCollection
@@ -176,7 +176,7 @@ Describe 'EXO-013 hardened inbox-rule integration' {
             }
 
             # Act
-            $evidence = Get-OutboundForwardingEvidence `
+            $evidence = Get-OutboundForwardingEvidence -OutboundSpamRuleCollection { @() } `
                 -OutboundSpamPolicyCollection { [pscustomobject]@{ Name = 'Default'; AutoForwardingMode = 'Off' } } `
                 -MailboxCollection $mailboxCollection `
                 -InboxRuleCollection $ruleCollection

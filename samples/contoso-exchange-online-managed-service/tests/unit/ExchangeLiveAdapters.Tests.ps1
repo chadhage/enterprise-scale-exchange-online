@@ -60,7 +60,7 @@ Describe 'EXR-011-A01 public domain applicability denominator' {
         Test-Path $evidencePath | Should -BeTrue -Because $output
         $envelope = Get-Content $evidencePath -Raw | ConvertFrom-Json
         $calls = @(Get-Content $callPath)
-        @($calls | Where-Object { ($_ -split ':', 2)[0] -notin (@($raw.Keys) + 'Connect-ExchangeOnline') }).Count | Should -Be 0
+        @($calls | Where-Object { ($_ -split ':', 2)[0] -notin (@($raw.Keys) + @('Connect-ExchangeOnline', 'Get-ConnectionInformation')) }).Count | Should -Be 0
         @($calls | Where-Object { $_ -like 'Get-AcceptedDomain:*' }).Count | Should -BeGreaterThan 0
         $record = @($envelope.Evidence | Where-Object ControlId -EQ 'EXO-001')
         $record.Count | Should -Be 1
